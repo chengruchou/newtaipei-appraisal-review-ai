@@ -1,0 +1,24 @@
+version: "demo-v1"
+description: >-
+  Synthetic engineering rules used to exercise the validation engine. These
+  field names and tolerances are not official appraisal policy.
+rules:
+  - id: region_factor_total
+    kind: sum
+    description: Region total equals the sum of normalized region factors.
+    inputs:
+      - region.transport_adjustment
+      - region.commercial_access_adjustment
+      - region.nuisance_adjustment
+    target: summary.region_total_adjustment
+    tolerance: 0.01
+    severity: error
+
+  - id: copied_region_total
+    kind: equals
+    description: Region total is copied consistently into the comparison form.
+    inputs:
+      - summary.region_total_adjustment
+    target: comparison.region_total_adjustment
+    tolerance: 0.01
+    severity: error
