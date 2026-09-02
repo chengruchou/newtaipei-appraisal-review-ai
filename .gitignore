@@ -30,11 +30,14 @@ cdk.out/
 .vscode/
 
 # Competition and case data: never commit real documents
+/*.pdf
 datasets/raw/
 datasets/interim/
 datasets/processed/
 artifacts/
 outputs/
+ocr-output/
+tmp-images/
 
 # Frontend dependencies if a web client is added
 node_modules/
