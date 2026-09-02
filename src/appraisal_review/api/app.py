@@ -7,9 +7,9 @@ from appraisal_review.domain.models import CanonicalCase, ReviewResult, RuleSet
 from appraisal_review.domain.rule_engine import RuleEngine
 
 app = FastAPI(
-    title="New Taipei Appraisal Review AI",
+    title="Agentic AI Real Estate Valuation Reviewer",
     version="0.1.0",
-    description="Auditable deterministic validation of canonical appraisal cases.",
+    description="Local deterministic validation baseline for valuation review cases.",
 )
 
 

@@ -16,10 +16,12 @@ class EvidenceRef(StrictModel):
     """Location and confidence for a value found in a source document."""
 
     document_id: str
+    source_file: str | None = None
     page: int = Field(ge=1)
     block_ids: list[str] = Field(default_factory=list)
     confidence: float = Field(ge=0.0, le=1.0)
     bounding_box: tuple[float, float, float, float] | None = None
+    coordinate_system: Literal["ocr_top_left", "pdf_bottom_left"] | None = None
 
 
 class ExtractedField(StrictModel):

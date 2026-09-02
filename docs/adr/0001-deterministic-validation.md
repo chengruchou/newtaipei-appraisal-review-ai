@@ -11,13 +11,15 @@ responses are probabilistic and are not sufficient evidence for these checks.
 
 ## Decision
 
-The canonical rule engine exclusively determines `pass`, `fail`, and
-`needs_review`. Bedrock can propose semantic mappings and explain existing
-findings, but its output cannot directly change a finding status.
+The deterministic engines exclusively determine grades, correction rates,
+totals, and `pass`, `fail`, or `needs_review` outcomes. A model can propose
+semantic mappings and candidate rules or explain existing findings, but its
+output cannot directly change a finding status or publish a rule set.
 
 ## Consequences
 
 - Rules and policy versions are reviewable and testable.
 - Every decision can identify its exact inputs.
 - Template mapping still benefits from AI while remaining human-confirmable.
+- Case-specific criteria are versioned data rather than district-specific code.
 - New appraisal logic requires explicit rule implementation and tests.
