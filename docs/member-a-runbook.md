@@ -6,6 +6,10 @@ foundation model, deploy AgentCore, or create a PDF. Real adapters remain
 
 ## Fresh checkout
 
+Active entry branch: feat/member-a-entrypoint, PR #13 (replaces #11). It targets
+main because foundation #10 has already merged. Runtime preparation is separate
+on test/runtime-smoke, PR #14 (replaces #12), based on A. See [migration](pr-migration.md).
+
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
@@ -96,7 +100,9 @@ python scripts/http_smoke.py
 python scripts/check_submission.py
 ```
 
-The attribution check inspects pending text, outgoing commit metadata and the
-configured Git identity. Pass --publication-file for a prepared PR/Issue body.
-Human review also checks equivalent signatures, badges and links. Check again
-immediately before each commit, push or publication; do not rewrite history.
+The gate checks full outgoing commit trees/metadata, index blobs, working files,
+configured Git identity and functional branch names. Pass --publication-file
+for a prepared PR/Issue body and --head/--branch when publishing another ref.
+See [submission checks](submission-checks.md) for narrow negative examples and
+range selection. Human review also checks equivalent signatures, badges and
+links. Check before every commit, push or publication; do not rewrite history.

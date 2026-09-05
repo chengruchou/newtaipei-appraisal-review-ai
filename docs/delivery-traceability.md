@@ -1,7 +1,9 @@
 # Requirements to implementation and acceptance
 
-Review date: 2026-09-05. Base: main b69ed74da950f37add016b5e881a7e0478f9c7d5.
-Foundation: e24265d7c4ef0bb5d2d74d0ed94bffa2052a08ed, PR #10.
+Review date: 2026-09-05. Original base: b69ed74da950f37add016b5e881a7e0478f9c7d5.
+Current revision base: main ff5e9d1d511e015dbc96aa5b380cce1def433421, which already
+merged foundation e24265d7c4ef0bb5d2d74d0ed94bffa2052a08ed in PR #10.
+Active delivery: A PR #13, then Runtime PR #14. [Migration and full original SHAs](pr-migration.md).
 
 | Requirement | Component / implementation | Issue | Evidence / status |
 |---|---|---|---|
@@ -10,6 +12,7 @@ Foundation: e24265d7c4ef0bb5d2d74d0ed94bffa2052a08ed, PR #10.
 | Shared composition, no import-time clients | application/bootstrap.py | #4 | test_bootstrap.py; local, explicit mocked AWS bundle |
 | Sync review HTTP and invocation parity | api/routes/reviews.py, agentcore/runtime.py, application/entrypoint.py | #4 | test_entrypoints.py + scripts/http_smoke.py |
 | Legacy behavior | /health, /v1/validate | #4 | Actual HTTP findings equality and wrong-total test |
+| Legacy detail and review 422/503/500 schema | EntryProblemResponse, routed validation handler | #4, PR #13 | test_api_error_contract.py; JSON Schema checks on actual responses, invocation parity |
 | Candidate/missing/low-confidence/unknown factors block PDF | Existing engine/verifier + Controller | #4 | test_controller_pdf_boundary.py, no verifier changes |
 | Write once, malformed writer output cannot complete | Controller + FakePDFWriter | #4/#6 | URI/count/field/exception tests, warnings retained |
 | Runnable synthetic fixture | adapters/local/synthetic.py, demo.py, examples/ | #4 | verified/completed/needs_review local invocations |
@@ -20,7 +23,7 @@ Foundation: e24265d7c4ef0bb5d2d74d0ed94bffa2052a08ed, PR #10.
 | Full coverage and evidence gate | Future verifier expansion | #8 | Known baseline weakness reproduced; protected files unchanged |
 | Async jobs and durable Runtime delivery | Cloud API/persistence/dispatcher/reconciler | #9 | Architecture design; no live test |
 | Runtime packaging/health smoke | Separate cloud-test PR | #9 | Prepared separately; never conflated with A or full review |
-| No AI attribution | AGENTS.md and scripts/check_submission.py | #4 | Content + outgoing Git metadata checked before publication |
+| Attribution and branch naming | AGENTS.md and scripts/check_submission.py | #4, PR #13 | 49 subprocess CLI tests; full snapshots/index/metadata/publication/branch checks |
 
 ## Baseline and local evidence
 
@@ -34,6 +37,10 @@ Foundation: e24265d7c4ef0bb5d2d74d0ed94bffa2052a08ed, PR #10.
 - Foundation: 40 tests passed; Ruff, format and mypy passed. PR #10 CI passed.
 - A: 76 tests passed; real localhost HTTP returned 200 for all three synthetic
   scenarios, 422 for malformed input. Ruff, format and mypy passed.
+- Review revision: A has 133 tests (76 existing, 8 API schema/error cases and
+  49 submission CLI cases). Localhost smoke checks both error contracts and
+  unchanged success paths. The Runtime replacement reruns these plus 8 cloud
+  tests and CloudFormation lint; final CI/head evidence is attached to PR #14.
 - Two dependency deprecation warnings from current Starlette/httpx/AnyIO are
   reported, not suppressed. Tests validate actual response bodies and call counts.
 - Local Python 3.13 skipped hidden editable-install .pth files on macOS. Explicit
@@ -56,4 +63,5 @@ Git author and committer match the existing user configuration. No AI author,
 co-author, committer, signature, badge or attribution footer is included.
 No active local commit hooks or configured commit template supplied automatic
 attribution. Technical service/model names and the policy itself are retained.
-No existing history was rewritten; no PR was merged or force-pushed.
+Existing history is retained. This revision performs no PR merge or force-push;
+foundation #10 was already merged before the refreshed inspection.

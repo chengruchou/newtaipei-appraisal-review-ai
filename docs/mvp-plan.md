@@ -6,16 +6,19 @@ The closed parent #3 remains history, not an active catch-all milestone.
 
 | Order | Deliverable | Dependencies | Ownership / status |
 |---|---|---|---|
-| 1 | Shared PDF Contract Foundation #6, PR #10 | main b69ed74 | Shared models, ports, metadata, dev dependencies; code + local tests |
-| 2A | Member A #4 | Exact #6 commit | Composition, sync HTTP, invocation adapter, synthetic runner; code + local tests |
+| 1 | Shared PDF Contract Foundation #6, PR #10 | main ff5e9d1 | Merged foundation; shared models, ports, metadata and dev dependencies |
+| 2A | Member A #4, PR #13 | Merged #6 on main | Composition, sync HTTP, invocation adapter, compatible errors and submission checks; awaiting fresh review |
 | 2B | Member B #5 | Same #6 commit | PDF drawing, storage, fonts, field operations; planned, no implementation present |
 | 3 | Chinese extraction #7 | #4 ports, #8 identity agreement | Parser/facts/candidate rules; planned, unassigned |
 | 4 | Complete review #8 | #7 facts, #6 contracts | Observed values, applicability, sums, cross-form evidence/gate; planned, unassigned |
-| 5 | AWS async integration #9 | #4/#5/#7/#8 | Jobs, dispatch/leases, Runtime, storage, observability; designed, unassigned |
+| 5 | AWS async integration #9; entry smoke PR #14 | #4/#5/#7/#8 | Separate smoke preparation; full durable jobs/storage pipeline remains designed, unassigned |
 
 Foundation SHA: e24265d7c4ef0bb5d2d74d0ed94bffa2052a08ed.
-A stacks on codex/shared-pdf-contract. B can branch from this SHA immediately;
-no waiting for A merge. Future shared changes are coordinated through #6.
+Foundation PR #10 is already merged into main at ff5e9d1d511e015dbc96aa5b380cce1def433421.
+The retained functional foundation ref is feat/shared-pdf-contract. A's PR #13
+uses feat/member-a-entrypoint against main; Runtime PR #14 uses test/runtime-smoke
+against A. B can start from main or the exact foundation SHA without waiting for
+A. Future shared changes are coordinated through #6. See [migration](pr-migration.md).
 A/B leave domain/verification.py, adapters/local/audit.py and
 tests/unit/test_verification.py unchanged. Only #8 considers verifier expansion.
 Human review remains required for all PRs; none are merged automatically.

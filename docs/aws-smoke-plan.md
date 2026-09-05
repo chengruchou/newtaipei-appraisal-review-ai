@@ -3,8 +3,10 @@
 Status: reviewed design and local preparation only. No profile/account/role was
 explicitly designated for this project in this session. No AWS API calls,
 provisioning or live Runtime tests have been made. A's PR contains no deployment
-resources. A separate cloud-test PR prepares the Runtime HTTP container and
-smoke entry without claiming document review.
+resources. Runtime preparation is on test/runtime-smoke in PR #14, based on A's
+feat/member-a-entrypoint PR #13. It replaces #12 and prepares the Runtime HTTP
+container and smoke entry without claiming document review. This review-fix
+revision does not deploy AWS or require account access.
 
 ## Bounded first smoke
 
