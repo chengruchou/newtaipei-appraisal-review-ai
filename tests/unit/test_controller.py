@@ -18,6 +18,7 @@ from appraisal_review.domain.factor_models import (
     WorkflowStatus,
 )
 from appraisal_review.domain.models import EvidenceRef
+from appraisal_review.domain.pdf_models import PDFValueRef, PDFWriteRequest, PDFWriteResult
 from appraisal_review.ports.workflow import ParsedDocument
 
 
@@ -98,15 +99,13 @@ class Writer:
     def __init__(self) -> None:
         self.called = False
 
-    async def write_pdf(
-        self,
-        source_uri: str,
-        destination_uri: str,
-        result: object,
-        field_map: PDFFieldMap,
-    ) -> str:
+    async def write_pdf(self, request: PDFWriteRequest) -> PDFWriteResult:
         self.called = True
-        return destination_uri
+        return PDFWriteResult(
+            output_uri=request.destination_uri,
+            page_count=1,
+            written_field_ids=[field.field_id for field in request.field_map.fields],
+        )
 
 
 def test_candidate_rules_stop_before_case_extraction() -> None:
@@ -123,7 +122,7 @@ def test_candidate_rules_stop_before_case_extraction() -> None:
             AgentReviewRequest(
                 case_id="case-1",
                 criteria_document_uri="criteria.pdf",
-                case_document_uri="case.pdf",
+                case_document_uri="file:///synthetic/case.pdf",
             )
         )
     )
@@ -144,8 +143,8 @@ def test_missing_evidence_blocks_pdf_writing() -> None:
     request = AgentReviewRequest(
         case_id="case-1",
         criteria_document_uri="criteria.pdf",
-        case_document_uri="case.pdf",
-        output_pdf_uri="output.pdf",
+        case_document_uri="file:///synthetic/case.pdf",
+        output_pdf_uri="file:///synthetic/output.pdf",
         field_map=PDFFieldMap(template_id="v1", fields=[]),
     )
 
@@ -166,18 +165,31 @@ def test_verified_case_can_reach_completed_pdf_state() -> None:
     request = AgentReviewRequest(
         case_id="case-1",
         criteria_document_uri="criteria.pdf",
-        case_document_uri="case.pdf",
-        output_pdf_uri="output.pdf",
+        case_document_uri="file:///synthetic/case.pdf",
+        output_pdf_uri="file:///synthetic/output.pdf",
         field_map=PDFFieldMap(
             template_id="v1",
-            fields=[PDFField(field_id="road.grade", page=1, bounding_box=(1, 2, 3, 4))],
+            fields=[
+                PDFField(
+                    field_id="road.grade",
+                    page=1,
+                    bounding_box=(1, 2, 3, 4),
+                    value_ref=PDFValueRef(
+                        scope="regional",
+                        target_id="target",
+                        comparable_id="comparison-1",
+                        factor_id="road.width",
+                        value="target_grade",
+                    ),
+                )
+            ],
         ),
     )
 
     result = asyncio.run(controller.review(request))
 
     assert result.status is WorkflowStatus.COMPLETED
-    assert result.output_pdf_uri == "output.pdf"
+    assert result.output_pdf_uri == "file:///synthetic/output.pdf"
     assert writer.called
     assert [event.sequence for event in result.audit_events] == list(
         range(1, len(result.audit_events) + 1)

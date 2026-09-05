@@ -13,7 +13,7 @@ class TextractDocumentAnalyzer:
 
     @classmethod
     def from_default_session(cls, *, region_name: str) -> "TextractDocumentAnalyzer":
-        import boto3  # type: ignore[import-not-found]  # Optional `aws` extra.
+        import boto3  # Optional `aws` extra; type stubs are in the `dev` extra.
 
         return cls(boto3.client("textract", region_name=region_name))
 
