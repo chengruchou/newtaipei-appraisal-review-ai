@@ -133,3 +133,19 @@ PYTHONPATH=src python scripts/http_smoke.py
 
 See ADR 0005 and test_case_review.py for adversarial claims, observed values,
 arithmetic, applicability, complete inventory and zero-writer-call examples.
+
+Runtime confidence applies to schema-2 review and independent recalculation:
+
+```bash
+MIN_EXTRACTION_CONFIDENCE=0.95 PYTHONPATH=src python scripts/http_smoke.py
+```
+
+The setting must be finite and in [0, 1]; default is 0.85. A 0.90 observation
+requires review at 0.95 even when its material digest was approved. The existing
+synthetic smoke has 0.99 observations; the HTTP composition regression explicitly
+checks both thresholds with 0.90 observations. Never increase confidence to pass.
+
+Before approving material, register every slot's complete context and validate its
+factor binding. Cross-table checks may join valid contexts. A copied aggregate of
+5.005 against a rounded expected 5.00 passes tolerance 0.01, but must still satisfy
+any additional stricter check on that target. Grade/factor-rate equality stays exact.

@@ -67,3 +67,25 @@ Inventory also accounts for every parser-discovered criteria/forms table through
 inspected_tables. Visiting all pages or extracting a successful factor does not
 account for an omitted table. Accounting is still a human-reviewed scope assertion,
 not proof that a model interpreted every cell correctly.
+
+Review correction: every slot must reference a registered scope/target/comparable
+context. Grade and factor-rate slots require a factor in that context's inventory;
+subtotal/total slots must not carry a factor binding. Invalid slots retain located
+failed findings and cannot feed either end of an arithmetic check. Checks may
+cross two valid contexts; no missing context is implicitly created.
+
+Settings.min_extraction_confidence (environment MIN_EXTRACTION_CONFIDENCE) flows
+through Controller, CaseReviewer and independent ReviewVerifier recalculation.
+All engines use the same finite inclusive [0, 1] threshold, default 0.85. Values
+equal to the threshold pass the confidence test. Material approval and model
+self-confidence cannot override it or alter the observed confidence.
+
+Each arithmetic target retains every check's independently calculated Decimal
+expected value, quantum and tolerance for final observed comparison. Aggregate
+targets must satisfy all constraints, regardless of ordering; no widest-tolerance
+selection or last-write replacement is allowed. An independent factor total also
+must agree under each applicable check's rounding/tolerance. Original values and
+individual check findings remain intact. Grade and per-factor rate comparisons
+stay exact; aggregates without an arithmetic constraint retain exact comparison.
+The numeric expected value is rounded with ROUND_HALF_UP before comparing the
+unchanged observation to the approved tolerance, including its boundary.

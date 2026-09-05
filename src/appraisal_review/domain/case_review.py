@@ -1,12 +1,13 @@
 """Deterministic whole-case review and independent inventory completion gate."""
 
 from contextlib import suppress
+from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 
 from pydantic import ValidationError
 
 from appraisal_review.domain.document_models import SourceCitation, SourceRegistry
-from appraisal_review.domain.factor_engine import FactorRuleEngine
+from appraisal_review.domain.factor_engine import FactorRuleEngine, validate_minimum_confidence
 from appraisal_review.domain.factor_models import (
     CaseFacts,
     CaseReviewResult,
@@ -17,7 +18,13 @@ from appraisal_review.domain.factor_models import (
     ReviewPolicy,
 )
 from appraisal_review.domain.models import CanonicalCase, ExtractedField, RuleDefinition, RuleSet
-from appraisal_review.domain.review_contracts import Coverage, ObservedValue, ReviewFinding
+from appraisal_review.domain.review_contracts import (
+    ArithmeticCheck,
+    Coverage,
+    ObservedValue,
+    ReviewFinding,
+    ReviewSlot,
+)
 from appraisal_review.domain.rule_engine import RuleEngine, calculate
 from appraisal_review.domain.verification import ReviewVerifier
 from appraisal_review.ports.approval import ReviewAuthorization
@@ -32,9 +39,21 @@ def percent(value: ObservedValue) -> Decimal:
     return result * 100 if value.unit == "ratio" else result
 
 
+@dataclass(frozen=True)
+class ArithmeticComparison:
+    check: ArithmeticCheck
+    expected: Decimal
+
+    def matches(self, actual: Decimal) -> bool:
+        return abs(self.expected - actual) <= self.check.tolerance
+
+
 class CaseReviewer:
-    def __init__(self, authorization: ReviewAuthorization | None) -> None:
+    def __init__(
+        self, authorization: ReviewAuthorization | None, *, minimum_confidence: float = 0.85
+    ) -> None:
         self.authorization = authorization
+        self.minimum_confidence = validate_minimum_confidence(minimum_confidence)
 
     def review(
         self,
@@ -131,6 +150,29 @@ class CaseReviewer:
             add("inventory", "unknown_observed", "failed", "Observation is outside inventory")
         if any(key not in contexts for key, _ in pair_keys):
             add("inventory", "unknown_context", "failed", "Facts include an uninventoried context")
+        contexts_by_key = {entry.context.key(): entry for entry in inventory.contexts}
+        valid_slots: dict[str, ReviewSlot] = {}
+        for slot in inventory.slots:
+            id = f"observed/{slot.id}"
+            required.append(id)
+            entry = contexts_by_key.get(slot.context.key())
+            factor_bound = slot.value in {"target_grade", "comparable_grade", "adjustment_percent"}
+            if entry is None or (
+                slot.factor_id not in entry.factor_ids
+                if factor_bound
+                else slot.factor_id is not None
+            ):
+                add(
+                    id,
+                    "slot_binding",
+                    "failed",
+                    "Slot requires a registered context and a value-compatible factor binding",
+                    context=slot.context,
+                    factor_id=slot.factor_id,
+                    evidence=slot.evidence,
+                )
+            else:
+                valid_slots[slot.id] = slot
         for source in registry.documents:
             if source.role in {"forms", "criteria"} and inventory.inspected_pages.get(
                 source.document_id
@@ -172,6 +214,7 @@ class CaseReviewer:
         )
         observed = {v.slot_id: v for v in facts.observed}
         expected_slots: dict[str, str] = {}
+        arithmetic_targets: dict[str, list[ArithmeticComparison]] = {}
 
         for entry in inventory.contexts:
             context = entry.context
@@ -329,12 +372,16 @@ class CaseReviewer:
                 rule_set_id=rule_set.rule_set_id,
                 factors=valid_pairs,
             )
-            result = FactorRuleEngine(approved).evaluate(inputs)
+            result = FactorRuleEngine(
+                approved, minimum_confidence=self.minimum_confidence
+            ).evaluate(inputs)
             result.context = context
             result.case_version = policy.identity.version
             result.source_hashes = {d.document_id: d.content_hash for d in registry.documents}
             comparisons.append(result)
-            validation = ReviewVerifier().verify(result, approved, facts=inputs)
+            validation = ReviewVerifier().verify(
+                result, approved, facts=inputs, minimum_confidence=self.minimum_confidence
+            )
             add(
                 key,
                 "calculation",
@@ -362,7 +409,7 @@ class CaseReviewer:
                         for ref in [*pair.target_sources, *pair.comparable_sources]
                     ],
                 )
-            for slot in inventory.slots:
+            for slot in valid_slots.values():
                 if slot.context != context:
                     continue
                 if slot.factor_id is not None:
@@ -395,6 +442,8 @@ class CaseReviewer:
         # RuleEngine owns legacy sum/equals arithmetic. Observed values remain separate.
         numeric: dict[str, ExtractedField] = {}
         for value in facts.observed:
+            if value.slot_id not in valid_slots:
+                continue
             with suppress(ValueError, InvalidOperation):
                 numeric[value.slot_id] = ExtractedField(
                     raw_value=value.raw_text, value=str(percent(value))
@@ -403,8 +452,8 @@ class CaseReviewer:
             id = f"arithmetic/{check.id}"
             required.append(id)
             if (
-                check.target not in slots
-                or not set(check.inputs) <= set(slots)
+                check.target not in valid_slots
+                or not set(check.inputs) <= valid_slots.keys()
                 or not citations_valid(check.evidence)
             ):
                 add(
@@ -435,9 +484,9 @@ class CaseReviewer:
                     [Decimal(str(v.value)) for v in input_fields if v is not None],
                     quantum=check.quantum,
                 )
-                arithmetic_matches = (
-                    abs(expected_number - Decimal(str(actual_field.value))) <= check.tolerance
-                )
+                comparison = ArithmeticComparison(check, expected_number)
+                arithmetic_targets.setdefault(check.target, []).append(comparison)
+                arithmetic_matches = comparison.matches(Decimal(str(actual_field.value)))
                 add(
                     id,
                     "arithmetic",
@@ -452,8 +501,6 @@ class CaseReviewer:
                     rule_id=check.id,
                     rule_version=policy.identity.version,
                 )
-                if check.target not in expected_slots:
-                    expected_slots[check.target] = str(expected_number)
             else:
                 add(
                     id,
@@ -465,11 +512,14 @@ class CaseReviewer:
                     rule_version=policy.identity.version,
                 )
 
-        for slot in inventory.slots:
+        for slot in valid_slots.values():
             id = f"observed/{slot.id}"
-            required.append(id)
             value = observed.get(slot.id)
-            expected = expected_slots.get(slot.id)
+            deterministic_expected = expected_slots.get(slot.id)
+            constraints = arithmetic_targets.get(slot.id, [])
+            expected = deterministic_expected or (
+                "; ".join(f"{c.check.id}: {c.expected}" for c in constraints) or None
+            )
             details = dict(
                 context=slot.context,
                 factor_id=slot.factor_id,
@@ -514,11 +564,28 @@ class CaseReviewer:
                     if value.unit == "grade" and value.state == "present"
                     else str(percent(value))
                 )
-                equal = (
-                    actual_text == expected
-                    if value.unit == "grade"
-                    else Decimal(actual_text) == Decimal(expected)
-                )
+                if slot.factor_id is None and constraints:
+                    actual_number = percent(value)
+                    equal = all(c.matches(actual_number) for c in constraints)
+                    if deterministic_expected is not None:
+                        # Preserve the independent factor total under every approved constraint.
+                        equal = equal and all(
+                            ArithmeticComparison(
+                                c.check,
+                                calculate(
+                                    "equals",
+                                    [Decimal(deterministic_expected)],
+                                    quantum=c.check.quantum,
+                                ),
+                            ).matches(actual_number)
+                            for c in constraints
+                        )
+                else:
+                    equal = (
+                        actual_text == expected
+                        if value.unit == "grade"
+                        else Decimal(actual_text) == Decimal(expected)
+                    )
             except (ValueError, InvalidOperation):
                 add(
                     id,
@@ -532,7 +599,12 @@ class CaseReviewer:
                 id,
                 "observed_comparison",
                 "verified" if equal else "failed",
-                "Observed and expected compared in grade or percent points",
+                (
+                    "Observed target must satisfy every arithmetic constraint: "
+                    + ", ".join(c.check.id for c in constraints)
+                    if slot.factor_id is None and constraints
+                    else "Observed and expected compared exactly in grade or percent points"
+                ),
                 observed=actual_text,
                 **details,
             )

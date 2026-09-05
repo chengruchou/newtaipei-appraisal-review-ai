@@ -69,7 +69,7 @@ def arithmetic_material():
     return material
 
 
-def controller_run(material, *, writer=None):
+def controller_run(material, *, writer=None, minimum_confidence=0.85):
     documents = {
         d.uri: ParsedDocument(document_uri=d.uri, page_count=len(d.pages), source=d)
         for d in material.policy.registry.documents
@@ -80,6 +80,7 @@ def controller_run(material, *, writer=None):
         fact_extractor=AsyncMock(extract_facts=AsyncMock(return_value=material.facts)),
         authorization=ApprovedFixture(material),
         pdf_writer=writer,
+        minimum_confidence=minimum_confidence,
     )
     return asyncio.run(controller.review(synthetic_request("completed")))
 
@@ -426,3 +427,282 @@ def test_unaccounted_table_cannot_pass_from_successful_factors_only():
     assert evaluate(material).status.value == "needs_review"
     material.policy.inventory.inspected_tables = {"synthetic-forms": ["another-table"]}
     assert evaluate(material).status.value == "verified"
+
+
+def test_review_slot_cannot_use_unregistered_comparable_through_arithmetic():
+    material = arithmetic_material()
+    slot = next(s for s in material.policy.inventory.slots if s.id == "copied")
+    slot.context = slot.context.model_copy(deep=True)
+    slot.context.comparable_id = "unregistered-comparable"
+    writer = AsyncMock()
+    run = controller_run(material, writer=writer)
+    assert not run.verification.can_complete
+    assert run.case_review.coverage.missing
+    assert run.case_review.findings
+    writer.write_pdf.assert_not_called()
+
+
+def test_configured_confidence_blocks_reviewed_material_below_runtime_threshold():
+    material = synthetic_material()
+    material.facts.pairs[0].pair.target.confidence = 0.90
+    material.facts.pairs[0].pair.comparable.confidence = 0.90
+    writer = AsyncMock()
+    run = controller_run(material, writer=writer, minimum_confidence=0.95)
+    assert not run.verification.can_complete
+    assert run.status.value == "needs_review"
+    writer.write_pdf.assert_not_called()
+
+
+def test_arithmetic_tolerance_survives_final_observed_comparison():
+    material = arithmetic_material()
+    next(v for v in material.facts.observed if v.slot_id == "copied").value = "5.005"
+    material.policy.inventory.checks[-1].tolerance = Decimal("0.01")
+    run = controller_run(material)
+    assert run.verification.can_complete
+    assert run.status.value == "verified"
+    assert not run.case_review.coverage.missing
+
+
+@pytest.mark.parametrize(
+    "binding", ["target", "scope", "unknown-factor", "missing-factor", "aggregate-factor"]
+)
+def test_invalid_slot_bindings_are_located_and_excluded_from_arithmetic(binding):
+    material = arithmetic_material()
+    slot = material.policy.inventory.slots[-1]
+    slot.context = slot.context.model_copy(deep=True)
+    if binding == "target":
+        slot.context.target_id = "unregistered-target"
+    elif binding == "scope":
+        slot.context.scope = "individual"
+    elif binding == "aggregate-factor":
+        slot.factor_id = "synthetic.road_width"
+    else:
+        slot.value = "adjustment_percent"
+        slot.factor_id = "unknown" if binding == "unknown-factor" else None
+    writer = AsyncMock()
+    run = controller_run(material, writer=writer)
+    findings = {f.id: f for f in run.case_review.findings}
+    assert not run.verification.can_complete
+    assert findings["observed/copied"].kind == "slot_binding"
+    assert findings["observed/copied"].context == slot.context
+    assert findings["arithmetic/cross-form"].kind == "arithmetic_definition"
+    assert "observed/copied" in run.case_review.coverage.missing
+    writer.write_pdf.assert_not_called()
+
+
+def test_cross_form_between_two_registered_complete_contexts_remains_valid():
+    material = arithmetic_material()
+    policy, facts = material.policy, material.facts
+    entry = policy.inventory.contexts[0].model_copy(deep=True)
+    entry.context.scope, entry.context.target_id, entry.context.comparable_id = (
+        "individual",
+        "second-target",
+        "second-comparable",
+    )
+    scoped = policy.rule_sets[0].model_copy(deep=True)
+    pair = facts.pairs[0].model_copy(deep=True)
+    rate = policy.inventory.slots[0].model_copy(deep=True)
+    observed = facts.observed[0].model_copy(deep=True)
+    scoped.context = pair.context = rate.context = entry.context
+    rate.id = observed.slot_id = "second-rate"
+    policy.inventory.contexts.append(entry)
+    policy.rule_sets.append(scoped)
+    policy.inventory.slots.append(rate)
+    facts.pairs.append(pair)
+    facts.observed.append(observed)
+    next(s for s in policy.inventory.slots if s.id == "copied").context = entry.context
+    writer = AsyncMock()
+    run = controller_run(material, writer=writer)
+    assert run.verification.can_complete
+    assert not run.case_review.coverage.missing
+    assert len(run.case_review.comparisons) == 2
+    assert run.artifact_status == "unsupported_contexts"
+    writer.write_pdf.assert_not_called()
+
+
+@pytest.mark.parametrize("invalid_end", ["inputs", "target"])
+def test_arithmetic_requires_structurally_valid_slots_on_both_ends(invalid_end):
+    material = arithmetic_material()
+    slot = next(s for s in material.policy.inventory.slots if s.id == "total")
+    slot.context = slot.context.model_copy(update={"comparable_id": "not-inventory"})
+    check = material.policy.inventory.checks[-1]
+    check.inputs, check.target = (
+        (["total"], "copied") if invalid_end == "inputs" else (["copied"], "total")
+    )
+    run = controller_run(material)
+    finding = next(f for f in run.case_review.findings if f.id == "arithmetic/cross-form")
+    assert finding.kind == "arithmetic_definition" and finding.status != "verified"
+    assert not run.verification.can_complete
+
+
+def fake_writer_spy():
+    from appraisal_review.adapters.local.fake_pdf import FakePDFWriter
+
+    return AsyncMock(write_pdf=AsyncMock(side_effect=FakePDFWriter().write_pdf))
+
+
+@pytest.mark.parametrize(
+    "confidence,threshold,allowed",
+    [(0.90, 0.85, True), (0.90, 0.95, False), (0.95, 0.95, True), (0.96, 0.95, True)],
+)
+def test_runtime_threshold_controls_calculation_verification_and_writer(
+    confidence, threshold, allowed
+):
+    material = synthetic_material()
+    for observation in (
+        material.facts.pairs[0].pair.target,
+        material.facts.pairs[0].pair.comparable,
+    ):
+        observation.confidence = confidence
+    original = material.model_dump()
+    writer = fake_writer_spy()
+    run = controller_run(material, writer=writer, minimum_confidence=threshold)
+    assert run.verification.can_complete is allowed
+    assert run.status.value == ("verified" if allowed else "needs_review")
+    assert writer.write_pdf.call_count == int(allowed)
+    assert material.model_dump() == original
+    assert run.output_pdf_uri is None
+
+
+@pytest.mark.parametrize("threshold,allowed", [(0.85, True), (0.95, False)])
+def test_http_composition_reads_runtime_confidence_setting(monkeypatch, threshold, allowed):
+    from fastapi.testclient import TestClient
+
+    from appraisal_review.api.app import create_app
+    from appraisal_review.application.bootstrap import ReviewAdapters
+    from appraisal_review.config import Settings
+
+    material = synthetic_material()
+    for obs in (material.facts.pairs[0].pair.target, material.facts.pairs[0].pair.comparable):
+        obs.confidence = 0.90
+    documents = {
+        d.uri: ParsedDocument(document_uri=d.uri, page_count=len(d.pages), source=d)
+        for d in material.policy.registry.documents
+    }
+    writer = fake_writer_spy()
+    adapters = ReviewAdapters(
+        mode="local",
+        parser=AsyncMock(parse_document=AsyncMock(side_effect=lambda uri: documents[uri])),
+        rule_provider=AsyncMock(load_or_build_rules=AsyncMock(return_value=material.policy)),
+        fact_extractor=AsyncMock(extract_facts=AsyncMock(return_value=material.facts)),
+        authorization=ApprovedFixture(material),
+        pdf_writer=writer,
+    )
+    monkeypatch.setenv("MIN_EXTRACTION_CONFIDENCE", str(threshold))
+    response = TestClient(create_app(settings=Settings(_env_file=None), adapters=adapters)).post(
+        "/v1/reviews", json=synthetic_request("completed").model_dump(mode="json")
+    )
+    assert response.status_code == 200
+    assert response.json()["status"] == ("verified" if allowed else "needs_review")
+    assert writer.write_pdf.call_count == int(allowed)
+
+
+@pytest.mark.parametrize("threshold", [-0.01, 1.01, float("nan"), float("inf")])
+def test_invalid_runtime_threshold_rejected_at_direct_and_configuration_boundaries(threshold):
+    from appraisal_review.config import Settings
+    from appraisal_review.domain.verification import ReviewVerifier
+
+    material = synthetic_material()
+    with pytest.raises(ValueError):
+        CaseReviewer(ApprovedFixture(material), minimum_confidence=threshold)
+    with pytest.raises(ValueError):
+        controller_run(material, minimum_confidence=threshold)
+    with pytest.raises(ValueError):
+        Settings(min_extraction_confidence=threshold, _env_file=None)
+    with pytest.raises(ValueError):
+        ReviewVerifier().verify(
+            evaluate(material).comparisons[0],
+            material.policy.rule_sets[0].rules,
+            minimum_confidence=threshold,
+        )
+
+
+@pytest.mark.parametrize(
+    "value,tolerance,allowed",
+    [
+        ("5.005", "0.01", True),
+        ("5.01", "0.01", True),
+        ("4.99", "0.01", True),
+        ("5.0101", "0.01", False),
+        ("4.9899", "0.01", False),
+        ("5", "0", True),
+        ("5.0001", "0", False),
+    ],
+)
+def test_arithmetic_tolerance_boundaries_through_controller(value, tolerance, allowed):
+    material = arithmetic_material()
+    next(v for v in material.facts.observed if v.slot_id == "copied").value = value
+    material.policy.inventory.checks[-1].tolerance = Decimal(tolerance)
+    original = material.model_dump()
+    writer = fake_writer_spy()
+    run = controller_run(material, writer=writer)
+    assert run.verification.can_complete is allowed
+    assert run.status.value == ("verified" if allowed else "failed")
+    assert writer.write_pdf.call_count == int(allowed)
+    observed = next(f for f in run.case_review.findings if f.id == "observed/copied")
+    assert observed.observed == value and observed.status == ("verified" if allowed else "failed")
+    assert "cross-form" in observed.trace
+    assert original == material.model_dump()
+
+
+@pytest.mark.parametrize("copied,allowed", [("5.01", True), ("5.00", False)])
+def test_rounded_arithmetic_expected_uses_half_up_before_tolerance(copied, allowed):
+    material = arithmetic_material()
+    slot = material.policy.inventory.slots[-1].model_copy(deep=True)
+    slot.id = "round-input"
+    observation = material.facts.observed[-1].model_copy(deep=True)
+    observation.slot_id, observation.value = slot.id, "5.005"
+    material.policy.inventory.slots.append(slot)
+    material.facts.observed.append(observation)
+    material.policy.inventory.checks.append(
+        ArithmeticCheck(
+            id="round-source",
+            kind="equals",
+            inputs=["road-rate"],
+            target=slot.id,
+            tolerance=Decimal("0.006"),
+            evidence=slot.evidence,
+        )
+    )
+    next(c for c in material.policy.inventory.checks if c.id == "cross-form").inputs = [slot.id]
+    next(v for v in material.facts.observed if v.slot_id == "copied").value = copied
+    run = controller_run(material)
+    assert run.verification.can_complete is allowed
+    finding = next(f for f in run.case_review.findings if f.id == "arithmetic/cross-form")
+    assert finding.expected == "5.01" and "ROUND_HALF_UP" in finding.trace
+
+
+@pytest.mark.parametrize("reverse", [True, False])
+@pytest.mark.parametrize("tight,allowed", [("0", False), ("0.006", True)])
+def test_every_constraint_on_same_target_is_enforced_regardless_of_order(reverse, tight, allowed):
+    material = arithmetic_material()
+    next(v for v in material.facts.observed if v.slot_id == "copied").value = "5.005"
+    check = material.policy.inventory.checks[-1]
+    check.tolerance = Decimal("0.01")
+    other = check.model_copy(update={"id": "tight-copy", "tolerance": Decimal(tight)})
+    material.policy.inventory.checks.append(other)
+    if reverse:
+        material.policy.inventory.checks.reverse()
+    writer = fake_writer_spy()
+    run = controller_run(material, writer=writer)
+    assert run.verification.can_complete is allowed
+    assert writer.write_pdf.call_count == int(allowed)
+    findings = {f.id: f for f in run.case_review.findings}
+    assert findings["arithmetic/cross-form"].status == "verified"
+    assert findings["arithmetic/tight-copy"].status == ("verified" if allowed else "failed")
+    assert findings["observed/copied"].status == ("verified" if allowed else "failed")
+
+
+def test_total_tolerance_does_not_relax_exact_factor_rate():
+    material = arithmetic_material()
+    for check in material.policy.inventory.checks:
+        check.tolerance = Decimal("0.01")
+    next(v for v in material.facts.observed if v.slot_id == "total").value = "5.005"
+    next(v for v in material.facts.observed if v.slot_id == "copied").value = "5.01"
+    assert controller_run(material).verification.can_complete
+    material.facts.observed[0].value = "5.005"
+    run = controller_run(material)
+    assert not run.verification.can_complete
+    assert (
+        next(f for f in run.case_review.findings if f.id == "observed/road-rate").status == "failed"
+    )

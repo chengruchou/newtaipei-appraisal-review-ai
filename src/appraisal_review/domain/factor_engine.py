@@ -27,14 +27,18 @@ class ObservationNeedsReview(ValueError):
     """Raised when an observation cannot be safely evaluated."""
 
 
+def validate_minimum_confidence(value: float) -> float:
+    if not 0.0 <= value <= 1.0:
+        raise ValueError("minimum_confidence must be finite and between 0 and 1")
+    return value
+
+
 class FactorRuleEngine:
     def __init__(self, rule_set: FactorRuleSet, *, minimum_confidence: float = 0.85) -> None:
         if rule_set.status != "approved":
             raise ValueError("only approved factor rule sets can be evaluated")
-        if not 0.0 <= minimum_confidence <= 1.0:
-            raise ValueError("minimum_confidence must be between 0 and 1")
         self.rule_set = rule_set
-        self.minimum_confidence = minimum_confidence
+        self.minimum_confidence = validate_minimum_confidence(minimum_confidence)
         self._rules = {rule.factor_id: rule for rule in rule_set.rules}
 
     def evaluate(self, request: FactorEvaluationRequest) -> FactorReviewResult:

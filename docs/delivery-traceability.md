@@ -85,3 +85,21 @@ B receives the unchanged public writer protocol with bound single-context result
 and artifact_created metadata. No real writer, real-document accuracy, live
 model acceptance, human rule approval or AWS deployment is claimed by this layer.
 The dependent #7 layer supplies parsing/extraction/approval operations and evidence.
+
+## PR #15 review corrections
+
+Review 5121531968 identified three additional cases beyond the green baseline:
+an unregistered copied-slot context, runtime confidence ignored by schema 2.0,
+and arithmetic tolerance contradicted by final exact comparison. All three new
+regressions failed at acf3a454bb7c2e07953f5e49d5fa6c7ae60be176 before the fix.
+The unchanged baseline had 213 passing tests. Ignored before/after evidence lives
+under artifacts/review-fixes; no real source material is needed for this revision.
+
+The corrected gate validates all slot/factor bindings before arithmetic, passes
+one validated runtime threshold through calculation and verification, and retains
+all arithmetic constraints through final aggregate comparison. Regressions cover
+registered cross-context success, unknown entities, binding mismatches, HTTP
+configuration, confidence boundaries, zero-writer failures, Decimal tolerance
+boundaries, rounding and multiple constraints in either order. Existing forged
+claims, evidence, API and artifact-status tests remain required. Real model and
+whole-case human acceptance remain pending; these tests use synthetic material.
