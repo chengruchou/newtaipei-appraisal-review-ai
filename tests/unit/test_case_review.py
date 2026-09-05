@@ -519,6 +519,13 @@ def test_cross_form_between_two_registered_complete_contexts_remains_valid():
     assert len(run.case_review.comparisons) == 2
     assert run.artifact_status == "unsupported_contexts"
     writer.write_pdf.assert_not_called()
+    events = {event.event_type: event for event in run.audit_events}
+    assert len(events["rules_loaded"].details["rule_sets"]) == 2
+    actual = events["factors_evaluated"].details["comparisons"]
+    assert {tuple(c["context"].values()) for c in actual} == {
+        tuple(c.context.model_dump().values()) for c in policy.inventory.contexts
+    }
+    assert all(c["version"] == "1.0.0" and c["outcome"] == "verified" for c in actual)
 
 
 @pytest.mark.parametrize("invalid_end", ["inputs", "target"])

@@ -19,6 +19,7 @@ from appraisal_review.domain.factor_models import (
     ReviewMaterial,
     ReviewPolicy,
 )
+from appraisal_review.domain.pdf_types import document_identity
 from appraisal_review.domain.review_contracts import (
     ArithmeticCheck,
     Coverage,
@@ -364,11 +365,14 @@ class CaseReviewer:
                             and evidence.page == ref.page
                             and evidence.bounding_box == ref.bbox
                             and evidence.coordinate_system == "pdf_bottom_left"
-                            and evidence.source_file
-                            == next(
-                                d.uri
-                                for d in registry.documents
-                                if d.document_id == ref.document_id
+                            and evidence.source_file is not None
+                            and document_identity(evidence.source_file)
+                            == document_identity(
+                                next(
+                                    d.uri
+                                    for d in registry.documents
+                                    if d.document_id == ref.document_id
+                                )
                             )
                             for ref in refs
                         )

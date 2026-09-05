@@ -26,6 +26,7 @@ from appraisal_review.domain.pdf_models import (
     PDFWriteError,
     PDFWriteRequest,
     PDFWriteResult,
+    UnsupportedDocumentURIError,
     document_identity,
 )
 from appraisal_review.domain.verification import ReviewVerifier
@@ -78,7 +79,7 @@ class ReviewAgentController:
         events: list[AuditEvent] = []
         try:
             return await self._review(request, events)
-        except SourceBindingError:
+        except (SourceBindingError, UnsupportedDocumentURIError):
             await self._record(
                 events,
                 request.case_id,

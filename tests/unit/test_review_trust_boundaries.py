@@ -338,3 +338,46 @@ def test_legacy_audit_and_writer_failure_preserve_event_order():
         < names.index("pdf_write_failed")
     )
     assert [e.sequence for e in failed.audit_events] == list(range(1, len(names) + 1))
+
+
+@pytest.mark.parametrize(
+    "parsed_uri,allowed",
+    [
+        ("file://localhost/synthetic/verified.pdf", True),
+        ("s3://synthetic-bucket/a/../case.pdf", True),
+        ("s3://synthetic-bucket/case.pdf", False),
+    ],
+)
+def test_parser_equivalence_preserves_file_semantics_and_literal_s3_keys(parsed_uri, allowed):
+    material = synthetic_material()
+    request = synthetic_request("completed")
+    source = material.policy.registry.documents[1]
+    if parsed_uri.startswith("s3:"):
+        request.case_document_uri = source.uri = "s3://synthetic-bucket/a/../case.pdf"
+        for observation in (
+            material.facts.pairs[0].pair.target,
+            material.facts.pairs[0].pair.comparable,
+        ):
+            observation.evidence[0].source_file = source.uri
+    docs = {
+        d.uri: ParsedDocument(document_uri=d.uri, page_count=1, source=d.model_copy(deep=True))
+        for d in material.policy.registry.documents
+    }
+    parsed = docs[request.case_document_uri]
+    parsed.document_uri = parsed.source.uri = parsed_uri
+    from appraisal_review.adapters.local.fake_pdf import FakePDFWriter
+
+    writer = AsyncMock(write_pdf=AsyncMock(side_effect=FakePDFWriter().write_pdf))
+    controller = ReviewAgentController(
+        parser=AsyncMock(parse_document=AsyncMock(side_effect=lambda uri: docs[uri])),
+        rule_provider=AsyncMock(load_or_build_rules=AsyncMock(return_value=material.policy)),
+        fact_extractor=AsyncMock(extract_facts=AsyncMock(return_value=material.facts)),
+        authorization=ApprovedFixture(material),
+        pdf_writer=writer,
+    )
+    run = asyncio.run(controller.review(request))
+    assert run.verification.can_complete is allowed
+    assert writer.write_pdf.call_count == int(allowed)
+    if allowed:
+        assert writer.write_pdf.call_args.args[0].source_uri == parsed_uri
+    assert run.output_pdf_uri is None
