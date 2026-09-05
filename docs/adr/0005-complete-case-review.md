@@ -56,3 +56,9 @@ successful actual writer response. B still owns byte validation and publication.
 API error envelopes and legacy validation responses are unchanged. These new
 review semantics supersede earlier A-only verifier limitations; the local audit
 logger is unchanged. Formal PR approval and real rule approval remain separate.
+
+The presence_distance rule shape keeps explicit presence categories (for example,
+within_section or absent) separate from measured distance intervals. Zero distance
+is a numeric measurement, never an alias for presence. The matrix covers the union
+of categorical and interval grades. Negative physical distances are unresolved.
+This extension was required by the source-table integration in #7.

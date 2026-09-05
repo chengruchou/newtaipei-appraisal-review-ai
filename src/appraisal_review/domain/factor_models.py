@@ -134,7 +134,7 @@ class CorrectionMatrix(StrictFactorModel):
 class FactorRule(StrictFactorModel):
     id: str
     factor_id: str
-    kind: Literal["numeric_interval", "distance_interval", "category"]
+    kind: Literal["numeric_interval", "distance_interval", "category", "presence_distance"]
     unit: str | None = None
     intervals: list[IntervalBand] = Field(default_factory=list)
     categories: list[CategoryBand] = Field(default_factory=list)
@@ -143,11 +143,18 @@ class FactorRule(StrictFactorModel):
 
     @model_validator(mode="after")
     def validate_definition(self) -> FactorRule:
-        if self.kind in {"numeric_interval", "distance_interval"}:
-            if not self.intervals or self.categories:
+        if self.kind in {"numeric_interval", "distance_interval", "presence_distance"}:
+            if not self.intervals or (self.categories and self.kind != "presence_distance"):
                 raise ValueError("interval rules require intervals and no categories")
             self._validate_intervals()
             grades = {band.grade.value for band in self.intervals}
+            if self.kind == "presence_distance":
+                if not self.categories:
+                    raise ValueError("presence-distance rules require explicit presence categories")
+                aliases = [v.strip().casefold() for band in self.categories for v in band.values]
+                if len(aliases) != len(set(aliases)):
+                    raise ValueError("presence aliases must be unique")
+                grades |= {band.grade.value for band in self.categories}
         else:
             if not self.categories or self.intervals:
                 raise ValueError("category rules require categories and no intervals")

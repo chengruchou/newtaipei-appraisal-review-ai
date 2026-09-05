@@ -126,10 +126,14 @@ class FactorRuleEngine:
                 f"{side} confidence {observation.confidence} is below {self.minimum_confidence}"
             )
 
-        if rule.kind in {"numeric_interval", "distance_interval"}:
+        if rule.kind in {"numeric_interval", "distance_interval"} or (
+            rule.kind == "presence_distance" and observation.value.type == "number"
+        ):
             if observation.value.type != "number":
                 raise ObservationNeedsReview(f"{side} value is not numeric")
             number = self._normalize_number(observation, expected_unit=rule.unit)
+            if rule.kind in {"distance_interval", "presence_distance"} and number < 0:
+                raise ObservationNeedsReview("physical distance cannot be negative")
             for band in rule.intervals:
                 if self._contains(band, number):
                     return band.grade
