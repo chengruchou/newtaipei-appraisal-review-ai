@@ -133,3 +133,81 @@ PYTHONPATH=src python scripts/http_smoke.py
 
 See ADR 0005 and test_case_review.py for adversarial claims, observed values,
 arithmetic, applicability, complete inventory and zero-writer-call examples.
+
+## Real document preparation and review (#7)
+
+Install into the project environment, then use explicit source paths:
+
+```bash
+python -m pip install -e '.[dev,documents,aws]'
+export PYTHONPATH="$PWD/src"
+python -m appraisal_review.document_cli --help
+```
+
+Create a private ignored input manifest, with identity (case_id, version, district,
+zone, land_use_category, effective_date) and a documents list. Each document needs
+absolute path, document_id, version, role, expected_hash and optional document_date.
+Roles are criteria/forms/reference/brief. Hashes are lowercase SHA-256, not guessed
+version strings. The runner never silently chooses files, AWS profiles or buckets.
+Use fresh output directories; existing artifacts are not overwritten.
+
+```bash
+python -m appraisal_review.document_cli parse --manifest artifacts/input-manifest.json --output artifacts/run-01
+python -m appraisal_review.document_cli native-candidates --manifest artifacts/input-manifest.json --output artifacts/run-02
+python -m appraisal_review.document_cli check-golden --manifest artifacts/input-manifest.json --golden artifacts/golden-fields.json --output artifacts/run-03
+```
+
+The native candidate report includes source locations, intervals, matrices and
+unresolved interpretations. It never grants approval. Golden files must contain
+independent manually checked expectations, not the model's own output.
+
+For live extraction, supply project identifiers after validating account access.
+The following shell variables must be explicitly set by the operator. No bucket
+or jobs table is needed. --page-limit is a hard per-run budget; start with the
+representative pages, then explicitly cover the rest of the criteria/forms set.
+
+```bash
+python -m appraisal_review.document_cli extract --manifest artifacts/input-manifest.json --output artifacts/live-01 --profile "$PROJECT_PROFILE" --region "$PROJECT_REGION" --expected-account "$PROJECT_ACCOUNT" --expected-role "$PROJECT_ROLE" --model-id "$PROJECT_MODEL" --pages criteria:2,7 forms:1,3 --page-limit 4 --attempts 2 --max-output-tokens 12000
+python -m appraisal_review.document_cli assemble --manifest artifacts/input-manifest.json --extractions artifacts/live-complete --output artifacts/candidate-01
+python -m appraisal_review.document_cli inspect --material artifacts/candidate-01/material.json --output artifacts/candidate-01/review-copy.md
+```
+
+Add --allow-cross-region only when the chosen inference profile and its data
+routing have been explicitly selected for this project. The provisional model
+capability reference is Claude Sonnet 4.5; no account/model selection is finalized
+without the designated account. AWS documents a 200K context and 64K maximum output
+for that model; this runner uses smaller bounded page inputs and output limits.
+Converse image inputs are bounded to 3.75 MB and 8000 pixels. PDFs are parsed and
+rendered locally, so native PDF model payload support is not assumed. Sources:
+[AWS model card](https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-anthropic-claude-sonnet-4-5.html),
+[Converse](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_Converse.html),
+[image/document limits](https://docs.aws.amazon.com/cli/latest/reference/bedrock-runtime/converse.html).
+Textract and BDA document language lists do not include Chinese; audio language
+lists do not establish document support. Their official limits are linked in
+architecture.md. Account availability and actual Chinese table quality remain
+live-test requirements.
+
+A human reviewer inspects source pages, matrix cells, applicability, complete
+inventory, unknown shapes, original values and all normalized facts. Edit candidate
+material to resolve ambiguity; do not delete unresolved required checks. Then:
+
+```bash
+python -m appraisal_review.document_cli init-store --store artifacts/reviewer-store
+python -m appraisal_review.document_cli confirm-facts --material artifacts/candidate-01/material.json --expected-digest "$INSPECTED_DIGEST" --output artifacts/confirmed-material.json
+python -m appraisal_review.document_cli inspect --material artifacts/confirmed-material.json --output artifacts/confirmed-review.md
+python -m appraisal_review.document_cli approve --material artifacts/confirmed-material.json --store artifacts/reviewer-store --expected-digest "$CONFIRMED_DIGEST"
+python -m appraisal_review.document_cli review --material artifacts/confirmed-material.json --store artifacts/reviewer-store --output artifacts/review-result.json
+```
+
+The digest is printed in the review Markdown. confirm-facts is an explicit human
+assertion about the inspected facts, not an extraction step; it rejects ambiguous
+or missing facts and does not clear unresolved items. approve requires the exact
+new digest. The OS identity owning the private store is the authorized reviewer;
+there is no user-name flag or model-supplied approval shortcut. No real approval
+has been issued by this delivery. Review with a nonexistent store reports pending
+approval; it does not create a store or receipt. Review results include observed,
+expected, findings and coverage. This CLI supplies no PDF writer and creates no PDF.
+
+The parser uses PyMuPDF under its upstream AGPL/commercial licensing terms; retain
+those notices and include the chosen dependency licensing in redistribution review.
+[Upstream licensing](https://pymupdf.readthedocs.io/en/latest/about.html#license-and-copyright).

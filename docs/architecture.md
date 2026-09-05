@@ -141,3 +141,18 @@ Model output is a candidate; a trusted approval workflow grants approved status.
 
 See [MVP plan](mvp-plan.md), [traceability](delivery-traceability.md), and
 [cloud smoke plan](aws-smoke-plan.md) for acceptance and deployment boundaries.
+
+## Document preparation and human review (#7)
+
+The implemented local path is allowlisted PDF -> native source registry and
+candidate tables -> bounded Bedrock page proposals -> complete reviewed material
+-> trusted local approval -> existing Controller. Native candidates can be
+prepared without AWS. The Bedrock client, model and Region remain explicit;
+Chinese document accuracy requires opt-in testing in the designated account.
+Prepared material is injected through MaterialProvider/ReviewAdapters, and the
+Controller re-parses source versions before returning whole-case findings.
+
+No real source content is committed. Run artifacts and manual golden subsets live
+under ignored artifacts directories. The current local checks cover native text,
+selection symbols, two road matrices and refusal of incomplete/unapproved cases;
+they are not full semantic accuracy evidence. See ADR 0006 and the runbook.

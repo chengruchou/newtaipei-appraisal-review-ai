@@ -1,9 +1,10 @@
 # Requirements to implementation and acceptance
 
 Review date: 2026-09-05. Original base: b69ed74da950f37add016b5e881a7e0478f9c7d5.
-Current revision base: main ff5e9d1d511e015dbc96aa5b380cce1def433421, which already
+Historical A revision base: main ff5e9d1d511e015dbc96aa5b380cce1def433421, which already
 merged foundation e24265d7c4ef0bb5d2d74d0ed94bffa2052a08ed in PR #10.
 Historical delivery: A PR #13 and Runtime PR #14 are merged. [Migration and full original SHAs](pr-migration.md).
+The current #8/#7 baseline and evidence are recorded separately below.
 
 | Requirement | Component / implementation | Issue | Evidence / status |
 |---|---|---|---|
@@ -17,15 +18,15 @@ Historical delivery: A PR #13 and Runtime PR #14 are merged. [Migration and full
 | Write once, malformed writer output cannot complete | Controller + FakePDFWriter | #4/#6 | URI/count/field/exception tests, warnings retained |
 | Runnable synthetic fixture | adapters/local/synthetic.py, demo.py, examples/ | #4 | verified/completed/needs_review local invocations |
 | Actual PDF correction/storage | B's future PDF adapters | #5 | Planned; no writer or live S3 integration |
-| Chinese text/marks/coords and Bedrock extraction | Future parser/extractor/provider | #7 | Source PDFs inspected; automated extraction not implemented |
-| Approval provenance/applicability | Trusted provider and semantic resolver | #7/#8 | Planned; model fields alone do not enforce applicability |
-| Observed vs expected, sums and copied totals | Complete review model/engine/verifier | #8 | Legacy arithmetic exists separately; new-path integration planned |
-| Full coverage and evidence gate | Future verifier expansion | #8 | Known baseline weakness reproduced; protected files unchanged |
+| Chinese text/marks/coords and Bedrock extraction | Native parser, bounded Converse adapter, material provider | #7 | Implemented; native subset checked, live model accuracy pending |
+| Approval provenance/applicability | Signed local receipts and exact case resolver | #7/#8 | Implemented and synthetic tested; real approval pending |
+| Observed vs expected, sums and copied totals | CaseReviewer and shared arithmetic | #8 | Controller regression tests; complete live case acceptance pending |
+| Full coverage and evidence gate | Independent source/page/table inventory and recalculation | #8 | Forged-result regression fixed; source omissions block completion |
 | Async jobs and durable Runtime delivery | Cloud API/persistence/dispatcher/reconciler | #9 | Architecture design; no live test |
 | Runtime packaging/health smoke | Separate cloud-test PR | #9 | Prepared separately; never conflated with A or full review |
 | Attribution and branch naming | AGENTS.md and scripts/check_submission.py | #4, PR #13 | 49 subprocess CLI tests; full snapshots/index/metadata/publication/branch checks |
 
-## Baseline and local evidence
+## Historical foundation and Member A evidence
 
 - Initial working tree clean. Fetched origin/main; no remote teammate branches or
   open implementation PRs. #4/#5 had no comments. #3 remains closed.
@@ -45,10 +46,11 @@ Historical delivery: A PR #13 and Runtime PR #14 are merged. [Migration and full
   reported, not suppressed. Tests validate actual response bodies and call counts.
 - Local Python 3.13 skipped hidden editable-install .pth files on macOS. Explicit
   PYTHONPATH=$PWD/src selects this checkout; no test expectations were relaxed.
-- Protected domain/verification.py, adapters/local/audit.py and
-  tests/unit/test_verification.py are byte-identical to origin/main.
+- At the Member A delivery, domain/verification.py, adapters/local/audit.py and
+  tests/unit/test_verification.py were byte-identical to its origin/main baseline.
+  The later #8 revision explicitly changes the verifier and its tests.
 
-## Source and live-test limits
+## Historical Member A source and live-test limits
 
 Source PDFs were read directly from the supplied Downloads files/ZIP without
 modification or repository copies. The forms include mixed page sizes and no
@@ -85,3 +87,38 @@ B receives the unchanged public writer protocol with bound single-context result
 and artifact_created metadata. No real writer, real-document accuracy, live
 model acceptance, human rule approval or AWS deployment is claimed by this layer.
 The dependent #7 layer supplies parsing/extraction/approval operations and evidence.
+
+## Document understanding revision (#7)
+
+The dependent branch implements LocalPDFParser, conservative native rule candidates,
+BedrockDocumentExtractor, PageProposal assembly, MaterialProvider, LocalApprovalStore,
+ReferenceCatalog, golden subset comparisons and the opt-in document CLI. It uses
+existing Controller/HTTP/invocation paths. Dependency setup stays in the project;
+no cloud resource or real approval receipt was created.
+
+Local source inspection covered the supplied 9-page criteria, 6-page forms,
+169-page March 2015 manual and 1-page brief. Native text/regions were parsed for
+all pages; representative source pages were also rendered and visually inspected.
+The two road matrices matched all 50 manually checked cells. Ten local golden
+fields matched, including two explicit selection symbols. This subset does not
+measure all semantic mappings, source geometry accuracy or whole-case accuracy.
+
+Native detection found 47 matrix blocks: 37 produced supported candidate shapes
+and 10 remained unresolved. These are format-support counts, not a validation
+rate. A source unit conflict remained unresolved. The prepared source-bound review
+contained two contexts but incomplete facts, source coverage and no trusted approval;
+its actual Controller result was needs_review, without any PDF URI. The regional
+comparable fact was not invented from the target's value. The manual's dated
+regional-total transfer section produced a separate candidate equals check.
+
+Synthetic tests include actual Chinese PDF text, table alignment, selection glyphs,
+mixed sizes/CropBox/rotation and render ink positioning; invalid model output,
+source citations, fake approval, throttling, timeout and event-loop responsiveness;
+receipt tampering, other-case/version reuse, private permissions and actual CLI
+execution; and prepared PDF material through existing HTTP/invocation. Native
+matrix header reversal remains unresolved instead of silently transposing rates.
+
+Live Bedrock calls, account/model availability, full-page semantic goldens and real
+human rule/fact approval remain unchecked. No mock or native-parser statistic is
+used to mark live accuracy complete. Source hashes and actual private artifacts
+are recorded only under ignored artifacts paths; none are included in Git.

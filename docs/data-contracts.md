@@ -108,3 +108,26 @@ OpenAPI declares that envelope for all three statuses. Direct invocation uses
 EntryProblem.response() and the same serialization, with no HTTP status wrapper.
 Legacy success responses and all error envelopes remain unchanged. See ADR 0004 and
 api error contract tests for runtime JSON validation against the published schema.
+
+## Document candidates and reviewer operations (#7)
+
+`SourceDocument` records immutable source identity, role/version/date and every
+page's geometry/regions. `ParsedDocument.source` is typed; the old content dict
+remains for compatibility, not as the source of new critical facts. SourceCitation
+binds an exact region and excerpt; an empty cell/image can have an empty excerpt.
+Individual selection glyphs carry checked/unchecked state, while mixed or unclear
+selections stay ambiguous. No page location implies semantic correctness.
+
+`PageProposal` contains candidate rules, accounted table IDs, context inventory,
+evidenced facts, observed slots/values, arithmetic and explicit unresolved items.
+The model cannot supply approval metadata. `PageExtraction` wraps it with
+server-owned source identity, model/Region, usage, duration and bounded attempts.
+`assemble` builds ReviewMaterial for inspection; missing pages/tables, unresolved
+shapes or duplicate facts cannot become completed coverage.
+
+ApprovalReceipt signs the exact ReviewMaterial digest and OS reviewer identity,
+case/version and time. It is stored outside submitted data in an owner-only local
+store. Confirming model-proposed facts creates a new material version/digest;
+approving uses that exact inspected digest. No automatic production bypass exists.
+ReferenceCatalog sections are versioned citations, and their arithmetic proposals
+must enter the same material approval boundary. See ADR 0006 and the runbook.
