@@ -3,8 +3,10 @@
 Status: reviewed design and local preparation only. No profile/account/role was
 explicitly designated for this project in this session. No AWS API calls,
 provisioning or live Runtime tests have been made. A's PR contains no deployment
-resources. A separate cloud-test PR prepares the Runtime HTTP container and
-smoke entry without claiming document review.
+resources. The separate cloud-test branch adds cloud_tests/ with Runtime HTTP/task tracking,
+ARM64 Docker packaging, schema-checked CloudFormation templates and a bounded
+profile/role-scoped smoke client. It does not claim document review. See its
+README for deployment and cleanup commands.
 
 ## Bounded first smoke
 

@@ -1,0 +1,47 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Dedicated immutable image repository for appraisal review synthetic smoke",
+  "Parameters": {
+    "SmokeId": {
+      "Type": "String",
+      "AllowedPattern": "[a-z0-9]{8,20}"
+    }
+  },
+  "Resources": {
+    "Images": {
+      "Type": "AWS::ECR::Repository",
+      "Properties": {
+        "RepositoryName": {
+          "Fn::Sub": "appraisal-review-smoke-${SmokeId}"
+        },
+        "ImageTagMutability": "IMMUTABLE",
+        "EmptyOnDelete": false,
+        "EncryptionConfiguration": {
+          "EncryptionType": "AES256"
+        },
+        "Tags": [
+          {
+            "Key": "Project",
+            "Value": "appraisal-review"
+          },
+          {
+            "Key": "SmokeId",
+            "Value": {
+              "Ref": "SmokeId"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "Outputs": {
+    "RepositoryUri": {
+      "Value": {
+        "Fn::GetAtt": [
+          "Images",
+          "RepositoryUri"
+        ]
+      }
+    }
+  }
+}
