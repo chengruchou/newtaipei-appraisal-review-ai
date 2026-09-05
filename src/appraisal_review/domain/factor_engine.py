@@ -162,6 +162,8 @@ class FactorRuleEngine:
             value = Decimal(str(observation.value.value))
         except InvalidOperation as error:
             raise ObservationNeedsReview("numeric value is invalid") from error
+        if not value.is_finite():
+            raise ObservationNeedsReview("numeric value is not finite")
         actual_unit = observation.value.unit
         if expected_unit is None:
             if actual_unit is not None:

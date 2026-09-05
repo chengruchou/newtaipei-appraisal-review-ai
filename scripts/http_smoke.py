@@ -52,7 +52,7 @@ def main() -> None:
                 )
                 response.raise_for_status()
                 data = response.json()
-                assert data["status"] == scenario
+                assert data["status"] == ("verified" if scenario == "completed" else scenario)
                 if scenario == "completed":
                     assert "no file was created" in data["pdf_result"]["warnings"][0]
                 else:

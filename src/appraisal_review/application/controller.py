@@ -2,14 +2,19 @@
 
 from pydantic import ValidationError
 
+from appraisal_review.domain.case_review import CaseReviewer
+from appraisal_review.domain.document_models import SourceRegistry
 from appraisal_review.domain.factor_engine import FactorRuleEngine
 from appraisal_review.domain.factor_models import (
     AgentReviewRequest,
     AgentReviewRun,
     AuditEvent,
+    CaseFacts,
+    CaseReviewResult,
     EvaluationStatus,
     FactorEvaluationRequest,
     FactorReviewResult,
+    ReviewPolicy,
     VerificationReport,
     WorkflowStatus,
 )
@@ -23,6 +28,7 @@ from appraisal_review.domain.pdf_models import (
     document_identity,
 )
 from appraisal_review.domain.verification import ReviewVerifier
+from appraisal_review.ports.approval import ReviewAuthorization
 from appraisal_review.ports.workflow import (
     AuditLogger,
     DocumentParser,
@@ -45,7 +51,9 @@ class ReviewAgentController:
         pdf_writer: PDFWriter | None = None,
         audit_logger: AuditLogger | None = None,
         minimum_confidence: float = 0.85,
+        authorization: ReviewAuthorization | None = None,
     ) -> None:
+        self.authorization = authorization
         self.parser = parser
         self.fact_extractor = fact_extractor
         self.rule_provider = rule_provider
@@ -67,11 +75,11 @@ class ReviewAgentController:
             events,
             request.case_id,
             "rules_loaded",
-            rule_set.status,
+            "candidate" if isinstance(rule_set, ReviewPolicy) else rule_set.status,
             "load_or_build_rules",
-            rule_ids=[rule.id for rule in rule_set.rules],
+            rule_ids=[],
         )
-        if rule_set.status != "approved":
+        if not isinstance(rule_set, ReviewPolicy) and rule_set.status != "approved":
             await self._record(
                 events,
                 request.case_id,
@@ -91,25 +99,49 @@ class ReviewAgentController:
         factors = await self.fact_extractor.extract_facts(case_document, case_id=request.case_id)
         await self._record(events, request.case_id, "facts_extracted", "ok", "extract_facts")
 
-        evaluation_request = FactorEvaluationRequest(
-            case_id=request.case_id,
-            rule_set_id=rule_set.rule_set_id,
-            factors=factors,
-        )
-        result = FactorRuleEngine(
-            rule_set,
-            minimum_confidence=self.minimum_confidence,
-        ).evaluate(evaluation_request)
-        await self._record(
-            events,
-            request.case_id,
-            "factors_evaluated",
-            result.summary.status,
-            "evaluate_factors",
-            rule_ids=[item.rule_id for item in result.results if item.rule_id is not None],
-        )
-
-        verification = self.verifier.verify(result, rule_set)
+        case_review = None
+        if isinstance(rule_set, ReviewPolicy) and isinstance(factors, CaseFacts):
+            if request.case_id != rule_set.identity.case_id:
+                raise ValueError("Request case does not match configured review material")
+            sources = [criteria.source, case_document.source]
+            known = {
+                criteria.document_uri,
+                case_document.document_uri,
+                *(s.uri for s in sources if s is not None),
+            }
+            for source in rule_set.registry.documents:
+                if source.uri not in known:
+                    sources.append((await self.parser.parse_document(source.uri)).source)
+            if any(source is None for source in sources):
+                verification = VerificationReport(
+                    status=EvaluationStatus.NEEDS_REVIEW,
+                    critical_errors=["A typed current source registry is required"],
+                )
+                return AgentReviewRun(
+                    case_id=request.case_id,
+                    status=WorkflowStatus.NEEDS_REVIEW,
+                    verification=verification,
+                    audit_events=events,
+                )
+            case_review = CaseReviewer(self.authorization).review(
+                rule_set, factors, SourceRegistry(documents=[s for s in sources if s is not None])
+            )
+            verification = VerificationReport(
+                status=case_review.status,
+                critical_errors=[f.trace for f in case_review.findings if f.status != "verified"],
+            )
+            result = case_review.comparisons[0] if len(case_review.comparisons) == 1 else None
+        else:
+            # Legacy adapter shapes still load, but cannot prove complete case review.
+            if isinstance(rule_set, ReviewPolicy) or isinstance(factors, CaseFacts):
+                raise ValueError("Rule and fact adapters must use the same schema generation")
+            evaluation_request = FactorEvaluationRequest(
+                case_id=request.case_id, rule_set_id=rule_set.rule_set_id, factors=factors
+            )
+            result = FactorRuleEngine(
+                rule_set, minimum_confidence=self.minimum_confidence
+            ).evaluate(evaluation_request)
+            verification = self.verifier.verify(result, rule_set)
         await self._record(
             events,
             request.case_id,
@@ -119,28 +151,47 @@ class ReviewAgentController:
             details={"critical_errors": verification.critical_errors},
         )
         if not verification.can_complete:
-            status = (
-                WorkflowStatus.FAILED
-                if verification.status is EvaluationStatus.FAILED
-                else WorkflowStatus.NEEDS_REVIEW
-            )
             return AgentReviewRun(
                 case_id=request.case_id,
-                status=status,
+                status=WorkflowStatus.FAILED
+                if verification.status is EvaluationStatus.FAILED
+                else WorkflowStatus.NEEDS_REVIEW,
                 review=result,
+                case_review=case_review,
                 verification=verification,
                 audit_events=events,
             )
-
+        if result is None:
+            return AgentReviewRun(
+                case_id=request.case_id,
+                status=WorkflowStatus.VERIFIED,
+                case_review=case_review,
+                verification=verification,
+                audit_events=events,
+                artifact_status="unsupported_contexts"
+                if request.output_pdf_uri
+                else "not_requested",
+            )
         if request.output_pdf_uri is None:
             return AgentReviewRun(
                 case_id=request.case_id,
                 status=WorkflowStatus.VERIFIED,
                 review=result,
+                case_review=case_review,
                 verification=verification,
                 audit_events=events,
             )
-        if self.pdf_writer is None or request.field_map is None:
+        if self.pdf_writer is None:
+            return AgentReviewRun(
+                case_id=request.case_id,
+                status=WorkflowStatus.VERIFIED,
+                review=result,
+                case_review=case_review,
+                verification=verification,
+                artifact_status="unavailable",
+                audit_events=events,
+            )
+        if request.field_map is None:
             await self._record(
                 events,
                 request.case_id,
@@ -153,6 +204,7 @@ class ReviewAgentController:
                 case_id=request.case_id,
                 status=WorkflowStatus.FAILED,
                 review=result,
+                case_review=case_review,
                 verification=verification,
                 pdf_error=PDFProblem(code=PDFErrorCode.WRITE),
                 audit_events=events,
@@ -172,7 +224,9 @@ class ReviewAgentController:
                 if isinstance(cause, PDFWriteError):
                     code = cause.code
                     break
-            return await self._pdf_failed(request.case_id, result, verification, events, code)
+            return await self._pdf_failed(
+                request.case_id, result, verification, events, code, case_review
+            )
 
         try:
             raw_output = await self.pdf_writer.write_pdf(pdf_request)
@@ -188,31 +242,41 @@ class ReviewAgentController:
             ):
                 raise InvalidPDFResultError("Writer result does not match the write request")
         except PDFWriteError as error:
-            return await self._pdf_failed(request.case_id, result, verification, events, error.code)
+            return await self._pdf_failed(
+                request.case_id, result, verification, events, error.code, case_review
+            )
         except ValidationError:
             return await self._pdf_failed(
-                request.case_id, result, verification, events, PDFErrorCode.INVALID_RESULT
+                request.case_id,
+                result,
+                verification,
+                events,
+                PDFErrorCode.INVALID_RESULT,
+                case_review,
             )
         except Exception:
             # An adapter bug must not discard findings or expose document/credential text.
             return await self._pdf_failed(
-                request.case_id, result, verification, events, PDFErrorCode.WRITE
+                request.case_id, result, verification, events, PDFErrorCode.WRITE, case_review
             )
 
+        written = output.artifact_created
         await self._record(
             events,
             request.case_id,
-            "pdf_written",
-            WorkflowStatus.COMPLETED,
+            "pdf_written" if written else "pdf_simulated",
+            WorkflowStatus.COMPLETED if written else WorkflowStatus.VERIFIED,
             "write_pdf",
             details={"output_uri": output.output_uri},
         )
         return AgentReviewRun(
             case_id=request.case_id,
-            status=WorkflowStatus.COMPLETED,
+            status=WorkflowStatus.COMPLETED if written else WorkflowStatus.VERIFIED,
+            case_review=case_review,
+            artifact_status="written" if written else "simulated",
             review=result,
             verification=verification,
-            output_pdf_uri=output.output_uri,
+            output_pdf_uri=output.output_uri if written else None,
             pdf_result=output,
             audit_events=events,
         )
@@ -224,6 +288,7 @@ class ReviewAgentController:
         verification: VerificationReport,
         events: list[AuditEvent],
         code: PDFErrorCode,
+        case_review: CaseReviewResult | None = None,
     ) -> AgentReviewRun:
         await self._record(
             events,
@@ -236,6 +301,7 @@ class ReviewAgentController:
         return AgentReviewRun(
             case_id=case_id,
             status=WorkflowStatus.FAILED,
+            case_review=case_review,
             review=result,
             verification=verification,
             audit_events=events,

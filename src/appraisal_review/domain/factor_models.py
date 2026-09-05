@@ -8,14 +8,24 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from appraisal_review.domain.document_models import SourceCitation
 from appraisal_review.domain.models import EvidenceRef
 from appraisal_review.domain.pdf_types import Identifier, PDFProblem, PDFWriteResult
 from appraisal_review.domain.pdf_types import PDFField as PDFField
 from appraisal_review.domain.pdf_types import PDFFieldMap as PDFFieldMap
+from appraisal_review.domain.review_contracts import (
+    CaseIdentity,
+    ComparisonContext,
+    Coverage,
+    ObservedValue,
+    Reliability,
+    ReviewBinding,
+    ReviewFinding,
+)
 
 
 class StrictFactorModel(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", allow_inf_nan=False, revalidate_instances="always")
 
 
 class Grade(StrEnum):
@@ -225,8 +235,53 @@ class FactorReviewResult(StrictFactorModel):
     case_id: str
     rule_set_id: str
     rule_version: str
+    context: ComparisonContext | None = None
+    case_version: str | None = None
+    source_hashes: dict[str, str] = Field(default_factory=dict)
     results: list[FactorEvaluationResult]
     summary: EvaluationSummary
+
+
+class ScopedRules(StrictFactorModel):
+    context: ComparisonContext
+    rules: FactorRuleSet
+    source_version: str
+    zone: str
+    evidence: list[SourceCitation] = Field(min_length=1)
+
+
+class ReviewPolicy(ReviewBinding):
+    rule_sets: list[ScopedRules] = Field(min_length=1)
+
+
+class EvidencedPair(StrictFactorModel):
+    context: ComparisonContext
+    pair: FactorPair
+    target_sources: list[SourceCitation]
+    comparable_sources: list[SourceCitation]
+    target_reliability: Reliability
+    comparable_reliability: Reliability
+
+
+class CaseFacts(StrictFactorModel):
+    identity: CaseIdentity
+    pairs: list[EvidencedPair]
+    observed: list[ObservedValue]
+    unresolved: list[str] = Field(default_factory=list)
+
+
+class ReviewMaterial(StrictFactorModel):
+    policy: ReviewPolicy
+    facts: CaseFacts
+
+
+class CaseReviewResult(StrictFactorModel):
+    schema_version: Literal["2.0"] = "2.0"
+    identity: CaseIdentity
+    comparisons: list[FactorReviewResult]
+    findings: list[ReviewFinding]
+    coverage: Coverage
+    status: EvaluationStatus
 
 
 class VerificationReport(StrictFactorModel):
@@ -262,6 +317,10 @@ class AgentReviewRun(StrictFactorModel):
     case_id: str
     status: WorkflowStatus
     review: FactorReviewResult | None = None
+    case_review: CaseReviewResult | None = None
+    artifact_status: Literal[
+        "not_requested", "unavailable", "unsupported_contexts", "simulated", "written"
+    ] = "not_requested"
     verification: VerificationReport | None = None
     output_pdf_uri: Identifier | None = None
     pdf_result: PDFWriteResult | None = None

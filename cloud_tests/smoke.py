@@ -75,9 +75,18 @@ def exercise(
             current = invoke("status")
         if current["execution_status"] not in {"succeeded", "failed"}:
             raise TimeoutError("Runtime did not reach a terminal state within smoke limits")
-        if current["execution_status"] != "succeeded" or current["result"]["status"] != scenario:
+        if current["execution_status"] != "succeeded" or current["result"]["status"] != (
+            "verified" if scenario == "completed" else scenario
+        ):
             raise RuntimeError("Unexpected synthetic terminal result")
+        if current["result"]["output_pdf_uri"] is not None:
+            raise RuntimeError("Synthetic runs cannot publish output PDFs")
         if scenario == "completed":
+            if (
+                current["result"]["artifact_status"] != "simulated"
+                or current["result"]["pdf_result"]["artifact_created"]
+            ):
+                raise RuntimeError("Fake writer was reported as a real artifact")
             if "no file was created" not in current["result"]["pdf_result"]["warnings"][0]:
                 raise RuntimeError("Synthetic warning metadata was lost")
         elif current["result"]["output_pdf_uri"] is not None:

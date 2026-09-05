@@ -61,6 +61,16 @@ class PDFWriteRequest(PDFModel):
             if ref is None:
                 raise PDFFieldPlacementError("A write requires an explicit value reference")
             contexts.add((ref.scope, ref.target_id, ref.comparable_id))
+            if self.result.context is not None and (
+                ref.scope,
+                ref.target_id,
+                ref.comparable_id,
+            ) != (
+                self.result.context.scope,
+                self.result.context.target_id,
+                self.result.context.comparable_id,
+            ):
+                raise PDFFieldPlacementError("Field reference does not match verified comparison")
             if ref.factor_id is not None:
                 matches = [r for r in self.result.results if r.factor_id == ref.factor_id]
                 if len(matches) != 1 or getattr(matches[0], ref.value) is None:

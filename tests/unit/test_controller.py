@@ -11,14 +11,13 @@ from appraisal_review.domain.factor_models import (
     Grade,
     IntervalBand,
     NormalizedValue,
-    PDFField,
     PDFFieldMap,
     RuleApplicability,
     RuleSource,
     WorkflowStatus,
 )
 from appraisal_review.domain.models import EvidenceRef
-from appraisal_review.domain.pdf_models import PDFValueRef, PDFWriteRequest, PDFWriteResult
+from appraisal_review.domain.pdf_models import PDFWriteRequest, PDFWriteResult
 from appraisal_review.ports.workflow import ParsedDocument
 
 
@@ -155,42 +154,22 @@ def test_missing_evidence_blocks_pdf_writing() -> None:
 
 
 def test_verified_case_can_reach_completed_pdf_state() -> None:
+    from dataclasses import replace
+
+    from appraisal_review.adapters.local.synthetic import synthetic_adapters, synthetic_request
+    from appraisal_review.application.bootstrap import build_controller
+    from appraisal_review.config import Settings
+
     writer = Writer()
-    controller = ReviewAgentController(
-        parser=Parser(),
-        fact_extractor=Extractor(),
-        rule_provider=RuleProvider(rule_set()),
-        pdf_writer=writer,
+    controller = build_controller(
+        Settings(_env_file=None), adapters=replace(synthetic_adapters(), pdf_writer=writer)
     )
-    request = AgentReviewRequest(
-        case_id="case-1",
-        criteria_document_uri="criteria.pdf",
-        case_document_uri="file:///synthetic/case.pdf",
-        output_pdf_uri="file:///synthetic/output.pdf",
-        field_map=PDFFieldMap(
-            template_id="v1",
-            fields=[
-                PDFField(
-                    field_id="road.grade",
-                    page=1,
-                    bounding_box=(1, 2, 3, 4),
-                    value_ref=PDFValueRef(
-                        scope="regional",
-                        target_id="target",
-                        comparable_id="comparison-1",
-                        factor_id="road.width",
-                        value="target_grade",
-                    ),
-                )
-            ],
-        ),
-    )
-
-    result = asyncio.run(controller.review(request))
-
+    result = asyncio.run(controller.review(synthetic_request("completed")))
     assert result.status is WorkflowStatus.COMPLETED
     assert result.output_pdf_uri == "file:///synthetic/output.pdf"
     assert writer.called
+    assert result.artifact_status == "written"
+    assert result.case_review.status.value == "verified"
     assert [event.sequence for event in result.audit_events] == list(
         range(1, len(result.audit_events) + 1)
     )

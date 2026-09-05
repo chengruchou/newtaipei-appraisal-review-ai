@@ -4,35 +4,36 @@ All boundaries reject unknown fields and serialize to JSON. Policy is versioned
 data, not district-specific branching. Technical status below distinguishes
 existing models from unimplemented review semantics.
 
-## Existing factor contracts
+## Complete review schema 2.0
 
-`domain.factor_models` owns AgentReviewRequest, AgentReviewRun, observations,
-rule sets and factor results. AgentReviewRequest has nonempty case_id,
-criteria_document_uri, case_document_uri, optional output_pdf_uri and field_map.
-It describes an internal/local invocation; the future cloud API authorizes
-external document IDs before resolving these URIs (#9).
+`domain.factor_models` owns ReviewPolicy, CaseFacts, ReviewMaterial and
+CaseReviewResult. `domain.review_contracts` owns explicit case/comparison identity,
+review inventory, original ObservedValue, reliability, findings and coverage.
+`domain.document_models` owns the typed source registry and exact citations.
 
-FactorObservation preserves raw_text, normalized value/unit, evidence references
-and extraction confidence. EvidenceRef carries document/source identity,
-one-based page, optional bounding box and named coordinate system. Coordinate
-and source preservation is a parser requirement (#7), not something established
-by the mere existence of model fields. Missing/low-confidence critical inputs
-are unresolved. A model's own confidence estimate is not calibrated evidence.
+CaseReviewResult contains every scoped comparison; AgentReviewRun.review is the
+compatibility projection only when exactly one comparison exists. Its
+case_review field is authoritative for case findings and completion. A
+FactorReviewResult now includes context, case_version and source_hashes.
 
-FactorRuleSet declares rule_set_id/version, candidate/approved/rejected,
-applicability, source identity, intervals/categories and correction matrices.
-Intervals cover the supported domain in ascending order with exactly one owner
-for each boundary. Matrix rows are target grades and columns comparable grades.
-The engine only executes approved rules. The provider must obtain approval from
-a trusted reviewer record; accepting model-declared approved is prohibited (#7).
-Applicability fields currently validate date ordering, not case matching (#8).
+ReviewPolicy binds the inventory and scoped candidate rules to district, zone,
+land-use, date, case and source versions. The server-injected ReviewAuthorization
+must authorize the exact ReviewMaterial, including facts and original values.
+A model or caller cannot authorize itself with approved=true. The parser's
+current registry must equal the reviewed registry. Source citations resolve exact
+document/hash/version/page/region/box/excerpt; location and semantic reliability
+remain separate checks. Low-confidence or model-only facts remain unresolved.
 
-FactorReviewResult contains per-factor expected grades/rates and a summary total.
-The current shape represents one implicit target/comparable pair. It does not
-carry the original form's observed grades/rates/totals or a complete case identity.
-#8 adds scope/zone/target/comparable/date/version identities, observed vs expected
-values, group totals, legacy sum/equals integration and cross-form provenance.
-Unused comparable columns are absent entities, not incomplete comparables.
+Inventory contexts/factors/slots/checks are required independently of successful
+extractions. Blank columns have source evidence but no comparable entity.
+Observed states preserve blank/missing/not_present/not_applicable/present zero.
+Expected grades/rates never replace observed values. Sum/equals definitions bind
+explicit slot IDs and evidence, Decimal rounding quantum and tolerance.
+
+Factor-only adapter returns remain accepted for migration, but now yield
+needs_review because they lack a complete trusted case. The synthetic bundle
+uses a fixed complete schema-2 fixture, with no production bypass.
+See [ADR 0005](adr/0005-complete-case-review.md) for semantics and migration.
 
 ## Entry response and errors (#4)
 
@@ -56,8 +57,8 @@ values and None as JSON null. Transport code has no valuation rules.
 This minimal shape illustrates the unapproved-rule branch. Actual evaluated cases
 include review and verification, including unresolved factors and calculation
 traces. The controller's audit events record its decisions using the unchanged
-AuditLogger interface. The final completed state proves only the current factor
-slice and output interface, not full document verification.
+AuditLogger interface. The final status requires complete approved inventory coverage and independent
+calculation. Actual PDF bytes remain the writer adapter's responsibility.
 
 Malformed payloads return `{"error":{"code":"invalid_request","message":"Invalid review request."}}`
 (HTTP 422). Configuration errors use codes invalid_configuration,
@@ -78,7 +79,7 @@ ports.pdf contains the only PDFWriter protocol. Existing factor_models and
 ports.workflow imports are compatibility aliases. pdf_types holds shared value
 objects below factor_models in the import graph, preventing circular imports.
 
-The request carries source/destination URI, FactorReviewResult and field map.
+The request carries source/destination URI, one bound FactorReviewResult and field map.
 Only after verification.can_complete may the controller construct it. Every
 written field has an explicit value_ref; mixed comparison contexts, duplicate
 IDs, missing values, invalid bounds or conflicting URIs fail explicitly.
@@ -97,15 +98,6 @@ active attempt/session_id, lease expiry/fencing token and optional result manife
 Public responses omit raw internal storage URIs. The authoritative execution
 state is durable DynamoDB state, not SQS receipt or an invocation response.
 
-## Future complete review contract (#8; design only)
-
-A finding binds observed and expected values, rule identity/version, deterministic
-calculation trace, original field/page evidence and criticality. A coverage report
-lists required/present/verified checks and comparison identities. All required
-checks, including arithmetic and cross-form copying, enter the completion gate.
-No inferred value silently replaces a verified source fact. The initial verifier
-only checks selected factor presence/status, a limitation with a reproducer in #8.
-
 ## HTTP error compatibility
 
 POST /v1/validate retains HTTPValidationError with a detail array of loc, type
@@ -114,5 +106,5 @@ sanitized. POST /v1/reviews returns EntryProblemResponse containing error with
 code/message for 422 (invalid input), 503 (configuration) and 500 (execution).
 OpenAPI declares that envelope for all three statuses. Direct invocation uses
 EntryProblem.response() and the same serialization, with no HTTP status wrapper.
-Success responses and controller behavior remain unchanged. See ADR 0004 and
+Legacy success responses and all error envelopes remain unchanged. See ADR 0004 and
 api error contract tests for runtime JSON validation against the published schema.

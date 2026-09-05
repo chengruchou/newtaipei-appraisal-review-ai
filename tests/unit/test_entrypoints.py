@@ -92,7 +92,9 @@ def test_http_and_invocation_json_parity(scenario: str) -> None:
     invoked = asyncio.run(invoke(request, controller_factory=lambda: build_controller(settings)))
     assert http.status_code == 200
     assert http.json() == invoked
-    assert AgentReviewRun.model_validate(invoked).status.value == scenario
+    assert AgentReviewRun.model_validate(invoked).status.value == (
+        "verified" if scenario == "completed" else scenario
+    )
     assert "pdf_error" in invoked
 
 

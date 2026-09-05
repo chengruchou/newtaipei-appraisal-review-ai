@@ -47,10 +47,16 @@ def test_live_client_requires_terminal_result_and_preserves_synthetic_warning() 
         key = kwargs["runtimeSessionId"]
         seen[key] = seen.get(key, 0) + 1
         scenario = payload["scenario"]
-        result = {"status": scenario, "output_pdf_uri": None}
+        result = {
+            "status": "verified" if scenario == "completed" else scenario,
+            "output_pdf_uri": None,
+        }
         if scenario == "completed":
-            result["output_pdf_uri"] = "file:///synthetic/output.pdf"
-            result["pdf_result"] = {"warnings": ["Synthetic PDF writer: no file was created."]}
+            result["pdf_result"] = {
+                "artifact_created": False,
+                "warnings": ["Synthetic PDF writer: no file was created."],
+            }
+            result["artifact_status"] = "simulated"
         response = {
             "execution_status": "running" if seen[key] < 3 else "succeeded",
             "result": result,

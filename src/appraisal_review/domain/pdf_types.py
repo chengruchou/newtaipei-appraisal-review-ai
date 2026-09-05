@@ -149,6 +149,7 @@ class PDFFieldMap(PDFModel):
 
 
 class PDFWriteResult(PDFModel):
+    artifact_created: bool = True
     output_uri: Identifier
     page_count: int = Field(ge=1, strict=True)
     written_field_ids: list[Identifier]

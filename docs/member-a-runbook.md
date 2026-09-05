@@ -26,7 +26,7 @@ also works around that local environment problem. No global tools were changed.
 The demo selects local mode explicitly; imports do not discover AWS credentials.
 
 - verified: calculated synthetic rate 5.0, verification passes, no output requested.
-- completed: same calculation, fake writer called once, pdf_result includes
+- completed (scenario name): verified/simulated, fake writer called once, pdf_result includes
   `Synthetic PDF writer: no file was created.` and page/field metadata.
 - needs_review: missing target evidence, no total or PDF, findings preserved.
 
@@ -106,3 +106,30 @@ for a prepared PR/Issue body and --head/--branch when publishing another ref.
 See [submission checks](submission-checks.md) for narrow negative examples and
 range selection. Human review also checks equivalent signatures, badges and
 links. Check before every commit, push or publication; do not rewrite history.
+
+## Schema-2 review migration (#8)
+
+Use the same commands and entry routes. ReviewAdapters now accepts authorization
+implementing ports.approval.ReviewAuthorization. Parser results include typed
+SourceDocument; the rule provider returns ReviewPolicy and extractor CaseFacts.
+Both must be configured for the request case. Factor-only adapters cannot prove
+full completion and return needs_review.
+
+The completed synthetic scenario name remains a CLI compatibility alias for
+exercising the fake writer. Its actual status is verified, artifact_status is
+simulated and output_pdf_uri is null. A successful real writer still yields
+completed/written. No writer yields verified/unavailable. Multiple comparisons
+are all included in case_review, with unsupported_contexts if PDF was requested.
+
+Run the current complete suite, including subprocess coverage configuration:
+
+```bash
+PYTHONPATH=src python -m pytest tests cloud_tests --cov=appraisal_review --cov-config=pyproject.toml --cov-report=term-missing
+ruff check .
+ruff format --check .
+PYTHONPATH=src mypy src
+PYTHONPATH=src python scripts/http_smoke.py
+```
+
+See ADR 0005 and test_case_review.py for adversarial claims, observed values,
+arithmetic, applicability, complete inventory and zero-writer-call examples.

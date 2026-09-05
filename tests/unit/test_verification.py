@@ -85,3 +85,34 @@ def test_pdf_field_map_requires_exact_lookup() -> None:
         assert "exactly one" in str(error)
     else:
         raise AssertionError("missing field lookup should fail")
+
+
+def test_forged_verified_result_cannot_complete() -> None:
+    """Independent regression: normal/normal is zero, never 999."""
+    from appraisal_review.domain.factor_models import FactorEvaluationResult
+
+    rule = FactorRule(
+        id="x.v1",
+        factor_id="x",
+        kind="numeric_interval",
+        intervals=[IntervalBand(grade=Grade.NORMAL)],
+        correction_matrix=CorrectionMatrix(values={"normal": {"normal": 0.0}}),
+    )
+    result = FactorReviewResult(
+        case_id="case-1",
+        rule_set_id="unrelated",
+        rule_version="unrelated",
+        results=[
+            FactorEvaluationResult(
+                factor_id="x",
+                rule_id="unrelated",
+                target_grade=Grade.NORMAL,
+                comparable_grade=Grade.NORMAL,
+                adjustment_percent=999,
+                calculation_trace="Untrusted claimed calculation",
+                status=EvaluationStatus.VERIFIED,
+            )
+        ],
+        summary=EvaluationSummary(total_adjustment_percent=999, status=EvaluationStatus.VERIFIED),
+    )
+    assert not ReviewVerifier().verify(result, approved_rule_set(rule)).can_complete

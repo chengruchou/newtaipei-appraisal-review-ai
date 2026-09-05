@@ -3,7 +3,7 @@
 Review date: 2026-09-05. Original base: b69ed74da950f37add016b5e881a7e0478f9c7d5.
 Current revision base: main ff5e9d1d511e015dbc96aa5b380cce1def433421, which already
 merged foundation e24265d7c4ef0bb5d2d74d0ed94bffa2052a08ed in PR #10.
-Active delivery: A PR #13, then Runtime PR #14. [Migration and full original SHAs](pr-migration.md).
+Historical delivery: A PR #13 and Runtime PR #14 are merged. [Migration and full original SHAs](pr-migration.md).
 
 | Requirement | Component / implementation | Issue | Evidence / status |
 |---|---|---|---|
@@ -65,3 +65,23 @@ No active local commit hooks or configured commit template supplied automatic
 attribution. Technical service/model names and the policy itself are retained.
 Existing history is retained. This revision performs no PR merge or force-push;
 foundation #10 was already merged before the refreshed inspection.
+
+## Complete review revision (#8)
+
+Baseline: b3760b9ae15d97dd16ffdd0da130e564324c71f6 (latest fetched main).
+141 baseline tests, Ruff, format, mypy and localhost HTTP passed on Python 3.13.5.
+The independent forged-999 regression failed before the verifier change; its
+assertion passed after the fix. Local ignored evidence is under artifacts/evidence.
+
+Schema-2 CaseReviewer and Controller now enforce exact applicability, source
+registry, trusted material approval, observed values, arithmetic/cross-form
+checks and independent inventory coverage. test_case_review.py exercises
+adversarial claims, omissions, duplicates, uncertainty, numeric units, boundary
+dates, multi-context aggregation and writer gating through the Controller.
+Synthetic fixture identity/approval/evidence was strengthened without a gate bypass.
+The audit logger is unchanged; verifier changes are explicitly authorized by #8.
+
+B receives the unchanged public writer protocol with bound single-context results
+and artifact_created metadata. No real writer, real-document accuracy, live
+model acceptance, human rule approval or AWS deployment is claimed by this layer.
+The dependent #7 layer supplies parsing/extraction/approval operations and evidence.
