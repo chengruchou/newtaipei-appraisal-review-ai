@@ -50,4 +50,10 @@ It verifies nonzero failures with no success output, legitimate content, index
 versus worktree differences, removed/replaced earlier content, commit identities,
 publication files, explicit destinations and branch word boundaries.
 
+CI supplies --cov-config=pyproject.toml explicitly. pytest-cov then propagates
+the absolute config path to CLI subprocesses running in temporary repositories.
+Without it, the parent discovers branch coverage from pyproject.toml while
+children in another directory can default to statement coverage, making the
+final combine fail even when all tests pass. Coverage and assertions stay enabled.
+
 Original review: https://github.com/chengruchou/newtaipei-appraisal-review-ai/pull/11#discussion_r3939585204

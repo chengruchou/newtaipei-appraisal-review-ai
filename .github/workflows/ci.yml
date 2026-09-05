@@ -30,4 +30,4 @@ jobs:
       - name: Types
         run: mypy src
       - name: Test
-        run: pytest --cov=appraisal_review --cov-report=term-missing
+        run: pytest --cov=appraisal_review --cov-config=pyproject.toml --cov-report=term-missing
