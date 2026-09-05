@@ -253,3 +253,11 @@ For human review, use the controlled confirmation operation, inspect its side
 binding, then approve the exact final material separately. Preserve low original
 scores. Old method-only material needs explicit reconciliation and confirmation;
 old receipts do not authorize the new serialization. See ADR 0008.
+
+The current confirm-facts command preserves observation/evidence scores exactly;
+it never sets them to 1. Its local-review-v1 record binds each side and the actual
+OS UID/login. The store checks that identity and current side digest on approve
+and permits. A wrong digest, stale confirmation or unknown provenance must be
+reconciled explicitly, never auto-re-signed. Retain original candidate files and
+use fresh confirmed output paths. Parser-derived localization is not calibrated
+measurement; native rule candidates do not declare fact accuracy.

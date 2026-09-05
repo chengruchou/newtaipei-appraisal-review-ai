@@ -162,7 +162,8 @@ canonical citations cannot be replaced by model-supplied legacy evidence.
 Canonical evidence confidence and observation confidence are zero after extraction;
 method=model_proposed remains until explicit confirmation. Source binding is not
 proof of semantic accuracy. The receipt covers all normalized evidence and facts,
-so later changes cannot reuse approval. Public schemas and PDFWriter are unchanged.
+so later changes cannot reuse approval. Legacy EvidenceRef and PDFWriter are
+unchanged; Reliability has the explicit material extension described in ADR 0008.
 
 Source identity, complete observed/slot value-anchor sets, DAG derivation and
 loaded-versus-evaluated audit events are specified in [ADR 0007](adr/0007-source-cell-and-derivation-trust.md).
@@ -176,3 +177,9 @@ exact-material approval. Existing method-only material is untrusted and old
 receipts require explicit reviewer migration, never automatic re-signing.
 See [ADR 0008](adr/0008-measured-confidence-and-human-confirmation.md).
 Legacy EvidenceRef and HTTP success/error schemas remain unchanged.
+
+The canonical extraction producer is canonical-pdf-localization-v1. It always
+emits localization_only/parser_registry with no confirmation, regardless of model
+provenance claims. confirm-facts adds the local-review-v1 side digest and actual
+OS UID/login. LocalApprovalStore requires that same reviewer and current side
+digest for confirmed material; confirmation alone does not grant authorization.

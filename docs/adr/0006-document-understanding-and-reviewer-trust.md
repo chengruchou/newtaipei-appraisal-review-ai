@@ -24,7 +24,8 @@ then validates a strict PageProposal. Source hashes/versions/pages/regions/boxes
 and excerpts must resolve in the actual parser registry. Additional approval or
 tool fields, malformed JSON, truncation, refusal and provider errors fail explicitly.
 No model tool is executed. Model confidence is retained separately; reliability
-is reset to model_proposed and observed confidence to zero until human confirmation.
+is reset to model_proposed and observed confidence to zero. Confirmation preserves
+that raw score and records a separate side-bound assertion (ADR 0008).
 A document cannot instruct the service to alter rules or approve itself.
 
 The validated target_sources and comparable_sources are canonical for each side.
@@ -38,8 +39,10 @@ references fail with invalid_source_reference, even if legacy evidence exists.
 
 Canonical evidence has confidence zero because localization is not calibrated
 fact accuracy. Observation confidence remains zero and method stays model_proposed;
-model confidence is separate. The explicit confirmation operation changes the
-observation's reviewed reliability, not its source locations. Approval binds the
+model confidence is separate. The adapter explicitly sets localization_only and
+parser_registry provenance, names the canonical localization producer, and clears
+any model-supplied confirmation or measured-provenance claim. The explicit
+confirmation operation changes reviewed reliability, not raw scores or locations. Approval binds the
 normalized, confirmed material digest; subsequent changes invalidate the receipt.
 Existing prepared material is not silently rewritten or automatically approved.
 
@@ -89,3 +92,14 @@ material approval. Narrative background cannot become an approved rule. No vecto
 store, Knowledge Base or full RAG is introduced.
 
 [Upstream concurrency constraint](https://pymupdf.readthedocs.io/en/latest/recipes-multiprocessing.html).
+
+Review 5122010245 inherits ADR 0007 source identity, source-cell binding, grounded
+DAG and audit corrections from #15. ADR 0008 defines the confidence extension.
+The actual confirm-facts CLI binds each side to current OS UID/login and preserves
+all original scores. The local store refuses stale/missing confirmation and a
+different reviewer before approval; permits also checks those bindings. Both
+operations remain private trusted reviewer operations, not exposed model tools.
+Old serialization receives unknown provenance for inspection only. Existing
+receipts remain intact and invalid for changed material; no automatic re-signing.
+Native rule candidates do not emit calibrated fact measurements and receive no
+new numeric confidence claims in this correction.

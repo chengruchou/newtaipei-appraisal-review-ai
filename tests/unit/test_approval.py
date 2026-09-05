@@ -120,3 +120,67 @@ def test_confirmation_is_explicit_and_does_not_clear_uncertainty(tmp_path):
         != 0
     )
     assert not (tmp_path / "invalid.json").exists()
+
+
+def test_old_receipt_is_not_reused_or_resigned_after_material_extension(tmp_path):
+    import hashlib
+    import hmac
+    from datetime import UTC, datetime
+
+    from appraisal_review.adapters.local.approval import ApprovalReceipt
+    from appraisal_review.domain.factor_models import ReviewMaterial
+
+    old = synthetic_material().model_dump(mode="json")
+    for side in ("target", "comparable"):
+        reliability = old["facts"]["pairs"][0][f"{side}_reliability"]
+        for key in ("confidence_kind", "provenance", "producer", "confirmation"):
+            reliability.pop(key)
+        reliability["method"] = "reviewer_confirmed"
+    old_digest = hashlib.sha256(
+        json.dumps(old, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
+    store = LocalApprovalStore.initialize(tmp_path / "store", current_reviewer())
+    # Construct a historical receipt only in this isolated synthetic test store.
+    receipt = ApprovalReceipt(
+        material_digest=old_digest,
+        case_id=old["policy"]["identity"]["case_id"],
+        case_version="1",
+        reviewer=current_reviewer(),
+        approved_at=datetime.now(UTC),
+        signature="",
+    )
+    receipt.signature = hmac.new(
+        (store.root / "signing.key").read_bytes(), receipt.signed_bytes(), hashlib.sha256
+    ).hexdigest()
+    store._write_new(f"{old_digest}.json", receipt.model_dump_json().encode())
+    before = {p.name: p.read_bytes() for p in store.root.iterdir()}
+    loaded = ReviewMaterial.model_validate(old)
+    assert content_digest(loaded) != old_digest
+    assert not store.permits(loaded)
+    path, output = tmp_path / "old.json", tmp_path / "confirmed.json"
+    path.write_text(json.dumps(old))
+    result = cli(
+        "confirm-facts",
+        "--material",
+        path,
+        "--output",
+        output,
+        "--expected-digest",
+        content_digest(loaded),
+    )
+    assert result.returncode != 0 and not output.exists()
+    assert {p.name: p.read_bytes() for p in store.root.iterdir()} == before
+
+
+def test_store_rejects_method_only_or_other_reviewer_confirmation(tmp_path):
+    from appraisal_review.domain.confidence import confirm_side
+
+    material = synthetic_material()
+    store = LocalApprovalStore.initialize(tmp_path / "store", current_reviewer())
+    material.facts.pairs[0].target_reliability.method = "reviewer_confirmed"
+    with pytest.raises(ValueError, match="reviewer confirmation"):
+        store.approve(material, expected_digest=content_digest(material))
+    confirm_side(material.facts.pairs[0], "target", reviewer="other-reviewer")
+    with pytest.raises(ValueError, match="reviewer confirmation"):
+        store.approve(material, expected_digest=content_digest(material))
+    assert not store.permits(material)

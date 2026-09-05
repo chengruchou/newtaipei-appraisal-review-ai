@@ -175,3 +175,13 @@ method-only claims, legitimate low-score confirmation with separate authorizatio
 and later score/provenance/citation changes. ADR 0008 defines the semantics before
 these tests. The #16 parser/extractor/CLI integration must produce these fields
 through official normalization rather than test-side repairs.
+
+The review 5122010245 integration correction follows the normal merge of #15.
+The full synthetic PDF/parser -> mocked Converse without local URI or legacy
+evidence -> canonical normalization/assembly -> real confirm-facts subprocess ->
+isolated approval store -> Controller path passes with raw scores unchanged at
+zero. Unconfirmed, confirmed/unapproved and post-approval score/provenance/citation
+changes stay blocked. A model cannot preserve forged measured provenance or
+confirmation through normalization. Historical receipt tests prove no automatic
+reuse, mutation or re-signing after the material extension. Native candidate
+adapters remain candidate-only; no live accuracy or real approval is claimed.

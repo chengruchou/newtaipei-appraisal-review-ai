@@ -22,6 +22,7 @@ from appraisal_review.adapters.local.pdf_parser import DocumentInput, LocalPDFPa
 from appraisal_review.application.bootstrap import build_controller
 from appraisal_review.application.document_review import assemble, document_adapters
 from appraisal_review.config import Settings
+from appraisal_review.domain.confidence import confirm_side
 from appraisal_review.domain.document_models import (
     Digest,
     DocumentModel,
@@ -256,19 +257,10 @@ def main() -> None:
     elif args.command == "confirm-facts":
         if content_digest(material) != args.expected_digest:
             raise ValueError("Inspected material changed")
+        reviewer = current_reviewer()
         for pair in material.facts.pairs:
-            for observation, reliability in (
-                (pair.pair.target, pair.target_reliability),
-                (pair.pair.comparable, pair.comparable_reliability),
-            ):
-                if (
-                    reliability.unresolved
-                    or reliability.selection == "ambiguous"
-                    or observation.value is None
-                ):
-                    raise ValueError("Resolve ambiguous or missing facts before confirming")
-                reliability.method = "reviewer_confirmed"
-                observation.confidence = 1
+            confirm_side(pair, "target", reviewer=f"{reviewer.uid}:{reviewer.name}")
+            confirm_side(pair, "comparable", reviewer=f"{reviewer.uid}:{reviewer.name}")
         private_json(args.output, material.model_dump(mode="json"))
     elif args.command == "approve":
         LocalApprovalStore(args.store).approve(material, expected_digest=args.expected_digest)

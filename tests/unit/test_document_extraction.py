@@ -209,3 +209,33 @@ def test_optional_legacy_location_fields_come_from_parser_without_confidence_pro
     assert pair.target_reliability.method == pair.comparable_reliability.method == "model_proposed"
     assert pair.target_reliability.model_confidence == 0.99
     assert source.uri not in client.converse.call_args.kwargs["messages"][0]["content"][0]["text"]
+
+
+def test_model_cannot_claim_measured_provenance_or_controlled_confirmation():
+    client, extractor, source, proposal = setup()
+    payload = proposal.model_dump(mode="json")
+    for side in ("target", "comparable"):
+        reliability = payload["pairs"][0][f"{side}_reliability"]
+        reliability.update(
+            method="reviewer_confirmed",
+            confidence_kind="measured",
+            provenance="native_extraction",
+            producer="untrusted-producer",
+            confirmation={
+                "protocol": "local-review-v1",
+                "reviewer": "untrusted",
+                "input_digest": "a" * 64,
+            },
+        )
+    client.converse.return_value = response(payload)
+    pair = asyncio.run(extractor.extract_page(source, 1, PNG)).proposal.pairs[0]
+    for side in ("target", "comparable"):
+        reliability = getattr(pair, f"{side}_reliability")
+        assert reliability.method == "model_proposed"
+        assert reliability.confidence_kind == "localization_only"
+        assert reliability.provenance == "parser_registry"
+        assert reliability.producer == "canonical-pdf-localization-v1"
+        assert reliability.confirmation is None
+        observation = getattr(pair.pair, side)
+        assert observation.confidence == 0
+        assert all(e.confidence == 0 for e in observation.evidence)

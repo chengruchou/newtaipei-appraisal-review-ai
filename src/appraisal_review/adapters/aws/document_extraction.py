@@ -241,6 +241,10 @@ class BedrockDocumentExtractor:
                         reliability.unresolved.append("Unsupported or conflicting unit")
                     reliability.model_confidence = observation.confidence
                     reliability.method = "model_proposed"
+                    reliability.confidence_kind = "localization_only"
+                    reliability.provenance = "parser_registry"
+                    reliability.producer = "canonical-pdf-localization-v1"
+                    reliability.confirmation = None
                     observation.confidence = 0.0
             return proposal
         except (ValidationError, KeyError, TypeError, ValueError) as error:

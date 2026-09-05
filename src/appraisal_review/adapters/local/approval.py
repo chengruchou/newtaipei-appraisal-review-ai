@@ -18,6 +18,7 @@ from pathlib import Path
 
 from pydantic import Field
 
+from appraisal_review.domain.confidence import confirmation_digest
 from appraisal_review.domain.document_models import DocumentModel
 from appraisal_review.domain.factor_models import ReviewMaterial
 from appraisal_review.domain.review_contracts import content_digest
@@ -96,6 +97,8 @@ class LocalApprovalStore:
 
     def approve(self, material: ReviewMaterial, *, expected_digest: str) -> ApprovalReceipt:
         reviewer, key = self._identity_key()
+        if not confirmations_valid(material, reviewer):
+            raise ValueError("Material requires current reviewer confirmation")
         digest = content_digest(material)
         if not hmac.compare_digest(digest, expected_digest):
             raise ValueError("Reviewed digest does not match exact material")
@@ -120,7 +123,8 @@ class LocalApprovalStore:
             )
             signature = hmac.new(key, receipt.signed_bytes(), hashlib.sha256).hexdigest()
             return (
-                hmac.compare_digest(signature, receipt.signature)
+                confirmations_valid(material, reviewer)
+                and hmac.compare_digest(signature, receipt.signature)
                 and receipt.material_digest == digest
                 and receipt.case_id == material.policy.identity.case_id
                 and receipt.case_version == material.policy.identity.version
@@ -130,3 +134,18 @@ class LocalApprovalStore:
             )
         except (OSError, ValueError, PermissionError):
             return False
+
+
+def confirmations_valid(material: ReviewMaterial, reviewer: Reviewer) -> bool:
+    for pair in material.facts.pairs:
+        for side in ("target", "comparable"):
+            reliability = getattr(pair, f"{side}_reliability")
+            if reliability.method == "reviewer_confirmed":
+                confirmation = reliability.confirmation
+                if (
+                    confirmation is None
+                    or confirmation.reviewer != f"{reviewer.uid}:{reviewer.name}"
+                    or confirmation.input_digest != confirmation_digest(pair, side)
+                ):
+                    return False
+    return True

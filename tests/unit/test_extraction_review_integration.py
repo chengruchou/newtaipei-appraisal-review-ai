@@ -120,6 +120,11 @@ def test_source_citations_reach_review_after_confirmation_and_exact_approval(tmp
     parser, material = extracted_pdf_material(tmp_path)
     pair = material.facts.pairs[0]
     assert pair.target_reliability.method == "model_proposed"
+    for side in ("target", "comparable"):
+        reliability = getattr(pair, f"{side}_reliability")
+        assert reliability.confidence_kind == "localization_only"
+        assert reliability.provenance == "parser_registry"
+        assert reliability.confirmation is None
     assert pair.pair.target.confidence == pair.pair.comparable.confidence == 0
     assert pair.target_sources[0].bbox != pair.comparable_sources[0].bbox
     request = AgentReviewRequest(
@@ -160,6 +165,15 @@ def test_source_citations_reach_review_after_confirmation_and_exact_approval(tmp
     confirmed = ReviewMaterial.model_validate_json(confirmed_path.read_text())
     assert content_digest(confirmed) != content_digest(material)
     assert confirmed.facts.pairs[0].target_reliability.method == "reviewer_confirmed"
+    for side in ("target", "comparable"):
+        original = getattr(pair.pair, side)
+        confirmed_observation = getattr(confirmed.facts.pairs[0].pair, side)
+        assert confirmed_observation == original
+        assert confirmed_observation.confidence == 0
+        assert all(e.confidence == 0 for e in confirmed_observation.evidence)
+        confirmation = getattr(confirmed.facts.pairs[0], f"{side}_reliability").confirmation
+        reviewer = current_reviewer()
+        assert confirmation.reviewer == f"{reviewer.uid}:{reviewer.name}"
     unapproved = review(confirmed)
     assert unapproved.status.value == "needs_review" and not unapproved.verification.can_complete
     assert any(
@@ -192,3 +206,52 @@ def test_source_citations_reach_review_after_confirmation_and_exact_approval(tmp
     assert any(
         f.kind == "approval" and f.status == "needs_review" for f in rejected.case_review.findings
     )
+
+
+def test_real_pipeline_rejects_later_confidence_provenance_and_citation_changes(tmp_path):
+    parser, material = extracted_pdf_material(tmp_path)
+    pending, output = tmp_path / "pending.json", tmp_path / "confirmed.json"
+    pending.write_text(material.model_dump_json())
+    subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "appraisal_review.document_cli",
+            "confirm-facts",
+            "--material",
+            str(pending),
+            "--expected-digest",
+            content_digest(material),
+            "--output",
+            str(output),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    confirmed = ReviewMaterial.model_validate_json(output.read_text())
+    store = LocalApprovalStore.initialize(tmp_path / "approval", current_reviewer())
+    store.approve(confirmed, expected_digest=content_digest(confirmed))
+    request = AgentReviewRequest(
+        case_id=material.policy.identity.case_id,
+        criteria_document_uri=material.policy.registry.documents[0].uri,
+        case_document_uri=material.policy.registry.documents[1].uri,
+    )
+    for tamper in ("outer", "measured", "provenance", "citation"):
+        changed = confirmed.model_copy(deep=True)
+        pair = changed.facts.pairs[0]
+        if tamper == "outer":
+            pair.pair.target.confidence = 0.99
+        elif tamper == "measured":
+            pair.pair.comparable.evidence[0].confidence = 0.99
+        elif tamper == "provenance":
+            pair.target_reliability.provenance = "native_extraction"
+        else:
+            pair.target_sources = pair.comparable_sources
+        assert not store.permits(changed)
+        controller = build_controller(
+            Settings(_env_file=None), adapters=document_adapters(parser, changed, store)
+        )
+        run = asyncio.run(controller.review(request))
+        assert not run.verification.can_complete
+        assert run.pdf_result is None and run.output_pdf_uri is None
