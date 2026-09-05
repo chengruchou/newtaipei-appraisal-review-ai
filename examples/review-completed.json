@@ -1,0 +1,33 @@
+{
+  "case_id": "synthetic-case",
+  "criteria_document_uri": "file:///synthetic/criteria.pdf",
+  "case_document_uri": "file:///synthetic/verified.pdf",
+  "output_pdf_uri": "file:///synthetic/output.pdf",
+  "field_map": {
+    "template_id": "synthetic-form",
+    "page_numbering": "one_based",
+    "coordinate_system": "pdf_bottom_left",
+    "page_space": "unrotated_crop_box",
+    "fields": [
+      {
+        "field_id": "road-rate",
+        "page": 1,
+        "bounding_box": [
+          1.0,
+          2.0,
+          30.0,
+          40.0
+        ],
+        "max_characters": null,
+        "value_ref": {
+          "scope": "regional",
+          "target_id": "synthetic-target",
+          "comparable_id": "synthetic-comparable",
+          "value": "adjustment_percent",
+          "factor_id": "synthetic.road_width"
+        },
+        "operation": "fill_blank"
+      }
+    ]
+  }
+}

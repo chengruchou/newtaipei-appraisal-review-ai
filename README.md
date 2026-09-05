@@ -111,36 +111,31 @@ Planned outputs:
 - verified facts and inferred classifications kept as distinct values;
 - findings with rule IDs, source evidence, warnings, and unresolved items;
 - deterministic calculation traces and an audit log;
-- a new overlaid PDF when verification permits it. The original is preserved.
+- a new completed or corrected PDF when verification permits it. The original is preserved.
 
 The supplied sample PDFs have no interactive AcroForm fields. The likely MVP
-writer therefore overlays text and marks using a configured field-coordinate
-map. An AcroForm adapter can be added for future templates.
+writer uses a configured field-coordinate map. Blank filling, annotation and
+correction require distinct operations; overlaying existing text is not correction. An AcroForm adapter can be added for future templates.
 
 ## Current implementation status
 
-Implemented and locally testable after installing dependencies:
+Implemented: legacy sum/equals API, typed factor interval/category/matrix engine,
+existing verification gate, shared PDF contracts, composition/injection,
+synchronous `POST /v1/reviews`, framework-neutral AgentCore-facing invocation,
+and an explicit local synthetic runner. PDF errors retain findings and prevent
+completion; successful metadata and warnings remain in the typed response.
 
-- strict Pydantic contracts for canonical fields, evidence, rules, and findings;
-- legacy deterministic `sum` and `equals` validation;
-- a local JSON validation endpoint at `POST /v1/validate`;
-- provider-neutral extraction and explanation ports;
-- thin Textract and Bedrock adapters;
-- CDK data foundations for private versioned S3 storage and DynamoDB case state;
-- CI configuration for Ruff, mypy, and pytest.
+Not implemented: B's actual PDF rendering/storage (#5), Chinese facts/rules
+extraction (#7), complete observed-value/applicability/arithmetic/evidence review
+(#8), and the deployed asynchronous AWS pipeline (#9). The Bedrock explanation
+adapter is not an extractor. Existing CDK only defines data foundations.
 
-The repository realignment adds generic contracts and deterministic evaluation
-for typed factors, intervals, category mappings, units, correction matrices,
-verification gates, audit events, and PDF field maps. These are local core
-capabilities, not proof of end-to-end document processing.
+The current verifier checks critical factor presence/status and summary status;
+it does not independently prove full-case correctness. Its documented limitations
+remain under #8. A synthetic completed run uses a fake writer and creates no PDF.
 
-Not yet implemented end to end:
-
-- production OCR-to-fact and OCR-to-rule extraction;
-- reviewer approval and persistence of candidate rule sets;
-- a production PDF overlay writer;
-- an asynchronous agent runtime and deployed API;
-- complete official factors, UI, benchmarks, and production operations.
+See [delivery traceability](docs/delivery-traceability.md) for implementation,
+test evidence, ownership and Issue dependencies.
 
 ## Repository layout
 
@@ -170,7 +165,7 @@ python3 -m pip install -e '.[dev]'
 ruff check .
 ruff format --check .
 mypy src
-pytest
+PYTHONPATH=src pytest
 ```
 
 Run the currently implemented local API:
@@ -184,15 +179,18 @@ Then open `http://127.0.0.1:8000/docs` or request
 
 ## AWS strategy
 
-AWS services are adapters, not domain dependencies. The available competition
-account, Region, permissions, quotas, and model IDs must be confirmed before a
-deployment architecture is fixed. Candidate services include object storage,
-document extraction, model inference, serverless tool endpoints, orchestration,
-and observability. The schemas, rule engine, verifier, and tests should remain
-runnable without AWS credentials.
+Target services are API Gateway + Lambda/FastAPI, private S3 presigned transfers,
+SQS + dispatcher, AgentCore Runtime, Bedrock, DynamoDB and CloudWatch. The
+organizer supplies required services. Account access, Region, model capabilities
+and API quotas still require explicit verification.
 
-The existing CDK stack creates only data foundations; it does not deploy the
-review workflow.
+The local synchronous review API keeps its semantics. #9 adds asynchronous
+review jobs with authorized document references, durable state, idempotency,
+leases/recovery and result publication. No cloud deployment is claimed by local
+invocation tests. Textract/BDA document language support does not cover this
+Chinese source set; #7 uses native PDF content and Bedrock visual understanding.
+
+See [architecture](docs/architecture.md) and [cloud smoke plan](docs/aws-smoke-plan.md).
 
 ## Reliability and human review
 
@@ -221,3 +219,16 @@ The implementation order and acceptance criteria are maintained in the
 - A generic rule language supports known rule shapes; a genuinely new rule shape
   requires an explicit engine extension and tests.
 - Human confirmation remains necessary for ambiguous OCR and case exceptions.
+
+## Runnable Member A demonstration
+
+```bash
+export PYTHONPATH="$PWD/src"
+python -m appraisal_review.demo completed
+python -m appraisal_review.demo needs_review
+python scripts/http_smoke.py
+```
+
+These commands use explicit synthetic fixtures, no AWS credentials and no PDF
+creation. See the [runbook](docs/member-a-runbook.md) for HTTP requests, precise
+imports, B's injection point and validation commands.

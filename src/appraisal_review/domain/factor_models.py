@@ -9,9 +9,9 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from appraisal_review.domain.models import EvidenceRef
+from appraisal_review.domain.pdf_types import Identifier, PDFProblem, PDFWriteResult
 from appraisal_review.domain.pdf_types import PDFField as PDFField
 from appraisal_review.domain.pdf_types import PDFFieldMap as PDFFieldMap
-from appraisal_review.domain.pdf_types import PDFProblem, PDFWriteResult
 
 
 class StrictFactorModel(BaseModel):
@@ -251,10 +251,10 @@ class AuditEvent(StrictFactorModel):
 
 
 class AgentReviewRequest(StrictFactorModel):
-    case_id: str
-    criteria_document_uri: str
-    case_document_uri: str
-    output_pdf_uri: str | None = None
+    case_id: Identifier
+    criteria_document_uri: Identifier
+    case_document_uri: Identifier
+    output_pdf_uri: Identifier | None = None
     field_map: PDFFieldMap | None = None
 
 
@@ -263,7 +263,7 @@ class AgentReviewRun(StrictFactorModel):
     status: WorkflowStatus
     review: FactorReviewResult | None = None
     verification: VerificationReport | None = None
-    output_pdf_uri: str | None = None
+    output_pdf_uri: Identifier | None = None
     pdf_result: PDFWriteResult | None = None
     pdf_error: PDFProblem | None = None
     audit_events: list[AuditEvent] = Field(default_factory=list)

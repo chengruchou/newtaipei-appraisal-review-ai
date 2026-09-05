@@ -1,144 +1,144 @@
-# Architecture
+# Architecture and delivery boundaries
 
-## Architectural style
+The product reviews and assists completion of appraisal forms:
+case criteria + forms -> document understanding -> proposed rules and evidenced
+facts -> deterministic calculation -> comparison with filled values, sums and
+cross-form checks -> findings/human confirmation -> a verified output copy.
+AI proposes document interpretations; deterministic code controls decisions and
+PDF placement. The present controller is a gated workflow, not yet a dynamic
+agent with tool retries and rule approval recovery.
 
-The system is a neuro-symbolic agent workflow:
+## Implemented entry path (#4, foundation #6)
 
-- document AI and structured LLM output propose interpretations of documents;
-- deterministic code owns classification, matrices, arithmetic, verification,
-  workflow completion, and PDF placement;
-- a controller selects tools and safe next states based on evidence and errors;
-- human review is an explicit branch, not an exception hidden from the result.
-
-## End-to-end data flow
-
-```text
-Evaluation criteria PDF
-  -> document parser
-  -> candidate rule extraction
-  -> schema and semantic validation
-  -> reviewer approval when required
-  -> immutable, versioned rule set
-
-Valuation case PDFs
-  -> document parser
-  -> normalized facts with evidence
-  -> agent controller
-       -> rule-set resolver
-       -> deterministic factor engine
-       -> verifier
-       -> PDF writer, only when safe
-       -> audit logger
-  -> findings + audit trail + optional output PDF
+```mermaid
+flowchart LR
+    API["POST /v1/reviews (synchronous)"] --> ENTRY["Shared entry execution"]
+    INV["AgentCore-facing invoke(payload)"] --> ENTRY
+    ENTRY --> BOOT["Composition root + injected adapters"]
+    BOOT --> C["ReviewAgentController"]
+    C --> P["DocumentParser / FactExtractor / RuleSetProvider"]
+    C --> E["FactorRuleEngine"]
+    E --> V["Existing ReviewVerifier"]
+    V -->|unresolved or failed| F["Findings; no writer"]
+    V -->|can_complete| W["Typed PDFWriter (#5)"]
+    W --> R["AgentReviewRun + PDF metadata/error"]
 ```
 
-## Components
+The HTTP endpoint and invocation adapter validate AgentReviewRequest and serialize
+AgentReviewRun, including null values and enum strings. Invalid payloads return
+an `invalid_request` error; HTTP uses 422. Configuration errors use 503, execution
+errors 500, and all expose sanitized messages. Dependency construction occurs
+only after request validation. No cloud SDK or credential discovery at import.
 
-| Component | Responsibility | Authority |
+`build_controller(settings, adapters=ReviewAdapters(...))` is the shared
+composition root. RUNTIME_MODE is local or aws; unknown modes fail. Required
+parser/extractor/provider adapters and mode labels are checked. AWS mode requires
+explicit Region/model/storage settings and an AWS adapter bundle; there is no
+fallback. Only SYNTHETIC_DEMO=true in local mode installs fixtures. The fixture
+parser accepts a fixed URI allowlist and does no file I/O; fake PDF results
+include an explicit warning that no file was created.
+
+The legacy /health and /v1/validate endpoints retain their successful response
+shape and calculation behavior. Legacy ReviewResult.overall_status is a Python
+property, not a serialized field; HTTP findings carry per-check status.
+
+## Honest implementation limits
+
+| Component | Current behavior | Remaining delivery |
 |---|---|---|
-| Document parser | Extract text, tables, marks, pages, and coordinates | Probabilistic input |
-| Fact extractor | Map document content to typed facts with evidence | Proposed structured data |
-| Rule extractor | Map criteria tables to candidate rule data | Proposed structured data |
-| Rule-set resolver | Match approved rules to case applicability | Deterministic |
-| Factor engine | Classify ranges/categories and query correction matrices | Deterministic |
-| Verifier | Check evidence, units, rules, arithmetic, and copied values | Deterministic where possible |
-| Agent controller | Choose tools and workflow states based on outcomes | Workflow authority only |
-| PDF writer | Write verified values to a copy of a source PDF | Deterministic |
-| Audit logger | Record inputs, evidence, rules, decisions, and writes | Deterministic |
-| Explanation generator | Explain existing findings | Untrusted presentation output |
+| Factor engine | Interval/category/unit/matrix calculation | Observed-value review and complete scope: #8 |
+| Verifier | Critical factor presence/status and summary status | Independent evidence/identity/math gate: #8 |
+| Applicability | Metadata model only | Unique district/category/date/version resolution: #7/#8 |
+| Legacy sum/equals | Works in legacy service/API | Connect to new Controller and group/cross-table totals: #8 |
+| Bedrock adapter | Explains legacy findings | Facts/rules extraction: #7 |
+| PDF | Typed request/result/errors and fake integration | Real rendering and S3 transfer: #5 |
+| Entrypoints | Local sync HTTP and invocation adapter | Deployed Runtime and async cloud API: #9 |
+| CDK | Two private versioned buckets and case table | Complete cloud pipeline: #9 |
 
-## Agent decisions
+A verified/completed synthetic factor slice does not establish full-case review.
+A confirmed baseline verifier weakness is tracked in #8: a fabricated verified
+result for the required factor, with unrelated rule/version and an incorrect
+rate, still passes its current presence/status gate. A/B do not change that
+verifier or audit logger. No production approval claim is made.
 
-The controller is not a chat wrapper and not merely a fixed happy-path script.
-It must be able to:
+## PDF boundary and ownership
 
-- load an approved rule set or route a candidate set for review;
-- stop evaluation when critical facts or evidence are missing;
-- retry a replaceable extraction tool without changing source facts silently;
-- request review for ambiguous applicability, OCR, units, or categories;
-- withhold PDF writing after a critical verification failure;
-- export an audit event for every state transition and tool result.
+See [PDF contract](pdf-contract.md) and ADR 0002. Only verification.can_complete
+allows construction of PDFWriteRequest. The controller then checks the typed
+result, destination, source page count and exact field set. Warnings/metadata
+live in pdf_result, errors in pdf_error; failed writes preserve review findings.
+B owns actual page, font, glyph, overflow, correction and atomic publication
+checks. Needs-review findings remain available without invoking the completed
+form writer. A report PDF would require a separate report-artifact contract.
 
-Expected conceptual tools are `parse_document`, `extract_facts`,
-`load_or_build_rules`, `evaluate_factors`, `verify_results`, `write_pdf`, and
-`export_audit_log`.
+## Target AWS pipeline (#9; designed, not deployed)
 
-## Rule portability
-
-The engine supports a bounded rule language rather than district-specific
-branches:
-
-- numeric and distance intervals with explicit inclusive/exclusive bounds;
-- semantic category mappings and aliases;
-- target-grade-by-comparable-grade correction matrices;
-- sums and equality checks;
-- explicit units and applicability metadata.
-
-Rule-set applicability includes jurisdiction, land-use category, effective
-dates, and source-document identity. If no unique approved rule set applies,
-the safe result is `needs_review`. New rule shapes must be added explicitly to
-the engine and tested; they are not approximated by an LLM.
-
-## Stable boundaries
-
-Domain models and deterministic engines do not import AWS SDKs, OCR libraries,
-PDF libraries, or web frameworks. Ports define provider-neutral contracts.
-Adapters translate local or cloud services to those contracts. API handlers
-validate transport data and invoke application use cases without embedding
-valuation policy.
-
-The existing legacy `CanonicalCase` and `RuleEngine` remain a supported local
-baseline for sum and equality checks while the typed factor path is developed.
-
-## Error and human-review path
-
-| Condition | Required behavior |
-|---|---|
-| Missing or low-confidence critical evidence | `needs_review`; no completion |
-| Unknown factor ID | Explicit failed result |
-| Unsupported rule format | Reject candidate rule set |
-| Ambiguous or multiple applicable rule sets | `needs_review` |
-| Unit mismatch without known conversion | `needs_review` |
-| Interval gap or overlap | Reject rule set before use |
-| Missing matrix cell or invalid orientation | Failed result; no completion |
-| Arithmetic or cross-form mismatch | Finding and critical completion gate |
-| PDF placement/readability failure | Keep review results; fail PDF output |
-
-Verified facts, inferred grades, warnings, and unresolved items remain separate
-in data contracts. LLM prose cannot change these statuses.
-
-## PDF writing
-
-The sample forms do not contain AcroForm fields. The MVP strategy is:
-
-```text
-original template + configured field map + verified result
-  -> transparent overlay
-  -> new output PDF
+```mermaid
+flowchart LR
+    U["Authorized client"] --> G["API Gateway + Lambda/FastAPI"]
+    U -->|presigned transfer| S["Private S3"]
+    G --> D["DynamoDB jobs + outbox"]
+    D --> Q["SQS"]
+    Q --> L["Dispatcher"]
+    L --> A["AgentCore Runtime"]
+    A --> B["Bedrock document understanding"]
+    A --> C["Controller + deterministic tools"]
+    C --> S
+    A --> D
+    RC["Expired lease / outbox reconciler"] --> D
+    D -->|bounded retry| Q
+    A --> CW["CloudWatch"]
 ```
 
-Field maps declare one-based pages and PDF bottom-left coordinates. An adapter
-must translate OCR/image top-left coordinates explicitly. Writers validate the
-source file, page count, target page, placement, overflow, and Chinese font
-rendering. The original is never overwritten. A future AcroForm adapter can
-implement the same port.
+The organizer supplies required AWS services. We prepare this design now;
+profile, deployment Region, model permissions and limits still require validation.
+No AgentCore Gateway, MCP layer or vector store is required by this path.
 
-## AWS boundary
+- External cloud APIs accept authorized document_id and object version references,
+  never file:// or caller-chosen bucket/key. Resolve internal URIs after ownership
+  checks. Presigned uploads have bounded size/type/expiry and confirmed ownership.
+- POST /v1/review-jobs returns 202 with run_id; status/result routes poll durable
+  state. The synchronous /v1/reviews contract is not silently repurposed.
+- case_id identifies the case; run_id identifies immutable input/rule versions;
+  a UUID Runtime session_id is per attempt. Idempotency key is scoped to principal
+  and checked against a canonical payload hash; reuse with different data is 409.
+- DynamoDB owns execution state (queued, dispatching, running, succeeded, failed),
+  attempt counts, leases and fencing tokens. Controller alone owns business review
+  status (needs_review/verified/completed/failed). A succeeded execution can return
+  needs_review; neither means a completed PDF exists.
+- Persist a job and outbox transaction before dispatch. An outbox reconciler
+  recovers the DB/SQS gap. Dispatcher conditionally claims an attempt; duplicates
+  do not start another active attempt. A Runtime acceptance response is not final.
+- Runtime conditionally acquires the attempt lease, heartbeats, and writes findings
+  and optional PDF to attempt-specific objects. It conditionally commits a result
+  manifest only with the current fencing token; expose only referenced artifacts.
+- Recover lost invocation responses and expired leases through the reconciler,
+  with capped attempts, exponential backoff, DLQ and alarms. Stale attempts cannot
+  replace newer manifests. Business needs_review is terminal, not a retry trigger.
+  SQS messages are acknowledged only after durable responsibility is recorded.
+- CloudWatch records run/attempt correlation, latency and sanitized errors, not
+  source text or secrets. It does not replace the domain audit trail.
 
-The local core must work without AWS credentials. Object storage, document AI,
-model inference, agent runtime, serverless endpoints, and observability remain
-replaceable adapters until competition account permissions, Regions, quotas,
-and available models are known.
+## Verified AWS constraints (2026-09-05)
 
-The current CDK stack provisions only private versioned input/result buckets
-and a case-state table. It is not a deployed review workflow.
+[HTTP API quotas](https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-quotas.html)
+include a 30-second integration timeout, so long document work uses jobs.
+[SQS/Lambda delivery](https://docs.aws.amazon.com/lambda/latest/dg/with-sqs.html)
+can be repeated; consumers must be idempotent.
 
-## Trust boundaries
+The [Runtime HTTP contract](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-http-protocol-contract.html)
+requires ARM64, port 8080, POST /invocations and GET /ping. Background processing
+must report HealthyBusy. Use the SDK's task tracking or equivalent custom ping
+state with final cleanup, and keep health responsive. See
+[long-running tasks](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-long-run.html).
+The local invocation adapter by itself is not that server or a deployed Runtime.
 
-1. OCR and LLM output is probabilistic and must retain evidence and confidence.
-2. Candidate rules are not executable production policy until validated and
-   approved.
-3. Deterministic engines exclusively own grades, rates, and totals.
-4. PDF output is allowed only after critical verification succeeds.
-5. Real documents stay outside Git and are encrypted in approved storage.
-6. Every case records rule and source versions for reproducibility.
+[Textract](https://docs.aws.amazon.com/textract/latest/dg/limits-document.html)
+and [BDA document inputs](https://docs.aws.amazon.com/bedrock/latest/userguide/bda-limits.html)
+do not list Chinese and exclude vertical text. #7 therefore uses native PDF text,
+coordinates and Bedrock visual understanding, with selected model capability and
+payload-limit verification. Audio language support cannot justify document use.
+Model output is a candidate; a trusted approval workflow grants approved status.
+
+See [MVP plan](mvp-plan.md), [traceability](delivery-traceability.md), and
+[cloud smoke plan](aws-smoke-plan.md) for acceptance and deployment boundaries.

@@ -1,94 +1,66 @@
-# MVP plan
+# Delivery plan and ownership
 
-## Supported factor slice
+The project delivers auditable appraisal review and assisted filling. Reading
+PDFs and drawing output are stages; observed-value verification is essential.
+The closed parent #3 remains history, not an active catch-all milestone.
 
-The first end-to-end slice targets:
+| Order | Deliverable | Dependencies | Ownership / status |
+|---|---|---|---|
+| 1 | Shared PDF Contract Foundation #6, PR #10 | main b69ed74 | Shared models, ports, metadata, dev dependencies; code + local tests |
+| 2A | Member A #4 | Exact #6 commit | Composition, sync HTTP, invocation adapter, synthetic runner; code + local tests |
+| 2B | Member B #5 | Same #6 commit | PDF drawing, storage, fonts, field operations; planned, no implementation present |
+| 3 | Chinese extraction #7 | #4 ports, #8 identity agreement | Parser/facts/candidate rules; planned, unassigned |
+| 4 | Complete review #8 | #7 facts, #6 contracts | Observed values, applicability, sums, cross-form evidence/gate; planned, unassigned |
+| 5 | AWS async integration #9 | #4/#5/#7/#8 | Jobs, dispatch/leases, Runtime, storage, observability; designed, unassigned |
 
-1. Main road width.
-2. Average road width within the section.
-3. Drainage condition.
-4. Terrain condition.
-5. Proximity to a traditional market, supermarket, or major shopping center.
+Foundation SHA: e24265d7c4ef0bb5d2d74d0ed94bffa2052a08ed.
+A stacks on codex/shared-pdf-contract. B can branch from this SHA immediately;
+no waiting for A merge. Future shared changes are coordinated through #6.
+A/B leave domain/verification.py, adapters/local/audit.py and
+tests/unit/test_verification.py unchanged. Only #8 considers verifier expansion.
+Human review remains required for all PRs; none are merged automatically.
 
-This set exercises numeric ranges, semantic categories, distance ranges, units,
-correction matrices, evidence tracking, and human-review behavior.
+## Acceptance stages
 
-## Milestone 0: domain confirmation
+1. Foundation: schema/URI/placement/lookup and JSON tests, one writer protocol,
+   warnings/errors preserved, compatibility imports. No rendering claims.
+2. A: real HTTP and invocation parity, validation before invocation, explicit
+   missing config, one call, failed/needs-review gates, typed PDF failure cases,
+   no-credential imports and a runnable clearly synthetic demonstration.
+3. B: original hash unchanged, multiple page dimensions/rotation/CropBox,
+   glyph/overflow checks, blank-fill vs annotation vs genuine correction,
+   readable output and atomic publication, injected mocked S3 transfer.
+4. Extraction/full review: original-file checks with source hashes/pages,
+   reviewer-approved candidate rules, observed/expected differences, precise
+   identities, sums and copied values, coverage and conservative completion.
+5. Cloud: independent execution/business states, authenticated document IDs,
+   durable outbox/idempotency/lease recovery, bounded retries/DLQ, final manifest,
+   live evidence and cleanup. An entry-only synthetic cloud smoke can precede
+   document integration; it does not satisfy full cloud review acceptance.
 
-- Inventory the exact source fields and cross-form destinations.
-- Have a domain owner confirm the applicable example rule set and matrix
-  orientation.
-- Define synthetic and anonymized acceptance cases.
+The five initial factors (main road, average road width, drainage, terrain,
+market proximity) remain a representative slice. Their success cannot approve
+all other factors or empty comparison columns.
 
-Acceptance criteria:
+## Source checks performed on 2026-09-05
 
-- Every MVP factor has a stable factor ID and documented source location.
-- The example rule set is marked case-specific and has a source identity.
-- Ambiguities in the source PDF are recorded, not guessed.
+The official brief was read without modification. The supplied criteria have
+9 pages; forms have 6 pages, including portrait/landscape A4 and landscape A3,
+with no AcroForm widgets. Source thresholds and matrices confirm regional main
+road 18m -> normal; individual front road 18m vs 6m -> +5%. The forms copy the
+regional total into the comparison form; blank comparable columns remain blank.
+A suspicious mixed-unit interval appears in the criteria and must remain
+unresolved until confirmed. These are read-only source observations, not passing
+extraction tests or permission to auto-approve rules.
 
-## Milestone 1: executable contracts and rules
+#7/#8 acceptance includes those cases, endpoints, reverse matrix direction,
+contradictory source text, empty comparable columns and mixed page dimensions.
+Only synthetic fixtures enter Git. No source PDFs or OCR dumps are committed.
 
-- Validate typed facts, units, applicability, intervals, categories, and
-  matrices.
-- Reject overlapping intervals, missing grades, and unknown factor IDs.
-- Test inclusive and exclusive boundaries and matrix row/column direction.
+## Integration resources
 
-Acceptance criteria:
-
-- The local core evaluates reviewer-confirmed JSON without AWS credentials.
-- Every result has a rule ID and deterministic trace.
-- Missing evidence and low confidence produce `needs_review`.
-
-## Milestone 2: local document vertical slice
-
-- Parse the criteria and valuation forms with a replaceable local or cloud
-  document adapter.
-- Convert extraction output into typed facts and candidate rules.
-- Add a review step before candidate rules can be published.
-
-Acceptance criteria:
-
-- One sample case runs from source PDFs to verified findings.
-- Extracted facts retain page and coordinate evidence.
-- Unsupported tables and unresolved labels are surfaced explicitly.
-
-## Milestone 3: verification, PDF, and audit
-
-- Verify evidence, units, classifications, matrices, totals, and copied values.
-- Overlay verified values on a copy of the original PDF using a field map.
-- Export a machine-readable audit log.
-
-Acceptance criteria:
-
-- Output PDF page count and readability are checked.
-- Chinese text placement and overflow are tested.
-- Critical failures prevent PDF completion.
-- Every write location and written value appears in the audit trail.
-
-## Milestone 4: AWS vertical slice
-
-- Select services only after account permissions, Region, quotas, and supported
-  models are confirmed.
-- Add asynchronous processing, persistence, retries, idempotency, and
-  observability through replaceable adapters.
-
-Acceptance criteria:
-
-- Infrastructure is reproducible and least-privilege.
-- Raw documents and derived results remain private and versioned.
-- The tested local core remains provider-neutral.
-
-## Milestone 5: evaluation and demo
-
-- Measure extraction accuracy, rule-level precision/recall, false-negative
-  rate, and reviewer time saved.
-- Demonstrate source highlighting, human override, rule provenance, and safe
-  failure behavior.
-
-## Remaining risks
-
-- OCR may lose table structure, selection marks, or coordinate fidelity.
-- The source criteria may contain typographical or interval ambiguities.
-- Matrix orientation requires explicit domain confirmation.
-- Different templates require different field maps.
-- Competition cloud permissions and model availability are not yet known.
+The organizer supplies the intended AWS services; implementation planning is
+not deferred on speculative service availability. Specific account access,
+Region, model capabilities and actual quotas must still be verified. See
+[architecture](architecture.md), [traceability](delivery-traceability.md),
+[local runbook](member-a-runbook.md), and [cloud smoke plan](aws-smoke-plan.md).

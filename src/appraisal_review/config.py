@@ -1,5 +1,7 @@
 """Runtime configuration loaded from environment variables."""
 
+from typing import Literal
+
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -9,9 +11,11 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
+    runtime_mode: Literal["local", "aws"] = "local"
+    synthetic_demo: bool = False
     app_env: str = "local"
     app_log_level: str = "INFO"
-    aws_region: str = "ap-northeast-1"
+    aws_region: str = ""
     bedrock_model_id: str = ""
     input_bucket: str = ""
     result_bucket: str = ""

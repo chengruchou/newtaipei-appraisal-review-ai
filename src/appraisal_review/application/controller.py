@@ -154,6 +154,7 @@ class ReviewAgentController:
                 status=WorkflowStatus.FAILED,
                 review=result,
                 verification=verification,
+                pdf_error=PDFProblem(code=PDFErrorCode.WRITE),
                 audit_events=events,
             )
 
