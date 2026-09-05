@@ -98,7 +98,11 @@ class SourceRegistry(DocumentModel):
                 if region.id == citation.region_id:
                     # Image localization proves position, never semantic correctness.
                     return region.bbox == citation.bbox and (
-                        (region.kind == "image" and not citation.excerpt)
+                        (
+                            region.kind in {"image", "cell", "selection"}
+                            and not region.text
+                            and not citation.excerpt
+                        )
                         or (bool(citation.excerpt) and citation.excerpt in region.text)
                     )
         return False

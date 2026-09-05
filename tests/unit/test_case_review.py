@@ -295,7 +295,16 @@ def test_approval_binds_every_input_and_does_not_accept_status_flag():
 
 def test_blank_output_is_derivable_but_missing_fact_is_not():
     material = synthetic_material()
+    from appraisal_review.domain.document_models import SourceRegion
+
     material.policy.inventory.slots[0].derivable_blank = True
+    source = material.policy.registry.documents[1]
+    source.pages[0].regions.append(
+        SourceRegion(id="blank-output", kind="cell", bbox=(1, 50, 90, 60))
+    )
+    ref = material.facts.observed[0].evidence[0].model_copy(deep=True)
+    ref.region_id, ref.bbox, ref.excerpt = "blank-output", (1, 50, 90, 60), ""
+    material.facts.observed[0].evidence = [ref]
     material.facts.observed[0].state, material.facts.observed[0].value = "blank", None
     assert evaluate(material).status.value == "verified"
     material.facts.pairs[0].pair.target.value = None
@@ -372,3 +381,29 @@ def test_field_map_cannot_relabel_verified_context():
             field_map=request.field_map,
             result=evaluate(synthetic_material()).comparisons[0],
         )
+
+
+def test_legacy_evidence_cannot_disagree_with_source_citations():
+    material = synthetic_material()
+    material.facts.pairs[0].pair.target.evidence[0].page = 99
+    assert evaluate(material).status.value == "needs_review"
+
+
+def test_blank_cell_location_is_valid_without_invented_text():
+    from appraisal_review.domain.document_models import SourceCitation, SourceRegion
+
+    material = synthetic_material()
+    source = material.policy.registry.documents[1]
+    source.pages[0].regions.append(SourceRegion(id="blank", kind="cell", bbox=(1, 50, 90, 60)))
+    ref = SourceCitation(
+        document_id=source.document_id,
+        content_hash=source.content_hash,
+        version=source.version,
+        page=1,
+        region_id="blank",
+        bbox=(1, 50, 90, 60),
+        excerpt="",
+    )
+    assert material.policy.registry.resolves(ref)
+    ref.excerpt = "invented value"
+    assert not material.policy.registry.resolves(ref)

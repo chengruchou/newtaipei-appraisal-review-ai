@@ -270,6 +270,22 @@ class CaseReviewer:
                     and observation.raw_text is not None
                     and bool(observation.evidence)
                     and all(
+                        any(
+                            evidence.document_id == ref.document_id
+                            and evidence.page == ref.page
+                            and evidence.bounding_box == ref.bbox
+                            and evidence.coordinate_system == "pdf_bottom_left"
+                            and evidence.source_file
+                            == next(
+                                d.uri
+                                for d in registry.documents
+                                if d.document_id == ref.document_id
+                            )
+                            for ref in refs
+                        )
+                        for evidence in observation.evidence
+                    )
+                    and all(
                         ref.excerpt in observation.raw_text or observation.raw_text in ref.excerpt
                         for ref in refs
                         if ref.excerpt
@@ -458,6 +474,15 @@ class CaseReviewer:
                     "observed_missing",
                     "needs_review",
                     "Required observed/expected evidence missing",
+                    **details,
+                )
+                continue
+            if value.state == "blank" and any(ref.excerpt.strip() for ref in value.evidence):
+                add(
+                    id,
+                    "blank_contradiction",
+                    "needs_review",
+                    "Claimed blank references nonblank source text",
                     **details,
                 )
                 continue
