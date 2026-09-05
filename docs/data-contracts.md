@@ -105,3 +105,14 @@ lists required/present/verified checks and comparison identities. All required
 checks, including arithmetic and cross-form copying, enter the completion gate.
 No inferred value silently replaces a verified source fact. The initial verifier
 only checks selected factor presence/status, a limitation with a reproducer in #8.
+
+## HTTP error compatibility
+
+POST /v1/validate retains HTTPValidationError with a detail array of loc, type
+and msg; raw input/context is omitted and custom value/assertion messages are
+sanitized. POST /v1/reviews returns EntryProblemResponse containing error with
+code/message for 422 (invalid input), 503 (configuration) and 500 (execution).
+OpenAPI declares that envelope for all three statuses. Direct invocation uses
+EntryProblem.response() and the same serialization, with no HTTP status wrapper.
+Success responses and controller behavior remain unchanged. See ADR 0004 and
+api error contract tests for runtime JSON validation against the published schema.

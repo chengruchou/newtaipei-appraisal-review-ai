@@ -58,8 +58,24 @@ def main() -> None:
                 else:
                     assert data["output_pdf_uri"] is None
                 print(f"HTTP smoke: {scenario} -> 200 / {data['status']}")
-            assert client.post("/v1/reviews", json={}).status_code == 422
-            print("HTTP smoke: malformed input -> 422; no AWS or real PDFs used.")
+            invalid = client.post("/v1/reviews", json={})
+            assert invalid.status_code == 422
+            assert invalid.json() == {
+                "error": {"code": "invalid_request", "message": "Invalid review request."}
+            }
+            legacy = client.post("/v1/validate", json={})
+            assert legacy.status_code == 422
+            assert {tuple(item["loc"]) for item in legacy.json()["detail"]} == {
+                ("body", "case"),
+                ("body", "rule_set"),
+            }
+            schema = client.get("/openapi.json").json()
+            for status in ("422", "503", "500"):
+                declared = schema["paths"]["/v1/reviews"]["post"]["responses"][status]
+                assert declared["content"]["application/json"]["schema"] == {
+                    "$ref": "#/components/schemas/EntryProblemResponse"
+                }
+            print("HTTP smoke: legacy detail and review error/OpenAPI contracts passed.")
     finally:
         child.terminate()
         try:
