@@ -1,187 +1,118 @@
 # Data contracts
 
-All module boundaries are strict, JSON-compatible, and versioned. The examples
-below illustrate structure; their numeric values are not official policy.
+All boundaries reject unknown fields and serialize to JSON. Policy is versioned
+data, not district-specific branching. Technical status below distinguishes
+existing models from unimplemented review semantics.
 
-## Evidence-grounded fact
+## Existing factor contracts
 
-```json
-{
-  "factor_id": "regional.transport.main_road_width",
-  "raw_text": "Main road: Zhongshan Road, width: 18 m",
-  "normalized_value": {
-    "type": "number",
-    "value": 18,
-    "unit": "m"
-  },
-  "evidence": [
-    {
-      "document_id": "valuation-case",
-      "source_file": "valuation-case.pdf",
-      "page": 1,
-      "bounding_box": [100.0, 200.0, 250.0, 220.0],
-      "coordinate_system": "ocr_top_left",
-      "confidence": 0.99,
-      "block_ids": ["block-123"]
-    }
-  ],
-  "confidence": 0.99,
-  "status": "extracted"
-}
-```
+`domain.factor_models` owns AgentReviewRequest, AgentReviewRun, observations,
+rule sets and factor results. AgentReviewRequest has nonempty case_id,
+criteria_document_uri, case_document_uri, optional output_pdf_uri and field_map.
+It describes an internal/local invocation; the future cloud API authorizes
+external document IDs before resolving these URIs (#9).
 
-Raw text and evidence are never replaced by normalized or inferred values.
-Pages are one-based. Coordinate systems must be named explicitly.
+FactorObservation preserves raw_text, normalized value/unit, evidence references
+and extraction confidence. EvidenceRef carries document/source identity,
+one-based page, optional bounding box and named coordinate system. Coordinate
+and source preservation is a parser requirement (#7), not something established
+by the mere existence of model fields. Missing/low-confidence critical inputs
+are unresolved. A model's own confidence estimate is not calibrated evidence.
 
-## Factor rule set
+FactorRuleSet declares rule_set_id/version, candidate/approved/rejected,
+applicability, source identity, intervals/categories and correction matrices.
+Intervals cover the supported domain in ascending order with exactly one owner
+for each boundary. Matrix rows are target grades and columns comparable grades.
+The engine only executes approved rules. The provider must obtain approval from
+a trusted reviewer record; accepting model-declared approved is prohibited (#7).
+Applicability fields currently validate date ordering, not case matching (#8).
 
-```json
-{
-  "rule_set_id": "example-commercial-v1",
-  "version": "1.0.0",
-  "status": "approved",
-  "applicability": {
-    "jurisdiction": "example-district",
-    "land_use_category": "commercial",
-    "effective_from": "2026-01-01",
-    "effective_to": null
-  },
-  "source_document": {
-    "document_id": "criteria-example",
-    "content_hash": "sha256:example"
-  },
-  "rules": [
-    {
-      "id": "regional.transport.main_road_width.v1",
-      "factor_id": "regional.transport.main_road_width",
-      "kind": "numeric_interval",
-      "unit": "m",
-      "intervals": [
-        {
-          "grade": "excellent",
-          "minimum": 30,
-          "minimum_inclusive": true,
-          "maximum": null,
-          "maximum_inclusive": false
-        }
-      ],
-      "categories": [],
-      "correction_matrix": {
-        "row_axis": "target_grade",
-        "column_axis": "comparable_grade",
-        "values": {
-          "excellent": {"excellent": 0.0}
-        }
-      }
-    }
-  ]
-}
-```
+FactorReviewResult contains per-factor expected grades/rates and a summary total.
+The current shape represents one implicit target/comparable pair. It does not
+carry the original form's observed grades/rates/totals or a complete case identity.
+#8 adds scope/zone/target/comparable/date/version identities, observed vs expected
+values, group totals, legacy sum/equals integration and cross-form provenance.
+Unused comparable columns are absent entities, not incomplete comparables.
 
-Intervals must be ordered and non-overlapping. A published rule set must have a
-source identity and explicit applicability. Matrix axes are never inferred.
+## Entry response and errors (#4)
 
-## Evaluation request
+POST /v1/reviews returns AgentReviewRun synchronously, identical to the successful
+JSON result of adapters.aws.agentcore.runtime.invoke. Both preserve enum string
+values and None as JSON null. Transport code has no valuation rules.
 
 ```json
 {
-  "case_id": "example-case-001",
-  "rule_set_id": "example-commercial-v1",
-  "factors": [
-    {
-      "factor_id": "regional.transport.main_road_width",
-      "target": {
-        "value": {"type": "number", "value": 18, "unit": "m"},
-        "evidence": [],
-        "confidence": 0.99
-      },
-      "comparable": {
-        "value": {"type": "number", "value": 6, "unit": "m"},
-        "evidence": [],
-        "confidence": 0.99
-      }
-    }
-  ]
+  "case_id": "synthetic-case",
+  "status": "needs_review",
+  "review": null,
+  "verification": null,
+  "output_pdf_uri": null,
+  "pdf_result": null,
+  "pdf_error": null,
+  "audit_events": []
 }
 ```
 
-Production observations require evidence. Empty evidence in this example is
-only for illustrating the interface and would yield `needs_review`.
+This minimal shape illustrates the unapproved-rule branch. Actual evaluated cases
+include review and verification, including unresolved factors and calculation
+traces. The controller's audit events record its decisions using the unchanged
+AuditLogger interface. The final completed state proves only the current factor
+slice and output interface, not full document verification.
 
-## Evaluation result
+Malformed payloads return `{"error":{"code":"invalid_request","message":"Invalid review request."}}`
+(HTTP 422). Configuration errors use codes invalid_configuration,
+missing_local_adapters, missing_aws_configuration, missing_aws_adapters,
+synthetic_aws_forbidden, adapter_mode_mismatch or invalid_adapter (HTTP 503).
+Unexpected execution errors return review_execution_failed (HTTP 500). Messages
+omit raw validation input, secrets, stack traces and document text.
 
-```json
-{
-  "case_id": "example-case-001",
-  "rule_set_id": "example-commercial-v1",
-  "results": [
-    {
-      "factor_id": "regional.transport.main_road_width",
-      "target_grade": "normal",
-      "comparable_grade": "inferior",
-      "adjustment_percent": 0.0,
-      "rule_id": "regional.transport.main_road_width.v1",
-      "calculation_trace": "Classified both observations and queried target row / comparable column.",
-      "status": "verified",
-      "warnings": []
-    }
-  ],
-  "summary": {
-    "total_adjustment_percent": 0.0,
-    "status": "verified"
-  }
-}
-```
+Legacy /v1/validate still returns its existing case/schema/rule-version/findings
+shape. Its Python overall_status property is not a serialized JSON field.
 
-## Review finding
+## Shared PDF contract (#6)
 
-Legacy arithmetic and cross-form checks use a finding containing rule and rule
-set version, `pass`, `fail`, or `needs_review`, expected and observed values,
-severity, evidence, and a concise deterministic message.
+See the authoritative [PDF contract](pdf-contract.md) and
+[ADR 0002](adr/0002-shared-pdf-contract.md). Public module domain.pdf_models exports
+PDFWriteRequest, PDFWriteResult, PDFField/Map, PDFValueRef and typed errors.
+ports.pdf contains the only PDFWriter protocol. Existing factor_models and
+ports.workflow imports are compatibility aliases. pdf_types holds shared value
+objects below factor_models in the import graph, preventing circular imports.
 
-## PDF field map
+The request carries source/destination URI, FactorReviewResult and field map.
+Only after verification.can_complete may the controller construct it. Every
+written field has an explicit value_ref; mixed comparison contexts, duplicate
+IDs, missing values, invalid bounds or conflicting URIs fail explicitly.
 
-```json
-{
-  "template_id": "example-form-v1",
-  "page_numbering": "one_based",
-  "coordinate_system": "pdf_bottom_left",
-  "fields": [
-    {
-      "field_id": "regional.transport.main_road_width.grade",
-      "page": 2,
-      "bounding_box": [100.0, 200.0, 160.0, 214.0],
-      "max_characters": 20
-    }
-  ]
-}
-```
+Successful PDF metadata lives in AgentReviewRun.pdf_result (URI, page count,
+written IDs and noncritical warnings), with output_pdf_uri retained as the URI
+alias. PDF warnings are not review warnings or audit-schema additions. Errors
+produce a stable pdf_error code, failed workflow, retained review/verification,
+and no published output URI. A validates the interface; B validates file contents.
 
-Coordinates live in configuration, not evaluation logic. Writers create a new
-file and record every written field in the audit trail.
+## Future cloud job contract (#9; design only)
 
-## Audit event
+A job includes principal, case_id, run_id, input document/version references,
+rule version, idempotency key + payload hash, execution status, business status,
+active attempt/session_id, lease expiry/fencing token and optional result manifest.
+Public responses omit raw internal storage URIs. The authoritative execution
+state is durable DynamoDB state, not SQS receipt or an invocation response.
 
-```json
-{
-  "case_id": "example-case-001",
-  "sequence": 4,
-  "event_type": "factor_evaluated",
-  "status": "verified",
-  "tool": "evaluate_factors",
-  "rule_ids": ["regional.transport.main_road_width.v1"],
-  "evidence_ids": ["valuation-case:1:block-123"],
-  "details": {"factor_id": "regional.transport.main_road_width"}
-}
-```
+## Future complete review contract (#8; design only)
 
-Audit records contain references and decisions, not full sensitive document
-text or credentials.
+A finding binds observed and expected values, rule identity/version, deterministic
+calculation trace, original field/page evidence and criticality. A coverage report
+lists required/present/verified checks and comparison identities. All required
+checks, including arithmetic and cross-form copying, enter the completion gate.
+No inferred value silently replaces a verified source fact. The initial verifier
+only checks selected factor presence/status, a limitation with a reproducer in #8.
 
-## Authoritative PDF boundary
+## HTTP error compatibility
 
-The executable PDF contract is specified in [PDF contract](pdf-contract.md) and
-[ADR 0002](adr/0002-shared-pdf-contract.md). The earlier field-map example is an
-unbound compatibility example: writing now requires explicit value_ref bindings.
-Warnings and PDF metadata are returned in AgentReviewRun.pdf_result; errors in
-pdf_error. They are not inserted into the audit logger to avoid a schema change.
+POST /v1/validate retains HTTPValidationError with a detail array of loc, type
+and msg; raw input/context is omitted and custom value/assertion messages are
+sanitized. POST /v1/reviews returns EntryProblemResponse containing error with
+code/message for 422 (invalid input), 503 (configuration) and 500 (execution).
+OpenAPI declares that envelope for all three statuses. Direct invocation uses
+EntryProblem.response() and the same serialization, with no HTTP status wrapper.
+Success responses and controller behavior remain unchanged. See ADR 0004 and
+api error contract tests for runtime JSON validation against the published schema.

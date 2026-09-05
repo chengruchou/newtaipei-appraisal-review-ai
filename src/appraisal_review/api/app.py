@@ -1,16 +1,16 @@
 """FastAPI entry point for local validation and future AWS deployment."""
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict
 
+from appraisal_review.api.routes.reviews import review, router
+from appraisal_review.application.bootstrap import ReviewAdapters, build_controller
+from appraisal_review.application.entrypoint import EntryError, EntryProblem
+from appraisal_review.config import Settings
 from appraisal_review.domain.models import CanonicalCase, ReviewResult, RuleSet
 from appraisal_review.domain.rule_engine import RuleEngine
-
-app = FastAPI(
-    title="Agentic AI Real Estate Valuation Reviewer",
-    version="0.1.0",
-    description="Local deterministic validation baseline for valuation review cases.",
-)
 
 
 class ValidationRequest(BaseModel):
@@ -20,11 +20,61 @@ class ValidationRequest(BaseModel):
     rule_set: RuleSet
 
 
-@app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
-@app.post("/v1/validate", response_model=ReviewResult)
 def validate(request: ValidationRequest) -> ReviewResult:
     return RuleEngine(request.rule_set).evaluate(request.case)
+
+
+def create_app(
+    *, settings: Settings | None = None, adapters: ReviewAdapters | None = None
+) -> FastAPI:
+    app = FastAPI(
+        title="Agentic AI Real Estate Valuation Reviewer",
+        version="0.1.0",
+        description="Synchronous factor review entry; document extraction requires configuration.",
+    )
+    app.state.controller_factory = lambda: build_controller(settings, adapters=adapters)
+    app.add_api_route("/health", health, methods=["GET"])
+    app.add_api_route("/v1/validate", validate, methods=["POST"], response_model=ReviewResult)
+    app.include_router(router)
+
+    @app.exception_handler(EntryError)
+    async def entry_error(request: Request, error: EntryError) -> JSONResponse:
+        return JSONResponse(status_code=error.status_code, content=error.problem.response())
+
+    @app.exception_handler(RequestValidationError)
+    async def invalid_request(request: Request, error: RequestValidationError) -> JSONResponse:
+        # Match the routed endpoint, so mounting under a root path preserves the contract.
+        if getattr(request.scope.get("route"), "endpoint", None) is review:
+            return JSONResponse(
+                status_code=422,
+                content=EntryProblem(
+                    code="invalid_request", message="Invalid review request."
+                ).response(),
+            )
+        # Preserve the legacy detail structure without raw input or validator context.
+        # Custom value/assertion messages may interpolate document text.
+        detail = [
+            {
+                "loc": item["loc"],
+                "type": item["type"],
+                "msg": (
+                    "Invalid value."
+                    if item["type"] in {"value_error", "assertion_error"}
+                    else item["msg"]
+                ),
+            }
+            for item in error.errors()
+        ]
+        return JSONResponse(
+            status_code=422,
+            content={"detail": detail},
+        )
+
+    return app
+
+
+app = create_app()

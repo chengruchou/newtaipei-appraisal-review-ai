@@ -6,9 +6,10 @@ This stack creates only durable data foundations:
 - encrypted, private S3 bucket for derived results;
 - on-demand DynamoDB table for case state.
 
-Textract, Bedrock, orchestration, API, and UI resources will be added after the
-organizer provides the competition account, Region, service quotas, and allowed
-model IDs.
+The complete pipeline is tracked in #9; see docs/architecture.md and
+docs/aws-smoke-plan.md. This baseline is not a deployed review service. The
+organizer supplies required services; explicit project access, Region, model
+capabilities and API limits must still be verified.
 
 ```bash
 cd infra/cdk
