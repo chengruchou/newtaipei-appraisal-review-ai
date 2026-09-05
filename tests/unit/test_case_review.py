@@ -407,3 +407,22 @@ def test_blank_cell_location_is_valid_without_invented_text():
     assert material.policy.registry.resolves(ref)
     ref.excerpt = "invented value"
     assert not material.policy.registry.resolves(ref)
+
+
+def test_unaccounted_table_cannot_pass_from_successful_factors_only():
+    from appraisal_review.domain.document_models import SourceRegion
+
+    material = synthetic_material()
+    material.policy.registry.documents[1].pages[0].regions.append(
+        SourceRegion(
+            id="omitted-table",
+            kind="cell",
+            table_id="another-table",
+            row=0,
+            column=0,
+            bbox=(1, 50, 90, 60),
+        )
+    )
+    assert evaluate(material).status.value == "needs_review"
+    material.policy.inventory.inspected_tables = {"synthetic-forms": ["another-table"]}
+    assert evaluate(material).status.value == "verified"

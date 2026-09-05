@@ -82,6 +82,7 @@ class ReviewInventory(DocumentModel):
     checks: list[ArithmeticCheck] = Field(default_factory=list)
     empty_columns: list[EmptyColumn] = Field(default_factory=list)
     inspected_pages: dict[str, list[int]]
+    inspected_tables: dict[str, list[str]] = Field(default_factory=dict)
     unresolved: list[str] = Field(default_factory=list)
     unsupported: list[str] = Field(default_factory=list)
 

@@ -141,6 +141,19 @@ class CaseReviewer:
                     "needs_review",
                     "Entire source must be inventoried",
                 )
+        for source in registry.documents:
+            if source.role in {"criteria", "forms"}:
+                actual_tables = {r.table_id for p in source.pages for r in p.regions if r.table_id}
+                declared_tables = inventory.inspected_tables.get(source.document_id, [])
+                if set(declared_tables) != actual_tables or len(declared_tables) != len(
+                    set(declared_tables)
+                ):
+                    add(
+                        "inventory",
+                        "table_coverage",
+                        "needs_review",
+                        "Every parser-discovered table needs explicit inventory accounting",
+                    )
         for empty in inventory.empty_columns:
             if not citations_valid(empty.evidence):
                 add(

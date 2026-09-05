@@ -62,3 +62,8 @@ within_section or absent) separate from measured distance intervals. Zero distan
 is a numeric measurement, never an alias for presence. The matrix covers the union
 of categorical and interval grades. Negative physical distances are unresolved.
 This extension was required by the source-table integration in #7.
+
+Inventory also accounts for every parser-discovered criteria/forms table through
+inspected_tables. Visiting all pages or extracting a successful factor does not
+account for an omitted table. Accounting is still a human-reviewed scope assertion,
+not proof that a model interpreted every cell correctly.
