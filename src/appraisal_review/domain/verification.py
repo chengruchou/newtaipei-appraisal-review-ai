@@ -20,6 +20,7 @@ class ReviewVerifier:
         *,
         facts: FactorEvaluationRequest | None = None,
         minimum_confidence: float = 0.85,
+        confirmed_sides: frozenset[tuple[str, str]] = frozenset(),
     ) -> VerificationReport:
         minimum_confidence = validate_minimum_confidence(minimum_confidence)
         errors: list[str] = []
@@ -41,9 +42,9 @@ class ReviewVerifier:
                 rules = FactorRuleSet.model_validate(rule_set.model_dump())
                 inputs = FactorEvaluationRequest.model_validate(facts.model_dump())
                 claimed = FactorReviewResult.model_validate(result.model_dump())
-                expected = FactorRuleEngine(rules, minimum_confidence=minimum_confidence).evaluate(
-                    inputs
-                )
+                expected = FactorRuleEngine(
+                    rules, minimum_confidence=minimum_confidence, confirmed_sides=confirmed_sides
+                ).evaluate(inputs)
                 # Context/source bindings are checked by the case gate, not derived from result.
                 if (claimed.case_id, claimed.results, claimed.summary) != (
                     expected.case_id,

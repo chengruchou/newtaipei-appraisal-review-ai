@@ -77,8 +77,8 @@ cross two valid contexts; no missing context is implicitly created.
 Settings.min_extraction_confidence (environment MIN_EXTRACTION_CONFIDENCE) flows
 through Controller, CaseReviewer and independent ReviewVerifier recalculation.
 All engines use the same finite inclusive [0, 1] threshold, default 0.85. Values
-equal to the threshold pass the confidence test. Material approval and model
-self-confidence cannot override it or alter the observed confidence.
+equal to the threshold pass the confidence test. Model self-confidence and material approval alone cannot override it. ADR 0008
+defines the separate controlled confirmation path without altering raw scores.
 
 Each arithmetic target retains every check's independently calculated Decimal
 expected value, quantum and tolerance for final observed comparison. Aggregate

@@ -200,10 +200,18 @@ def synthetic_material(document_uri: str = CASE_URI) -> ReviewMaterial:
                 target_sources=[form_ref],
                 comparable_sources=[form_ref],
                 target_reliability=Reliability(
-                    method="reviewer_confirmed", selection="not_applicable"
+                    method="native_numeric",
+                    selection="not_applicable",
+                    confidence_kind="measured",
+                    provenance="native_extraction",
+                    producer="synthetic-native-v1",
                 ),
                 comparable_reliability=Reliability(
-                    method="reviewer_confirmed", selection="not_applicable"
+                    method="native_numeric",
+                    selection="not_applicable",
+                    confidence_kind="measured",
+                    provenance="native_extraction",
+                    producer="synthetic-native-v1",
                 ),
             )
         ],

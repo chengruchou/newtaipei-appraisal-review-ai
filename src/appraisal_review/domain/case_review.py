@@ -7,6 +7,7 @@ from graphlib import CycleError, TopologicalSorter
 
 from pydantic import ValidationError
 
+from appraisal_review.domain.confidence import confirmation_digest
 from appraisal_review.domain.document_models import SourceCitation, SourceRegistry
 from appraisal_review.domain.factor_engine import FactorRuleEngine, validate_minimum_confidence
 from appraisal_review.domain.factor_models import (
@@ -115,7 +116,8 @@ class CaseReviewer:
         if facts.identity != policy.identity:
             add("trust", "case_identity", "failed", "Case identity/version does not match policy")
             return finish()
-        if self.authorization is None or not self.authorization.permits(material):
+        authorized = self.authorization is not None and self.authorization.permits(material)
+        if not authorized:
             add("trust", "approval", "needs_review", "Exact material requires trusted approval")
         else:
             add("trust", "approval", "verified", "Exact case, policy and facts authorized")
@@ -335,6 +337,7 @@ class CaseReviewer:
                 )
             valid_pairs = []
             reliable_factors: set[str] = set()
+            confirmed_sides: set[tuple[str, str]] = set()
             for factor in entry.factor_ids:
                 factor_key = f"{key}/factor/{factor}"
                 if factor in missing or factor not in rules_by_factor:
@@ -385,6 +388,47 @@ class CaseReviewer:
                         ),
                     )
                 )
+                effective_pair = pair.pair.model_copy(deep=True)
+                for side in ("target", "comparable"):
+                    reliability = getattr(pair, f"{side}_reliability")
+                    observation = getattr(pair.pair, side)
+                    refs = getattr(pair, f"{side}_sources")
+                    # Every used citation needs an evidence entry, not just the reverse mapping.
+                    reliable = reliable and all(
+                        any(
+                            e.document_id == ref.document_id
+                            and e.page == ref.page
+                            and e.bounding_box == ref.bbox
+                            for e in observation.evidence
+                        )
+                        for ref in refs
+                    )
+                    if reliability.method == "reviewer_confirmed":
+                        confirmation = reliability.confirmation
+                        confirmed = (
+                            authorized
+                            and confirmation is not None
+                            and confirmation.input_digest == confirmation_digest(pair, side)
+                            and reliability.confidence_kind != "unknown"
+                            and reliability.provenance != "unknown"
+                        )
+                        reliable = reliable and confirmed
+                        if confirmed:
+                            confirmed_sides.add((factor, side))
+                    elif reliability.method == "native_numeric":
+                        reliable = (
+                            reliable
+                            and reliability.confidence_kind == "measured"
+                            and reliability.provenance == "native_extraction"
+                            and reliability.producer is not None
+                        )
+                        if observation.evidence:
+                            getattr(effective_pair, side).confidence = min(
+                                observation.confidence,
+                                *(e.confidence for e in observation.evidence),
+                            )
+                    else:
+                        reliable = False
                 if not reliable:
                     add(
                         factor_key,
@@ -396,7 +440,7 @@ class CaseReviewer:
                     )
                 else:
                     reliable_factors.add(factor)
-                valid_pairs.append(pair.pair)
+                    valid_pairs.append(effective_pair)
             # Approval status is established by the injected authority, not by this field.
             approved = rule_set.model_copy(update={"status": "approved"})
             inputs = FactorEvaluationRequest(
@@ -405,14 +449,20 @@ class CaseReviewer:
                 factors=valid_pairs,
             )
             result = FactorRuleEngine(
-                approved, minimum_confidence=self.minimum_confidence
+                approved,
+                minimum_confidence=self.minimum_confidence,
+                confirmed_sides=frozenset(confirmed_sides),
             ).evaluate(inputs)
             result.context = context
             result.case_version = policy.identity.version
             result.source_hashes = {d.document_id: d.content_hash for d in registry.documents}
             comparisons.append(result)
             validation = ReviewVerifier().verify(
-                result, approved, facts=inputs, minimum_confidence=self.minimum_confidence
+                result,
+                approved,
+                facts=inputs,
+                minimum_confidence=self.minimum_confidence,
+                confirmed_sides=frozenset(confirmed_sides),
             )
             add(
                 key,

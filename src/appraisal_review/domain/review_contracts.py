@@ -104,7 +104,17 @@ class ObservedValue(DocumentModel):
         return self
 
 
+class FactConfirmation(DocumentModel):
+    protocol: Literal["local-review-v1"] = "local-review-v1"
+    reviewer: str = Field(min_length=1)
+    input_digest: Digest
+
+
 class Reliability(DocumentModel):
+    confidence_kind: Literal["unknown", "localization_only", "measured"] = "unknown"
+    provenance: Literal["unknown", "parser_registry", "native_extraction"] = "unknown"
+    producer: str | None = Field(default=None, min_length=1)
+    confirmation: FactConfirmation | None = None
     model_confidence: float | None = Field(default=None, ge=0, le=1)
     method: Literal["native_numeric", "reviewer_confirmed", "model_proposed"]
     selection: Literal["checked", "unchecked", "ambiguous", "not_applicable"]
