@@ -146,3 +146,66 @@ def test_unsupported_inputs_are_rejected_before_billing():
         with pytest.raises(ExtractionError):
             asyncio.run(extractor.extract_page(source, page, image))
     client.converse.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "field,value", [("document_id", "other-source"), ("version", "other-version")]
+)
+def test_canonicalization_never_repairs_forged_citation_identity(field, value):
+    client, extractor, source, proposal = setup()
+    payload = proposal.model_dump(mode="json")
+    payload["pairs"][0]["target_sources"][0][field] = value
+    client.converse.return_value = response(payload)
+    with pytest.raises(ExtractionError, match="invalid_source_reference"):
+        asyncio.run(extractor.extract_page(source, 1, PNG))
+    client.converse.assert_called_once()
+
+
+@pytest.mark.parametrize("side", ["target", "comparable"])
+def test_missing_canonical_references_cannot_be_replaced_by_legacy_evidence(side):
+    client, extractor, source, proposal = setup()
+    payload = proposal.model_dump(mode="json")
+    payload["pairs"][0][f"{side}_sources"] = []
+    client.converse.return_value = response(payload)
+    with pytest.raises(ExtractionError, match="invalid_source_reference"):
+        asyncio.run(extractor.extract_page(source, 1, PNG))
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("source_file", "file:///synthetic/unrelated.pdf"),
+        ("document_id", "other"),
+        ("page", 2),
+        ("bounding_box", [0, 0, 1, 1]),
+        ("coordinate_system", "ocr_top_left"),
+        ("block_ids", ["other-region"]),
+    ],
+)
+def test_explicit_contradictory_legacy_metadata_is_rejected(field, value):
+    client, extractor, source, proposal = setup()
+    payload = proposal.model_dump(mode="json")
+    payload["pairs"][0]["pair"]["target"]["evidence"][0][field] = value
+    client.converse.return_value = response(payload)
+    with pytest.raises(ExtractionError, match="conflicting_legacy_evidence"):
+        asyncio.run(extractor.extract_page(source, 1, PNG))
+    client.converse.assert_called_once()
+
+
+def test_optional_legacy_location_fields_come_from_parser_without_confidence_promotion():
+    client, extractor, source, proposal = setup()
+    payload = proposal.model_dump(mode="json")
+    for side in ("target", "comparable"):
+        evidence = payload["pairs"][0]["pair"][side]["evidence"][0]
+        for field in ("source_file", "bounding_box", "coordinate_system", "block_ids"):
+            evidence.pop(field)
+    client.converse.return_value = response(payload)
+    result = asyncio.run(extractor.extract_page(source, 1, PNG))
+    pair = result.proposal.pairs[0]
+    for observation in (pair.pair.target, pair.pair.comparable):
+        assert observation.evidence[0].source_file == source.uri
+        assert observation.evidence[0].coordinate_system == "pdf_bottom_left"
+        assert observation.confidence == observation.evidence[0].confidence == 0
+    assert pair.target_reliability.method == pair.comparable_reliability.method == "model_proposed"
+    assert pair.target_reliability.model_confidence == 0.99
+    assert source.uri not in client.converse.call_args.kwargs["messages"][0]["content"][0]["text"]

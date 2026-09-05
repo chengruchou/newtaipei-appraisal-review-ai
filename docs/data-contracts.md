@@ -151,3 +151,14 @@ store. Confirming model-proposed facts creates a new material version/digest;
 approving uses that exact inspected digest. No automatic production bypass exists.
 ReferenceCatalog sections are versioned citations, and their arithmetic proposals
 must enter the same material approval boundary. See ADR 0006 and the runbook.
+
+For extracted pairs, each side's validated SourceCitations determine its canonical
+FactorObservation.evidence. The adapter resolves the actual document/page/region
+and derives source_file, document_id, page, block_ids, bounding_box and
+coordinate_system locally. No local URI is sent to the model. Optional legacy
+location fields may be absent; explicitly conflicting fields are rejected. Missing
+canonical citations cannot be replaced by model-supplied legacy evidence.
+Canonical evidence confidence and observation confidence are zero after extraction;
+method=model_proposed remains until explicit confirmation. Source binding is not
+proof of semantic accuracy. The receipt covers all normalized evidence and facts,
+so later changes cannot reuse approval. Public schemas and PDFWriter are unchanged.

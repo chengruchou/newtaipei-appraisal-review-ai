@@ -27,6 +27,22 @@ No model tool is executed. Model confidence is retained separately; reliability
 is reset to model_proposed and observed confidence to zero until human confirmation.
 A document cannot instruct the service to alter rules or approve itself.
 
+The validated target_sources and comparable_sources are canonical for each side.
+The trusted extraction adapter derives legacy FactorObservation.evidence from the
+actual source document/page/region: document_id, local URI, one-based page, region
+ID, bounding box and coordinate system. The URI stays out of model input. Omitted
+legacy evidence or optional location fields need no model guess. Explicit supplied
+legacy fields must agree with a canonical reference on that same side; conflicting
+metadata fails with conflicting_legacy_evidence. Empty or forged canonical
+references fail with invalid_source_reference, even if legacy evidence exists.
+
+Canonical evidence has confidence zero because localization is not calibrated
+fact accuracy. Observation confidence remains zero and method stays model_proposed;
+model confidence is separate. The explicit confirmation operation changes the
+observation's reviewed reliability, not its source locations. Approval binds the
+normalized, confirmed material digest; subsequent changes invalidate the receipt.
+Existing prepared material is not silently rewritten or automatically approved.
+
 Extraction is a separate capability from durable AWS jobs: ExtractionConfig needs
 model/Region/inference bounds, not invented buckets or a jobs table. The opt-in
 runner requires explicit profile, expected account/role and Region, verifies STS,

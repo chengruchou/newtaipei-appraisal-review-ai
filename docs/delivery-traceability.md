@@ -140,3 +140,23 @@ Live Bedrock calls, account/model availability, full-page semantic goldens and r
 human rule/fact approval remain unchecked. No mock or native-parser statistic is
 used to mark live accuracy complete. Source hashes and actual private artifacts
 are recorded only under ignored artifacts paths; none are included in Git.
+
+## PR #16 evidence integration correction
+
+Review 5121532233 exposed the gap between valid SourceCitations and the legacy
+evidence needed by CaseReviewer. A new synthetic-PDF integration test omitted all
+legacy evidence from mocked Converse responses, ran actual parsing, extraction,
+assembly, confirm-facts CLI and an isolated test approval store. Before the fix,
+the final approved result remained needs_review. It now transitions from
+unconfirmed needs_review, through confirmed/unapproved needs_review, to verified
+after exact-material approval, without any writer or PDF URI. No test-side
+EvidenceRef construction repairs this path.
+
+The adapter now derives each side's local evidence only after canonical citation
+validation, rejects explicit contradictory legacy metadata, and preserves zero
+confidence/model_proposed state. Negative tests cover missing refs, forged
+identity/version/page/box/excerpt, contradictory source metadata and receipt
+invalidation after normalized evidence changes. #15 corrections were inherited
+through a normal merge retaining both histories and both documentation sections.
+This revision uses synthetic PDFs, mocked responses and isolated test approvals;
+no AWS call, real approval or new real-data accuracy claim is made.

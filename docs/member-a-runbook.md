@@ -224,6 +224,15 @@ has been issued by this delivery. Review with a nonexistent store reports pendin
 approval; it does not create a store or receipt. Review results include observed,
 expected, findings and coverage. This CLI supplies no PDF writer and creates no PDF.
 
+After the review correction, extraction derives legacy evidence from each side's
+validated source citations. Operators and models do not need to guess source_file
+or manually patch evidence before confirmation. conflicting_legacy_evidence means
+an explicit legacy location disagreed with its canonical references;
+invalid_source_reference means the canonical source is absent or does not resolve.
+Neither error is repaired using fabricated locations or another comparison side.
+Re-extract and inspect changed candidates, then confirm and approve the new digest
+when appropriate. Never reuse an old receipt after normalization or content edits.
+
 The parser uses PyMuPDF under its upstream AGPL/commercial licensing terms; retain
 those notices and include the chosen dependency licensing in redistribution review.
 [Upstream licensing](https://pymupdf.readthedocs.io/en/latest/about.html#license-and-copyright).
