@@ -12,7 +12,14 @@ class EntryProblem(BaseModel):
     message: str
 
     def response(self) -> dict[str, JsonValue]:
-        return {"error": self.model_dump(mode="json")}
+        return EntryProblemResponse(error=self).model_dump(mode="json")
+
+
+class EntryProblemResponse(BaseModel):
+    """The same JSON envelope used by HTTP and direct invocation."""
+
+    model_config = ConfigDict(extra="forbid")
+    error: EntryProblem
 
 
 class EntryError(Exception):

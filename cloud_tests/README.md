@@ -1,6 +1,9 @@
 # Synthetic AgentCore Runtime smoke preparation
 
 This is an isolated HTTP container for testing A's deployed invocation boundary.
+Active branch: test/runtime-smoke, PR #14 (replaces #12), based on
+feat/member-a-entrypoint PR #13. The original smoke commit and A's review fixes
+are preserved through a normal merge; no history is rewritten.
 It does **not** parse documents, call Bedrock, produce PDF files, or implement the
 production durable review-jobs pipeline. The separate production design is #9.
 
@@ -148,7 +151,7 @@ is no live cleanup to perform yet.
 ## Evidence limits
 
 - Local protocol/task tests and mocked AWS client tests: 8 passed; combined
-  with A's suite: 84 passed. Ruff, formatting and mypy passed.
+  with A's revised suite: 141 passed. Ruff, formatting and mypy passed.
 - CloudFormation schema lint: passed.
 - ARM64 Docker build: not executed; local Docker daemon unavailable.
 - AWS identity preflight, deployment, live invocation and cleanup: not executed;

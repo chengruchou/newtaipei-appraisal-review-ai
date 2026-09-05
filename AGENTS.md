@@ -84,6 +84,18 @@ when the decision is durable, an ADR under `docs/adr/`.
 - Before every commit, push, or publication, inspect the entire pending content
   and Git metadata. Correct violations before submitting. Include the check
   outcome in the final delivery report.
+- Every new work branch must use a functional name, such as feat/, fix/, test/
+  or docs/. Do not use AI/tool attribution markers including ai, codex, claude,
+  chatgpt, copilot, gpt, gemini, openai or anthropic as naming segments or words.
+  Check segment and word boundaries; main and domain are not prohibited merely
+  because they contain the letters a and i. Do not rename main or the repository.
+- Inspect each outgoing commit's complete content and metadata, the staged
+  snapshot, working files, publication text and every intended new/pushed branch.
+  Deleting prohibited content in a later commit does not clear an earlier
+  outgoing violation. Do not bypass the gate by selecting an incomplete range.
+- Policy and negative-test examples must be explicitly identified and narrowly
+  scoped as documented in docs/submission-checks.md. They are not signatures.
+  Never exempt an entire docs/tests directory or conceal attribution as an example.
 - Preserve necessary technical names, model information, and license notices.
   Do not rewrite existing Git history without explicit authorization.
 - These requirements supplement existing permissions and human review gates;
