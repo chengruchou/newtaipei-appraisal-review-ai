@@ -3,6 +3,7 @@
 from contextlib import suppress
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
+from graphlib import CycleError, TopologicalSorter
 
 from pydantic import ValidationError
 
@@ -17,7 +18,6 @@ from appraisal_review.domain.factor_models import (
     ReviewMaterial,
     ReviewPolicy,
 )
-from appraisal_review.domain.models import CanonicalCase, ExtractedField, RuleDefinition, RuleSet
 from appraisal_review.domain.review_contracts import (
     ArithmeticCheck,
     Coverage,
@@ -25,9 +25,14 @@ from appraisal_review.domain.review_contracts import (
     ReviewFinding,
     ReviewSlot,
 )
-from appraisal_review.domain.rule_engine import RuleEngine, calculate
+from appraisal_review.domain.rule_engine import calculate
 from appraisal_review.domain.verification import ReviewVerifier
 from appraisal_review.ports.approval import ReviewAuthorization
+
+
+def source_cell(ref: SourceCitation) -> tuple[object, ...]:
+    """All current citation entries are value anchors; excerpt is not cell identity."""
+    return (ref.document_id, ref.content_hash, ref.version, ref.page, ref.region_id, ref.bbox)
 
 
 def percent(value: ObservedValue) -> Decimal:
@@ -114,7 +119,10 @@ class CaseReviewer:
             add("trust", "approval", "needs_review", "Exact material requires trusted approval")
         else:
             add("trust", "approval", "verified", "Exact case, policy and facts authorized")
-        if registry != policy.registry:
+        if len(registry.documents) != len(policy.registry.documents) or any(
+            not any(current.same_identity_and_content(reviewed) for current in registry.documents)
+            for reviewed in policy.registry.documents
+        ):
             add(
                 "sources",
                 "source_identity",
@@ -213,6 +221,27 @@ class CaseReviewer:
             "Explicit inventory examined independently of results",
         )
         observed = {v.slot_id: v for v in facts.observed}
+        bound_slots: dict[str, ReviewSlot] = {}
+        for slot in valid_slots.values():
+            observation = observed.get(slot.id)
+            if (
+                observation is None
+                or not citations_valid(slot.evidence)
+                or not citations_valid(observation.evidence)
+                or {source_cell(ref) for ref in slot.evidence}
+                != {source_cell(ref) for ref in observation.evidence}
+            ):
+                add(
+                    f"observed/{slot.id}",
+                    "observed_source_binding",
+                    "needs_review",
+                    "Every value-source cell must match the slot's complete anchor set",
+                    context=slot.context,
+                    factor_id=slot.factor_id,
+                    evidence=slot.evidence,
+                )
+            else:
+                bound_slots[slot.id] = slot
         expected_slots: dict[str, str] = {}
         arithmetic_targets: dict[str, list[ArithmeticComparison]] = {}
 
@@ -240,7 +269,7 @@ class CaseReviewer:
             if len(matches) != 1:
                 add(
                     key,
-                    "applicability",
+                    "not_applicable" if not matches else "selection_conflict",
                     "needs_review",
                     "Exactly one applicable rule set required",
                     context=context,
@@ -269,7 +298,7 @@ class CaseReviewer:
             ):
                 add(
                     key,
-                    "rule_source",
+                    "rule_rejected" if rule_set.status == "rejected" else "rule_source",
                     "needs_review",
                     "Rule source/version/evidence is not valid",
                     context=context,
@@ -305,6 +334,7 @@ class CaseReviewer:
                     context=context,
                 )
             valid_pairs = []
+            reliable_factors: set[str] = set()
             for factor in entry.factor_ids:
                 factor_key = f"{key}/factor/{factor}"
                 if factor in missing or factor not in rules_by_factor:
@@ -364,6 +394,8 @@ class CaseReviewer:
                         context=context,
                         factor_id=factor,
                     )
+                else:
+                    reliable_factors.add(factor)
                 valid_pairs.append(pair.pair)
             # Approval status is established by the injected authority, not by this field.
             approved = rule_set.model_copy(update={"status": "approved"})
@@ -414,7 +446,11 @@ class CaseReviewer:
                     continue
                 if slot.factor_id is not None:
                     items = [r for r in result.results if r.factor_id == slot.factor_id]
-                    if len(items) == 1 and slot.value in {
+                    if (
+                        len(items) == 1
+                        and items[0].status is EvaluationStatus.VERIFIED
+                        and slot.factor_id in reliable_factors
+                    ) and slot.value in {
                         "target_grade",
                         "comparable_grade",
                         "adjustment_percent",
@@ -422,7 +458,12 @@ class CaseReviewer:
                         value = getattr(items[0], slot.value)
                         if value is not None:
                             expected_slots[slot.id] = str(value)
-                elif slot.value == "total" and result.summary.total_adjustment_percent is not None:
+                elif (
+                    slot.value == "total"
+                    and result.summary.total_adjustment_percent is not None
+                    and set(entry.factor_ids) <= reliable_factors
+                    and validation.status is EvaluationStatus.VERIFIED
+                ):
                     expected_slots[slot.id] = str(result.summary.total_adjustment_percent)
 
         if claimed is not None:
@@ -439,80 +480,126 @@ class CaseReviewer:
                 "Complete comparison claims checked against independent recomputation",
             )
 
-        # RuleEngine owns legacy sum/equals arithmetic. Observed values remain separate.
-        numeric: dict[str, ExtractedField] = {}
+        # Only passed, source-bound observations can seed the derivation DAG.
+        numeric: dict[str, Decimal] = {}
         for value in facts.observed:
-            if value.slot_id not in valid_slots:
-                continue
-            with suppress(ValueError, InvalidOperation):
-                numeric[value.slot_id] = ExtractedField(
-                    raw_value=value.raw_text, value=str(percent(value))
-                )
+            if value.slot_id in bound_slots:
+                with suppress(ValueError, InvalidOperation):
+                    numeric[value.slot_id] = percent(value)
+        by_target: dict[str, list[ArithmeticCheck]] = {}
+        graph: dict[str, set[str]] = {}
         for check in inventory.checks:
-            id = f"arithmetic/{check.id}"
-            required.append(id)
-            if (
-                check.target not in valid_slots
-                or not set(check.inputs) <= valid_slots.keys()
-                or not citations_valid(check.evidence)
-            ):
+            required.append(f"arithmetic/{check.id}")
+            by_target.setdefault(check.target, []).append(check)
+            graph.setdefault(check.target, set()).update(check.inputs)
+        try:
+            order = list(TopologicalSorter(graph).static_order())
+        except CycleError:
+            order = []
+            for check in inventory.checks:
                 add(
-                    id,
-                    "arithmetic_definition",
+                    f"arithmetic/{check.id}",
+                    "arithmetic_dependency",
                     "needs_review",
-                    "Unbound arithmetic inputs or evidence",
+                    "Cyclic derivation graph; no aggregate expected value established",
+                    rule_id=check.id,
+                    evidence=check.evidence,
                 )
+                add(
+                    f"observed/{check.target}",
+                    "arithmetic_dependency",
+                    "needs_review",
+                    "Aggregate participates in an invalid derivation graph",
+                    evidence=check.evidence,
+                )
+        trusted: dict[str, Decimal] = {}
+        for name, value in numeric.items():
+            if name not in by_target and name in expected_slots:
+                with suppress(InvalidOperation):
+                    if value == Decimal(expected_slots[name]):
+                        trusted[name] = value
+        for target in order:
+            checks = by_target.get(target, [])
+            if not checks:
                 continue
-            definition = RuleDefinition(
-                id=check.id,
-                kind=check.kind,
-                description="Approved arithmetic",
-                inputs=check.inputs,
-                target=check.target,
-                tolerance=float(check.tolerance),
-            )
-            legacy = (
-                RuleEngine(RuleSet(version=policy.identity.version, rules=[definition]))
-                .evaluate(CanonicalCase(case_id=policy.identity.case_id, fields=numeric))
-                .findings[0]
-            )
-            actual_field = numeric.get(check.target)
-            input_fields = [numeric.get(name) for name in check.inputs]
-            if all(v is not None for v in input_fields) and actual_field is not None:
+            passed = True
+            for check in checks:
+                id = f"arithmetic/{check.id}"
+                if (
+                    check.target not in valid_slots
+                    or not set(check.inputs) <= valid_slots.keys()
+                    or not citations_valid(check.evidence)
+                ):
+                    add(
+                        id,
+                        "arithmetic_definition",
+                        "needs_review",
+                        "Unbound arithmetic inputs or evidence",
+                        rule_id=check.id,
+                        evidence=check.evidence,
+                    )
+                    passed = False
+                    continue
+                if not set(check.inputs) <= trusted.keys() or target not in bound_slots:
+                    add(
+                        id,
+                        "arithmetic_dependency",
+                        "needs_review",
+                        f"Inputs must be independently grounded and passed: {check.inputs}",
+                        rule_id=check.id,
+                        evidence=check.evidence,
+                    )
+                    passed = False
+                    continue
                 expected_number = calculate(
-                    check.kind,
-                    [Decimal(str(v.value)) for v in input_fields if v is not None],
-                    quantum=check.quantum,
+                    check.kind, [trusted[name] for name in check.inputs], quantum=check.quantum
                 )
                 comparison = ArithmeticComparison(check, expected_number)
-                arithmetic_targets.setdefault(check.target, []).append(comparison)
-                arithmetic_matches = comparison.matches(Decimal(str(actual_field.value)))
+                arithmetic_targets.setdefault(target, []).append(comparison)
+                actual = numeric.get(target)
+                blank = observed[target].state == "blank" and bound_slots[target].derivable_blank
+                blank = blank and not any(r.excerpt.strip() for r in observed[target].evidence)
+                matched = comparison.matches(actual) if actual is not None else blank
+                passed = passed and matched
                 add(
                     id,
                     "arithmetic",
-                    "verified" if arithmetic_matches else "failed",
+                    "verified" if matched else "failed" if actual is not None else "needs_review",
                     (
-                        f"{check.kind}({check.inputs}); ROUND_HALF_UP quantum={check.quantum}; "
-                        f"tolerance={check.tolerance}"
+                        f"{check.kind}({check.inputs}); grounded DAG; "
+                        f"ROUND_HALF_UP quantum={check.quantum}; tolerance={check.tolerance}"
                     ),
-                    observed=str(actual_field.value),
+                    observed=str(actual) if actual is not None else None,
                     expected=str(expected_number),
                     evidence=check.evidence,
                     rule_id=check.id,
                     rule_version=policy.identity.version,
                 )
-            else:
+            constraints = arithmetic_targets.get(target, [])
+            actual = numeric.get(target)
+            independent = expected_slots.get(target)
+            if passed and actual is not None and independent is not None:
+                passed = all(
+                    ArithmeticComparison(
+                        c.check,
+                        calculate("equals", [Decimal(independent)], quantum=c.check.quantum),
+                    ).matches(actual)
+                    for c in constraints
+                )
+            if passed and actual is not None:
+                trusted[target] = actual
+            elif passed and len({c.expected for c in constraints}) == 1:
+                trusted[target] = constraints[0].expected
+            elif target in valid_slots and len(constraints) != len(checks):
                 add(
-                    id,
-                    "arithmetic",
+                    f"observed/{target}",
+                    "arithmetic_dependency",
                     "needs_review",
-                    legacy.message,
-                    evidence=check.evidence,
-                    rule_id=check.id,
-                    rule_version=policy.identity.version,
+                    "Not all derivation constraints have passed; target cannot seed another check",
+                    evidence=valid_slots[target].evidence if target in valid_slots else [],
                 )
 
-        for slot in valid_slots.values():
+        for slot in bound_slots.values():
             id = f"observed/{slot.id}"
             value = observed.get(slot.id)
             deterministic_expected = expected_slots.get(slot.id)

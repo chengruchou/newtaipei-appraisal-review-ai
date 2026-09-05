@@ -128,3 +128,8 @@ comparisons remain exact. Arithmetic findings retain each check ID, version,
 source, original value, expected value and comparison trace. A final aggregate
 finding may list multiple expected values by check ID; none is silently selected.
 No PDFWriter request/result fields or public protocol change in this correction.
+
+Source identity, complete observed/slot value-anchor sets, DAG derivation and
+loaded-versus-evaluated audit events are specified in [ADR 0007](adr/0007-source-cell-and-derivation-trust.md).
+The PDF writer protocol is unchanged; writer-time snapshot enforcement remains
+outside the implemented source URI check.

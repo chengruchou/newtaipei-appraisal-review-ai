@@ -46,6 +46,7 @@ from appraisal_review.ports.workflow import ParsedDocument
 CRITERIA_URI = "file:///synthetic/criteria.pdf"
 CASE_URI = "file:///synthetic/verified.pdf"
 UNRESOLVED_URI = "file:///synthetic/needs-review.pdf"
+UNRESOLVED_CRITERIA_URI = "file:///synthetic/needs-review-criteria.pdf"
 
 
 def synthetic_material(document_uri: str = CASE_URI) -> ReviewMaterial:
@@ -58,8 +59,12 @@ def synthetic_material(document_uri: str = CASE_URI) -> ReviewMaterial:
     )
     sources = []
     for role, uri, text in [
-        ("criteria", CRITERIA_URI, "Synthetic road threshold: 10 m"),
-        ("forms", CASE_URI, "Synthetic target 10 m; comparable 9 m; rate 5"),
+        (
+            "criteria",
+            UNRESOLVED_CRITERIA_URI if document_uri == UNRESOLVED_URI else CRITERIA_URI,
+            "Synthetic road threshold: 10 m",
+        ),
+        ("forms", document_uri, "Synthetic target 10 m; comparable 9 m; rate 5"),
     ]:
         sources.append(
             SourceDocument(
@@ -173,7 +178,7 @@ def synthetic_material(document_uri: str = CASE_URI) -> ReviewMaterial:
             else [
                 EvidenceRef(
                     document_id=form_ref.document_id,
-                    source_file=CASE_URI,
+                    source_file=document_uri,
                     page=1,
                     confidence=0.99,
                     bounding_box=form_ref.bbox,
@@ -218,16 +223,14 @@ def synthetic_material(document_uri: str = CASE_URI) -> ReviewMaterial:
 
 class SyntheticParser:
     async def parse_document(self, document_uri: str) -> ParsedDocument:
-        if document_uri not in {CRITERIA_URI, CASE_URI, UNRESOLVED_URI}:
+        if document_uri not in {CRITERIA_URI, CASE_URI, UNRESOLVED_URI, UNRESOLVED_CRITERIA_URI}:
             raise ValueError("Only documented synthetic fixture URIs are supported")
         material = synthetic_material(
-            UNRESOLVED_URI if document_uri == UNRESOLVED_URI else CASE_URI
+            UNRESOLVED_URI
+            if document_uri in {UNRESOLVED_URI, UNRESOLVED_CRITERIA_URI}
+            else CASE_URI
         )
-        source = next(
-            d
-            for d in material.policy.registry.documents
-            if d.uri == (CASE_URI if document_uri == UNRESOLVED_URI else document_uri)
-        )
+        source = next(d for d in material.policy.registry.documents if d.uri == document_uri)
         return ParsedDocument(
             document_uri=document_uri, page_count=1, source=source, content={"synthetic": True}
         )
@@ -238,9 +241,11 @@ class SyntheticRuleProvider:
         self.case_uri = case_uri
 
     async def load_or_build_rules(self, criteria: ParsedDocument) -> ReviewPolicy:
-        if criteria.document_uri != CRITERIA_URI:
+        if criteria.document_uri not in {CRITERIA_URI, UNRESOLVED_CRITERIA_URI}:
             raise ValueError("Expected synthetic criteria")
-        return synthetic_material(self.case_uri).policy
+        return synthetic_material(
+            UNRESOLVED_URI if criteria.document_uri == UNRESOLVED_CRITERIA_URI else self.case_uri
+        ).policy
 
 
 class SyntheticFactExtractor:
@@ -278,7 +283,9 @@ def synthetic_request(
         raise ValueError("Unknown synthetic scenario")
     return AgentReviewRequest(
         case_id="synthetic-case",
-        criteria_document_uri=CRITERIA_URI,
+        criteria_document_uri=UNRESOLVED_CRITERIA_URI
+        if scenario == "needs_review"
+        else CRITERIA_URI,
         case_document_uri=UNRESOLVED_URI if scenario == "needs_review" else CASE_URI,
         output_pdf_uri=None if scenario == "verified" else "file:///synthetic/output.pdf",
         field_map=None

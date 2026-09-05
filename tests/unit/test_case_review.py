@@ -306,6 +306,7 @@ def test_blank_output_is_derivable_but_missing_fact_is_not():
     ref = material.facts.observed[0].evidence[0].model_copy(deep=True)
     ref.region_id, ref.bbox, ref.excerpt = "blank-output", (1, 50, 90, 60), ""
     material.facts.observed[0].evidence = [ref]
+    material.policy.inventory.slots[0].evidence = [ref]
     material.facts.observed[0].state, material.facts.observed[0].value = "blank", None
     assert evaluate(material).status.value == "verified"
     material.facts.pairs[0].pair.target.value = None

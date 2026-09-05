@@ -69,6 +69,8 @@ class ArithmeticCheck(DocumentModel):
 
     @model_validator(mode="after")
     def exact_equals(self) -> ArithmeticCheck:
+        if self.target in self.inputs:
+            raise ValueError("arithmetic self-reference is forbidden")
         if self.kind == "equals" and len(self.inputs) != 1:
             raise ValueError("equals requires exactly one input")
         if self.quantum.normalize().as_tuple().digits != (1,):

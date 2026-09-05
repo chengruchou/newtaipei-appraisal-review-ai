@@ -149,3 +149,12 @@ Before approving material, register every slot's complete context and validate i
 factor binding. Cross-table checks may join valid contexts. A copied aggregate of
 5.005 against a rounded expected 5.00 passes tolerance 0.01, but must still satisfy
 any additional stricter check on that target. Grade/factor-rate equality stays exact.
+
+For review 5122010147, inspect source_binding failures before retrying an artifact.
+Reconcile the actual request/parser/registered identity and roles; do not edit a
+policy to authorize a substituted source. Inspect observed_source_binding and
+arithmetic_dependency findings at their slot/check IDs. Reconcile source cells
+and remove self/cyclic derivations through human-reviewed material changes.
+Every change requires fresh exact-material approval. Check rules_loaded followed
+by factors_evaluated and results_verified; loaded candidates are not all computed.
+See ADR 0007. No AWS account or real approval is needed for the regression suite.

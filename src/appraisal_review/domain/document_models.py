@@ -57,6 +57,13 @@ class SourceDocument(DocumentModel):
     page_space: Literal["unrotated_crop_box"] = "unrotated_crop_box"
     pages: list[SourcePage] = Field(min_length=1)
 
+    def same_identity_and_content(self, other: SourceDocument) -> bool:
+        from appraisal_review.domain.pdf_types import document_identity
+
+        return document_identity(self.uri) == document_identity(other.uri) and self.model_dump(
+            exclude={"uri"}
+        ) == other.model_dump(exclude={"uri"})
+
     @model_validator(mode="after")
     def complete_pages(self) -> SourceDocument:
         if [p.number for p in self.pages] != list(range(1, len(self.pages) + 1)):

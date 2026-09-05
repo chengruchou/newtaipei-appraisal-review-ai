@@ -103,3 +103,11 @@ configuration, confidence boundaries, zero-writer failures, Decimal tolerance
 boundaries, rounding and multiple constraints in either order. Existing forged
 claims, evidence, API and artifact-status tests remain required. Real model and
 whole-case human acceptance remain pending; these tests use synthetic material.
+
+The follow-up review 5122010147 is covered by test_review_trust_boundaries.py:
+request/parser/source identity, roles/page counts, supplementary sources, complete
+value-anchor binding, mutable self-reference, cycles, unrooted aggregates, loaded
+and evaluated audit identities, and writer-failure sequencing. Seventeen negative
+cases reproduced the earlier gaps before implementation; the distinct-cell DAG
+positive case passed. Existing context, runtime-threshold and Decimal regressions
+remain required. The dependent #16 must inherit these fixes before re-review.

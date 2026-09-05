@@ -16,7 +16,7 @@ from appraisal_review.ports.pdf import PDFWriter as PDFWriter
 
 
 class ParsedDocument(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", revalidate_instances="always")
 
     document_uri: str
     page_count: int = Field(ge=1)
