@@ -4,7 +4,7 @@ from pydantic import ValidationError
 
 from appraisal_review.domain.case_review import CaseReviewer
 from appraisal_review.domain.document_models import SourceRegistry
-from appraisal_review.domain.factor_engine import FactorRuleEngine
+from appraisal_review.domain.factor_engine import FactorRuleEngine, validate_minimum_confidence
 from appraisal_review.domain.factor_models import (
     AgentReviewRequest,
     AgentReviewRun,
@@ -60,7 +60,7 @@ class ReviewAgentController:
         self.verifier = verifier or ReviewVerifier()
         self.pdf_writer = pdf_writer
         self.audit_logger = audit_logger
-        self.minimum_confidence = minimum_confidence
+        self.minimum_confidence = validate_minimum_confidence(minimum_confidence)
 
     async def review(self, request: AgentReviewRequest) -> AgentReviewRun:
         events: list[AuditEvent] = []
@@ -123,7 +123,9 @@ class ReviewAgentController:
                     verification=verification,
                     audit_events=events,
                 )
-            case_review = CaseReviewer(self.authorization).review(
+            case_review = CaseReviewer(
+                self.authorization, minimum_confidence=self.minimum_confidence
+            ).review(
                 rule_set, factors, SourceRegistry(documents=[s for s in sources if s is not None])
             )
             verification = VerificationReport(
@@ -141,7 +143,9 @@ class ReviewAgentController:
             result = FactorRuleEngine(
                 rule_set, minimum_confidence=self.minimum_confidence
             ).evaluate(evaluation_request)
-            verification = self.verifier.verify(result, rule_set)
+            verification = self.verifier.verify(
+                result, rule_set, minimum_confidence=self.minimum_confidence
+            )
         await self._record(
             events,
             request.case_id,

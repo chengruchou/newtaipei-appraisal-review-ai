@@ -173,3 +173,32 @@ def test_verified_case_can_reach_completed_pdf_state() -> None:
     assert [event.sequence for event in result.audit_events] == list(
         range(1, len(result.audit_events) + 1)
     )
+
+
+def test_legacy_calculation_keeps_the_same_runtime_confidence_semantics():
+    from unittest.mock import AsyncMock
+
+    for threshold, expected in [(0.85, "verified"), (0.95, "needs_review")]:
+        pair = FactorPair(factor_id="road.width", target=observation(10), comparable=observation(9))
+        pair.target.confidence = pair.comparable.confidence = 0.90
+        writer = Writer()
+        controller = ReviewAgentController(
+            parser=Parser(),
+            rule_provider=RuleProvider(rule_set()),
+            fact_extractor=AsyncMock(extract_facts=AsyncMock(return_value=[pair])),
+            minimum_confidence=threshold,
+            pdf_writer=writer,
+        )
+        run = asyncio.run(
+            controller.review(
+                AgentReviewRequest(
+                    case_id="case-1",
+                    criteria_document_uri="criteria.pdf",
+                    case_document_uri="file:///synthetic/case.pdf",
+                )
+            )
+        )
+        assert run.review.summary.status.value == expected
+        # Factor-only adapters still lack the complete case authorization boundary.
+        assert run.status is WorkflowStatus.NEEDS_REVIEW
+        assert not run.verification.can_complete and not writer.called

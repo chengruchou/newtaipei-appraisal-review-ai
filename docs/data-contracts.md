@@ -109,6 +109,26 @@ EntryProblem.response() and the same serialization, with no HTTP status wrapper.
 Legacy success responses and all error envelopes remain unchanged. See ADR 0004 and
 api error contract tests for runtime JSON validation against the published schema.
 
+## Review binding and comparison corrections
+
+Every ReviewSlot.context must exist in ReviewInventory.contexts. Factor grades
+and adjustment_percent require that context's factor_id; subtotal/total have no
+factor_id. Both ends of ArithmeticCheck must reference structurally valid slots.
+An invalid binding yields an observed/<slot-id> slot_binding finding and missing
+coverage. Cross-context checks are valid when both contexts are registered.
+
+The runtime confidence threshold is shared by calculation and independent
+recalculation. It defaults to 0.85, is finite and within [0, 1], and is not replaced
+by model confidence or exact-material approval. Below-threshold cases need review.
+
+Aggregate observed comparisons preserve every arithmetic constraint's Decimal
+expected value, ROUND_HALF_UP quantum and inclusive tolerance. All constraints
+must pass, including the independent total when available. Grade and factor-rate
+comparisons remain exact. Arithmetic findings retain each check ID, version,
+source, original value, expected value and comparison trace. A final aggregate
+finding may list multiple expected values by check ID; none is silently selected.
+No PDFWriter request/result fields or public protocol change in this correction.
+
 ## Document candidates and reviewer operations (#7)
 
 `SourceDocument` records immutable source identity, role/version/date and every

@@ -2,7 +2,7 @@
 
 from pydantic import ValidationError
 
-from appraisal_review.domain.factor_engine import FactorRuleEngine
+from appraisal_review.domain.factor_engine import FactorRuleEngine, validate_minimum_confidence
 from appraisal_review.domain.factor_models import (
     EvaluationStatus,
     FactorEvaluationRequest,
@@ -19,7 +19,9 @@ class ReviewVerifier:
         rule_set: FactorRuleSet,
         *,
         facts: FactorEvaluationRequest | None = None,
+        minimum_confidence: float = 0.85,
     ) -> VerificationReport:
+        minimum_confidence = validate_minimum_confidence(minimum_confidence)
         errors: list[str] = []
         failed = False
         ids = [r.factor_id for r in result.results]
@@ -39,7 +41,9 @@ class ReviewVerifier:
                 rules = FactorRuleSet.model_validate(rule_set.model_dump())
                 inputs = FactorEvaluationRequest.model_validate(facts.model_dump())
                 claimed = FactorReviewResult.model_validate(result.model_dump())
-                expected = FactorRuleEngine(rules).evaluate(inputs)
+                expected = FactorRuleEngine(rules, minimum_confidence=minimum_confidence).evaluate(
+                    inputs
+                )
                 # Context/source bindings are checked by the case gate, not derived from result.
                 if (claimed.case_id, claimed.results, claimed.summary) != (
                     expected.case_id,
