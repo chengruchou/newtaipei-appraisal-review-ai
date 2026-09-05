@@ -119,7 +119,8 @@ coverage. Cross-context checks are valid when both contexts are registered.
 
 The runtime confidence threshold is shared by calculation and independent
 recalculation. It defaults to 0.85, is finite and within [0, 1], and is not replaced
-by model confidence or exact-material approval. Below-threshold cases need review.
+by model confidence or exact-material approval alone. Unconfirmed measured
+values below threshold need review; controlled confirmation is specified below.
 
 Aggregate observed comparisons preserve every arithmetic constraint's Decimal
 expected value, ROUND_HALF_UP quantum and inclusive tolerance. All constraints
@@ -162,3 +163,16 @@ Canonical evidence confidence and observation confidence are zero after extracti
 method=model_proposed remains until explicit confirmation. Source binding is not
 proof of semantic accuracy. The receipt covers all normalized evidence and facts,
 so later changes cannot reuse approval. Public schemas and PDFWriter are unchanged.
+
+Source identity, complete observed/slot value-anchor sets, DAG derivation and
+loaded-versus-evaluated audit events are specified in [ADR 0007](adr/0007-source-cell-and-derivation-trust.md).
+The PDF writer protocol is unchanged; writer-time snapshot enforcement remains
+outside the implemented source URI check.
+
+Reliability explicitly distinguishes measured evidence from localization and
+unknown provenance. Native evaluation conservatively uses all critical scores;
+controlled confirmation preserves raw scores and binds each side before separate
+exact-material approval. Existing method-only material is untrusted and old
+receipts require explicit reviewer migration, never automatic re-signing.
+See [ADR 0008](adr/0008-measured-confidence-and-human-confirmation.md).
+Legacy EvidenceRef and HTTP success/error schemas remain unchanged.

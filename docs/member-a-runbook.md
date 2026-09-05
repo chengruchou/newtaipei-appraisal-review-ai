@@ -236,3 +236,20 @@ when appropriate. Never reuse an old receipt after normalization or content edit
 The parser uses PyMuPDF under its upstream AGPL/commercial licensing terms; retain
 those notices and include the chosen dependency licensing in redistribution review.
 [Upstream licensing](https://pymupdf.readthedocs.io/en/latest/about.html#license-and-copyright).
+
+For review 5122010147, inspect source_binding failures before retrying an artifact.
+Reconcile the actual request/parser/registered identity and roles; do not edit a
+policy to authorize a substituted source. Inspect observed_source_binding and
+arithmetic_dependency findings at their slot/check IDs. Reconcile source cells
+and remove self/cyclic derivations through human-reviewed material changes.
+Every change requires fresh exact-material approval. Check rules_loaded followed
+by factors_evaluated and results_verified; loaded candidates are not all computed.
+See ADR 0007. No AWS account or real approval is needed for the regression suite.
+
+For confidence failures, inspect confidence_kind, provenance and producer before
+scores. Unknown is not a low calibrated measurement. A native measured side uses
+the minimum of outer and every used evidence score at the runtime threshold.
+For human review, use the controlled confirmation operation, inspect its side
+binding, then approve the exact final material separately. Preserve low original
+scores. Old method-only material needs explicit reconciliation and confirmation;
+old receipts do not authorize the new serialization. See ADR 0008.

@@ -3,7 +3,7 @@
 from pydantic import ValidationError
 
 from appraisal_review.domain.case_review import CaseReviewer
-from appraisal_review.domain.document_models import SourceRegistry
+from appraisal_review.domain.document_models import SourceDocument, SourceRegistry
 from appraisal_review.domain.factor_engine import FactorRuleEngine, validate_minimum_confidence
 from appraisal_review.domain.factor_models import (
     AgentReviewRequest,
@@ -14,6 +14,7 @@ from appraisal_review.domain.factor_models import (
     EvaluationStatus,
     FactorEvaluationRequest,
     FactorReviewResult,
+    FactorRuleSet,
     ReviewPolicy,
     VerificationReport,
     WorkflowStatus,
@@ -25,6 +26,7 @@ from appraisal_review.domain.pdf_models import (
     PDFWriteError,
     PDFWriteRequest,
     PDFWriteResult,
+    UnsupportedDocumentURIError,
     document_identity,
 )
 from appraisal_review.domain.verification import ReviewVerifier
@@ -33,9 +35,20 @@ from appraisal_review.ports.workflow import (
     AuditLogger,
     DocumentParser,
     FactExtractor,
+    ParsedDocument,
     PDFWriter,
     RuleSetProvider,
 )
+
+
+def loaded_rule_sets(value: ReviewPolicy | FactorRuleSet) -> list[tuple[FactorRuleSet, object]]:
+    if isinstance(value, ReviewPolicy):
+        return [(scoped.rules, scoped.context.model_dump()) for scoped in value.rule_sets]
+    return [(value, None)]
+
+
+class SourceBindingError(Exception):
+    """Sanitized parse/registry boundary failure."""
 
 
 class ReviewAgentController:
@@ -64,11 +77,56 @@ class ReviewAgentController:
 
     async def review(self, request: AgentReviewRequest) -> AgentReviewRun:
         events: list[AuditEvent] = []
+        try:
+            return await self._review(request, events)
+        except (SourceBindingError, UnsupportedDocumentURIError):
+            await self._record(
+                events,
+                request.case_id,
+                "source_binding_failed",
+                "failed",
+                "parse_document",
+                details={"code": "source_binding"},
+            )
+            return AgentReviewRun(
+                case_id=request.case_id,
+                status=WorkflowStatus.FAILED,
+                audit_events=events,
+                verification=VerificationReport(
+                    status=EvaluationStatus.FAILED,
+                    critical_errors=["source_binding: requested and reviewed source must match"],
+                ),
+            )
+
+    async def _parse(self, uri: str, role: str) -> ParsedDocument:
+        try:
+            parsed = await self.parser.parse_document(uri)
+            parsed = ParsedDocument.model_validate(parsed.model_dump())
+            if parsed.source is None:
+                # Legacy adapters cannot authorize completion; retain their input shape.
+                if parsed.document_uri != uri:
+                    raise SourceBindingError
+                return parsed
+            source = parsed.source
+            if (
+                document_identity(uri) != document_identity(parsed.document_uri)
+                or document_identity(uri) != document_identity(source.uri)
+                or source.role != role
+                or parsed.page_count != len(source.pages)
+            ):
+                raise SourceBindingError
+            return parsed
+        except (ValidationError, ValueError, PDFWriteError) as error:
+            raise SourceBindingError from error
+
+    async def _review(
+        self, request: AgentReviewRequest, events: list[AuditEvent]
+    ) -> AgentReviewRun:
         await self._record(
             events, request.case_id, "workflow_started", WorkflowStatus.RECEIVED, "controller"
         )
 
-        criteria = await self.parser.parse_document(request.criteria_document_uri)
+        criteria = await self._parse(request.criteria_document_uri, "criteria")
         await self._record(events, request.case_id, "criteria_parsed", "ok", "parse_document")
         rule_set = await self.rule_provider.load_or_build_rules(criteria)
         await self._record(
@@ -77,9 +135,40 @@ class ReviewAgentController:
             "rules_loaded",
             "candidate" if isinstance(rule_set, ReviewPolicy) else rule_set.status,
             "load_or_build_rules",
-            rule_ids=[],
+            rule_ids=sorted({r.id for rules, _ in loaded_rule_sets(rule_set) for r in rules.rules}),
+            details={
+                "rule_sets": [
+                    {
+                        "id": rules.rule_set_id,
+                        "version": rules.version,
+                        "context": context,
+                        "status": rules.status,
+                        "rule_ids": [r.id for r in rules.rules],
+                    }
+                    for rules, context in loaded_rule_sets(rule_set)
+                ]
+            },
         )
         if not isinstance(rule_set, ReviewPolicy) and rule_set.status != "approved":
+            await self._record(
+                events,
+                request.case_id,
+                "factors_evaluated",
+                "not_computed",
+                "evaluate_factors",
+                details={
+                    "comparisons": [],
+                    "selection": [
+                        {
+                            "id": rule_set.rule_set_id,
+                            "version": rule_set.version,
+                            "context": None,
+                            "outcome": rule_set.status,
+                            "state": "not_computed",
+                        }
+                    ],
+                },
+            )
             await self._record(
                 events,
                 request.case_id,
@@ -94,7 +183,7 @@ class ReviewAgentController:
                 audit_events=events,
             )
 
-        case_document = await self.parser.parse_document(request.case_document_uri)
+        case_document = await self._parse(request.case_document_uri, "forms")
         await self._record(events, request.case_id, "case_parsed", "ok", "parse_document")
         factors = await self.fact_extractor.extract_facts(case_document, case_id=request.case_id)
         await self._record(events, request.case_id, "facts_extracted", "ok", "extract_facts")
@@ -103,15 +192,34 @@ class ReviewAgentController:
         if isinstance(rule_set, ReviewPolicy) and isinstance(factors, CaseFacts):
             if request.case_id != rule_set.identity.case_id:
                 raise ValueError("Request case does not match configured review material")
-            sources = [criteria.source, case_document.source]
-            known = {
-                criteria.document_uri,
-                case_document.document_uri,
-                *(s.uri for s in sources if s is not None),
-            }
-            for source in rule_set.registry.documents:
-                if source.uri not in known:
-                    sources.append((await self.parser.parse_document(source.uri)).source)
+            primary = [criteria.source, case_document.source]
+            sources: list[SourceDocument | None] = []
+            for registered in rule_set.registry.documents:
+                matches = [
+                    source
+                    for source in primary
+                    if source is not None
+                    and document_identity(source.uri) == document_identity(registered.uri)
+                ]
+                current: SourceDocument | None
+                if len(matches) == 1:
+                    current = matches[0]
+                elif not matches and registered.role in {"reference", "brief"}:
+                    current = (await self._parse(registered.uri, registered.role)).source
+                else:
+                    raise SourceBindingError
+                if current is not None and not current.same_identity_and_content(registered):
+                    raise SourceBindingError
+                sources.append(current)
+            if any(
+                source is not None
+                and not any(
+                    source.same_identity_and_content(registered)
+                    for registered in rule_set.registry.documents
+                )
+                for source in primary
+            ):
+                raise SourceBindingError
             if any(source is None for source in sources):
                 verification = VerificationReport(
                     status=EvaluationStatus.NEEDS_REVIEW,
@@ -146,6 +254,60 @@ class ReviewAgentController:
             verification = self.verifier.verify(
                 result, rule_set, minimum_confidence=self.minimum_confidence
             )
+        evaluated = case_review.comparisons if case_review else ([result] if result else [])
+        await self._record(
+            events,
+            request.case_id,
+            "factors_evaluated",
+            "evaluated" if evaluated else "not_computed",
+            "evaluate_factors",
+            rule_ids=sorted(
+                {
+                    item.rule_id
+                    for comparison in evaluated
+                    for item in comparison.results
+                    if item.rule_id is not None
+                }
+            ),
+            details={
+                "comparisons": [
+                    {
+                        "id": comparison.rule_set_id,
+                        "version": comparison.rule_version,
+                        "context": comparison.context.model_dump() if comparison.context else None,
+                        "outcome": comparison.summary.status.value,
+                        "factors": [
+                            {
+                                "factor_id": item.factor_id,
+                                "rule_id": item.rule_id,
+                                "outcome": item.status.value,
+                                "state": "computed"
+                                if item.adjustment_percent is not None
+                                else "not_computed",
+                            }
+                            for item in comparison.results
+                        ],
+                    }
+                    for comparison in evaluated
+                ],
+                "selection": [
+                    {
+                        "context": entry.context.model_dump(),
+                        "outcome": "selected"
+                        if any(c.context == entry.context for c in evaluated)
+                        else "not_computed",
+                        "reasons": [
+                            f.kind
+                            for f in case_review.findings
+                            if f.context == entry.context and f.status != "verified"
+                        ],
+                    }
+                    for entry in rule_set.inventory.contexts
+                ]
+                if isinstance(rule_set, ReviewPolicy) and case_review
+                else [],
+            },
+        )
         await self._record(
             events,
             request.case_id,
@@ -216,7 +378,9 @@ class ReviewAgentController:
 
         try:
             pdf_request = PDFWriteRequest(
-                source_uri=request.case_document_uri,
+                source_uri=case_document.source.uri
+                if case_document.source
+                else case_document.document_uri,
                 destination_uri=request.output_pdf_uri,
                 result=result,
                 field_map=request.field_map,
@@ -240,7 +404,12 @@ class ReviewAgentController:
             if (
                 document_identity(output.output_uri)
                 != document_identity(pdf_request.destination_uri)
-                or output.page_count != case_document.page_count
+                or output.page_count
+                != (
+                    len(case_document.source.pages)
+                    if case_document.source
+                    else case_document.page_count
+                )
                 or set(output.written_field_ids)
                 != {f.field_id for f in pdf_request.field_map.fields}
             ):

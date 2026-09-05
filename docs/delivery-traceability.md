@@ -160,3 +160,18 @@ invalidation after normalized evidence changes. #15 corrections were inherited
 through a normal merge retaining both histories and both documentation sections.
 This revision uses synthetic PDFs, mocked responses and isolated test approvals;
 no AWS call, real approval or new real-data accuracy claim is made.
+
+The follow-up review 5122010147 is covered by test_review_trust_boundaries.py:
+request/parser/source identity, roles/page counts, supplementary sources, complete
+value-anchor binding, mutable self-reference, cycles, unrooted aggregates, loaded
+and evaluated audit identities, and writer-failure sequencing. Seventeen negative
+cases reproduced the earlier gaps before implementation; the distinct-cell DAG
+positive case passed. Existing context, runtime-threshold and Decimal regressions
+remain required. The dependent #16 must inherit these fixes before re-review.
+
+Confidence regressions in test_confidence_provenance.py cover target/comparable
+threshold boundaries, multiple measured anchors, unknown/model provenance,
+method-only claims, legitimate low-score confirmation with separate authorization,
+and later score/provenance/citation changes. ADR 0008 defines the semantics before
+these tests. The #16 parser/extractor/CLI integration must produce these fields
+through official normalization rather than test-side repairs.

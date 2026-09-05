@@ -34,9 +34,16 @@ def validate_minimum_confidence(value: float) -> float:
 
 
 class FactorRuleEngine:
-    def __init__(self, rule_set: FactorRuleSet, *, minimum_confidence: float = 0.85) -> None:
+    def __init__(
+        self,
+        rule_set: FactorRuleSet,
+        *,
+        minimum_confidence: float = 0.85,
+        confirmed_sides: frozenset[tuple[str, str]] = frozenset(),
+    ) -> None:
         if rule_set.status != "approved":
             raise ValueError("only approved factor rule sets can be evaluated")
+        self.confirmed_sides = confirmed_sides
         self.rule_set = rule_set
         self.minimum_confidence = validate_minimum_confidence(minimum_confidence)
         self._rules = {rule.factor_id: rule for rule in rule_set.rules}
@@ -125,7 +132,10 @@ class FactorRuleEngine:
             raise ObservationNeedsReview(f"{side} value is missing")
         if not observation.evidence:
             raise ObservationNeedsReview(f"{side} evidence is missing")
-        if observation.confidence < self.minimum_confidence:
+        if (
+            rule.factor_id,
+            side,
+        ) not in self.confirmed_sides and observation.confidence < self.minimum_confidence:
             raise ObservationNeedsReview(
                 f"{side} confidence {observation.confidence} is below {self.minimum_confidence}"
             )

@@ -306,6 +306,7 @@ def test_blank_output_is_derivable_but_missing_fact_is_not():
     ref = material.facts.observed[0].evidence[0].model_copy(deep=True)
     ref.region_id, ref.bbox, ref.excerpt = "blank-output", (1, 50, 90, 60), ""
     material.facts.observed[0].evidence = [ref]
+    material.policy.inventory.slots[0].evidence = [ref]
     material.facts.observed[0].state, material.facts.observed[0].value = "blank", None
     assert evaluate(material).status.value == "verified"
     material.facts.pairs[0].pair.target.value = None
@@ -518,6 +519,13 @@ def test_cross_form_between_two_registered_complete_contexts_remains_valid():
     assert len(run.case_review.comparisons) == 2
     assert run.artifact_status == "unsupported_contexts"
     writer.write_pdf.assert_not_called()
+    events = {event.event_type: event for event in run.audit_events}
+    assert len(events["rules_loaded"].details["rule_sets"]) == 2
+    actual = events["factors_evaluated"].details["comparisons"]
+    assert {tuple(c["context"].values()) for c in actual} == {
+        tuple(c.context.model_dump().values()) for c in policy.inventory.contexts
+    }
+    assert all(c["version"] == "1.0.0" and c["outcome"] == "verified" for c in actual)
 
 
 @pytest.mark.parametrize("invalid_end", ["inputs", "target"])
