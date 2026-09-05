@@ -177,3 +177,11 @@ file and record every written field in the audit trail.
 
 Audit records contain references and decisions, not full sensitive document
 text or credentials.
+
+## Authoritative PDF boundary
+
+The executable PDF contract is specified in [PDF contract](pdf-contract.md) and
+[ADR 0002](adr/0002-shared-pdf-contract.md). The earlier field-map example is an
+unbound compatibility example: writing now requires explicit value_ref bindings.
+Warnings and PDF metadata are returned in AgentReviewRun.pdf_result; errors in
+pdf_error. They are not inserted into the audit logger to avoid a schema change.

@@ -9,6 +9,9 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from appraisal_review.domain.models import EvidenceRef
+from appraisal_review.domain.pdf_types import PDFField as PDFField
+from appraisal_review.domain.pdf_types import PDFFieldMap as PDFFieldMap
+from appraisal_review.domain.pdf_types import PDFProblem, PDFWriteResult
 
 
 class StrictFactorModel(BaseModel):
@@ -236,26 +239,6 @@ class VerificationReport(StrictFactorModel):
         return self.status is EvaluationStatus.VERIFIED and not self.critical_errors
 
 
-class PDFField(StrictFactorModel):
-    field_id: str
-    page: int = Field(ge=1)
-    bounding_box: tuple[float, float, float, float]
-    max_characters: int | None = Field(default=None, ge=1)
-
-
-class PDFFieldMap(StrictFactorModel):
-    template_id: str
-    page_numbering: Literal["one_based"] = "one_based"
-    coordinate_system: Literal["pdf_bottom_left"] = "pdf_bottom_left"
-    fields: list[PDFField]
-
-    def lookup(self, field_id: str) -> PDFField:
-        matches = [field for field in self.fields if field.field_id == field_id]
-        if len(matches) != 1:
-            raise KeyError(f"expected exactly one PDF field mapping for {field_id!r}")
-        return matches[0]
-
-
 class AuditEvent(StrictFactorModel):
     case_id: str
     sequence: int = Field(ge=1)
@@ -281,4 +264,6 @@ class AgentReviewRun(StrictFactorModel):
     review: FactorReviewResult | None = None
     verification: VerificationReport | None = None
     output_pdf_uri: str | None = None
+    pdf_result: PDFWriteResult | None = None
+    pdf_error: PDFProblem | None = None
     audit_events: list[AuditEvent] = Field(default_factory=list)

@@ -1,5 +1,7 @@
 """Tool-based workflow controller with explicit safe completion branches."""
 
+from pydantic import ValidationError
+
 from appraisal_review.domain.factor_engine import FactorRuleEngine
 from appraisal_review.domain.factor_models import (
     AgentReviewRequest,
@@ -7,7 +9,18 @@ from appraisal_review.domain.factor_models import (
     AuditEvent,
     EvaluationStatus,
     FactorEvaluationRequest,
+    FactorReviewResult,
+    VerificationReport,
     WorkflowStatus,
+)
+from appraisal_review.domain.pdf_models import (
+    InvalidPDFResultError,
+    PDFErrorCode,
+    PDFProblem,
+    PDFWriteError,
+    PDFWriteRequest,
+    PDFWriteResult,
+    document_identity,
 )
 from appraisal_review.domain.verification import ReviewVerifier
 from appraisal_review.ports.workflow import (
@@ -144,27 +157,88 @@ class ReviewAgentController:
                 audit_events=events,
             )
 
-        output_uri = await self.pdf_writer.write_pdf(
-            request.case_document_uri,
-            request.output_pdf_uri,
-            result,
-            request.field_map,
-        )
+        try:
+            pdf_request = PDFWriteRequest(
+                source_uri=request.case_document_uri,
+                destination_uri=request.output_pdf_uri,
+                result=result,
+                field_map=request.field_map,
+            )
+        except ValidationError as error:
+            code = PDFErrorCode.PLACEMENT
+            for detail in error.errors():
+                cause = detail.get("ctx", {}).get("error")
+                if isinstance(cause, PDFWriteError):
+                    code = cause.code
+                    break
+            return await self._pdf_failed(request.case_id, result, verification, events, code)
+
+        try:
+            raw_output = await self.pdf_writer.write_pdf(pdf_request)
+            if not isinstance(raw_output, PDFWriteResult):
+                raise InvalidPDFResultError("Writer must return PDFWriteResult")
+            output = PDFWriteResult.model_validate(raw_output.model_dump())
+            if (
+                document_identity(output.output_uri)
+                != document_identity(pdf_request.destination_uri)
+                or output.page_count != case_document.page_count
+                or set(output.written_field_ids)
+                != {f.field_id for f in pdf_request.field_map.fields}
+            ):
+                raise InvalidPDFResultError("Writer result does not match the write request")
+        except PDFWriteError as error:
+            return await self._pdf_failed(request.case_id, result, verification, events, error.code)
+        except ValidationError:
+            return await self._pdf_failed(
+                request.case_id, result, verification, events, PDFErrorCode.INVALID_RESULT
+            )
+        except Exception:
+            # An adapter bug must not discard findings or expose document/credential text.
+            return await self._pdf_failed(
+                request.case_id, result, verification, events, PDFErrorCode.WRITE
+            )
+
         await self._record(
             events,
             request.case_id,
             "pdf_written",
             WorkflowStatus.COMPLETED,
             "write_pdf",
-            details={"output_uri": output_uri},
+            details={"output_uri": output.output_uri},
         )
         return AgentReviewRun(
             case_id=request.case_id,
             status=WorkflowStatus.COMPLETED,
             review=result,
             verification=verification,
-            output_pdf_uri=output_uri,
+            output_pdf_uri=output.output_uri,
+            pdf_result=output,
             audit_events=events,
+        )
+
+    async def _pdf_failed(
+        self,
+        case_id: str,
+        result: FactorReviewResult,
+        verification: VerificationReport,
+        events: list[AuditEvent],
+        code: PDFErrorCode,
+    ) -> AgentReviewRun:
+        await self._record(
+            events,
+            case_id,
+            "pdf_write_failed",
+            WorkflowStatus.FAILED,
+            "write_pdf",
+            details={"error_code": code.value},
+        )
+        return AgentReviewRun(
+            case_id=case_id,
+            status=WorkflowStatus.FAILED,
+            review=result,
+            verification=verification,
+            audit_events=events,
+            pdf_error=PDFProblem(code=code),
         )
 
     async def _record(

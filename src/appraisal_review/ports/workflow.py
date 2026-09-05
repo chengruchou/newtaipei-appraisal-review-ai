@@ -7,10 +7,9 @@ from pydantic import BaseModel, ConfigDict, Field
 from appraisal_review.domain.factor_models import (
     AuditEvent,
     FactorPair,
-    FactorReviewResult,
     FactorRuleSet,
-    PDFFieldMap,
 )
+from appraisal_review.ports.pdf import PDFWriter as PDFWriter
 
 
 class ParsedDocument(BaseModel):
@@ -33,16 +32,6 @@ class FactExtractor(Protocol):
 
 class RuleSetProvider(Protocol):
     async def load_or_build_rules(self, criteria: ParsedDocument) -> FactorRuleSet: ...
-
-
-class PDFWriter(Protocol):
-    async def write_pdf(
-        self,
-        source_uri: str,
-        destination_uri: str,
-        result: FactorReviewResult,
-        field_map: PDFFieldMap,
-    ) -> str: ...
 
 
 class AuditLogger(Protocol):

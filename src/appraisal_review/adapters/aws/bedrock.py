@@ -17,7 +17,7 @@ class BedrockExplanationGenerator:
     def from_default_session(
         cls, *, region_name: str, model_id: str
     ) -> "BedrockExplanationGenerator":
-        import boto3  # type: ignore[import-not-found]  # Optional `aws` extra.
+        import boto3  # Optional `aws` extra; type stubs are in the `dev` extra.
 
         return cls(boto3.client("bedrock-runtime", region_name=region_name), model_id=model_id)
 
