@@ -6,6 +6,7 @@ import argparse
 import asyncio
 import json
 import os
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -19,6 +20,10 @@ from appraisal_review.adapters.aws.document_extraction import (
 from appraisal_review.adapters.local.approval import LocalApprovalStore, current_reviewer
 from appraisal_review.adapters.local.native_candidates import native_candidates
 from appraisal_review.adapters.local.pdf_parser import DocumentInput, LocalPDFParser
+from appraisal_review.adapters.local.reviewer_platform import (
+    UnsupportedReviewerPlatform,
+    require_reviewer_platform,
+)
 from appraisal_review.application.bootstrap import build_controller
 from appraisal_review.application.document_review import assemble, document_adapters
 from appraisal_review.config import Settings
@@ -213,7 +218,7 @@ async def preparation(args: argparse.Namespace) -> None:
     )
 
 
-def main() -> None:
+def _main() -> None:
     cli = argparse.ArgumentParser(description=__doc__)
     sub = cli.add_subparsers(dest="command", required=True)
     for command in ("parse", "extract", "assemble", "native-candidates", "check-golden"):
@@ -245,6 +250,8 @@ def main() -> None:
         if command in {"confirm-facts", "approve"}:
             parser.add_argument("--expected-digest", required=True)
     args = cli.parse_args()
+    if args.command in {"init-store", "confirm-facts", "approve", "review"}:
+        require_reviewer_platform()
     if args.command in {"parse", "extract", "assemble", "native-candidates", "check-golden"}:
         asyncio.run(preparation(args))
         return
@@ -292,12 +299,30 @@ def main() -> None:
 
 
 def _file_path(uri: str) -> Path:
+    import re
     from urllib.parse import unquote, urlsplit
 
+    from appraisal_review.domain.pdf_types import document_identity
+
     parts = urlsplit(uri)
-    if parts.scheme != "file" or parts.netloc not in {"", "localhost"}:
-        raise ValueError("This explicitly local runner requires local source files")
-    return Path(unquote(parts.path))
+    path = unquote(parts.path)
+    if (
+        parts.scheme != "file"
+        or parts.netloc not in {"", "localhost"}
+        or re.match(r"^/[A-Za-z]:", path)
+        or path.startswith("//")
+        or "\\" in path
+    ):
+        raise ValueError("unsupported_local_file_uri: POSIX absolute file URI required")
+    return Path(document_identity(uri)[2])
+
+
+def main() -> None:
+    try:
+        _main()
+    except UnsupportedReviewerPlatform as error:
+        print(str(error), file=sys.stderr)
+        raise SystemExit(2) from None
 
 
 if __name__ == "__main__":

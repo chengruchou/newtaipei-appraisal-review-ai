@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "newtaipei-appraisal-review-ai"
 version = "0.1.0"
-description = "Auditable AI-assisted review of real-estate appraisal cases"
+description = "Auditable AI-assisted appraisal review; local reviewer workflow requires Linux or macOS"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [

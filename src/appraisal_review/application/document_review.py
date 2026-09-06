@@ -18,6 +18,7 @@ from appraisal_review.domain.factor_models import (
     ScopedRules,
 )
 from appraisal_review.domain.review_contracts import CaseIdentity, InventoryContext, ReviewInventory
+from appraisal_review.domain.source_purpose import SourcePurposes
 from appraisal_review.ports.approval import ReviewAuthorization
 from appraisal_review.ports.workflow import ParsedDocument
 
@@ -26,6 +27,7 @@ def assemble(
     identity: CaseIdentity, registry: SourceRegistry, extractions: list[PageExtraction]
 ) -> ReviewMaterial:
     """Page continuations merge inventory only; duplicate facts/rules never silently overwrite."""
+    purposes = SourcePurposes.selected(registry)
     seen = set()
     contexts: dict[str, InventoryContext] = {}
     rules: dict[str, list[ProposedRule]] = defaultdict(list)
@@ -42,6 +44,16 @@ def assemble(
         seen.add(key)
         pages[key[0]].append(key[1])
         proposal = extraction.proposal
+        if not source.same_identity_and_content(purposes.forms) and any(
+            (
+                proposal.contexts,
+                proposal.pairs,
+                proposal.observed,
+                proposal.slots,
+                proposal.empty_columns,
+            )
+        ):
+            unresolved.append("source_purpose: case proposals require the selected forms page")
         tables[key[0]].extend(proposal.accounted_table_ids)
         for context in proposal.contexts:
             id = context.context.key()
@@ -113,7 +125,7 @@ def assemble(
             unsupported=[u for p in proposals for u in p.unsupported],
         ),
     )
-    return ReviewMaterial(
+    material = ReviewMaterial(
         policy=policy,
         facts=CaseFacts(
             identity=identity,
@@ -121,6 +133,10 @@ def assemble(
             observed=[value for p in proposals for value in p.observed],
         ),
     )
+
+    for id, _refs in purposes.violations(material.policy, material.facts):
+        material.policy.inventory.unresolved.append(f"source_purpose: invalid evidence use at {id}")
+    return material
 
 
 class MaterialProvider:

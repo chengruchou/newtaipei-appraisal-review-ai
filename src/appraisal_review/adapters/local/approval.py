@@ -10,17 +10,18 @@ import hashlib
 import hmac
 import json
 import os
-import pwd
 import secrets
 import stat
 from datetime import UTC, datetime
 from pathlib import Path
 
-from pydantic import Field
+from pydantic import Field, ValidationError
 
+from appraisal_review.adapters.local.reviewer_platform import require_reviewer_platform
 from appraisal_review.domain.confidence import confirmation_digest
 from appraisal_review.domain.document_models import DocumentModel
 from appraisal_review.domain.factor_models import ReviewMaterial
+from appraisal_review.domain.pdf_types import document_identity
 from appraisal_review.domain.review_contracts import content_digest
 
 
@@ -46,12 +47,16 @@ class ApprovalReceipt(DocumentModel):
 
 
 def current_reviewer() -> Reviewer:
+    require_reviewer_platform()
+    import pwd
+
     uid = os.getuid()
     return Reviewer(uid=uid, name=pwd.getpwuid(uid).pw_name)
 
 
 class LocalApprovalStore:
     def __init__(self, root: Path) -> None:
+        require_reviewer_platform()
         self.root = root.absolute()
 
     @classmethod
@@ -65,6 +70,7 @@ class LocalApprovalStore:
         return store
 
     def _write_new(self, name: str, data: bytes) -> None:
+        require_reviewer_platform()
         fd = os.open(self.root / name, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
         with os.fdopen(fd, "wb") as stream:
             stream.write(data)
@@ -72,6 +78,7 @@ class LocalApprovalStore:
             os.fsync(stream.fileno())
 
     def _read_private(self, path: Path, *, directory: bool = False) -> bytes:
+        require_reviewer_platform()
         info = path.lstat()
         if (
             stat.S_ISLNK(info.st_mode)
@@ -137,15 +144,74 @@ class LocalApprovalStore:
 
 
 def confirmations_valid(material: ReviewMaterial, reviewer: Reviewer) -> bool:
-    for pair in material.facts.pairs:
-        for side in ("target", "comparable"):
-            reliability = getattr(pair, f"{side}_reliability")
-            if reliability.method == "reviewer_confirmed":
-                confirmation = reliability.confirmation
+    """Eligibility is separate from full-case completeness and measured thresholds."""
+    try:
+        material = ReviewMaterial.model_validate(material.model_dump())
+        if not material.facts.pairs:
+            return False
+        for pair in material.facts.pairs:
+            for side in ("target", "comparable"):
+                reliability = getattr(pair, f"{side}_reliability")
+                observation = getattr(pair.pair, side)
+                refs = getattr(pair, f"{side}_sources")
+                registry = material.policy.registry
                 if (
-                    confirmation is None
-                    or confirmation.reviewer != f"{reviewer.uid}:{reviewer.name}"
-                    or confirmation.input_digest != confirmation_digest(pair, side)
+                    reliability.unresolved
+                    or reliability.selection == "ambiguous"
+                    or observation.value is None
+                    or not observation.raw_text
+                    or not observation.evidence
+                    or not refs
+                    or not all(registry.resolves(ref) for ref in refs)
                 ):
                     return False
-    return True
+                if not all(
+                    any(
+                        e.document_id == ref.document_id
+                        and e.page == ref.page
+                        and e.bounding_box == ref.bbox
+                        for e in observation.evidence
+                    )
+                    for ref in refs
+                ):
+                    return False
+                for evidence in observation.evidence:
+                    if (
+                        evidence.source_file is None
+                        or evidence.coordinate_system != "pdf_bottom_left"
+                        or not any(
+                            evidence.document_id == ref.document_id
+                            and evidence.page == ref.page
+                            and evidence.bounding_box == ref.bbox
+                            for ref in refs
+                        )
+                    ):
+                        return False
+                    document = next(
+                        d for d in registry.documents if d.document_id == evidence.document_id
+                    )
+                    if document_identity(evidence.source_file) != document_identity(document.uri):
+                        return False
+                if reliability.method == "reviewer_confirmed":
+                    confirmation = reliability.confirmation
+                    if (
+                        confirmation is None
+                        or confirmation.reviewer != f"{reviewer.uid}:{reviewer.name}"
+                        or confirmation.input_digest != confirmation_digest(pair, side)
+                        or reliability.confidence_kind == "unknown"
+                        or reliability.provenance == "unknown"
+                    ):
+                        return False
+                elif reliability.method == "native_numeric":
+                    if (
+                        reliability.confidence_kind != "measured"
+                        or reliability.provenance != "native_extraction"
+                        or reliability.producer is None
+                        or reliability.confirmation is not None
+                    ):
+                        return False
+                else:
+                    return False
+        return True
+    except (ValidationError, ValueError, StopIteration):
+        return False

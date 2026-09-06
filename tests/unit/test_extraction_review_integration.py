@@ -24,7 +24,7 @@ from appraisal_review.domain.factor_models import AgentReviewRequest, ReviewMate
 from appraisal_review.domain.review_contracts import content_digest
 
 
-def extracted_pdf_material(tmp_path):
+def extracted_pdf_material(tmp_path, *, case_role="forms"):
     make_pdf = runpy.run_path(str(Path(__file__).with_name("test_pdf_parser.py")))["make_pdf"]
     specs = []
     for role in ("criteria", "forms"):
@@ -53,7 +53,12 @@ def extracted_pdf_material(tmp_path):
 
     # Domain seed only; no legacy evidence is included in any mocked model response.
     seed = synthetic_material()
-    target, comparable, blank = cite(forms, "18"), cite(forms, "6"), cite(forms, "")
+    case_source = forms if case_role == "forms" else criteria
+    target, comparable, blank = (
+        cite(case_source, "18"),
+        cite(case_source, "6"),
+        cite(case_source, ""),
+    )
     pair = seed.facts.pairs[0].model_copy(deep=True)
     pair.target_sources, pair.comparable_sources = [target], [comparable]
     for obs, ref, number in ((pair.pair.target, target, 18), (pair.pair.comparable, comparable, 6)):
@@ -85,6 +90,13 @@ def extracted_pdf_material(tmp_path):
             contexts=[entry], pairs=[pair], slots=[slot], observed=[observed]
         ),
     }
+    if case_role == "criteria":
+        misplaced = proposals.pop(("forms", 1))
+        criteria_proposal = proposals[("criteria", 1)]
+        criteria_proposal.contexts = misplaced.contexts
+        criteria_proposal.pairs = misplaced.pairs
+        criteria_proposal.slots = misplaced.slots
+        criteria_proposal.observed = misplaced.observed
     client = Mock()
     extractor = BedrockDocumentExtractor(
         client, ExtractionConfig(model_id="synthetic-model", region="synthetic-region", attempts=1)
@@ -255,3 +267,43 @@ def test_real_pipeline_rejects_later_confidence_provenance_and_citation_changes(
         run = asyncio.run(controller.review(request))
         assert not run.verification.can_complete
         assert run.pdf_result is None and run.output_pdf_uri is None
+
+
+def test_actual_criteria_examples_cannot_become_case_facts_after_confirmation(tmp_path):
+    parser, material = extracted_pdf_material(tmp_path, case_role="criteria")
+    assert material.facts.pairs[0].target_sources[0].document_id == "criteria"
+    pending, output = tmp_path / "pending.json", tmp_path / "confirmed.json"
+    pending.write_text(material.model_dump_json())
+    subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "appraisal_review.document_cli",
+            "confirm-facts",
+            "--material",
+            str(pending),
+            "--expected-digest",
+            content_digest(material),
+            "--output",
+            str(output),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    confirmed = ReviewMaterial.model_validate_json(output.read_text())
+    store = LocalApprovalStore.initialize(tmp_path / "approval", current_reviewer())
+    store.approve(confirmed, expected_digest=content_digest(confirmed))
+    request = AgentReviewRequest(
+        case_id=material.policy.identity.case_id,
+        criteria_document_uri=material.policy.registry.documents[0].uri,
+        case_document_uri=material.policy.registry.documents[1].uri,
+    )
+    controller = build_controller(
+        Settings(_env_file=None), adapters=document_adapters(parser, confirmed, store)
+    )
+    run = asyncio.run(controller.review(request))
+    assert not run.verification.can_complete
+    assert any(f.kind == "source_purpose" for f in run.case_review.findings)
+    assert any("source_purpose" in item for item in material.policy.inventory.unresolved)
+    assert run.output_pdf_uri is None and run.pdf_result is None

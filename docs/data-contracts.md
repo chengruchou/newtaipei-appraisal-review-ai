@@ -189,3 +189,10 @@ independent expectations before it becomes a reusable value. It also defines
 source-purpose restrictions by selected document identity, not role strings alone.
 The original observation and all scores remain unchanged. Public PDF contracts
 are unchanged; source-role exceptions and ambiguous fill selection are unsupported.
+
+Local receipt acceptance uses a fail-closed eligibility check on every factor side
+in both approve and permits. Native measured provenance and complete current reviewer
+confirmation are the only accepted paths; no second confidence threshold is added.
+Invalid historical receipts remain on disk but cannot be used. Serialization and
+public PDF schemas are unchanged in this round. The POSIX reviewer and local URI
+platform contract is documented in ADR 0009 and the runbook.

@@ -268,3 +268,22 @@ blanks. Different non-independent proposals remain unresolved, regardless of ord
 For source_purpose findings, verify selected forms/criteria identities and citation
 use; a rule example is not a case fact. See ADR 0009. Do not repair either condition
 by overwriting observations, promoting scores or silently dropping required checks.
+
+## Local reviewer platform and receipt eligibility
+
+The local reviewer workflow requires Linux or macOS POSIX OS identity (pwd/getuid),
+ownership validation and private 0700/0600 storage. Native Windows approval is not
+supported; run this workflow in a Linux environment. Package metadata declares
+this reviewer-specific restriction, not universal platform support for every adapter.
+CLI help remains available without pwd. init-store, confirm-facts, approve and
+review fail with unsupported_reviewer_platform / exit 2 before material access or
+writes on unsupported systems. There is no login-name, fixed-UID or loose-permission
+fallback. Local source URIs are POSIX; Windows drive/UNC forms are rejected.
+
+Before issuing or accepting a receipt, both sides of every pair must have either
+complete current reviewer confirmation or explicit measured/native extraction
+provenance with a producer and resolved evidence. Unconfirmed/partial proposals,
+method-only claims and stale/other-reviewer confirmation cannot receive receipts.
+This eligibility check is not full-case approval of completeness: inventory,
+source-purpose, applicability, arithmetic and configured confidence still gate review.
+No automatic confirmation, score promotion or old-receipt re-signing occurs.

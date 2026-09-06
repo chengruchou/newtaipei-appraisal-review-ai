@@ -193,3 +193,45 @@ mixed references and another selected forms identity. Valid forms values with
 criteria rules and reference procedures remain supported. ADR 0009 records the
 requirement/module/gap/test/dependency map. Older real-document subset counts are
 historical and were not rerun; no current whole-case accuracy claim follows them.
+
+The dependent corrections reproduce C through actual synthetic PDFs/parser,
+mocked Converse without local URI/legacy evidence, assembly, real confirmation CLI,
+isolated approval and Controller. Wrong-role proposals remain visible and unresolved.
+D tests cover every-side eligibility, multi-pair omissions and previously admissible
+signed receipts using isolated test keys. E tests simulate missing pwd/getuid and
+an unsupported platform in subprocesses; POSIX permissions are tested on the host
+and Linux CI. No actual Windows runner or native Windows support is claimed.
+All five initial dependent regressions failed through assertions before correction.
+
+## Verification metrics for the fill/source/receipt/platform correction
+
+Tests and cloud_tests are separate collection scopes. The former 305 and 358
+totals meant 297+8 and 350+8, respectively, not additional cloud suites. The
+current lower layer has 323 tests + 8 cloud_tests; the dependent layer has 402 + 8.
+All pass locally on macOS/Python 3.13.5. The CI Test step collects tests only on
+Ubuntu/Python 3.11; its following cloud step separately runs the eight cloud_tests.
+Exact-head CI links and results belong in the PR delivery record.
+
+With branch=true, coverage.py's Cover column combines executed statements and
+branches: (covered_lines + covered_branches) / (num_statements + num_branches).
+It is not pure branch coverage. Local lower-layer totals are 1544/1686 statements
+and 341/424 branches, giving 89.34% combined (display 89%), 91.58% statements and
+80.42% branches. Dependent totals are 2195/2527 statements and 523/718 branches,
+giving 83.76% combined (display 84%), 86.86% statements and 72.84% branches.
+The local tests-only and tests+cloud_tests JSON reports have identical file/hit
+data in each layer, so adding cloud_tests does not explain the CI difference.
+
+Historical CI at 8061a14/721d6a1 reported 90%/86% combined versus local 89%/84%.
+The logs have different missing-statement counts (CI 117/268; local 136/316),
+not merely different rounding labels. Runtime/platform and measured hits differ;
+no isolated experiment establishes the cause. Current lower-layer CI at a303ed5
+likewise reports 90% with 123 missing statements versus local 142. Preserve each
+report's actual scope and environment rather than relabeling a percentage.
+Ignored artifacts/fill-purpose-corrections contains before/after logs and the
+coverage-tests.json / coverage-combined.json reports. No coverage setting,
+assertion, exclusion or collection scope was weakened for these results.
+
+Local lower/dependent runs report two/seven dependency deprecation warnings:
+Starlette/httpx, AnyIO, and additionally PyMuPDF SWIG types in the dependent suite.
+CI warnings and their exact counts are recorded from the latest job logs. These
+warnings remain visible; no source-PDF subset or live service test was rerun.
