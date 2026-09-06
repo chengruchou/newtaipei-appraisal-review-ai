@@ -30,7 +30,8 @@ not a universal rule set.
 ## Inputs
 
 - Case-specific evaluation-basis documents.
-- Valuation forms and supporting case documents.
+- Valuation and supporting case documents used as evidence sources.
+- A separately identified blank form template when completed output is requested.
 - Optional reviewer-confirmed structured rules and template field maps.
 
 ## Expected outputs
@@ -39,7 +40,7 @@ not a universal rule set.
 - Inferred grades and deterministic correction rates.
 - Review findings with warnings and unresolved items.
 - A calculation trace and audit trail.
-- An optional completed or corrected copy of the original PDF.
+- An optional completed or corrected copy of the preserved form template.
 
 ## Intended benefit
 

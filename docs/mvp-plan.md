@@ -4,7 +4,7 @@ The project delivers auditable appraisal review and assisted filling. Reading
 PDFs and drawing output are stages; observed-value verification is essential.
 The closed parent #3 remains history, not an active catch-all milestone.
 
-Snapshot: 2026-09-06, after PR #15 and PR #16 merged. Use the merged `main`
+Snapshot: 2026-09-06, after PRs #15, #16 and #18 merged. Use the merged `main`
 as the integration base; exact merge SHAs are in [traceability](delivery-traceability.md).
 The table distinguishes code delivery from acceptance with real documents and AWS.
 
@@ -15,7 +15,7 @@ The table distinguishes code delivery from acceptance with real documents and AW
 | Merged | Complete review #8, PR #15 | Shared entry and typed material | Independent verification, original cells, validated fills, arithmetic and coverage; full-case human acceptance pending |
 | Merged | Chinese extraction #7, PR #16 | #8 source/review contracts | Real parser, native/Bedrock candidates and local reviewer controls; live model and complete goldens pending |
 | Preparation merged | Runtime smoke, PR #14 | Shared entry and synthetic adapters | HTTP/container/templates; live build, invocation and cleanup pending |
-| Planned | Formal PDF writer #5 | Merged PDF contract and output gate | Drawing, corrections, immutable source handling, fonts and atomic storage |
+| Implemented on `feat/pdf_writer`; production acceptance pending | Formal PDF writer #5 | Merged PDF contract and output gate | Local drawing/correction/validation, immutable source handling, fonts, atomic publication and injected-client S3 transfer; runtime wiring and production inputs remain |
 | Planned | Durable AWS integration #9 | Shared entry; #5 for real artifacts | Authorized jobs APIs, persistent state, dispatch, recovery and cloud acceptance |
 | Planned | Controlled actions and human tasks #17 | #7/#8 and shared task/trace contracts | Allowed actions, bounded model choices, decision records and reviewer responses |
 | Planned | Web review workbench | Human-task API and authorized source access | Evidence inspection, corrections, approvals and output download; new work item required |
@@ -35,9 +35,10 @@ review remains required before merging subsequent PRs.
 2. A: real HTTP and invocation parity, validation before invocation, explicit
    missing config, one call, failed/needs-review gates, typed PDF failure cases,
    no-credential imports and a runnable clearly synthetic demonstration.
-3. B: original hash unchanged, multiple page dimensions/rotation/CropBox,
-   glyph/overflow checks, blank-fill vs annotation vs genuine correction,
-   readable output and atomic publication, injected mocked S3 transfer.
+3. B: implemented synthetic evidence covers original hash unchanged, multiple
+   page dimensions/rotation/CropBox, glyph/overflow checks, blank-fill vs
+   annotation vs genuine correction, readable output and atomic publication,
+   and injected mocked S3 transfer.
 4. Extraction/full review: original-file checks with source hashes/pages,
    reviewer-approved candidate rules, observed/expected differences, precise
    identities, sums and copied values, coverage and conservative completion.
@@ -78,7 +79,7 @@ then real-model, formal-writer and complete-case acceptance. A human wait must
 persist a task and release execution resources. A response produces a new version
 and the required reauthorization, not a flag that bypasses the existing review gate.
 
-## Source checks performed on 2026-09-05
+## Source checks performed on 2026-09-06
 
 The official brief was read without modification. The supplied criteria have
 9 pages; forms have 6 pages, including portrait/landscape A4 and landscape A3,

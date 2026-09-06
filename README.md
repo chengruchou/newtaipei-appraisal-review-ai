@@ -57,8 +57,8 @@ reasoning is never a calculation record and cannot change a finding status.
 
 ## Current workflow and output boundary
 
-Solid paths are implemented in `main`; the dashed writer path remains #5 work.
-Document preparation and reviewer operations currently run locally. Prepared
+Review and document-preparation paths come from `main`; this branch adds the
+provider-local PDF writer path. Reviewer operations currently run locally. Prepared
 material enters through configured adapters, not a client-supplied approval flag.
 
 ```mermaid
@@ -74,7 +74,9 @@ flowchart TD
     GATE -->|Yes, no output requested| DONE["Verified findings; no PDF requested"]
     GATE -->|Yes, output requested| PORT["Shared PDFWriter contract"]
     PORT --> FAKE["Fake writer: simulated, no PDF"]
-    PORT -.-> REAL["Planned #5: validated new PDF and storage"]
+    TEMPLATE["Versioned blank form template"] --> REAL
+    PORT --> REAL["Local writer: validate, render and publish new PDF"]
+    REAL --> STORAGE["Local file or validated S3 transfer"]
     CORE --> AUDIT["Calculation records and audit events"]
 ```
 
@@ -123,9 +125,11 @@ commercial-land criteria are a **case-specific example**, not universal policy.
 Supported local preparation inputs:
 
 - the evaluation-basis PDF applicable to the case;
-- one selected valuation forms PDF, plus registered reference/brief documents;
+- one selected valuation forms or case-data PDF, plus registered reference/brief documents;
 - configured case identity and source versions; candidate material is inspected,
-  confirmed and authorized separately.
+  confirmed and authorized separately;
+- a separately identified blank form template when completed-PDF output is requested;
+- optional reviewer-confirmed rule JSON and PDF field maps.
 
 Current results:
 
@@ -138,9 +142,10 @@ Current results:
   `verified/unsupported_contexts` for a requested multi-context write. None
   provides a created PDF.
 
-Formal output remains #5: a new completed or corrected PDF after successful
-review, configured field-map lookup and actual writer validation. Only a successful
-real writer can produce `completed/written`; the original must be preserved.
+This branch implements the provider-local #5 output core: a new completed or
+corrected PDF after successful review, configured field-map lookup and writer
+validation. Only a successful real writer can produce `completed/written`; the
+original is preserved.
 
 The supplied sample PDFs have no interactive AcroForm fields. The likely MVP
 writer uses a configured field-coordinate map. Blank filling, annotation and
@@ -151,6 +156,33 @@ storage. Every pair side must have eligible measured/native provenance or a vali
 current reviewer confirmation before a receipt can be issued or reused. Receipt
 eligibility and complete-case validation remain separate gates. The current CLI
 does not provide a multi-user web approval service.
+
+## Current implementation status
+
+Implemented: complete source-grounded case review, local Chinese document
+preparation and reviewer controls, legacy sum/equals API, typed factor
+interval/category/matrix engine, shared PDF contracts, composition/injection,
+synchronous `POST /v1/reviews`, framework-neutral AgentCore-facing invocation,
+an explicit local synthetic runner, and a provider-local PDF writer core. The
+local writer performs deterministic preflight, genuine text correction,
+embedded-font filling and annotation, reopen verification, reference-page
+preservation checks, and atomic publication. An injected-client S3 wrapper
+downloads into isolated local storage and uploads only a locally validated PDF
+with `application/pdf` content type. PDF errors retain findings and prevent
+completion; successful metadata and warnings remain in the typed response. A
+generated-PDF integration test injects `LocalPDFWriter` through
+`ReviewAdapters.pdf_writer` and `build_controller`, proving that a verified run
+can publish a real local artifact while blocked runs make zero writer calls.
+
+Not implemented: application runtime selection of the real writer, an approved
+production template field map and CJK font, live model/S3 acceptance, production
+multi-user approval service, and the deployed asynchronous AWS pipeline (#9).
+The composition root does not select the real writer automatically. A synthetic
+completed run still uses a fake writer and creates no PDF unless the real writer
+is explicitly injected.
+
+See [delivery traceability](docs/delivery-traceability.md) for implementation,
+test evidence, ownership and Issue dependencies.
 
 ## Repository layout
 

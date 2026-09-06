@@ -27,9 +27,11 @@ context, but cannot prove case applicability or multi-comparable identity;
 AgentReviewRun adds `pdf_result` and `pdf_error`. Noncritical PDF warnings remain
 in pdf_result.warnings, separate from valuation warnings. Failures preserve
 review/verification and return failed, no published URI. Only successful typed
-results with the expected URI, source page count and exact written field set
-permit completed. This is interface validation, not proof of PDF readability;
-B must reopen and inspect the actual output before returning success.
+results with the expected URI and exact written field set permit completed. ADR
+0006 supersedes the original source-page-count comparison because the case-data
+document and form template are distinct. This is interface validation, not proof
+of PDF readability; B must reopen and inspect the actual output before returning
+success.
 
 URI validation is lexical and does no I/O. B resolves file paths/inodes to catch
 symlink/hardlink aliases. file URIs require absolute local paths; S3 keys are

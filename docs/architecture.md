@@ -31,7 +31,9 @@ flowchart TD
     GATE -->|Yes, no output requested| DONE["Verified findings; no PDF requested"]
     GATE -->|Yes, output requested| W["Shared PDFWriter contract"]
     W --> FAKE["Fake writer: simulated, no file"]
-    W -.-> REAL["Planned #5: render, validate and publish PDF"]
+    T["Explicit form template URI"] --> REAL
+    W --> REAL["Local writer: render, validate and publish PDF"]
+    REAL --> R["AgentReviewRun + PDF metadata/error"]
 ```
 
 The HTTP endpoint and invocation adapter validate AgentReviewRequest and serialize
@@ -61,6 +63,17 @@ values, runs sum/equals checks and accounts for independent required coverage.
 ReviewVerifier independently recomputes claimed factor results. Failed and
 needs_review cases retain findings and never invoke the completed-form writer.
 
+| Component | Current behavior | Remaining delivery |
+|---|---|---|
+| Factor engine | Interval/category/unit/matrix calculation integrated with complete case review | Real-case acceptance and additional rule formats |
+| Verifier | Independent evidence, identity and calculation checks | Complete live-case acceptance |
+| Applicability | Unique district/category/date/version resolution and exact authorization | Production reviewed policies |
+| Sum/equals | Original values, validated fills and arithmetic DAG | Additional case-specific constraints |
+| Document preparation | Native extraction candidates and controlled local review | Live-model accuracy and production reviewer operations |
+| PDF | Typed boundary, verified local writer, and injected-client S3 transfer wrapper | Runtime wiring, approved template maps, production CJK font and live S3 validation: #5 |
+| Entrypoints | Local sync HTTP and invocation adapter | Deployed Runtime and async cloud API: #9 |
+| CDK | Two private versioned buckets and case table | Complete cloud pipeline: #9 |
+
 Authorization is injected through ReviewAdapters.authorization, separate from
 model output and HTTP requests. #7 supplies real parsing, proposed extraction and
 a controlled human approval store. The fixed synthetic fixture supplies only its
@@ -68,7 +81,8 @@ own predetermined material digests. See ADR 0005 and data-contracts.md.
 
 The controller remains an explicit gated workflow with recorded tool/state
 choices; it does not claim dynamic planning or an unbounded model loop.
-B's actual PDF writing (#5) and durable AWS jobs (#9) remain separate deliveries.
+Production PDF writer wiring/acceptance (#5) and durable AWS jobs (#9) remain
+separate deliveries.
 
 `ValidatedSlot` separates an original observation, a proposed blank fill and a
 trusted value available to later arithmetic. An independent calculation takes
@@ -86,13 +100,19 @@ procedural checks but cannot substitute for case facts. See
 
 ## PDF boundary and ownership
 
-See [PDF contract](pdf-contract.md) and ADR 0002. Only verification.can_complete
+See [PDF contract](pdf-contract.md), ADR 0002, ADR 0010 and ADR 0011. Only verification.can_complete
 allows construction of PDFWriteRequest. The controller then checks the typed
-result, destination, source page count and exact field set. Warnings/metadata
-live in pdf_result, errors in pdf_error; failed writes preserve review findings.
-B owns actual page, font, glyph, overflow, correction and atomic publication
-checks. Needs-review findings remain available without invoking the completed
-form writer. A report PDF would require a separate report-artifact contract.
+result, destination and exact field set. It passes `pdf_template_uri`, never the
+case-data extraction URI, as the writer source. The writer reopens the template
+artifact and owns its page-count validation. Warnings/metadata live in pdf_result,
+errors in pdf_error; failed writes preserve review findings.
+The local adapter now owns page, font, glyph, overflow, genuine correction,
+reopen verification and atomic publication checks. Its explicit injection through
+`ReviewAdapters.pdf_writer` and `build_controller` is covered by a real local
+artifact integration test. Automatic runtime construction is intentionally still
+absent because no production template field map or font is bundled. Needs-review
+findings remain available without invoking the completed form writer. A report
+PDF would require a separate report-artifact contract.
 
 Successful review without an output request is `verified/not_requested`. A requested
 single-context output without a writer is `verified/unavailable`; the fake writer
