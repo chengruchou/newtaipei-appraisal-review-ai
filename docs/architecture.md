@@ -1,5 +1,11 @@
 # Architecture and delivery boundaries
 
+Status snapshot: 2026-09-06 after #15 and #16 merged into `main`. The shared entry,
+schema-2 review, source-grounded document preparation and local reviewer controls
+are implemented. Formal PDF writing (#5), durable jobs (#9), a web workbench and
+controlled model action selection (#17) remain planned. Merge SHAs and validation
+scope are recorded in [delivery traceability](delivery-traceability.md).
+
 The product reviews and assists completion of appraisal forms:
 case criteria + forms -> document understanding -> proposed rules and evidenced
 facts -> deterministic calculation -> comparison with filled values, sums and
@@ -8,20 +14,24 @@ AI proposes document interpretations; deterministic code controls decisions and
 PDF placement. The present controller is a gated workflow, not yet a dynamic
 agent with tool retries and rule approval recovery.
 
-## Implemented entry path (#4, foundation #6)
+## Implemented entry and review path (#4/#6/#7/#8)
 
 ```mermaid
-flowchart LR
+flowchart TD
     API["POST /v1/reviews (synchronous)"] --> ENTRY["Shared entry execution"]
     INV["AgentCore-facing invoke(payload)"] --> ENTRY
     ENTRY --> BOOT["Composition root + injected adapters"]
     BOOT --> C["ReviewAgentController"]
-    C --> P["DocumentParser / FactExtractor / RuleSetProvider"]
-    C --> E["FactorRuleEngine"]
-    E --> V["Independent case verifier"]
-    V -->|unresolved or failed| F["Findings; no writer"]
-    V -->|can_complete| W["Typed PDFWriter (#5)"]
-    W --> R["AgentReviewRun + PDF metadata/error"]
+    C --> P["Reparse sources and load configured material"]
+    P --> CASE["Source, authorization and coverage checks"]
+    CASE --> E["Factor calculation and independent verification"]
+    E --> V["Original cells, validated fills and arithmetic DAG"]
+    V --> GATE{"All required checks pass?"}
+    GATE -->|No| F["Findings; no writer"]
+    GATE -->|Yes, no output requested| DONE["Verified findings; no PDF requested"]
+    GATE -->|Yes, output requested| W["Shared PDFWriter contract"]
+    W --> FAKE["Fake writer: simulated, no file"]
+    W -.-> REAL["Planned #5: render, validate and publish PDF"]
 ```
 
 The HTTP endpoint and invocation adapter validate AgentReviewRequest and serialize
@@ -60,6 +70,20 @@ The controller remains an explicit gated workflow with recorded tool/state
 choices; it does not claim dynamic planning or an unbounded model loop.
 B's actual PDF writing (#5) and durable AWS jobs (#9) remain separate deliveries.
 
+`ValidatedSlot` separates an original observation, a proposed blank fill and a
+trusted value available to later arithmetic. An independent calculation takes
+precedence; every applicable constraint must still agree under its declared
+rounding/tolerance rules. Without an independent value, constraints must propose
+one identical value. Conflicting fills remain unresolved and cannot grant
+coverage. Validated blank values can feed the arithmetic DAG without replacing
+the original blank or evidence.
+
+Source purpose is checked both during assembly and when prepared material enters
+the Controller: selected forms supply case facts, cells and contexts; selected
+criteria supply rules and applicability; registered references may support
+procedural checks but cannot substitute for case facts. See
+[ADR 0009](adr/0009-validated-fill-and-source-purpose.md).
+
 ## PDF boundary and ownership
 
 See [PDF contract](pdf-contract.md) and ADR 0002. Only verification.can_complete
@@ -70,28 +94,42 @@ B owns actual page, font, glyph, overflow, correction and atomic publication
 checks. Needs-review findings remain available without invoking the completed
 form writer. A report PDF would require a separate report-artifact contract.
 
+Successful review without an output request is `verified/not_requested`. A requested
+single-context output without a writer is `verified/unavailable`; the fake writer
+returns `verified/simulated`. Multiple comparisons are reviewed together,
+but a requested multi-context PDF returns `unsupported_contexts` rather than
+silently writing only the first context. `completed/written` requires an actual
+validated writer result. Source binding before review is implemented; an immutable
+source snapshot through writing/publication remains #5/#9 integration work.
+
 ## Target AWS pipeline (#9; designed, not deployed)
 
 ```mermaid
-flowchart LR
-    U["Authorized client"] --> G["API Gateway + Lambda/FastAPI"]
-    U -->|presigned transfer| S["Private S3"]
-    G --> D["DynamoDB jobs + outbox"]
-    D --> Q["SQS"]
-    Q --> L["Dispatcher"]
+flowchart TD
+    U["Future review workbench"] --> G["Authorized API Gateway + Lambda entry"]
+    U -.->|Authorized presigned transfer| S["Private versioned S3"]
+    G --> D["DynamoDB jobs, outbox and human tasks"]
+    D --> RC["Outbox publisher and recovery"]
+    RC --> Q["SQS and dead-letter queue"]
+    Q --> L["Conditional attempt dispatcher"]
     L --> A["AgentCore Runtime"]
     A --> B["Bedrock document understanding"]
     A --> C["Controller + deterministic tools"]
     C --> S
     A --> D
-    RC["Expired lease / outbox reconciler"] --> D
-    D -->|bounded retry| Q
+    RC -->|Recover expired attempts| D
+    G -->|Status, tasks and results| U
     A --> CW["CloudWatch"]
 ```
 
 The organizer supplies required AWS services. We prepare this design now;
 profile, deployment Region, model permissions and limits still require validation.
 No AgentCore Gateway, MCP layer or vector store is required by this path.
+
+This diagram is a target, not deployed infrastructure. `infra/cdk/` currently
+defines two private versioned S3 buckets and a Cases table. The merged #14 smoke
+server has session-local state (`durable=false`); it does not implement these jobs,
+human tasks, authorized document APIs or recovery services.
 
 - External cloud APIs accept authorized document_id and object version references,
   never file:// or caller-chosen bucket/key. Resolve internal URIs after ownership
@@ -117,6 +155,10 @@ No AgentCore Gateway, MCP layer or vector store is required by this path.
   SQS messages are acknowledged only after durable responsibility is recorded.
 - CloudWatch records run/attempt correlation, latency and sanitized errors, not
   source text or secrets. It does not replace the domain audit trail.
+- #17 defines version-bound human tasks and decisions; #9 persists tasks,
+  checkpoints and traces. A review needing a person records its findings and
+  releases execution resources. A corrected material revision starts a subsequent
+  authorized run; it does not resurrect a stale lease or reuse an old approval.
 
 ## Verified AWS constraints (2026-09-05)
 
@@ -146,8 +188,8 @@ See [MVP plan](mvp-plan.md), [traceability](delivery-traceability.md), and
 
 The implemented local path is allowlisted PDF -> native source registry and
 candidate tables -> bounded Bedrock page proposals -> complete reviewed material
--> trusted local approval -> existing Controller. Native candidates can be
-prepared without AWS. The Bedrock client, model and Region remain explicit;
+-> explicit inspection/confirmation -> separate local approval -> Controller.
+Native candidates can be prepared without AWS. The Bedrock client, model and Region remain explicit;
 Chinese document accuracy requires opt-in testing in the designated account.
 Prepared material is injected through MaterialProvider/ReviewAdapters, and the
 Controller re-parses source versions before returning whole-case findings.
@@ -166,3 +208,62 @@ LocalApprovalStore admits only eligible native measurements or completely confir
 sides; full-case review remains a separate completion gate. This local reviewer
 workflow requires Linux/macOS POSIX identity/private permissions. Generic help is
 platform-neutral; Windows native approval and ACL support are not implemented.
+
+## Controlled actions and web human review (#17; planned)
+
+The application will compute allowed actions from verified workflow state and
+prerequisites. A model may choose among those actions; code validates its choice
+before invoking a typed tool. The model cannot approve material, increase original
+confidence, bypass missing evidence or request publication before the completion
+gate. Retry, step and model-call budgets bound the workflow.
+
+```mermaid
+flowchart TD
+    STATE["Versioned review state"] --> ALLOWED["Code computes allowed actions"]
+    ALLOWED --> MODEL["Model proposes an allowed next action"]
+    MODEL --> CHECK{"Prerequisites and budget satisfied?"}
+    CHECK -->|Yes| TOOL["Typed tool execution"]
+    TOOL --> TRACE["Actual action, evidence and result record"]
+    TRACE --> STATE
+    CHECK -->|Human input required| TASK["Persist human task and stop attempt"]
+    CHECK -->|Invalid or budget exhausted| STOP["Record rejection and stop or bounded retry"]
+    TASK --> UI["Reviewer checks source and submits response"]
+    UI --> REV["New revision; required confirmation and approval"]
+    REV --> STATE
+```
+
+Decision records should explain which permitted action was executed, its input
+versions, evidence, outcome and remaining blockers. They do not claim access to a
+model's private reasoning or treat free-form reasoning as proof of correctness.
+The workbench must show original values, proposals and corrections separately,
+with source-page navigation. Human responses bind reviewer, task and exact material
+version; observation confirmation, rule/material approval and final publication
+are distinct permissions and events.
+
+The current CLI and audit events are foundations, not this complete service. See
+[issue #17](https://github.com/chengruchou/newtaipei-appraisal-review-ai/issues/17)
+and the proposed [parallel workstreams](mvp-plan.md#parallel-workstreams).
+
+## Module map
+
+Paths below are relative to `src/appraisal_review/` unless explicitly marked.
+
+| Location | Current responsibility |
+|---|---|
+| `api/`, `application/entrypoint.py`, `application/bootstrap.py` | HTTP contracts, shared entry execution and dependency composition |
+| `adapters/aws/agentcore/runtime.py` | Framework-neutral invocation adapter |
+| `application/controller.py` | Source/material binding, review orchestration and output gate |
+| `domain/case_review.py`, `domain/fill_candidates.py` | Whole-case checks, validated slots and arithmetic dependencies |
+| `domain/source_purpose.py`, `domain/confidence.py` | Source-use restrictions and confidence/confirmation policy |
+| `domain/factor_engine.py`, `domain/verification.py` | Deterministic calculation and independent recomputation |
+| `adapters/local/pdf_parser.py`, `adapters/local/native_candidates.py` | Allowlisted PDF text/regions and conservative native candidates |
+| `adapters/aws/document_extraction.py` | Bounded Bedrock document proposals; live accuracy remains unvalidated |
+| `application/document_review.py`, `document_cli.py` | Prepared-material assembly, inspection and reviewer commands |
+| `adapters/local/approval.py`, `adapters/local/reviewer_platform.py` | Exact-material receipts and Linux/macOS reviewer identity controls |
+| `domain/pdf_models.py`, `ports/pdf.py` | Shared public PDF request/result/error and writer protocol |
+| `adapters/local/fake_pdf.py`, `adapters/local/audit.py` | Synthetic output metadata and local audit events |
+| Repository root `cloud_tests/`, `infra/cdk/` | Isolated Runtime smoke preparation and baseline storage definitions |
+
+The formal writer, production jobs API, browser workbench and #17 workflow policy
+are remaining implementation work. New adapters should use these shared domain
+contracts instead of copying schemas into each transport.

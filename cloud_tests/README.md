@@ -1,9 +1,9 @@
 # Synthetic AgentCore Runtime smoke preparation
 
 This is an isolated HTTP container for testing A's deployed invocation boundary.
-Active branch: test/runtime-smoke, PR #14 (replaces #12), based on
-feat/member-a-entrypoint PR #13. The original smoke commit and A's review fixes
-are preserved through a normal merge; no history is rewritten.
+Preparation merged in PR #14 and is available on `main`. The review and extraction
+code from #15/#16 is also merged; no historical stacked branch is needed. This
+packaging remains a synthetic smoke, separate from those real-document adapters.
 It does **not** parse documents, call Bedrock, produce PDF files, or implement the
 production durable review-jobs pipeline. The separate production design is #9.
 

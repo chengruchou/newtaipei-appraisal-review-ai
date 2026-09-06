@@ -111,9 +111,11 @@ A will inject it only through explicitly synthetic setup or tests.
 
 #6 owns shared schemas, pyproject dependency changes, aliases and the minimal
 controller migration. #4 owns application entrypoints; #5 owns drawing/storage,
-PDF extras and integration tests. A stacks on the foundation commit; B branches
-from the same commit. That foundation preserved the verifier/logger files. #8 now extends the verifier
-and its tests under explicit authorization; the local audit logger remains unchanged.
+PDF extras and integration tests. Foundation #10, entry #13, review #15 and
+extraction #16 are now merged; new writer integration should start from `main`
+and use the same public PDFWriter contract. The original stacked foundation
+delivery is historical. #8 extended the verifier and its tests under explicit
+authorization; the local audit logger remains unchanged.
 See ADR 0002. Later contract changes require a coordinated migration, not two
 parallel PDFWriter definitions. #9's remote API authorizes document_id/object
 references and resolves internal URIs; local file URIs are never a remote API.

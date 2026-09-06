@@ -1,14 +1,37 @@
 # Agentic AI Real Estate Valuation Reviewer
 
-An evidence-grounded, neuro-symbolic system for reviewing real estate valuation
-cases. It reads case-specific evaluation criteria and valuation forms, turns
-the criteria into versioned executable rules, verifies factor grades and
-correction rates with deterministic code, and produces review findings, an
-audit trail, and—when every critical check passes—an optionally completed or
-corrected PDF.
+An evidence-grounded system for reviewing real estate valuation cases. Document
+adapters propose case facts and executable rules; reviewers inspect and authorize
+the exact material before deterministic code checks grades, correction rates,
+original values and cross-form arithmetic. Findings retain their source evidence
+and calculation records. A completed or corrected PDF is a planned output through
+the shared writer interface; the current fake writer creates no file.
 
 This repository is an engineering baseline for the **2026 New Taipei City AI
 Smart City Hackathon** topic, "AI-Assisted Real Estate Valuation Case Review."
+
+## Delivery snapshot
+
+Updated 2026-09-06 after [PR #15](https://github.com/chengruchou/newtaipei-appraisal-review-ai/pull/15)
+and [PR #16](https://github.com/chengruchou/newtaipei-appraisal-review-ai/pull/16)
+merged into `main`. The merged core is ready for continued integration; live
+model, full-case human and cloud acceptance remain open.
+
+| Capability | Repository status | Remaining acceptance |
+|---|---|---|
+| Shared API, composition and PDF contract | Merged in #10/#13 | Connect production adapters |
+| Complete case review and independent calculation | Merged in #15 | Full real-case goldens and domain review |
+| PDF parsing, candidate extraction and local reviewer workflow | Merged in #16 | Actual model calls and complete human validation |
+| Synthetic Runtime smoke | Preparation merged in #14 | Image build, live invocation and cleanup |
+| Formal PDF rendering and storage | Planned in [#5](https://github.com/chengruchou/newtaipei-appraisal-review-ai/issues/5) | Real writer, source snapshot and output validation |
+| Durable AWS review jobs | Planned in [#9](https://github.com/chengruchou/newtaipei-appraisal-review-ai/issues/9) | Authorized APIs, persistence, dispatch and recovery |
+| Controlled model actions, decision traces and human tasks | Planned in [#17](https://github.com/chengruchou/newtaipei-appraisal-review-ai/issues/17) | Local policy/task contracts, then UI/cloud integration |
+| Web review workbench | Planned | Evidence navigation, version-bound responses and downloads |
+
+See [delivery traceability](docs/delivery-traceability.md) for merge SHAs and
+historical validation evidence, and the [delivery plan](docs/mvp-plan.md) for
+remaining milestones. Merged code and passing tests do not establish full-case
+accuracy or deployed service readiness.
 
 ## The actual problem
 
@@ -32,42 +55,39 @@ The system must never invent a missing source value. OCR or model output is
 treated as proposed structured data until it passes validation. Free-form LLM
 reasoning is never a calculation record and cannot change a finding status.
 
-## Proposed workflow
+## Current workflow and output boundary
+
+Solid paths are implemented in `main`; the dashed writer path remains #5 work.
+Document preparation and reviewer operations currently run locally. Prepared
+material enters through configured adapters, not a client-supplied approval flag.
 
 ```mermaid
 flowchart TD
-    C["Case-specific criteria PDF"] --> P1["Document parser / OCR"]
-    P1 --> RX["Rule extraction + validation"]
-    RX --> RS["Versioned rule set"]
-    F["Valuation forms / case PDFs"] --> P2["Document parser / OCR"]
-    P2 --> FX["Typed facts with evidence"]
-    RS --> A["Agent controller"]
-    FX --> A
-    A --> RE["Deterministic rule engine"]
-    A --> V["Verifier"]
-    A --> PW["PDF writer"]
-    A --> AL["Audit logger"]
-    RE --> O["Review findings"]
-    V --> O
-    PW --> PDF["Completed or corrected PDF"]
-    AL --> AUDIT["Audit trail"]
+    DOC["Criteria, forms and registered references"] --> PREP["PDF parser and candidate extraction"]
+    PREP --> HUMAN["Local inspection, confirmation and approval"]
+    HUMAN --> MATERIAL["Exact material and source versions"]
+    MATERIAL --> CORE["Controller and CaseReviewer"]
+    API["Synchronous HTTP or invocation"] --> CORE
+    CORE --> GATE{"All required checks pass?"}
+    GATE -->|No| FIND["Findings and evidence; no writer"]
+    FIND -->|Manually revise and reconfirm| HUMAN
+    GATE -->|Yes, no output requested| DONE["Verified findings; no PDF requested"]
+    GATE -->|Yes, output requested| PORT["Shared PDFWriter contract"]
+    PORT --> FAKE["Fake writer: simulated, no PDF"]
+    PORT -.-> REAL["Planned #5: validated new PDF and storage"]
+    CORE --> AUDIT["Calculation records and audit events"]
 ```
 
-The controller is intended to make tool decisions based on rule availability,
-confidence, missing evidence, and verification failures. It must not write an
-output PDF or mark a case `completed` after a critical failure.
+The current Controller follows a gated workflow. It checks source identity and
+purpose, applicability, confidence/confirmation, original cells, all arithmetic
+constraints and required coverage. One validated blank candidate may feed later
+calculations; conflicting candidates cannot grant completion or writer access.
 
-Conceptual tools:
-
-```text
-parse_document()
-extract_facts()
-load_or_build_rules()
-evaluate_factors()
-verify_results()
-write_pdf()
-export_audit_log()
-```
+Model-selected next actions are future #17 work. Application code will define
+allowed actions and prerequisites; model proposals will be checked before tool
+execution. A model cannot approve material, raise confidence or declare completion.
+The future workbench will expose actual action/evidence records and human tasks;
+free-form reasoning is not proof of a correct result.
 
 ## Stable boundaries
 
@@ -100,59 +120,62 @@ commercial-land criteria are a **case-specific example**, not universal policy.
 
 ## Inputs and outputs
 
-Planned inputs:
+Supported local preparation inputs:
 
 - the evaluation-basis PDF applicable to the case;
-- one or more valuation form PDFs;
-- optional reviewer-confirmed rule JSON and PDF field maps.
+- one selected valuation forms PDF, plus registered reference/brief documents;
+- configured case identity and source versions; candidate material is inspected,
+  confirmed and authorized separately.
 
-Planned outputs:
+Current results:
 
 - verified facts and inferred classifications kept as distinct values;
 - findings with rule IDs, source evidence, warnings, and unresolved items;
 - deterministic calculation traces and an audit log;
-- a new completed or corrected PDF when verification permits it. The original is preserved.
+- explicit review/artifact status after successful review: `verified/not_requested`
+  without an output request; `verified/unavailable` for a requested single-context
+  output without a writer; `verified/simulated` for fake output; or
+  `verified/unsupported_contexts` for a requested multi-context write. None
+  provides a created PDF.
+
+Formal output remains #5: a new completed or corrected PDF after successful
+review, configured field-map lookup and actual writer validation. Only a successful
+real writer can produce `completed/written`; the original must be preserved.
 
 The supplied sample PDFs have no interactive AcroForm fields. The likely MVP
 writer uses a configured field-coordinate map. Blank filling, annotation and
 correction require distinct operations; overlaying existing text is not correction. An AcroForm adapter can be added for future templates.
 
-## Current implementation status
-
-Implemented: legacy sum/equals API, typed factor calculation, schema-2 whole-case
-review, independent verification, exact applicability and source matching,
-observed-value/arithmetic findings, required coverage, shared PDF contracts,
-composition/injection, synchronous HTTP and invocation, and synthetic fixtures.
-
-Implemented document preparation includes allowlisted native PDF parsing,
-source-bound rule candidates, bounded Bedrock page extraction, local reviewer
-receipts and real-document CLI operations. Live model accuracy and real human
-approval remain pending; local source checks are a limited golden subset. B's actual PDF rendering/storage (#5) and deployed
-asynchronous AWS jobs (#9) remain pending. A fake writer creates no PDF and now
-returns verified/simulated rather than completed. See ADR 0005 for migration.
-
-See [delivery traceability](docs/delivery-traceability.md) for implementation,
-test evidence, ownership and Issue dependencies.
+The local reviewer workflow requires Linux/macOS POSIX identity and private
+storage. Every pair side must have eligible measured/native provenance or a valid
+current reviewer confirmation before a receipt can be issued or reused. Receipt
+eligibility and complete-case validation remain separate gates. The current CLI
+does not provide a multi-user web approval service.
 
 ## Repository layout
 
-```text
-configs/rules/                 Versioned example rules, never universal policy
-docs/                          Requirements, architecture, contracts, and MVP plan
-infra/cdk/                     Optional AWS data-foundation baseline
-src/appraisal_review/
-  api/                         FastAPI transport
-  application/                 Review orchestration and workflow decisions
-  domain/                      Provider-neutral contracts and deterministic logic
-  ports/                       Replaceable provider and output boundaries
-  adapters/aws/                Optional AWS integrations
-  adapters/local/              Offline development adapters
-tests/                         Unit tests and synthetic fixtures
-```
+| Location | Responsibility |
+|---|---|
+| `src/appraisal_review/api/` | Health, legacy validation and synchronous review HTTP |
+| `src/appraisal_review/application/` | Entry/composition, Controller and prepared-material assembly |
+| `src/appraisal_review/domain/` | Source/purpose contracts, review, confidence, validated fills and arithmetic |
+| `src/appraisal_review/ports/` | Parser, provider, authorization and output interfaces |
+| `src/appraisal_review/adapters/local/` | PDF parsing, candidates, approval store, synthetic fixtures and audit |
+| `src/appraisal_review/adapters/aws/` | Bedrock adapters; full cloud adapters remain separate work |
+| `src/appraisal_review/adapters/aws/agentcore/` | Framework-neutral invocation adapter |
+| `src/appraisal_review/document_cli.py` | Local document preparation and reviewer commands |
+| `cloud_tests/` | Isolated Runtime HTTP/container/template smoke preparation |
+| `infra/cdk/` | Two private versioned S3 buckets and a Cases table definition |
+| `configs/`, `examples/`, `tests/` | Example rules, synthetic requests and regression tests |
+| `docs/` | Requirements, architecture, contracts, runbooks and delivery evidence |
+
+There is no frontend, production jobs pipeline or formal PDF writer in this
+snapshot. See the [component map](docs/architecture.md#module-map) before adding
+adapters or shared contracts.
 
 ## Local setup
 
-Python 3.11 or newer is required.
+Python 3.11 or newer is required. Use Linux or macOS for local reviewer operations.
 
 ```bash
 python3 -m venv .venv
@@ -162,17 +185,24 @@ python3 -m pip install -e '.[dev]'
 ruff check .
 ruff format --check .
 mypy src
-PYTHONPATH=src pytest
+PYTHONPATH=src pytest tests cloud_tests
 ```
 
-Run the currently implemented local API:
+Run the local API with explicitly synthetic review adapters:
 
 ```bash
-uvicorn appraisal_review.api.app:app --reload
+RUNTIME_MODE=local SYNTHETIC_DEMO=true uvicorn appraisal_review.api.app:app --host 127.0.0.1 --port 8000
 ```
 
 Then open `http://127.0.0.1:8000/docs` or request
 `http://127.0.0.1:8000/health`.
+
+Without configured adapters and with the default `SYNTHETIC_DEMO=false`, health
+and legacy validation remain available, while review requests report a
+configuration error. For actual documents, follow the
+[local preparation and review runbook](docs/member-a-runbook.md#real-document-preparation-and-review-7).
+The `documents` extra installs the parser dependencies; the optional `aws` extra
+is needed for an explicitly configured live Bedrock extraction run.
 
 ## AWS strategy
 
@@ -183,9 +213,14 @@ and API quotas still require explicit verification.
 
 The local synchronous review API keeps its semantics. #9 adds asynchronous
 review jobs with authorized document references, durable state, idempotency,
-leases/recovery and result publication. No cloud deployment is claimed by local
-invocation tests. Textract/BDA document language support does not cover this
-Chinese source set; #7 uses native PDF content and Bedrock visual understanding.
+leases/recovery and result publication. These jobs endpoints are planned, not
+available in the current API. #17 adds version-bound human tasks and controlled
+model actions; #9 persists them. Waiting for a reviewer releases execution resources,
+and a corrected revision starts an explicitly authorized subsequent run.
+
+The merged invocation adapter and isolated `cloud_tests/` server do not establish
+a deployed service. Native PDF content and the Bedrock adapter form the current
+document route; verify selected model/language support before live acceptance.
 
 See [architecture](docs/architecture.md) and [cloud smoke plan](docs/aws-smoke-plan.md).
 
@@ -198,6 +233,9 @@ See [architecture](docs/architecture.md) and [cloud smoke plan](docs/aws-smoke-p
 - Reject unknown factors and unsupported rule formats explicitly.
 - Never mark a case completed while critical validation is unresolved or failed.
 - Version rule sets and retain the source-document identity used by each case.
+- Restrict case facts/cells to selected forms and rules/applicability to selected
+  criteria; registered references may support procedures, not substitute case facts.
+- Preserve original observations and scores; revisions invalidate obsolete approvals.
 
 Real appraisal documents are sensitive and must not be committed. See
 [data handling](docs/data-handling.md).
