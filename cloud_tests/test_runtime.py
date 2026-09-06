@@ -62,7 +62,9 @@ def test_background_health_duplicate_dispatch_and_terminal_result(monkeypatch, s
                 assert "private details" not in str(status)
             else:
                 assert status["execution_status"] == "succeeded"
-                assert status["result"]["status"] == scenario
+                assert status["result"]["status"] == (
+                    "verified" if scenario == "completed" else scenario
+                )
             assert (await client.post("/invocations", json={})).status_code == 422
             unknown = payload | {"run_id": str(uuid4()), "action": "status"}
             assert (await client.post("/invocations", json=unknown)).status_code == 404

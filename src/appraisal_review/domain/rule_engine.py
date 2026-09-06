@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from decimal import Decimal, InvalidOperation
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from pathlib import Path
+from typing import Literal
 
 import yaml
 
@@ -17,6 +18,15 @@ from appraisal_review.domain.models import (
     RuleDefinition,
     RuleSet,
 )
+
+
+def calculate(
+    kind: Literal["sum", "equals"], inputs: list[Decimal], *, quantum: Decimal | None = None
+) -> Decimal:
+    if not inputs or any(not value.is_finite() for value in inputs):
+        raise ValueError("Finite numeric inputs are required")
+    result = sum(inputs, start=Decimal("0")) if kind == "sum" else inputs[0]
+    return result.quantize(quantum, rounding=ROUND_HALF_UP) if quantum is not None else result
 
 
 class RuleEngine:
@@ -67,7 +77,7 @@ class RuleEngine:
                 evidence=evidence,
             )
 
-        expected = sum(inputs, start=Decimal("0")) if rule.kind == "sum" else inputs[0]
+        expected = calculate(rule.kind, inputs)
         tolerance = Decimal(str(rule.tolerance))
         status = CheckStatus.PASS if abs(expected - actual) <= tolerance else CheckStatus.FAIL
         message = (

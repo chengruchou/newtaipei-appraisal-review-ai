@@ -85,3 +85,58 @@ def test_pdf_field_map_requires_exact_lookup() -> None:
         assert "exactly one" in str(error)
     else:
         raise AssertionError("missing field lookup should fail")
+
+
+def test_forged_verified_result_cannot_complete() -> None:
+    """Independent regression: normal/normal is zero, never 999."""
+    from appraisal_review.domain.factor_models import FactorEvaluationResult
+
+    rule = FactorRule(
+        id="x.v1",
+        factor_id="x",
+        kind="numeric_interval",
+        intervals=[IntervalBand(grade=Grade.NORMAL)],
+        correction_matrix=CorrectionMatrix(values={"normal": {"normal": 0.0}}),
+    )
+    result = FactorReviewResult(
+        case_id="case-1",
+        rule_set_id="unrelated",
+        rule_version="unrelated",
+        results=[
+            FactorEvaluationResult(
+                factor_id="x",
+                rule_id="unrelated",
+                target_grade=Grade.NORMAL,
+                comparable_grade=Grade.NORMAL,
+                adjustment_percent=999,
+                calculation_trace="Untrusted claimed calculation",
+                status=EvaluationStatus.VERIFIED,
+            )
+        ],
+        summary=EvaluationSummary(total_adjustment_percent=999, status=EvaluationStatus.VERIFIED),
+    )
+    assert not ReviewVerifier().verify(result, approved_rule_set(rule)).can_complete
+
+
+def test_independent_recalculation_uses_explicit_runtime_threshold():
+    from appraisal_review.adapters.local.synthetic import synthetic_material
+    from appraisal_review.domain.factor_engine import FactorRuleEngine
+    from appraisal_review.domain.factor_models import FactorEvaluationRequest
+
+    material = synthetic_material()
+    rules = material.policy.rule_sets[0].rules.model_copy(update={"status": "approved"})
+    pair = material.facts.pairs[0].pair
+    pair.target.confidence = pair.comparable.confidence = 0.90
+    facts = FactorEvaluationRequest(
+        case_id=material.policy.identity.case_id, rule_set_id=rules.rule_set_id, factors=[pair]
+    )
+    low_threshold_claim = FactorRuleEngine(rules, minimum_confidence=0.85).evaluate(facts)
+    verifier = ReviewVerifier()
+    assert verifier.verify(
+        low_threshold_claim, rules, facts=facts, minimum_confidence=0.85
+    ).can_complete
+    rejected = verifier.verify(low_threshold_claim, rules, facts=facts, minimum_confidence=0.95)
+    assert rejected.status is EvaluationStatus.FAILED and not rejected.can_complete
+    high_threshold_result = FactorRuleEngine(rules, minimum_confidence=0.95).evaluate(facts)
+    unresolved = verifier.verify(high_threshold_result, rules, facts=facts, minimum_confidence=0.95)
+    assert unresolved.status is EvaluationStatus.NEEDS_REVIEW and not unresolved.can_complete

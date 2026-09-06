@@ -27,14 +27,25 @@ class ObservationNeedsReview(ValueError):
     """Raised when an observation cannot be safely evaluated."""
 
 
+def validate_minimum_confidence(value: float) -> float:
+    if not 0.0 <= value <= 1.0:
+        raise ValueError("minimum_confidence must be finite and between 0 and 1")
+    return value
+
+
 class FactorRuleEngine:
-    def __init__(self, rule_set: FactorRuleSet, *, minimum_confidence: float = 0.85) -> None:
+    def __init__(
+        self,
+        rule_set: FactorRuleSet,
+        *,
+        minimum_confidence: float = 0.85,
+        confirmed_sides: frozenset[tuple[str, str]] = frozenset(),
+    ) -> None:
         if rule_set.status != "approved":
             raise ValueError("only approved factor rule sets can be evaluated")
-        if not 0.0 <= minimum_confidence <= 1.0:
-            raise ValueError("minimum_confidence must be between 0 and 1")
+        self.confirmed_sides = confirmed_sides
         self.rule_set = rule_set
-        self.minimum_confidence = minimum_confidence
+        self.minimum_confidence = validate_minimum_confidence(minimum_confidence)
         self._rules = {rule.factor_id: rule for rule in rule_set.rules}
 
     def evaluate(self, request: FactorEvaluationRequest) -> FactorReviewResult:
@@ -121,15 +132,22 @@ class FactorRuleEngine:
             raise ObservationNeedsReview(f"{side} value is missing")
         if not observation.evidence:
             raise ObservationNeedsReview(f"{side} evidence is missing")
-        if observation.confidence < self.minimum_confidence:
+        if (
+            rule.factor_id,
+            side,
+        ) not in self.confirmed_sides and observation.confidence < self.minimum_confidence:
             raise ObservationNeedsReview(
                 f"{side} confidence {observation.confidence} is below {self.minimum_confidence}"
             )
 
-        if rule.kind in {"numeric_interval", "distance_interval"}:
+        if rule.kind in {"numeric_interval", "distance_interval"} or (
+            rule.kind == "presence_distance" and observation.value.type == "number"
+        ):
             if observation.value.type != "number":
                 raise ObservationNeedsReview(f"{side} value is not numeric")
             number = self._normalize_number(observation, expected_unit=rule.unit)
+            if rule.kind in {"distance_interval", "presence_distance"} and number < 0:
+                raise ObservationNeedsReview("physical distance cannot be negative")
             for band in rule.intervals:
                 if self._contains(band, number):
                     return band.grade
@@ -162,6 +180,8 @@ class FactorRuleEngine:
             value = Decimal(str(observation.value.value))
         except InvalidOperation as error:
             raise ObservationNeedsReview("numeric value is invalid") from error
+        if not value.is_finite():
+            raise ObservationNeedsReview("numeric value is not finite")
         actual_unit = observation.value.unit
         if expected_unit is None:
             if actual_unit is not None:

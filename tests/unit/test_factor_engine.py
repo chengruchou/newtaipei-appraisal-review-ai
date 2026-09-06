@@ -212,3 +212,51 @@ def test_another_land_use_changes_data_not_engine_code() -> None:
 
     assert original_result.results[0].target_grade is Grade.EXCELLENT
     assert changed_result.results[0].target_grade is Grade.INFERIOR
+
+
+def test_presence_inside_section_is_not_zero_distance():
+    from appraisal_review.domain.factor_models import CategoryBand
+
+    rule = FactorRule(
+        id="synthetic.presence.v1",
+        factor_id="synthetic.presence",
+        kind="presence_distance",
+        unit="m",
+        intervals=[IntervalBand(grade=Grade.NORMAL)],
+        categories=[
+            CategoryBand(grade=Grade.EXCELLENT, values=["within_section"]),
+            CategoryBand(grade=Grade.INFERIOR, values=["absent"]),
+        ],
+        correction_matrix=CorrectionMatrix(
+            values={
+                "excellent": {"excellent": 0, "normal": 4, "inferior": 8},
+                "normal": {"excellent": -4, "normal": 0, "inferior": 4},
+                "inferior": {"excellent": -8, "normal": -4, "inferior": 0},
+            }
+        ),
+    )
+    rules = approved_rule_set(rule)
+
+    def observation(value, kind, unit=None):
+        return FactorObservation(
+            raw_text="Synthetic presence/distance",
+            confidence=1,
+            value=NormalizedValue(type=kind, value=value, unit=unit),
+            evidence=[EvidenceRef(document_id="synthetic", page=1, confidence=1)],
+        )
+
+    target = observation("within_section", "category")
+    comparable = observation(0.0, "number", "m")
+    request = FactorEvaluationRequest(
+        case_id="synthetic",
+        rule_set_id=rules.rule_set_id,
+        factors=[FactorPair(factor_id=rule.factor_id, target=target, comparable=comparable)],
+    )
+    result = FactorRuleEngine(rules).evaluate(request)
+    assert result.results[0].target_grade is Grade.EXCELLENT
+    assert result.results[0].comparable_grade is Grade.NORMAL
+    assert result.results[0].adjustment_percent == 4
+    request.factors[0].target = observation("absent", "category")
+    assert FactorRuleEngine(rules).evaluate(request).results[0].adjustment_percent == -4
+    request.factors[0].comparable = observation(-1.0, "number", "m")
+    assert FactorRuleEngine(rules).evaluate(request).summary.status.value == "needs_review"

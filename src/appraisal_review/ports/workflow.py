@@ -4,19 +4,23 @@ from typing import Any, Protocol
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from appraisal_review.domain.document_models import SourceDocument
 from appraisal_review.domain.factor_models import (
     AuditEvent,
+    CaseFacts,
     FactorPair,
     FactorRuleSet,
+    ReviewPolicy,
 )
 from appraisal_review.ports.pdf import PDFWriter as PDFWriter
 
 
 class ParsedDocument(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", revalidate_instances="always")
 
     document_uri: str
     page_count: int = Field(ge=1)
+    source: SourceDocument | None = None
     content: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -27,11 +31,13 @@ class DocumentParser(Protocol):
 class FactExtractor(Protocol):
     async def extract_facts(
         self, document: ParsedDocument, *, case_id: str
-    ) -> list[FactorPair]: ...
+    ) -> CaseFacts | list[FactorPair]: ...
 
 
 class RuleSetProvider(Protocol):
-    async def load_or_build_rules(self, criteria: ParsedDocument) -> FactorRuleSet: ...
+    async def load_or_build_rules(
+        self, criteria: ParsedDocument
+    ) -> ReviewPolicy | FactorRuleSet: ...
 
 
 class AuditLogger(Protocol):

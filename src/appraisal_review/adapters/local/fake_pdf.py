@@ -11,6 +11,7 @@ class FakePDFWriter:
     async def write_pdf(self, request: PDFWriteRequest) -> PDFWriteResult:
         self.calls.append(request)
         return PDFWriteResult(
+            artifact_created=False,
             output_uri=request.destination_uri,
             page_count=self.page_count,
             written_field_ids=[field.field_id for field in request.field_map.fields],

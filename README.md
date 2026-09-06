@@ -119,20 +119,15 @@ correction require distinct operations; overlaying existing text is not correcti
 
 ## Current implementation status
 
-Implemented: legacy sum/equals API, typed factor interval/category/matrix engine,
-existing verification gate, shared PDF contracts, composition/injection,
-synchronous `POST /v1/reviews`, framework-neutral AgentCore-facing invocation,
-and an explicit local synthetic runner. PDF errors retain findings and prevent
-completion; successful metadata and warnings remain in the typed response.
+Implemented: legacy sum/equals API, typed factor calculation, schema-2 whole-case
+review, independent verification, exact applicability and source matching,
+observed-value/arithmetic findings, required coverage, shared PDF contracts,
+composition/injection, synchronous HTTP and invocation, and synthetic fixtures.
 
-Not implemented: B's actual PDF rendering/storage (#5), Chinese facts/rules
-extraction (#7), complete observed-value/applicability/arithmetic/evidence review
-(#8), and the deployed asynchronous AWS pipeline (#9). The Bedrock explanation
-adapter is not an extractor. Existing CDK only defines data foundations.
-
-The current verifier checks critical factor presence/status and summary status;
-it does not independently prove full-case correctness. Its documented limitations
-remain under #8. A synthetic completed run uses a fake writer and creates no PDF.
+Real document parsing, Bedrock extraction and the controlled reviewer workflow
+are the dependent #7 delivery. B's actual PDF rendering/storage (#5) and deployed
+asynchronous AWS jobs (#9) remain pending. A fake writer creates no PDF and now
+returns verified/simulated rather than completed. See ADR 0005 for migration.
 
 See [delivery traceability](docs/delivery-traceability.md) for implementation,
 test evidence, ownership and Issue dependencies.

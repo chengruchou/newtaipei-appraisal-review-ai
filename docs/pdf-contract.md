@@ -60,12 +60,17 @@ formatting belong to B's deterministic display-value mapper, never to an LLM.
 
 A write requires nonempty fields with value_ref and a single shared
 (scope, target_id, comparable_id). Old unbound field maps still load for
-compatibility but fail when used for writing. The initial result only represents
-one implicit target/comparable pair; these labels are trusted field-map context,
-not verified identities. #8 owns binding these to case/zone/date/rule version and
-supporting multiple comparisons. Do not claim current references prove
-applicability or full-case coverage. Mixed contexts and duplicate factor results
-are rejected as ambiguous.
+compatibility but fail when used for writing. A schema-2 result carries a verified context; every field reference must match
+it. Whole-case results live in AgentReviewRun.case_review and contain all
+comparisons. The controller passes one result only when the case has exactly one
+comparison; multiple contexts explicitly return unsupported_contexts and zero
+writer calls. B must not select the first comparison or rename its identities.
+
+PDFWriteResult adds artifact_created (default true for actual adapters). Test
+doubles that create no document must return false. The run then returns
+verified/simulated and no output_pdf_uri, while preserving diagnostic metadata.
+A missing writer returns verified/unavailable. The single PDFWriter protocol is
+unchanged; B's real byte validation remains required before returning true.
 
 ## Operations and storage (B implementation required)
 
@@ -107,7 +112,8 @@ A will inject it only through explicitly synthetic setup or tests.
 #6 owns shared schemas, pyproject dependency changes, aliases and the minimal
 controller migration. #4 owns application entrypoints; #5 owns drawing/storage,
 PDF extras and integration tests. A stacks on the foundation commit; B branches
-from the same commit. The three protected verifier/logger files are unchanged.
+from the same commit. That foundation preserved the verifier/logger files. #8 now extends the verifier
+and its tests under explicit authorization; the local audit logger remains unchanged.
 See ADR 0002. Later contract changes require a coordinated migration, not two
 parallel PDFWriter definitions. #9's remote API authorizes document_id/object
 references and resolves internal URIs; local file URIs are never a remote API.

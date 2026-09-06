@@ -8,6 +8,7 @@ from pydantic import ValidationError
 
 from appraisal_review.application.controller import ReviewAgentController
 from appraisal_review.config import Settings
+from appraisal_review.ports.approval import ReviewAuthorization
 from appraisal_review.ports.pdf import PDFWriter
 from appraisal_review.ports.workflow import (
     AuditLogger,
@@ -31,6 +32,7 @@ class ReviewAdapters:
     parser: DocumentParser
     fact_extractor: FactExtractor
     rule_provider: RuleSetProvider
+    authorization: ReviewAuthorization | None = None
     pdf_writer: PDFWriter | None = None
     audit_logger: AuditLogger | None = None
 
@@ -84,6 +86,7 @@ def build_controller(
     if any(not callable(getattr(adapter, method, None)) for adapter, method in required):
         raise ConfigurationError("invalid_adapter")
     return ReviewAgentController(
+        authorization=adapters.authorization,
         parser=adapters.parser,
         fact_extractor=adapters.fact_extractor,
         rule_provider=adapters.rule_provider,

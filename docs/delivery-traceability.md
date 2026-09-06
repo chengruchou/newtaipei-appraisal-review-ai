@@ -3,7 +3,7 @@
 Review date: 2026-09-05. Original base: b69ed74da950f37add016b5e881a7e0478f9c7d5.
 Current revision base: main ff5e9d1d511e015dbc96aa5b380cce1def433421, which already
 merged foundation e24265d7c4ef0bb5d2d74d0ed94bffa2052a08ed in PR #10.
-Active delivery: A PR #13, then Runtime PR #14. [Migration and full original SHAs](pr-migration.md).
+Historical delivery: A PR #13 and Runtime PR #14 are merged. [Migration and full original SHAs](pr-migration.md).
 
 | Requirement | Component / implementation | Issue | Evidence / status |
 |---|---|---|---|
@@ -65,3 +65,64 @@ No active local commit hooks or configured commit template supplied automatic
 attribution. Technical service/model names and the policy itself are retained.
 Existing history is retained. This revision performs no PR merge or force-push;
 foundation #10 was already merged before the refreshed inspection.
+
+## Complete review revision (#8)
+
+Baseline: b3760b9ae15d97dd16ffdd0da130e564324c71f6 (latest fetched main).
+141 baseline tests, Ruff, format, mypy and localhost HTTP passed on Python 3.13.5.
+The independent forged-999 regression failed before the verifier change; its
+assertion passed after the fix. Local ignored evidence is under artifacts/evidence.
+
+Schema-2 CaseReviewer and Controller now enforce exact applicability, source
+registry, trusted material approval, observed values, arithmetic/cross-form
+checks and independent inventory coverage. test_case_review.py exercises
+adversarial claims, omissions, duplicates, uncertainty, numeric units, boundary
+dates, multi-context aggregation and writer gating through the Controller.
+Synthetic fixture identity/approval/evidence was strengthened without a gate bypass.
+The audit logger is unchanged; verifier changes are explicitly authorized by #8.
+
+B receives the unchanged public writer protocol with bound single-context results
+and artifact_created metadata. No real writer, real-document accuracy, live
+model acceptance, human rule approval or AWS deployment is claimed by this layer.
+The dependent #7 layer supplies parsing/extraction/approval operations and evidence.
+
+## PR #15 review corrections
+
+Review 5121531968 identified three additional cases beyond the green baseline:
+an unregistered copied-slot context, runtime confidence ignored by schema 2.0,
+and arithmetic tolerance contradicted by final exact comparison. All three new
+regressions failed at acf3a454bb7c2e07953f5e49d5fa6c7ae60be176 before the fix.
+The unchanged baseline had 213 passing tests. Ignored before/after evidence lives
+under artifacts/review-fixes; no real source material is needed for this revision.
+
+The corrected gate validates all slot/factor bindings before arithmetic, passes
+one validated runtime threshold through calculation and verification, and retains
+all arithmetic constraints through final aggregate comparison. Regressions cover
+registered cross-context success, unknown entities, binding mismatches, HTTP
+configuration, confidence boundaries, zero-writer failures, Decimal tolerance
+boundaries, rounding and multiple constraints in either order. Existing forged
+claims, evidence, API and artifact-status tests remain required. Real model and
+whole-case human acceptance remain pending; these tests use synthetic material.
+
+The follow-up review 5122010147 is covered by test_review_trust_boundaries.py:
+request/parser/source identity, roles/page counts, supplementary sources, complete
+value-anchor binding, mutable self-reference, cycles, unrooted aggregates, loaded
+and evaluated audit identities, and writer-failure sequencing. Seventeen negative
+cases reproduced the earlier gaps before implementation; the distinct-cell DAG
+positive case passed. Existing context, runtime-threshold and Decimal regressions
+remain required. The dependent #16 must inherit these fixes before re-review.
+
+Confidence regressions in test_confidence_provenance.py cover target/comparable
+threshold boundaries, multiple measured anchors, unknown/model provenance,
+method-only claims, legitimate low-score confirmation with separate authorization,
+and later score/provenance/citation changes. ADR 0008 defines the semantics before
+these tests. The #16 parser/extractor/CLI integration must produce these fields
+through official normalization rather than test-side repairs.
+
+Review 5557081140: A1/A2/B regressions use distinct actual synthetic cells and empty
+raw text/excerpts for blanks; failures were assertions, not import/schema errors.
+Review 5557168465: shared wrong-purpose tests cover criteria/reference/brief,
+mixed references and another selected forms identity. Valid forms values with
+criteria rules and reference procedures remain supported. ADR 0009 records the
+requirement/module/gap/test/dependency map. Older real-document subset counts are
+historical and were not rerun; no current whole-case accuracy claim follows them.

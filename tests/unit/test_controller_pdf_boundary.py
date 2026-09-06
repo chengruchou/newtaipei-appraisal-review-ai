@@ -37,7 +37,7 @@ def test_actual_engine_and_verifier_block_writer(condition: str) -> None:
             )
         )
         adapters.rule_provider.load_or_build_rules = AsyncMock(
-            return_value=rules.model_copy(update={"status": "candidate"})
+            return_value=rules.rule_sets[0].rules.model_copy(update={"status": "candidate"})
         )
         parser.parse_document.reset_mock()
     elif condition in {"low_confidence", "missing_factor", "unknown_factor"}:
@@ -48,11 +48,11 @@ def test_actual_engine_and_verifier_block_writer(condition: str) -> None:
             )
         )
         if condition == "low_confidence":
-            factors[0].target.confidence = 0.2
+            factors.pairs[0].pair.target.confidence = 0.2
         elif condition == "missing_factor":
-            factors = []
+            factors.pairs = []
         else:
-            factors[0].factor_id = "unknown"
+            factors.pairs[0].pair.factor_id = "unknown"
         extractor.extract_facts = AsyncMock(return_value=factors)
     result = run(adapters, request)
     assert result.status in {WorkflowStatus.FAILED, WorkflowStatus.NEEDS_REVIEW}
@@ -62,18 +62,20 @@ def test_actual_engine_and_verifier_block_writer(condition: str) -> None:
         extractor.extract_facts.assert_not_called()
         parser.parse_document.assert_awaited_once_with(request.criteria_document_uri)
     elif condition == "unknown_factor":
-        assert result.review.summary.status is EvaluationStatus.FAILED
+        assert result.case_review.status is EvaluationStatus.FAILED
 
 
 def test_success_writes_once_and_preserves_warning_metadata() -> None:
     adapters = synthetic_adapters()
     result = run(adapters)
-    assert result.status is WorkflowStatus.COMPLETED
+    assert result.status is WorkflowStatus.VERIFIED
+    assert result.artifact_status == "simulated"
     assert len(adapters.pdf_writer.calls) == 1
     assert result.pdf_result.warnings == ["Synthetic PDF writer: no file was created."]
     assert result.pdf_result.written_field_ids == ["road-rate"]
     assert result.pdf_result.page_count == 1
-    assert result.pdf_result.output_uri == result.output_pdf_uri
+    assert result.output_pdf_uri is None
+    assert not result.pdf_result.artifact_created
 
 
 @pytest.mark.parametrize(
@@ -120,7 +122,8 @@ def test_writer_failure_retains_findings_and_never_completes(failure: str) -> No
 
 def test_missing_output_tools_or_map_and_conflicting_source_do_not_write() -> None:
     adapters = synthetic_adapters()
-    assert run(replace(adapters, pdf_writer=None)).status is WorkflowStatus.FAILED
+    assert run(replace(adapters, pdf_writer=None)).status is WorkflowStatus.VERIFIED
+    assert run(replace(adapters, pdf_writer=None)).artifact_status == "unavailable"
     assert (
         run(adapters, synthetic_request("completed").model_copy(update={"field_map": None})).status
         is WorkflowStatus.FAILED

@@ -157,3 +157,6 @@ is no live cleanup to perform yet.
 - AWS identity preflight, deployment, live invocation and cleanup: not executed;
   project profile/Region/account/role has not been designated.
 - Durable recovery, real extraction and PDF output: remain #9/#7/#8/#5 acceptance.
+
+The completed scenario exercises a fake writer: its review status is verified,
+artifact_status is simulated, and no PDF is created or published.

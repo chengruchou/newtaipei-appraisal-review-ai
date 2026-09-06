@@ -18,7 +18,7 @@ flowchart LR
     BOOT --> C["ReviewAgentController"]
     C --> P["DocumentParser / FactExtractor / RuleSetProvider"]
     C --> E["FactorRuleEngine"]
-    E --> V["Existing ReviewVerifier"]
+    E --> V["Independent case verifier"]
     V -->|unresolved or failed| F["Findings; no writer"]
     V -->|can_complete| W["Typed PDFWriter (#5)"]
     W --> R["AgentReviewRun + PDF metadata/error"]
@@ -42,24 +42,23 @@ The legacy /health and /v1/validate endpoints retain their successful response
 shape and calculation behavior. Legacy ReviewResult.overall_status is a Python
 property, not a serialized field; HTTP findings carry per-check status.
 
-## Honest implementation limits
+## Review semantics (#8)
 
-| Component | Current behavior | Remaining delivery |
-|---|---|---|
-| Factor engine | Interval/category/unit/matrix calculation | Observed-value review and complete scope: #8 |
-| Verifier | Critical factor presence/status and summary status | Independent evidence/identity/math gate: #8 |
-| Applicability | Metadata model only | Unique district/category/date/version resolution: #7/#8 |
-| Legacy sum/equals | Works in legacy service/API | Connect to new Controller and group/cross-table totals: #8 |
-| Bedrock adapter | Explains legacy findings | Facts/rules extraction: #7 |
-| PDF | Typed request/result/errors and fake integration | Real rendering and S3 transfer: #5 |
-| Entrypoints | Local sync HTTP and invocation adapter | Deployed Runtime and async cloud API: #9 |
-| CDK | Two private versioned buckets and case table | Complete cloud pipeline: #9 |
+Controller accepts typed ReviewPolicy and CaseFacts from the existing provider
+ports. CaseReviewer matches exact applicability and current sources, requests
+exact-material authorization, evaluates each comparison, compares original
+values, runs sum/equals checks and accounts for independent required coverage.
+ReviewVerifier independently recomputes claimed factor results. Failed and
+needs_review cases retain findings and never invoke the completed-form writer.
 
-A verified/completed synthetic factor slice does not establish full-case review.
-A confirmed baseline verifier weakness is tracked in #8: a fabricated verified
-result for the required factor, with unrelated rule/version and an incorrect
-rate, still passes its current presence/status gate. A/B do not change that
-verifier or audit logger. No production approval claim is made.
+Authorization is injected through ReviewAdapters.authorization, separate from
+model output and HTTP requests. #7 supplies real parsing, proposed extraction and
+a controlled human approval store. The fixed synthetic fixture supplies only its
+own predetermined material digests. See ADR 0005 and data-contracts.md.
+
+The controller remains an explicit gated workflow with recorded tool/state
+choices; it does not claim dynamic planning or an unbounded model loop.
+B's actual PDF writing (#5) and durable AWS jobs (#9) remain separate deliveries.
 
 ## PDF boundary and ownership
 

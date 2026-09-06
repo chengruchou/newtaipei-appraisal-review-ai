@@ -26,7 +26,7 @@ also works around that local environment problem. No global tools were changed.
 The demo selects local mode explicitly; imports do not discover AWS credentials.
 
 - verified: calculated synthetic rate 5.0, verification passes, no output requested.
-- completed: same calculation, fake writer called once, pdf_result includes
+- completed (scenario name): verified/simulated, fake writer called once, pdf_result includes
   `Synthetic PDF writer: no file was created.` and page/field metadata.
 - needs_review: missing target evidence, no total or PDF, findings preserved.
 
@@ -106,3 +106,70 @@ for a prepared PR/Issue body and --head/--branch when publishing another ref.
 See [submission checks](submission-checks.md) for narrow negative examples and
 range selection. Human review also checks equivalent signatures, badges and
 links. Check before every commit, push or publication; do not rewrite history.
+
+## Schema-2 review migration (#8)
+
+Use the same commands and entry routes. ReviewAdapters now accepts authorization
+implementing ports.approval.ReviewAuthorization. Parser results include typed
+SourceDocument; the rule provider returns ReviewPolicy and extractor CaseFacts.
+Both must be configured for the request case. Factor-only adapters cannot prove
+full completion and return needs_review.
+
+The completed synthetic scenario name remains a CLI compatibility alias for
+exercising the fake writer. Its actual status is verified, artifact_status is
+simulated and output_pdf_uri is null. A successful real writer still yields
+completed/written. No writer yields verified/unavailable. Multiple comparisons
+are all included in case_review, with unsupported_contexts if PDF was requested.
+
+Run the current complete suite, including subprocess coverage configuration:
+
+```bash
+PYTHONPATH=src python -m pytest tests cloud_tests --cov=appraisal_review --cov-config=pyproject.toml --cov-report=term-missing
+ruff check .
+ruff format --check .
+PYTHONPATH=src mypy src
+PYTHONPATH=src python scripts/http_smoke.py
+```
+
+See ADR 0005 and test_case_review.py for adversarial claims, observed values,
+arithmetic, applicability, complete inventory and zero-writer-call examples.
+
+Runtime confidence applies to schema-2 review and independent recalculation:
+
+```bash
+MIN_EXTRACTION_CONFIDENCE=0.95 PYTHONPATH=src python scripts/http_smoke.py
+```
+
+The setting must be finite and in [0, 1]; default is 0.85. A 0.90 observation
+requires review at 0.95 even when its material digest was approved. The existing
+synthetic smoke has 0.99 observations; the HTTP composition regression explicitly
+checks both thresholds with 0.90 observations. Never increase confidence to pass.
+
+Before approving material, register every slot's complete context and validate its
+factor binding. Cross-table checks may join valid contexts. A copied aggregate of
+5.005 against a rounded expected 5.00 passes tolerance 0.01, but must still satisfy
+any additional stricter check on that target. Grade/factor-rate equality stays exact.
+
+For review 5122010147, inspect source_binding failures before retrying an artifact.
+Reconcile the actual request/parser/registered identity and roles; do not edit a
+policy to authorize a substituted source. Inspect observed_source_binding and
+arithmetic_dependency findings at their slot/check IDs. Reconcile source cells
+and remove self/cyclic derivations through human-reviewed material changes.
+Every change requires fresh exact-material approval. Check rules_loaded followed
+by factors_evaluated and results_verified; loaded candidates are not all computed.
+See ADR 0007. No AWS account or real approval is needed for the regression suite.
+
+For confidence failures, inspect confidence_kind, provenance and producer before
+scores. Unknown is not a low calibrated measurement. A native measured side uses
+the minimum of outer and every used evidence score at the runtime threshold.
+For human review, use the controlled confirmation operation, inspect its side
+binding, then approve the exact final material separately. Preserve low original
+scores. Old method-only material needs explicit reconciliation and confirmation;
+old receipts do not authorize the new serialization. See ADR 0008.
+
+For a blank-value conflict, inspect every arithmetic finding and the independent
+expected value. The same candidate must satisfy all of them, including terminal
+blanks. Different non-independent proposals remain unresolved, regardless of order.
+For source_purpose findings, verify selected forms/criteria identities and citation
+use; a rule example is not a case fact. See ADR 0009. Do not repair either condition
+by overwriting observations, promoting scores or silently dropping required checks.
