@@ -166,3 +166,10 @@ For human review, use the controlled confirmation operation, inspect its side
 binding, then approve the exact final material separately. Preserve low original
 scores. Old method-only material needs explicit reconciliation and confirmation;
 old receipts do not authorize the new serialization. See ADR 0008.
+
+For a blank-value conflict, inspect every arithmetic finding and the independent
+expected value. The same candidate must satisfy all of them, including terminal
+blanks. Different non-independent proposals remain unresolved, regardless of order.
+For source_purpose findings, verify selected forms/criteria identities and citation
+use; a rule example is not a case fact. See ADR 0009. Do not repair either condition
+by overwriting observations, promoting scores or silently dropping required checks.

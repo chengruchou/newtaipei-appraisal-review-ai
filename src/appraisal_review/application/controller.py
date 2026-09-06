@@ -234,7 +234,11 @@ class ReviewAgentController:
             case_review = CaseReviewer(
                 self.authorization, minimum_confidence=self.minimum_confidence
             ).review(
-                rule_set, factors, SourceRegistry(documents=[s for s in sources if s is not None])
+                rule_set,
+                factors,
+                SourceRegistry(documents=[s for s in sources if s is not None]),
+                forms_source=case_document.source,
+                criteria_source=criteria.source,
             )
             verification = VerificationReport(
                 status=case_review.status,

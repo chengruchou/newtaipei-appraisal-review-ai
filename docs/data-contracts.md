@@ -142,3 +142,9 @@ exact-material approval. Existing method-only material is untrusted and old
 receipts require explicit reviewer migration, never automatic re-signing.
 See [ADR 0008](adr/0008-measured-confidence-and-human-confirmation.md).
 Legacy EvidenceRef and HTTP success/error schemas remain unchanged.
+
+ADR 0009 specifies one typed fill candidate validated against all incoming and
+independent expectations before it becomes a reusable value. It also defines
+source-purpose restrictions by selected document identity, not role strings alone.
+The original observation and all scores remain unchanged. Public PDF contracts
+are unchanged; source-role exceptions and ambiguous fill selection are unsupported.

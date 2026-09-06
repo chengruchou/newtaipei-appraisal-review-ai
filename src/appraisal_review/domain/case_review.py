@@ -1,14 +1,12 @@
 """Deterministic whole-case review and independent inventory completion gate."""
 
-from contextlib import suppress
-from dataclasses import dataclass
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
 from graphlib import CycleError, TopologicalSorter
 
 from pydantic import ValidationError
 
 from appraisal_review.domain.confidence import confirmation_digest
-from appraisal_review.domain.document_models import SourceCitation, SourceRegistry
+from appraisal_review.domain.document_models import SourceCitation, SourceDocument, SourceRegistry
 from appraisal_review.domain.factor_engine import FactorRuleEngine, validate_minimum_confidence
 from appraisal_review.domain.factor_models import (
     CaseFacts,
@@ -19,15 +17,16 @@ from appraisal_review.domain.factor_models import (
     ReviewMaterial,
     ReviewPolicy,
 )
+from appraisal_review.domain.fill_candidates import ArithmeticComparison, validate_slot
 from appraisal_review.domain.pdf_types import document_identity
 from appraisal_review.domain.review_contracts import (
     ArithmeticCheck,
     Coverage,
-    ObservedValue,
     ReviewFinding,
     ReviewSlot,
 )
 from appraisal_review.domain.rule_engine import calculate
+from appraisal_review.domain.source_purpose import SourcePurposes
 from appraisal_review.domain.verification import ReviewVerifier
 from appraisal_review.ports.approval import ReviewAuthorization
 
@@ -35,24 +34,6 @@ from appraisal_review.ports.approval import ReviewAuthorization
 def source_cell(ref: SourceCitation) -> tuple[object, ...]:
     """All current citation entries are value anchors; excerpt is not cell identity."""
     return (ref.document_id, ref.content_hash, ref.version, ref.page, ref.region_id, ref.bbox)
-
-
-def percent(value: ObservedValue) -> Decimal:
-    if value.state != "present" or value.unit not in {"percent_points", "ratio"}:
-        raise ValueError("A present numeric value with an explicit percent unit is required")
-    result = Decimal(str(value.value))
-    if not result.is_finite():
-        raise ValueError("Nonfinite observed value")
-    return result * 100 if value.unit == "ratio" else result
-
-
-@dataclass(frozen=True)
-class ArithmeticComparison:
-    check: ArithmeticCheck
-    expected: Decimal
-
-    def matches(self, actual: Decimal) -> bool:
-        return abs(self.expected - actual) <= self.check.tolerance
 
 
 class CaseReviewer:
@@ -69,6 +50,8 @@ class CaseReviewer:
         registry: SourceRegistry,
         *,
         claimed: list[FactorReviewResult] | None = None,
+        forms_source: SourceDocument | None = None,
+        criteria_source: SourceDocument | None = None,
     ) -> CaseReviewResult:
         findings: list[ReviewFinding] = []
         comparisons: list[FactorReviewResult] = []
@@ -136,6 +119,24 @@ class CaseReviewer:
             add(
                 "sources", "source_identity", "verified", "Current source versions and hashes match"
             )
+
+        try:
+            purposes = SourcePurposes.selected(
+                registry, forms=forms_source, criteria=criteria_source
+            )
+            violations = purposes.violations(policy, facts)
+        except ValueError:
+            violations = [("sources", [])]
+        if violations:
+            for id, refs in violations:
+                required.append(id)
+                add(
+                    id,
+                    "source_purpose",
+                    "needs_review",
+                    "Source does not support this use in the selected case documents",
+                    evidence=refs,
+                )
 
         inventory = policy.inventory
         contexts = [c.context.key() for c in inventory.contexts]
@@ -246,7 +247,6 @@ class CaseReviewer:
             else:
                 bound_slots[slot.id] = slot
         expected_slots: dict[str, str] = {}
-        arithmetic_targets: dict[str, list[ArithmeticComparison]] = {}
 
         for entry in inventory.contexts:
             context = entry.context
@@ -534,219 +534,103 @@ class CaseReviewer:
                 "Complete comparison claims checked against independent recomputation",
             )
 
-        # Only passed, source-bound observations can seed the derivation DAG.
-        numeric: dict[str, Decimal] = {}
-        for value in facts.observed:
-            if value.slot_id in bound_slots:
-                with suppress(ValueError, InvalidOperation):
-                    numeric[value.slot_id] = percent(value)
         by_target: dict[str, list[ArithmeticCheck]] = {}
-        graph: dict[str, set[str]] = {}
+        graph: dict[str, set[str]] = {name: set() for name in valid_slots}
         for check in inventory.checks:
             required.append(f"arithmetic/{check.id}")
             by_target.setdefault(check.target, []).append(check)
             graph.setdefault(check.target, set()).update(check.inputs)
+        cyclic = False
         try:
             order = list(TopologicalSorter(graph).static_order())
         except CycleError:
-            order = []
-            for check in inventory.checks:
-                add(
-                    f"arithmetic/{check.id}",
-                    "arithmetic_dependency",
-                    "needs_review",
-                    "Cyclic derivation graph; no aggregate expected value established",
-                    rule_id=check.id,
-                    evidence=check.evidence,
-                )
-                add(
-                    f"observed/{check.target}",
-                    "arithmetic_dependency",
-                    "needs_review",
-                    "Aggregate participates in an invalid derivation graph",
-                    evidence=check.evidence,
-                )
+            cyclic = True
+            order = list(graph)
         trusted: dict[str, Decimal] = {}
-        for name, value in numeric.items():
-            if name not in by_target and name in expected_slots:
-                with suppress(InvalidOperation):
-                    if value == Decimal(expected_slots[name]):
-                        trusted[name] = value
+        source_trust = (
+            authorized
+            and not violations
+            and not any(f.id in {"sources", "trust"} and f.status != "verified" for f in findings)
+        )
         for target in order:
             checks = by_target.get(target, [])
-            if not checks:
-                continue
-            passed = True
+            comparisons_for_slot: list[ArithmeticComparison] = []
+            ready = not (cyclic and target in by_target)
             for check in checks:
-                id = f"arithmetic/{check.id}"
                 if (
                     check.target not in valid_slots
                     or not set(check.inputs) <= valid_slots.keys()
                     or not citations_valid(check.evidence)
                 ):
-                    add(
-                        id,
-                        "arithmetic_definition",
-                        "needs_review",
-                        "Unbound arithmetic inputs or evidence",
-                        rule_id=check.id,
-                        evidence=check.evidence,
+                    reason = "arithmetic_definition"
+                elif cyclic or not set(check.inputs) <= trusted.keys() or target not in bound_slots:
+                    reason = "arithmetic_dependency"
+                else:
+                    comparisons_for_slot.append(
+                        ArithmeticComparison(
+                            check,
+                            calculate(
+                                check.kind,
+                                [trusted[name] for name in check.inputs],
+                                quantum=check.quantum,
+                            ),
+                        )
                     )
-                    passed = False
                     continue
-                if not set(check.inputs) <= trusted.keys() or target not in bound_slots:
-                    add(
-                        id,
-                        "arithmetic_dependency",
-                        "needs_review",
-                        f"Inputs must be independently grounded and passed: {check.inputs}",
-                        rule_id=check.id,
-                        evidence=check.evidence,
-                    )
-                    passed = False
-                    continue
-                expected_number = calculate(
-                    check.kind, [trusted[name] for name in check.inputs], quantum=check.quantum
-                )
-                comparison = ArithmeticComparison(check, expected_number)
-                arithmetic_targets.setdefault(target, []).append(comparison)
-                actual = numeric.get(target)
-                blank = observed[target].state == "blank" and bound_slots[target].derivable_blank
-                blank = blank and not any(r.excerpt.strip() for r in observed[target].evidence)
-                matched = comparison.matches(actual) if actual is not None else blank
-                passed = passed and matched
+                ready = False
                 add(
-                    id,
+                    f"arithmetic/{check.id}",
+                    reason,
+                    "needs_review",
+                    f"Unvalidated or cyclic derivation inputs: {check.inputs}",
+                    rule_id=check.id,
+                    evidence=check.evidence,
+                )
+            if target not in bound_slots:
+                continue
+            slot = bound_slots[target]
+            candidate = validate_slot(
+                slot,
+                observed[target],
+                expected_slots.get(target),
+                comparisons_for_slot,
+                ready=ready,
+                authorized=source_trust,
+            )
+            for constraint in comparisons_for_slot:
+                check = constraint.check
+                constraint_matches = isinstance(
+                    candidate.candidate, Decimal
+                ) and constraint.matches(candidate.candidate)
+                add(
+                    f"arithmetic/{check.id}",
                     "arithmetic",
-                    "verified" if matched else "failed" if actual is not None else "needs_review",
+                    "verified"
+                    if constraint_matches
+                    else "needs_review"
+                    if candidate.candidate is None
+                    else "failed",
                     (
-                        f"{check.kind}({check.inputs}); grounded DAG; "
+                        f"{check.kind}({check.inputs}); one grounded candidate; "
                         f"ROUND_HALF_UP quantum={check.quantum}; tolerance={check.tolerance}"
                     ),
-                    observed=str(actual) if actual is not None else None,
-                    expected=str(expected_number),
+                    observed=str(candidate.candidate) if candidate.candidate is not None else None,
+                    expected=str(constraint.expected),
                     evidence=check.evidence,
                     rule_id=check.id,
                     rule_version=policy.identity.version,
                 )
-            constraints = arithmetic_targets.get(target, [])
-            actual = numeric.get(target)
-            independent = expected_slots.get(target)
-            if passed and actual is not None and independent is not None:
-                passed = all(
-                    ArithmeticComparison(
-                        c.check,
-                        calculate("equals", [Decimal(independent)], quantum=c.check.quantum),
-                    ).matches(actual)
-                    for c in constraints
-                )
-            if passed and actual is not None:
-                trusted[target] = actual
-            elif passed and len({c.expected for c in constraints}) == 1:
-                trusted[target] = constraints[0].expected
-            elif target in valid_slots and len(constraints) != len(checks):
-                add(
-                    f"observed/{target}",
-                    "arithmetic_dependency",
-                    "needs_review",
-                    "Not all derivation constraints have passed; target cannot seed another check",
-                    evidence=valid_slots[target].evidence if target in valid_slots else [],
-                )
-
-        for slot in bound_slots.values():
-            id = f"observed/{slot.id}"
-            value = observed.get(slot.id)
-            deterministic_expected = expected_slots.get(slot.id)
-            constraints = arithmetic_targets.get(slot.id, [])
-            expected = deterministic_expected or (
-                "; ".join(f"{c.check.id}: {c.expected}" for c in constraints) or None
-            )
-            details = dict(
+            add(
+                f"observed/{target}",
+                candidate.kind,
+                candidate.status,
+                candidate.trace,
+                observed=str(candidate.candidate) if candidate.candidate is not None else None,
+                expected=str(candidate.expected) if candidate.expected is not None else None,
                 context=slot.context,
                 factor_id=slot.factor_id,
                 evidence=slot.evidence,
-                expected=expected,
             )
-            if (
-                value is None
-                or expected is None
-                or not citations_valid(slot.evidence)
-                or not citations_valid(value.evidence)
-            ):
-                add(
-                    id,
-                    "observed_missing",
-                    "needs_review",
-                    "Required observed/expected evidence missing",
-                    **details,
-                )
-                continue
-            if value.state == "blank" and any(ref.excerpt.strip() for ref in value.evidence):
-                add(
-                    id,
-                    "blank_contradiction",
-                    "needs_review",
-                    "Claimed blank references nonblank source text",
-                    **details,
-                )
-                continue
-            if value.state == "blank" and slot.derivable_blank:
-                add(
-                    id,
-                    "derivable_blank",
-                    "verified",
-                    "Approved blank can be filled from expected value",
-                    **details,
-                )
-                continue
-            try:
-                actual_text = (
-                    str(value.value)
-                    if value.unit == "grade" and value.state == "present"
-                    else str(percent(value))
-                )
-                if slot.factor_id is None and constraints:
-                    actual_number = percent(value)
-                    equal = all(c.matches(actual_number) for c in constraints)
-                    if deterministic_expected is not None:
-                        # Preserve the independent factor total under every approved constraint.
-                        equal = equal and all(
-                            ArithmeticComparison(
-                                c.check,
-                                calculate(
-                                    "equals",
-                                    [Decimal(deterministic_expected)],
-                                    quantum=c.check.quantum,
-                                ),
-                            ).matches(actual_number)
-                            for c in constraints
-                        )
-                else:
-                    equal = (
-                        actual_text == expected
-                        if value.unit == "grade"
-                        else Decimal(actual_text) == Decimal(expected)
-                    )
-            except (ValueError, InvalidOperation):
-                add(
-                    id,
-                    "observed_unresolved",
-                    "needs_review",
-                    f"Observed state: {value.state}",
-                    **details,
-                )
-                continue
-            add(
-                id,
-                "observed_comparison",
-                "verified" if equal else "failed",
-                (
-                    "Observed target must satisfy every arithmetic constraint: "
-                    + ", ".join(c.check.id for c in constraints)
-                    if slot.factor_id is None and constraints
-                    else "Observed and expected compared exactly in grade or percent points"
-                ),
-                observed=actual_text,
-                **details,
-            )
+            if candidate.trusted_number is not None:
+                trusted[target] = candidate.trusted_number
         return finish()
