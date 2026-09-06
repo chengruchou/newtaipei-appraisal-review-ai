@@ -308,6 +308,7 @@ def test_blank_output_is_derivable_but_missing_fact_is_not():
     material.facts.observed[0].evidence = [ref]
     material.policy.inventory.slots[0].evidence = [ref]
     material.facts.observed[0].state, material.facts.observed[0].value = "blank", None
+    material.facts.observed[0].raw_text = ""
     assert evaluate(material).status.value == "verified"
     material.facts.pairs[0].pair.target.value = None
     assert evaluate(material).status.value == "needs_review"

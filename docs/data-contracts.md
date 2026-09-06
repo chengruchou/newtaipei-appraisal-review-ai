@@ -183,3 +183,9 @@ emits localization_only/parser_registry with no confirmation, regardless of mode
 provenance claims. confirm-facts adds the local-review-v1 side digest and actual
 OS UID/login. LocalApprovalStore requires that same reviewer and current side
 digest for confirmed material; confirmation alone does not grant authorization.
+
+ADR 0009 specifies one typed fill candidate validated against all incoming and
+independent expectations before it becomes a reusable value. It also defines
+source-purpose restrictions by selected document identity, not role strings alone.
+The original observation and all scores remain unchanged. Public PDF contracts
+are unchanged; source-role exceptions and ambiguous fill selection are unsupported.

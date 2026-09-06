@@ -185,3 +185,11 @@ changes stay blocked. A model cannot preserve forged measured provenance or
 confirmation through normalization. Historical receipt tests prove no automatic
 reuse, mutation or re-signing after the material extension. Native candidate
 adapters remain candidate-only; no live accuracy or real approval is claimed.
+
+Review 5557081140: A1/A2/B regressions use distinct actual synthetic cells and empty
+raw text/excerpts for blanks; failures were assertions, not import/schema errors.
+Review 5557168465: shared wrong-purpose tests cover criteria/reference/brief,
+mixed references and another selected forms identity. Valid forms values with
+criteria rules and reference procedures remain supported. ADR 0009 records the
+requirement/module/gap/test/dependency map. Older real-document subset counts are
+historical and were not rerun; no current whole-case accuracy claim follows them.

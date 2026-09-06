@@ -261,3 +261,10 @@ and permits. A wrong digest, stale confirmation or unknown provenance must be
 reconciled explicitly, never auto-re-signed. Retain original candidate files and
 use fresh confirmed output paths. Parser-derived localization is not calibrated
 measurement; native rule candidates do not declare fact accuracy.
+
+For a blank-value conflict, inspect every arithmetic finding and the independent
+expected value. The same candidate must satisfy all of them, including terminal
+blanks. Different non-independent proposals remain unresolved, regardless of order.
+For source_purpose findings, verify selected forms/criteria identities and citation
+use; a rule example is not a case fact. See ADR 0009. Do not repair either condition
+by overwriting observations, promoting scores or silently dropping required checks.
