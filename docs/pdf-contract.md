@@ -105,8 +105,14 @@ page classification, per-page CropBox/rotation/UserUnit geometry, page bounds,
 non-overlapping fields, every value reference, font readability, glyph coverage,
 `max_characters`, measured width and height, blank destinations, and removable
 correction text. `fill_blank` also rejects intersecting inline images, painted
-XObjects, annotations, and filled vector paths while allowing ordinary
-stroke-only table borders. Shadings and malformed paint geometry fail closed.
+XObjects, annotations, filled vector paths, and arbitrary stroke-only paint. A
+stroke is accepted as an ordinary table border only when it is a solid,
+default-cap/default-join rectangle or straight segment coincident with and
+covering a complete field boundary, and its effective transformed width is at
+most two PDF user-space points. Stroke width, cap, join, miter, and dash settings
+from direct operators and named `ExtGState` resources follow saved/restored
+graphics state. Hairlines, stroke adjustment, unsupported stroke styles,
+shadings, and malformed paint geometry fail closed.
 Annotation measurement includes its configured label.
 
 Preflight rejects encrypted sources, records the SHA-256 digest of the exact

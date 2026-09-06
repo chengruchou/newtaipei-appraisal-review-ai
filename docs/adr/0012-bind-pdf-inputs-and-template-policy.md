@@ -41,10 +41,15 @@ mode, non-zero `TJ` adjustments, and fonts with custom or embedded metrics fail
 explicitly. The supported correction subset is printable ASCII using a
 recognized standard Type 1 Base-14 font without custom width, descriptor,
 character-program, descendant-font, or Unicode mapping data. `fill_blank`
-treats intersecting inline images, painted XObjects, annotation rectangles, and
-filled vector paths as occupancy. Ordinary stroke-only table borders remain
-valid. Shadings or malformed paint geometry fail closed. If geometry cannot be
-established safely, preflight fails and no destination is published.
+treats intersecting inline images, painted XObjects, annotation rectangles,
+filled vector paths, and arbitrary stroke-only paint as occupancy. A stroke is
+accepted as a table border only when it is a solid rectangle or straight
+segment, uses default cap and join behavior, coincides with and covers a complete
+field boundary, and remains no wider than two PDF user-space points after the
+current transformation. Direct operators and named `ExtGState` resources update
+stroke state under `q`/`Q`; device-dependent hairlines, stroke adjustment,
+shadings, and unsupported or malformed paint geometry fail before mutation and
+no destination is published.
 
 Local file URIs are converted with the platform URI converter exactly once.
 Canonical identity parsing and filesystem conversion therefore agree for literal
