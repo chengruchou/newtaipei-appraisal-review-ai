@@ -92,7 +92,7 @@ def rejected(result: subprocess.CompletedProcess[str], location: str) -> None:
 )
 def test_publication_file_rejects_attribution(repository: Path, credit: str) -> None:
     draft = repository / ".git/publication.md"
-    draft.write_text(credit + "\n")
+    draft.write_text(credit + "\n", encoding="utf-8")
     rejected(cli(repository, "--publication-file", str(draft)), "publication.md")
 
 
@@ -139,7 +139,7 @@ def test_policy_and_test_examples_are_narrow_not_directory_exemptions(repository
     for path in (policy, test):
         original = path.read_text()
         path.write_text(original + "\n# " + credit + "\n")
-        rejected(cli(repository), str(path.relative_to(repository)))
+        rejected(cli(repository), path.relative_to(repository).as_posix())
         path.write_text(original)
     # Merely quoting the signature, or marking the previous line, is not an exemption.
     policy.write_text("Prohibited example (must fail):\n> " + credit + "\n")
