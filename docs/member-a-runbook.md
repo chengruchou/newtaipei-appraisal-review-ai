@@ -1,28 +1,31 @@
-# Member A: local entry path
+# Local review entry and document preparation
 
-This entry is runnable and synthetic. It does not parse source PDFs, call a
-foundation model, deploy AgentCore, or create a PDF. Real adapters remain
-#5/#7, full review semantics #8, cloud orchestration #9.
+The merged entry supports synthetic demonstrations and configured real-document
+preparation/review. PR #15 adds complete review semantics; PR #16 adds the real
+PDF parser, candidate extraction and local reviewer controls. The demo commands
+below remain synthetic and create no PDF. Formal writing (#5), durable cloud
+jobs (#9), a web workbench and controlled model actions (#17) remain future work.
 
 ## Fresh checkout
 
-Active entry branch: feat/member-a-entrypoint, PR #13 (replaces #11). It targets
-main because foundation #10 has already merged. Runtime preparation is separate
-on test/runtime-smoke, PR #14 (replaces #12), based on A. See [migration](pr-migration.md).
+Use `main` after the #15/#16 merges. Shared entry #13, contract #10 and isolated
+Runtime preparation #14 are also merged; no old stacked branch is required.
+See [traceability](delivery-traceability.md) for the inspected merge SHAs and
+[migration](pr-migration.md) for the historical branch migration.
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install -e '.[dev,aws]'
+python -m pip install -e '.[dev]'
 export PYTHONPATH="$PWD/src"
 python -m appraisal_review.demo verified
 python -m appraisal_review.demo completed
 python -m appraisal_review.demo needs_review
 ```
 
-PYTHONPATH explicitly selects this checkout. On this macOS/Python 3.13 host,
-editable-install .pth files were marked hidden and skipped by Python; this line
-also works around that local environment problem. No global tools were changed.
+PYTHONPATH explicitly selects this checkout. It also addresses the historically
+observed macOS/Python 3.13 environment where hidden editable-install .pth files
+were skipped; it is not a requirement to modify global tools.
 The demo selects local mode explicitly; imports do not discover AWS credentials.
 
 - verified: calculated synthetic rate 5.0, verification passes, no output requested.
@@ -95,7 +98,7 @@ The current Bedrock explanation adapter is not a rule or fact extractor.
 ruff check .
 ruff format --check .
 mypy src
-pytest
+pytest tests cloud_tests
 python scripts/http_smoke.py
 python scripts/check_submission.py
 ```
@@ -118,7 +121,8 @@ full completion and return needs_review.
 The completed synthetic scenario name remains a CLI compatibility alias for
 exercising the fake writer. Its actual status is verified, artifact_status is
 simulated and output_pdf_uri is null. A successful real writer still yields
-completed/written. No writer yields verified/unavailable. Multiple comparisons
+completed/written. No output request yields verified/not_requested; a requested
+single-context output without a writer yields verified/unavailable. Multiple comparisons
 are all included in case_review, with unsupported_contexts if PDF was requested.
 
 Run the current complete suite, including subprocess coverage configuration:

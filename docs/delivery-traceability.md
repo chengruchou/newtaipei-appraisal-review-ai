@@ -1,29 +1,61 @@
 # Requirements to implementation and acceptance
 
-Review date: 2026-09-05. Original base: b69ed74da950f37add016b5e881a7e0478f9c7d5.
+## Merged delivery snapshot (2026-09-06)
+
+Inspected `main`: `fefce2f2bd7f9fe60a8f63422714f5b993365ff9`.
+PR #15 and PR #16 are merged, alongside the earlier foundation #10, entry #13
+and Runtime preparation #14. Implementation is available from one main branch;
+the original stacked heads below remain historical verification references.
+
+| Delivery | Final implementation head | Merge commit |
+|---|---|---|
+| [Review #15](https://github.com/chengruchou/newtaipei-appraisal-review-ai/pull/15) | `a303ed5bd869e4b493d4688b47b44bd7e2c69690` | `3cdc33a822be57707416959910e86bac4029e0cc` |
+| [Extraction #16](https://github.com/chengruchou/newtaipei-appraisal-review-ai/pull/16) | `cacb85b8ae587b74167d1717383aa87703eb6bb8` | `fefce2f2bd7f9fe60a8f63422714f5b993365ff9` |
+
+The inspected main tree is identical to the final #16 tree; all 131 repository
+blobs were checked against that snapshot before this documentation update.
+Historical head validation: #15 had 323 tests plus 8 cloud tests
+([CI](https://github.com/chengruchou/newtaipei-appraisal-review-ai/actions/runs/34019136768));
+#16 had 402 tests plus 8 cloud tests
+([CI](https://github.com/chengruchou/newtaipei-appraisal-review-ai/actions/runs/34019738902)).
+These counts are previous implementation evidence, not new live-model, complete
+human-case or cloud acceptance. This update changes documentation only.
+
+Formal writer #5 is still open and no production writer exists in this snapshot.
+Durable cloud jobs #9, controlled actions/decision traces/human tasks #17 and the
+web workbench remain planned. Actual Bedrock accuracy, real rule approval and
+complete-case validation are separate remaining acceptance steps. See the
+[delivery plan](mvp-plan.md) for dependencies and proposed parallel workstreams.
+
+## Requirement map
+
+Original review date: 2026-09-05. Original base: b69ed74da950f37add016b5e881a7e0478f9c7d5.
 Historical A revision base: main ff5e9d1d511e015dbc96aa5b380cce1def433421, which already
 merged foundation e24265d7c4ef0bb5d2d74d0ed94bffa2052a08ed in PR #10.
 Historical delivery: A PR #13 and Runtime PR #14 are merged. [Migration and full original SHAs](pr-migration.md).
-The current #8/#7 baseline and evidence are recorded separately below.
+The #8/#7 implementation and correction evidence is recorded below as history.
 
 | Requirement | Component / implementation | Issue | Evidence / status |
 |---|---|---|---|
 | Shared typed PDF boundary | domain/pdf_models.py, pdf_types.py, ports/pdf.py | #6 | test_pdf_contract.py; local + CI |
 | URI separation, field identity, warnings/errors | PDFWriteRequest/Result, Controller | #6/#4 | Contract and PDF boundary tests; metadata only |
 | Shared composition, no import-time clients | application/bootstrap.py | #4 | test_bootstrap.py; local, explicit mocked AWS bundle |
-| Sync review HTTP and invocation parity | api/routes/reviews.py, agentcore/runtime.py, application/entrypoint.py | #4 | test_entrypoints.py + scripts/http_smoke.py |
+| Sync review HTTP and invocation parity | api/routes/reviews.py, adapters/aws/agentcore/runtime.py, application/entrypoint.py | #4 | test_entrypoints.py + scripts/http_smoke.py |
 | Legacy behavior | /health, /v1/validate | #4 | Actual HTTP findings equality and wrong-total test |
 | Legacy detail and review 422/503/500 schema | EntryProblemResponse, routed validation handler | #4, PR #13 | test_api_error_contract.py; JSON Schema checks on actual responses, invocation parity |
-| Candidate/missing/low-confidence/unknown factors block PDF | Existing engine/verifier + Controller | #4 | test_controller_pdf_boundary.py, no verifier changes |
+| Candidate/missing/low-confidence/unknown factors block PDF | Engine/verifier + Controller | #4/#8 | PDF boundary and complete-review regressions; #8 extends independent verification |
 | Write once, malformed writer output cannot complete | Controller + FakePDFWriter | #4/#6 | URI/count/field/exception tests, warnings retained |
-| Runnable synthetic fixture | adapters/local/synthetic.py, demo.py, examples/ | #4 | verified/completed/needs_review local invocations |
+| Runnable synthetic fixture | adapters/local/synthetic.py, demo.py, examples/ | #4 | verified/completed/needs_review scenario names; completed scenario yields verified/simulated, no file |
 | Actual PDF correction/storage | B's future PDF adapters | #5 | Planned; no writer or live S3 integration |
 | Chinese text/marks/coords and Bedrock extraction | Native parser, bounded Converse adapter, material provider | #7 | Implemented; native subset checked, live model accuracy pending |
 | Approval provenance/applicability | Signed local receipts and exact case resolver | #7/#8 | Implemented and synthetic tested; real approval pending |
 | Observed vs expected, sums and copied totals | CaseReviewer and shared arithmetic | #8 | Controller regression tests; complete live case acceptance pending |
 | Full coverage and evidence gate | Independent source/page/table inventory and recalculation | #8 | Forged-result regression fixed; source omissions block completion |
 | Async jobs and durable Runtime delivery | Cloud API/persistence/dispatcher/reconciler | #9 | Architecture design; no live test |
-| Runtime packaging/health smoke | Separate cloud-test PR | #9 | Prepared separately; never conflated with A or full review |
+| Runtime packaging/health smoke | cloud_tests/, merged PR #14 | #9 | Local/mocked preparation; live invocation and durable production jobs pending |
+| Model-selected allowed actions and decision records | Future policy/tool/trace contracts | #17 | Planned; current Controller is a fixed gated workflow |
+| Version-bound human tasks and re-entry | Future task/revision API and persistent store | #17/#9 | Planned; current confirmation/approval store is local Linux/macOS only |
+| Browser review workbench | Future source/evidence/task UI | New work item required | Planned; full UI implementation is separate from #17 contracts |
 | Attribution and branch naming | AGENTS.md and scripts/check_submission.py | #4, PR #13 | 49 subprocess CLI tests; full snapshots/index/metadata/publication/branch checks |
 
 ## Historical foundation and Member A evidence
@@ -59,18 +91,19 @@ rendered source tables. Only future acceptance descriptions and synthetic data
 are committed. No real document extraction, font/rendering, PDF correction,
 Bedrock inference, live S3 or deployed AgentCore was validated in A.
 
-## Submission inspection
+## Historical submission inspection (foundation and Member A)
 
 Git author and committer match the existing user configuration. No AI author,
 co-author, committer, signature, badge or attribution footer is included.
 No active local commit hooks or configured commit template supplied automatic
 attribution. Technical service/model names and the policy itself are retained.
-Existing history is retained. This revision performs no PR merge or force-push;
-foundation #10 was already merged before the refreshed inspection.
+Existing history was retained. That revision performed no PR merge or force-push;
+foundation #10 was already merged before its refreshed inspection. Later merges
+are recorded in the current snapshot above.
 
 ## Complete review revision (#8)
 
-Baseline: b3760b9ae15d97dd16ffdd0da130e564324c71f6 (latest fetched main).
+Historical implementation base: b3760b9ae15d97dd16ffdd0da130e564324c71f6.
 141 baseline tests, Ruff, format, mypy and localhost HTTP passed on Python 3.13.5.
 The independent forged-999 regression failed before the verifier change; its
 assertion passed after the fix. Local ignored evidence is under artifacts/evidence.
@@ -108,7 +141,7 @@ whole-case human acceptance remain pending; these tests use synthetic material.
 
 ## Document understanding revision (#7)
 
-The dependent branch implements LocalPDFParser, conservative native rule candidates,
+The #16 implementation adds LocalPDFParser, conservative native rule candidates,
 BedrockDocumentExtractor, PageProposal assembly, MaterialProvider, LocalApprovalStore,
 ReferenceCatalog, golden subset comparisons and the opt-in document CLI. It uses
 existing Controller/HTTP/invocation paths. Dependency setup stays in the project;
@@ -167,13 +200,13 @@ value-anchor binding, mutable self-reference, cycles, unrooted aggregates, loade
 and evaluated audit identities, and writer-failure sequencing. Seventeen negative
 cases reproduced the earlier gaps before implementation; the distinct-cell DAG
 positive case passed. Existing context, runtime-threshold and Decimal regressions
-remain required. The dependent #16 must inherit these fixes before re-review.
+remain required. #16 inherited these fixes before the final merged delivery.
 
 Confidence regressions in test_confidence_provenance.py cover target/comparable
 threshold boundaries, multiple measured anchors, unknown/model provenance,
 method-only claims, legitimate low-score confirmation with separate authorization,
 and later score/provenance/citation changes. ADR 0008 defines the semantics before
-these tests. The #16 parser/extractor/CLI integration must produce these fields
+these tests. The following #16 integration correction produces these fields
 through official normalization rather than test-side repairs.
 
 The review 5122010245 integration correction follows the normal merge of #15.
@@ -203,12 +236,12 @@ an unsupported platform in subprocesses; POSIX permissions are tested on the hos
 and Linux CI. No actual Windows runner or native Windows support is claimed.
 All five initial dependent regressions failed through assertions before correction.
 
-## Verification metrics for the fill/source/receipt/platform correction
+## Historical verification metrics for the final correction
 
 Tests and cloud_tests are separate collection scopes. The former 305 and 358
 totals meant 297+8 and 350+8, respectively, not additional cloud suites. The
-current lower layer has 323 tests + 8 cloud_tests; the dependent layer has 402 + 8.
-All pass locally on macOS/Python 3.13.5. The CI Test step collects tests only on
+final lower layer had 323 tests + 8 cloud_tests; the dependent layer had 402 + 8.
+All passed locally on macOS/Python 3.13.5. The CI Test step collected tests only on
 Ubuntu/Python 3.11; its following cloud step separately runs the eight cloud_tests.
 Exact-head CI links and results belong in the PR delivery record.
 
@@ -224,7 +257,7 @@ data in each layer, so adding cloud_tests does not explain the CI difference.
 Historical CI at 8061a14/721d6a1 reported 90%/86% combined versus local 89%/84%.
 The logs have different missing-statement counts (CI 117/268; local 136/316),
 not merely different rounding labels. Runtime/platform and measured hits differ;
-no isolated experiment establishes the cause. Current lower-layer CI at a303ed5
+no isolated experiment establishes the cause. Final lower-layer CI at a303ed5
 likewise reports 90% with 123 missing statements versus local 142. Preserve each
 report's actual scope and environment rather than relabeling a percentage.
 Ignored artifacts/fill-purpose-corrections contains before/after logs and the

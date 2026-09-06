@@ -4,24 +4,29 @@ The project delivers auditable appraisal review and assisted filling. Reading
 PDFs and drawing output are stages; observed-value verification is essential.
 The closed parent #3 remains history, not an active catch-all milestone.
 
-| Order | Deliverable | Dependencies | Ownership / status |
-|---|---|---|---|
-| 1 | Shared PDF Contract Foundation #6, PR #10 | main ff5e9d1 | Merged foundation; shared models, ports, metadata and dev dependencies |
-| 2A | Member A #4, PR #13 | Merged #6 on main | Composition, sync HTTP, invocation adapter, compatible errors and submission checks; awaiting fresh review |
-| 2B | Member B #5 | Same #6 commit | PDF drawing, storage, fonts, field operations; planned, no implementation present |
-| 3 | Chinese extraction #7 | #4 ports, #8 identity agreement | Parser/facts/candidate rules; planned, unassigned |
-| 4 | Complete review #8 | #7 facts, #6 contracts | Observed values, applicability, sums, cross-form evidence/gate; planned, unassigned |
-| 5 | AWS async integration #9; entry smoke PR #14 | #4/#5/#7/#8 | Separate smoke preparation; full durable jobs/storage pipeline remains designed, unassigned |
+Snapshot: 2026-09-06, after PR #15 and PR #16 merged. Use the merged `main`
+as the integration base; exact merge SHAs are in [traceability](delivery-traceability.md).
+The table distinguishes code delivery from acceptance with real documents and AWS.
 
-Foundation SHA: e24265d7c4ef0bb5d2d74d0ed94bffa2052a08ed.
-Foundation PR #10 is already merged into main at ff5e9d1d511e015dbc96aa5b380cce1def433421.
-The retained functional foundation ref is feat/shared-pdf-contract. A's PR #13
-uses feat/member-a-entrypoint against main; Runtime PR #14 uses test/runtime-smoke
-against A. B can start from main or the exact foundation SHA without waiting for
-A. Future shared changes are coordinated through #6. See [migration](pr-migration.md).
-A/B leave domain/verification.py, adapters/local/audit.py and
-tests/unit/test_verification.py unchanged. Only #8 considers verifier expansion.
-Human review remains required for all PRs; none are merged automatically.
+| Stage | Deliverable | Dependencies | Implementation / remaining work |
+|---|---|---|---|
+| Merged | Shared PDF contract #6, PR #10 | Shared domain types | Models, ports, metadata and contract tests; no rendering |
+| Merged | Member A #4, PR #13 | #6 | Composition, sync HTTP, invocation, compatible errors and submission checks |
+| Merged | Complete review #8, PR #15 | Shared entry and typed material | Independent verification, original cells, validated fills, arithmetic and coverage; full-case human acceptance pending |
+| Merged | Chinese extraction #7, PR #16 | #8 source/review contracts | Real parser, native/Bedrock candidates and local reviewer controls; live model and complete goldens pending |
+| Preparation merged | Runtime smoke, PR #14 | Shared entry and synthetic adapters | HTTP/container/templates; live build, invocation and cleanup pending |
+| Planned | Formal PDF writer #5 | Merged PDF contract and output gate | Drawing, corrections, immutable source handling, fonts and atomic storage |
+| Planned | Durable AWS integration #9 | Shared entry; #5 for real artifacts | Authorized jobs APIs, persistent state, dispatch, recovery and cloud acceptance |
+| Planned | Controlled actions and human tasks #17 | #7/#8 and shared task/trace contracts | Allowed actions, bounded model choices, decision records and reviewer responses |
+| Planned | Web review workbench | Human-task API and authorized source access | Evidence inspection, corrections, approvals and output download; new work item required |
+
+The original foundation SHA was e24265d7c4ef0bb5d2d74d0ed94bffa2052a08ed;
+[branch migration](pr-migration.md) records historical stacked delivery. New work
+should use merged `main`, rather than an obsolete stacked branch. The public
+PDFWriter contract is unchanged by #15/#16. Coordinate shared changes through #6
+and preserve the independent verification and audit boundaries. The initial A/B
+verifier freeze was superseded only by the explicit #8 verifier work. Human
+review remains required before merging subsequent PRs.
 
 ## Acceptance stages
 
@@ -44,6 +49,34 @@ Human review remains required for all PRs; none are merged automatically.
 The five initial factors (main road, average road width, drainage, terrain,
 market proximity) remain a representative slice. Their success cannot approve
 all other factors or empty comparison columns.
+
+## Parallel workstreams
+
+This is a proposed five-person split, not an assignment of repository members.
+The earlier planning assumption that #5 was complete is not the current code
+status: #5 remains open and no formal writer is present in the inspected `main`.
+Writer delivery is a separate prerequisite for acceptance of real output PDFs.
+API contracts, local policy, frontend mocks and evaluation can proceed meanwhile.
+
+| Owner slot | Workstream | Primary boundary | Reviewable acceptance |
+|---|---|---|---|
+| A | Workflow policy and decision records (#17) | Allowed-action policy, typed tools and trace events | Invalid transitions rejected; bounded retries; actual action/evidence history; model cannot approve or publish |
+| B | Human-task and revision API (#17, coordinate #9) | Task DTOs, reviewer permissions, revision/approval commands | Stale responses rejected; originals preserved; distinct confirmation, approval and publication events |
+| C | Web workbench (new work item) | UI built against agreed OpenAPI and fixtures | Source-page inspection, blocker list, editable proposals, explicit human actions and honest artifact status |
+| D | AWS jobs and persistence (#9) | Authorized uploads, job/outbox/lease store and deployment | Duplicate delivery, interrupted attempts and delayed human responses recover; live evidence and cleanup |
+| E | Real-model evaluation and case acceptance (#7/#8/#17) | Versioned goldens, regression fixtures and evaluation reports | Per-field/source accuracy, unsupported cases, human corrections, latency/cost and complete-case outcomes reported separately |
+
+Before parallel implementation, agree on one shared versioned schema for case/run,
+document identity, material revision, human task, decision event and artifact
+manifest. Assign one owner per shared contract; consumers use fixtures from that
+contract. Keep task schemas in B's workstream and durable storage in D's workstream,
+with A consuming the task port and C consuming the HTTP API.
+
+Integrate in this order: local policy/task behavior with synthetic fixtures;
+workbench against the actual task API; durable cloud jobs and human handoff;
+then real-model, formal-writer and complete-case acceptance. A human wait must
+persist a task and release execution resources. A response produces a new version
+and the required reauthorization, not a flag that bypasses the existing review gate.
 
 ## Source checks performed on 2026-09-05
 
