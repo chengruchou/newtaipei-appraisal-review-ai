@@ -27,8 +27,11 @@ Supporting value objects live in pdf_types to keep imports acyclic.
 
 ## Request and value lookup
 
-Request fields: source_uri, destination_uri, result (FactorReviewResult),
-field_map (PDFFieldMap). Sources and destinations must be separate objects.
+Request fields: source_uri, destination_uri, protected_source_uris,
+result (FactorReviewResult), and field_map (PDFFieldMap). The destination must
+differ from the template and every reviewed source. The controller supplies the
+selected criteria, forms, reference, and brief document URIs as protected inputs
+before invoking a writer.
 At the application boundary, `AgentReviewRequest.pdf_template_uri` supplies this
 `source_uri`. `case_document_uri` is the upstream case-data/evaluation-basis
 document used for parsing and extraction; the writer must never reopen it to
@@ -42,8 +45,10 @@ from the unrotated CropBox's lower-left corner. B must incorporate page CropBox
 offsets and rotation, using the dimensions of each page, before placement.
 
 Editable-page policy is template-version-specific adapter configuration, not a
-universal rule in the shared contract. The local writer must reject fields on
-pages that are not explicitly editable. Reference-only map pages are copied
+universal rule in the shared contract. It binds the exact approved template bytes
+and canonical complete field map with separate SHA-256 values. A matching
+template ID or page count is insufficient. The local writer must reject fields
+on pages that are not explicitly editable. Reference-only map pages are copied
 through unchanged and remain available as agent or human context.
 
 Each opaque field_id identifies a destination, with an explicit value_ref:
@@ -99,16 +104,19 @@ entire request. It verifies the template identity and complete editable/referenc
 page classification, per-page CropBox/rotation/UserUnit geometry, page bounds,
 non-overlapping fields, every value reference, font readability, glyph coverage,
 `max_characters`, measured width and height, blank destinations, and removable
-correction text. Annotation measurement includes its configured label.
+correction text. `fill_blank` also rejects intersecting inline images, painted
+XObjects, and annotations. Annotation measurement includes its configured label.
 
 Preflight rejects encrypted sources, records the SHA-256 digest of the exact
 bytes it inspected, and leaves the source byte-for-byte unchanged. Mutation
 refuses a source whose digest differs from that preflight plan. The current
 conservative correction inspection supports directly
-extractable `Tj`/`TJ` page text. Partial text intersections, ambiguous operator
-mapping, and text inside Form XObjects fail explicitly; they never fall back to
-painting over source content. This limitation must remain visible until those
-content forms have deterministic removal support.
+extractable `Tj`/`TJ` page text with default geometry. Non-default horizontal
+scale, character/word spacing, text rise/rendering mode, non-zero `TJ` advances,
+partial text intersections, ambiguous operator mapping, and text inside Form
+XObjects fail explicitly; they never fall back to painting over source content.
+This limitation must remain visible until those content forms have deterministic
+removal support.
 
 A write requires nonempty fields with value_ref and a single shared
 (scope, target_id, comparable_id). Old unbound field maps still load for
@@ -157,15 +165,16 @@ readability, output parent policy, page bounds, font glyphs and text fit. Render
 into a temporary file, reopen and validate, then atomically publish. S3 upload
 happens only after successful local validation. Do not publish partial artifacts.
 
-Local object access resolves platform-native absolute paths, follows source
-aliases, and compares filesystem identity to reject normalized paths, symlinks
-and hardlinks that refer to the source. The destination parent must already
-exist. A same-directory temporary file keeps publication on one filesystem.
+Local object access decodes file URIs exactly once, resolves platform-native
+absolute paths, follows source aliases, and compares filesystem identity to
+reject normalized paths, symlinks and hardlinks that refer to the template or
+any protected review input. The destination parent must already exist. A
+same-directory temporary file keeps publication on one filesystem.
 Overwrite mode uses atomic replacement; the default no-overwrite mode uses an
 atomic destination creation so a racing writer is not overwritten. Temporary
 files are removed on failure and are never returned as output artifacts. The
-session rechecks both source filesystem identity and its initial SHA-256 digest
-immediately before publication.
+session rechecks the protected filesystem identities plus the template identity
+and its initial SHA-256 digest immediately before publication.
 
 `LocalPDFWriter` implements the shared asynchronous port as an all-or-nothing
 pipeline: stage local paths, preflight all fields, mutate the temporary file,
@@ -207,7 +216,9 @@ atomicity claim is made. Runtime client construction and application composition
 remain separate work.
 
 The conservative correction, font and publication choices are recorded in
-[ADR 0011](adr/0011-conservative-pdf-mutation-and-publication.md).
+[ADR 0011](adr/0011-conservative-pdf-mutation-and-publication.md) and the
+strengthened input bindings are recorded in
+[ADR 0012](adr/0012-bind-pdf-inputs-and-template-policy.md).
 
 ## Result, warning and error handling
 

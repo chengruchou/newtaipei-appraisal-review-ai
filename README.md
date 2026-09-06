@@ -164,9 +164,11 @@ preparation and reviewer controls, legacy sum/equals API, typed factor
 interval/category/matrix engine, shared PDF contracts, composition/injection,
 synchronous `POST /v1/reviews`, framework-neutral AgentCore-facing invocation,
 an explicit local synthetic runner, and a provider-local PDF writer core. The
-local writer performs deterministic preflight, genuine text correction,
+local writer performs deterministic preflight, cryptographic template and
+field-map binding, genuine text correction, image/annotation occupancy checks,
 embedded-font filling and annotation, reopen verification, reference-page
-preservation checks, and atomic publication. An injected-client S3 wrapper
+preservation checks, protected-input alias checks, and atomic publication. An
+injected-client S3 wrapper
 downloads into isolated local storage and uploads only a locally validated PDF
 with `application/pdf` content type. PDF errors retain findings and prevent
 completion; successful metadata and warnings remain in the typed response. A

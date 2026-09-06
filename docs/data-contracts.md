@@ -88,12 +88,17 @@ ports.pdf contains the only PDFWriter protocol. Existing factor_models and
 ports.workflow imports are compatibility aliases. pdf_types holds shared value
 objects below factor_models in the import graph, preventing circular imports.
 
-The writer request carries source/destination URI, one bound FactorReviewResult
-and field map.
+The writer request carries source/destination URI, protected review-source URIs,
+one bound FactorReviewResult and field map. The destination cannot share a
+canonical or provider-level identity with the template or any selected criteria,
+forms, reference, or brief input.
 The controller maps `AgentReviewRequest.pdf_template_uri` to the writer's
 `source_uri`; `case_document_uri` remains upstream extraction evidence and is not
 opened by the writer. Output page count therefore belongs to the template artifact,
-not the parsed case-data document. See [ADR 0010](adr/0010-separate-pdf-template-source.md).
+not the parsed case-data document. The provider-local template policy binds exact
+template bytes and the canonical complete field map with SHA-256 values. See
+[ADR 0010](adr/0010-separate-pdf-template-source.md) and
+[ADR 0012](adr/0012-bind-pdf-inputs-and-template-policy.md).
 Only after verification.can_complete may the controller construct it. Every
 written field has an explicit value_ref; mixed comparison contexts, duplicate
 IDs, missing values, invalid bounds or conflicting URIs fail explicitly.
