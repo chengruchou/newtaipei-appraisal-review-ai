@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 from pathlib import Path
 from typing import Annotated, Literal
 
@@ -9,7 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_vali
 
 from appraisal_review.config import Settings
 from appraisal_review.domain.factor_models import Grade
-from appraisal_review.domain.pdf_models import PDFFieldPlacementError
+from appraisal_review.domain.pdf_models import PDFFieldMap, PDFFieldPlacementError
 
 NonEmptyText = Annotated[str, StringConstraints(strict=True, strip_whitespace=True, min_length=1)]
 FontName = Annotated[
@@ -26,6 +28,21 @@ RGBColor = Annotated[
     str,
     StringConstraints(strict=True, to_upper=True, pattern=r"^#[0-9A-Fa-f]{6}$"),
 ]
+SHA256Hex = Annotated[
+    str,
+    StringConstraints(strict=True, to_lower=True, pattern=r"^[0-9a-f]{64}$"),
+]
+
+
+def field_map_sha256(field_map: PDFFieldMap) -> str:
+    """Return a stable digest for the complete approved field-map contract."""
+    payload = json.dumps(
+        field_map.model_dump(mode="json"),
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
 
 
 class PDFAdapterConfig(BaseModel):
@@ -68,6 +85,8 @@ class PDFTemplatePolicy(PDFAdapterConfig):
     """Version-specific editable and reference-only page boundaries."""
 
     template_id: NonEmptyText
+    template_sha256: SHA256Hex
+    field_map_sha256: SHA256Hex
     editable_pages: frozenset[int]
     reference_only_pages: frozenset[int] = frozenset()
 

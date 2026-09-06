@@ -381,9 +381,27 @@ class ReviewAgentController:
             )
 
         try:
+            protected_source_uris = [
+                criteria.source.uri if criteria.source is not None else criteria.document_uri,
+                case_document.source.uri
+                if case_document.source is not None
+                else case_document.document_uri,
+            ]
+            if isinstance(rule_set, ReviewPolicy):
+                protected_source_uris.extend(
+                    document.uri for document in rule_set.registry.documents
+                )
+            protected_source_uris = list(
+                dict.fromkeys(
+                    uri
+                    for uri in protected_source_uris
+                    if document_identity(uri) != document_identity(request.pdf_template_uri)
+                )
+            )
             pdf_request = PDFWriteRequest(
                 source_uri=request.pdf_template_uri,
                 destination_uri=request.output_pdf_uri,
+                protected_source_uris=protected_source_uris,
                 result=result,
                 field_map=request.field_map,
             )

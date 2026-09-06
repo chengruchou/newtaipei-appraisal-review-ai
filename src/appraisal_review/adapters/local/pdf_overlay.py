@@ -24,6 +24,13 @@ Matrix = tuple[float, float, float, float, float, float]
 # Quote operators also change the text position. Refuse them until their full
 # line-movement semantics are represented in the measured run.
 _TEXT_SHOW_OPERATORS = {b"Tj", b"TJ"}
+_DEFAULT_TEXT_STATE = {
+    b"Tz": 100.0,
+    b"Tc": 0.0,
+    b"Tw": 0.0,
+    b"Ts": 0.0,
+    b"Tr": 0.0,
+}
 
 
 def _multiply_matrices(left: list[float], right: list[float]) -> Matrix:
@@ -166,6 +173,7 @@ def inspect_text_show_operations(page: PageObject) -> list[TextShowOperation]:
     content = page.get_contents()
     if content is None:
         return []
+    _reject_unsupported_text_geometry(content.operations)
     if any(operator == b"Do" for _, operator in content.operations):
         raise PDFFieldPlacementError("Text inside page XObjects is unsupported for correction")
 
@@ -217,6 +225,103 @@ def inspect_text_show_operations(page: PageObject) -> list[TextShowOperation]:
     if ambiguous or pending:
         raise PDFFieldPlacementError("PDF text operations cannot be mapped unambiguously")
     return runs
+
+
+def _reject_unsupported_text_geometry(operations: list[tuple[Any, bytes]]) -> None:
+    """Fail closed for text state not represented by `_text_bounds`."""
+    for operands, operator in operations:
+        if operator in _DEFAULT_TEXT_STATE:
+            try:
+                value = float(operands[0])
+            except (IndexError, TypeError, ValueError) as error:
+                raise PDFFieldPlacementError(
+                    "PDF text geometry cannot be measured deterministically"
+                ) from error
+            if not math.isclose(value, _DEFAULT_TEXT_STATE[operator]):
+                raise PDFFieldPlacementError("PDF text geometry uses an unsupported text state")
+        if operator == b"TJ":
+            try:
+                adjustments = [
+                    float(item) for item in operands[0] if not isinstance(item, (bytes, str))
+                ]
+            except (IndexError, TypeError, ValueError) as error:
+                raise PDFFieldPlacementError(
+                    "PDF text positioning cannot be measured deterministically"
+                ) from error
+            if any(not math.isclose(value, 0.0) for value in adjustments):
+                raise PDFFieldPlacementError("PDF text positioning adjustments are unsupported")
+
+
+def visual_content_in_box(page: PageObject, crop_local_box: BoundingBox) -> bool:
+    """Return whether an image or annotation occupies the requested field box."""
+    geometry = PageGeometry.from_page(page)
+    page_box = geometry.box_to_page_user_space(crop_local_box)
+    content = page.get_contents()
+    if content is not None:
+        current: Matrix = (1.0, 0.0, 0.0, 1.0, 0.0, 0.0)
+        stack: list[Matrix] = []
+        for operands, operator in content.operations:
+            if operator == b"q":
+                stack.append(current)
+            elif operator == b"Q":
+                if not stack:
+                    raise PDFFieldPlacementError("PDF graphics state is unbalanced")
+                current = stack.pop()
+            elif operator == b"cm":
+                try:
+                    transform = [float(value) for value in operands]
+                    if len(transform) != 6 or not all(math.isfinite(v) for v in transform):
+                        raise ValueError
+                except (TypeError, ValueError) as error:
+                    raise PDFFieldPlacementError(
+                        "PDF visual geometry cannot be measured deterministically"
+                    ) from error
+                current = _multiply_matrices(transform, list(current))
+            elif operator == b"INLINE IMAGE":
+                if _boxes_intersect(page_box, _unit_square_bounds(current)):
+                    return True
+            elif operator == b"Do" and _boxes_intersect(page_box, _unit_square_bounds(current)):
+                # Text extraction already refuses XObjects. Treat their painted
+                # unit square as occupancy, and fail closed if it does not give
+                # a trustworthy answer for the requested region.
+                return True
+        if stack:
+            raise PDFFieldPlacementError("PDF graphics state is unbalanced")
+
+    annotations = page.get("/Annots", [])
+    try:
+        for reference in annotations:
+            annotation = reference.get_object()
+            rect = annotation.get("/Rect")
+            if rect is None or len(rect) != 4:
+                raise PDFFieldPlacementError(
+                    "PDF annotation geometry cannot be measured deterministically"
+                )
+            bounds: BoundingBox = (
+                float(rect[0]),
+                float(rect[1]),
+                float(rect[2]),
+                float(rect[3]),
+            )
+            if _boxes_intersect(page_box, bounds):
+                return True
+    except PDFFieldPlacementError:
+        raise
+    except Exception as error:
+        raise PDFFieldPlacementError(
+            "PDF annotation geometry cannot be measured deterministically"
+        ) from error
+    return False
+
+
+def _unit_square_bounds(matrix: Matrix) -> BoundingBox:
+    corners = [
+        _transform_point(matrix, point)
+        for point in ((0.0, 0.0), (1.0, 0.0), (0.0, 1.0), (1.0, 1.0))
+    ]
+    xs = [point[0] for point in corners]
+    ys = [point[1] for point in corners]
+    return (min(xs), min(ys), max(xs), max(ys))
 
 
 def text_runs_in_box(page: PageObject, crop_local_box: BoundingBox) -> list[TextShowOperation]:

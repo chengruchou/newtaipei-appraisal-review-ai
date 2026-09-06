@@ -5,12 +5,12 @@ from __future__ import annotations
 import os
 import stat
 import tempfile
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from hashlib import sha256
 from pathlib import Path
-from urllib.parse import unquote, urlsplit
+from urllib.parse import urlsplit
 from urllib.request import url2pathname
 
 from appraisal_review.domain.pdf_models import (
@@ -30,7 +30,7 @@ def local_path_from_uri(uri: str) -> Path:
     if identity[0] != "file":
         raise UnsupportedDocumentURIError("Local PDF access requires a file URI")
     parts = urlsplit(uri)
-    path = Path(url2pathname(unquote(parts.path)))
+    path = Path(url2pathname(parts.path))
     if not path.is_absolute():
         raise UnsupportedDocumentURIError("Local PDF path must be absolute")
     return path
@@ -52,6 +52,7 @@ class LocalWriteSession:
     _source_identity: FileIdentity = field(repr=False)
     _source_sha256: bytes = field(repr=False)
     _temporary_identity: FileIdentity = field(repr=False)
+    _protected_sources: tuple[tuple[Path, FileIdentity], ...] = field(repr=False)
     _published: bool = field(default=False, init=False, repr=False)
 
     @property
@@ -64,6 +65,7 @@ class LocalWriteSession:
             raise PDFWriteError("PDF output has already been published")
         self._require_owned_temporary_output()
         self._require_source_identity()
+        self._require_protected_source_identities()
         self._reject_destination_source_conflict()
         if self.overwrite_existing:
             try:
@@ -133,12 +135,26 @@ class LocalWriteSession:
         if not destination.exists():
             return
         try:
-            if os.path.samefile(self.source_path, destination):
-                raise SourceDestinationConflictError("PDF source and destination are aliases")
+            if any(
+                os.path.samefile(protected, destination)
+                for protected, _identity in self._protected_sources
+            ):
+                raise SourceDestinationConflictError("PDF destination aliases a protected source")
         except SourceDestinationConflictError:
             raise
         except OSError as error:
             raise PDFWriteError("PDF destination identity cannot be verified") from error
+
+    def _require_protected_source_identities(self) -> None:
+        try:
+            if any(_file_identity(path) != identity for path, identity in self._protected_sources):
+                raise PDFReadError("A protected PDF source identity changed during writing")
+        except PDFReadError:
+            raise
+        except OSError as error:
+            raise PDFReadError(
+                "A protected PDF source became unavailable during writing"
+            ) from error
 
 
 class LocalObjectAccess:
@@ -148,11 +164,19 @@ class LocalObjectAccess:
         self.overwrite_existing = overwrite_existing
 
     @contextmanager
-    def staged_write(self, source_uri: str, destination_uri: str) -> Iterator[LocalWriteSession]:
+    def staged_write(
+        self,
+        source_uri: str,
+        destination_uri: str,
+        protected_source_uris: Iterable[str] = (),
+    ) -> Iterator[LocalWriteSession]:
         source = local_path_from_uri(source_uri)
         destination = local_path_from_uri(destination_uri)
         source_resolved, source_identity, source_sha256 = self._validate_source(source)
-        destination_resolved = self._validate_destination(source_resolved, destination)
+        protected_sources = self._validate_protected_sources(
+            source_resolved, source_identity, protected_source_uris
+        )
+        destination_resolved = self._validate_destination(destination, protected_sources)
         temporary, temporary_identity = self._create_temporary(destination_resolved)
         session = LocalWriteSession(
             source_path=source_resolved,
@@ -162,6 +186,7 @@ class LocalObjectAccess:
             _source_identity=source_identity,
             _source_sha256=source_sha256,
             _temporary_identity=temporary_identity,
+            _protected_sources=protected_sources,
         )
         try:
             yield session
@@ -182,7 +207,35 @@ class LocalObjectAccess:
         except OSError as error:
             raise PDFReadError("PDF source is unavailable or unreadable") from error
 
-    def _validate_destination(self, source: Path, destination: Path) -> Path:
+    @staticmethod
+    def _validate_protected_sources(
+        source: Path,
+        source_identity: FileIdentity,
+        protected_source_uris: Iterable[str],
+    ) -> tuple[tuple[Path, FileIdentity], ...]:
+        protected: list[tuple[Path, FileIdentity]] = [(source, source_identity)]
+        seen = {source_identity}
+        for uri in protected_source_uris:
+            candidate = local_path_from_uri(uri)
+            try:
+                resolved = candidate.resolve(strict=True)
+                if not resolved.is_file():
+                    raise PDFReadError("Protected PDF source must be a regular file")
+                identity = _file_identity(resolved)
+            except PDFReadError:
+                raise
+            except OSError as error:
+                raise PDFReadError("Protected PDF source is unavailable") from error
+            if identity not in seen:
+                protected.append((resolved, identity))
+                seen.add(identity)
+        return tuple(protected)
+
+    def _validate_destination(
+        self,
+        destination: Path,
+        protected_sources: tuple[tuple[Path, FileIdentity], ...],
+    ) -> Path:
         if destination.is_symlink() and not destination.exists():
             raise PDFWriteError("PDF destination is a broken symbolic link")
         try:
@@ -192,14 +245,18 @@ class LocalObjectAccess:
         if not parent.is_dir():
             raise PDFWriteError("PDF destination parent must be a directory")
         resolved = parent / destination.name
-        if resolved == source:
-            raise SourceDestinationConflictError("PDF source and destination are aliases")
+        if any(resolved == source for source, _identity in protected_sources):
+            raise SourceDestinationConflictError("PDF destination aliases a protected source")
         if resolved.exists():
             if not resolved.is_file():
                 raise PDFWriteError("PDF destination must be a regular file")
             try:
-                if os.path.samefile(source, resolved):
-                    raise SourceDestinationConflictError("PDF source and destination are aliases")
+                if any(
+                    os.path.samefile(source, resolved) for source, _identity in protected_sources
+                ):
+                    raise SourceDestinationConflictError(
+                        "PDF destination aliases a protected source"
+                    )
             except SourceDestinationConflictError:
                 raise
             except OSError as error:

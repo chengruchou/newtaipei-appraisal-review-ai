@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pydantic import model_validator
+from pydantic import Field, model_validator
 
 from appraisal_review.domain.factor_models import FactorReviewResult
 from appraisal_review.domain.pdf_types import (
@@ -46,13 +46,20 @@ __all__ = [
 class PDFWriteRequest(PDFModel):
     source_uri: Identifier
     destination_uri: Identifier
+    protected_source_uris: list[Identifier] = Field(default_factory=list)
     result: FactorReviewResult
     field_map: PDFFieldMap
 
     @model_validator(mode="after")
     def validate_request(self) -> PDFWriteRequest:
-        if document_identity(self.source_uri) == document_identity(self.destination_uri):
-            raise SourceDestinationConflictError("Source and destination must differ")
+        destination_identity = document_identity(self.destination_uri)
+        protected_identities = {
+            document_identity(uri) for uri in [self.source_uri, *self.protected_source_uris]
+        }
+        if destination_identity in protected_identities:
+            raise SourceDestinationConflictError(
+                "Destination must differ from the template and every reviewed source"
+            )
         if not self.field_map.fields:
             raise PDFFieldPlacementError("A write requires at least one mapped field")
         contexts = set()

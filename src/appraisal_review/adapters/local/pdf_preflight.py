@@ -12,12 +12,17 @@ from typing import Literal
 from pypdf import PageObject, PdfReader
 from reportlab.pdfbase.ttfonts import TTFont
 
-from appraisal_review.adapters.local.pdf_config import PDFRenderConfig, PDFTemplatePolicy
+from appraisal_review.adapters.local.pdf_config import (
+    PDFRenderConfig,
+    PDFTemplatePolicy,
+    field_map_sha256,
+)
 from appraisal_review.adapters.local.pdf_overlay import (
     BoundingBox,
     PageGeometry,
     correction_runs_in_box,
     text_runs_in_box,
+    visual_content_in_box,
 )
 from appraisal_review.adapters.local.pdf_values import PDFValueFormatter
 from appraisal_review.domain.pdf_models import (
@@ -66,7 +71,7 @@ class PDFPreflightValidator:
 
     def validate(self, request: PDFWriteRequest, source_path: Path) -> PDFPreflightPlan:
         reader, source_sha256 = self._read_source(source_path)
-        self._validate_template(request, len(reader.pages))
+        self._validate_template(request, len(reader.pages), source_sha256)
         font = self._load_font()
         prepared: list[PreparedPDFField] = []
         seen_boxes: dict[int, list[BoundingBox]] = {}
@@ -134,9 +139,18 @@ class PDFPreflightValidator:
         except Exception as error:
             raise PDFReadError("PDF source is unreadable") from error
 
-    def _validate_template(self, request: PDFWriteRequest, page_count: int) -> None:
+    def _validate_template(
+        self,
+        request: PDFWriteRequest,
+        page_count: int,
+        source_sha256: bytes,
+    ) -> None:
         if request.field_map.template_id != self.template_policy.template_id:
             raise PDFFieldPlacementError("PDF field map and template policy do not match")
+        if source_sha256.hex() != self.template_policy.template_sha256:
+            raise PDFFieldPlacementError("PDF source does not match the trusted template bytes")
+        if field_map_sha256(request.field_map) != self.template_policy.field_map_sha256:
+            raise PDFFieldPlacementError("PDF field map does not match the approved coordinates")
         declared_pages = (
             self.template_policy.editable_pages | self.template_policy.reference_only_pages
         )
@@ -195,7 +209,7 @@ class PDFPreflightValidator:
         if operation == "annotate":
             return ()
         if operation == "fill_blank":
-            if text_runs_in_box(page, box):
+            if text_runs_in_box(page, box) or visual_content_in_box(page, box):
                 raise PDFFieldPlacementError("PDF fill_blank field is occupied")
             return ()
         if operation == "correct":

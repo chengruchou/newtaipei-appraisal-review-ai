@@ -29,6 +29,13 @@ class S3PDFWriter:
         destination_location = self.object_store_location(request.destination_uri)
         if source_location == destination_location:
             raise SourceDestinationConflictError("S3 source and destination must differ")
+        protected_locations = {
+            self.object_store_location(uri) for uri in request.protected_source_uris
+        }
+        if destination_location in protected_locations:
+            raise SourceDestinationConflictError(
+                "S3 destination aliases a protected reviewed source"
+            )
 
         with TemporaryDirectory(prefix="appraisal-pdf-") as raw_directory:
             directory = Path(raw_directory)
@@ -40,6 +47,7 @@ class S3PDFWriter:
                     **request.model_dump(),
                     "source_uri": local_source.as_uri(),
                     "destination_uri": local_output.as_uri(),
+                    "protected_source_uris": [local_source.as_uri()],
                 }
             )
             local_result = await self.local_writer.write_pdf(local_request)

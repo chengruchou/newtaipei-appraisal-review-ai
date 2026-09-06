@@ -9,12 +9,17 @@ import pytest
 import reportlab
 from fontTools.fontBuilder import FontBuilder
 from fontTools.pens.ttGlyphPen import TTGlyphPen
+from PIL import Image
 from pypdf import PdfReader, PdfWriter
 from pypdf.annotations import FreeText
 from pypdf.generic import FloatObject, NameObject, RectangleObject
 from reportlab.pdfgen.canvas import Canvas
 
-from appraisal_review.adapters.local.pdf_config import PDFRenderConfig, PDFTemplatePolicy
+from appraisal_review.adapters.local.pdf_config import (
+    PDFRenderConfig,
+    PDFTemplatePolicy,
+    field_map_sha256,
+)
 from appraisal_review.adapters.local.pdf_preflight import PDFPreflightValidator
 from appraisal_review.adapters.local.pdf_render import PDFMutationExecutor
 from appraisal_review.adapters.local.pdf_verify import PDFArtifactVerifier
@@ -29,6 +34,7 @@ from appraisal_review.domain.factor_models import (
 from appraisal_review.domain.pdf_models import (
     PDFField,
     PDFFieldMap,
+    PDFFieldPlacementError,
     PDFWriteError,
     PDFWriteRequest,
 )
@@ -151,6 +157,20 @@ def write_source(path: Path, *, rotation: int = 0, user_unit: float = 1.0) -> No
         writer.write(output)
 
 
+def write_unsafe_source(path: Path, kind: str) -> None:
+    stream = BytesIO()
+    canvas = Canvas(stream, pagesize=(320, 220))
+    if kind == "scaled_text":
+        text = canvas.beginText(55, 68)
+        text.setHorizScale(300)
+        text.textOut("STALE")
+        canvas.drawText(text)
+    else:
+        canvas.drawInlineImage(Image.new("RGB", (8, 8), "black"), 180, 105, 40, 20)
+    canvas.save()
+    path.write_bytes(stream.getvalue())
+
+
 def add_reference_page(path: Path) -> None:
     reference_stream = BytesIO()
     canvas = Canvas(reference_stream, pagesize=(500, 250))
@@ -185,8 +205,25 @@ def write_request(source: Path) -> PDFWriteRequest:
     )
 
 
+def trusted_policy(
+    source: Path,
+    field_map: PDFFieldMap | None = None,
+    *,
+    editable_pages: frozenset[int] = frozenset({1}),
+    reference_only_pages: frozenset[int] = frozenset(),
+) -> PDFTemplatePolicy:
+    approved_map = field_map or write_request(source).field_map
+    return PDFTemplatePolicy(
+        template_id="synthetic-v1",
+        template_sha256=hashlib.sha256(source.read_bytes()).hexdigest(),
+        field_map_sha256=field_map_sha256(approved_map),
+        editable_pages=editable_pages,
+        reference_only_pages=reference_only_pages,
+    )
+
+
 def execute(source: Path, temporary: Path, config: PDFRenderConfig) -> None:
-    template_policy = PDFTemplatePolicy(template_id="synthetic-v1", editable_pages=frozenset({1}))
+    template_policy = trusted_policy(source)
     plan = PDFPreflightValidator(
         render_config=config,
         template_policy=template_policy,
@@ -276,9 +313,7 @@ def test_executor_scales_text_and_annotation_for_user_unit(tmp_path: Path) -> No
     ]
     plan = PDFPreflightValidator(
         render_config=config,
-        template_policy=PDFTemplatePolicy(
-            template_id="synthetic-v1", editable_pages=frozenset({1})
-        ),
+        template_policy=trusted_policy(source, request.field_map),
     ).validate(request, source)
 
     PDFMutationExecutor(config).write_temporary(
@@ -298,9 +333,7 @@ def test_executor_refuses_source_as_temporary_output(tmp_path: Path) -> None:
     config = render_config()
     plan = PDFPreflightValidator(
         render_config=config,
-        template_policy=PDFTemplatePolicy(
-            template_id="synthetic-v1", editable_pages=frozenset({1})
-        ),
+        template_policy=trusted_policy(source),
     ).validate(write_request(source), source)
 
     with pytest.raises(PDFWriteError, match="must differ"):
@@ -316,9 +349,7 @@ def test_executor_refuses_source_changed_after_preflight(tmp_path: Path) -> None
     config = render_config()
     plan = PDFPreflightValidator(
         render_config=config,
-        template_policy=PDFTemplatePolicy(
-            template_id="synthetic-v1", editable_pages=frozenset({1})
-        ),
+        template_policy=trusted_policy(source),
     ).validate(write_request(source), source)
     write_source(source, rotation=90)
 
@@ -337,9 +368,7 @@ def test_local_writer_verifies_and_atomically_publishes(tmp_path: Path) -> None:
     config = render_config()
     writer = LocalPDFWriter(
         render_config=config,
-        template_policy=PDFTemplatePolicy(
-            template_id="synthetic-v1", editable_pages=frozenset({1})
-        ),
+        template_policy=trusted_policy(source),
     )
 
     result = asyncio.run(writer.write_pdf(write_request(source)))
@@ -353,6 +382,33 @@ def test_local_writer_verifies_and_atomically_publishes(tmp_path: Path) -> None:
     assert not list(tmp_path.glob(".published.pdf.*.tmp"))
 
 
+def test_local_writer_rejects_same_page_count_template_substitution(
+    tmp_path: Path,
+) -> None:
+    approved = tmp_path / "approved.pdf"
+    substituted = tmp_path / "substituted.pdf"
+    destination = tmp_path / "published.pdf"
+    write_source(approved)
+    write_source(substituted, rotation=90)
+    approved_request = write_request(approved)
+    substituted_request = approved_request.model_copy(
+        update={
+            "source_uri": substituted.as_uri(),
+            "destination_uri": destination.as_uri(),
+        }
+    )
+    writer = LocalPDFWriter(
+        render_config=render_config(),
+        template_policy=trusted_policy(approved, approved_request.field_map),
+    )
+
+    with pytest.raises(PDFFieldPlacementError, match="trusted template bytes"):
+        asyncio.run(writer.write_pdf(substituted_request))
+
+    assert not destination.exists()
+    assert not list(tmp_path.glob(".published.pdf.*.tmp"))
+
+
 def test_local_writer_does_not_publish_when_reopen_verification_fails(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -361,9 +417,7 @@ def test_local_writer_does_not_publish_when_reopen_verification_fails(
     write_source(source)
     writer = LocalPDFWriter(
         render_config=render_config(),
-        template_policy=PDFTemplatePolicy(
-            template_id="synthetic-v1", editable_pages=frozenset({1})
-        ),
+        template_policy=trusted_policy(source),
     )
 
     def fail_verification(**_kwargs: object) -> None:
@@ -386,9 +440,7 @@ def test_local_writer_does_not_publish_when_mutation_fails(
     write_source(source)
     writer = LocalPDFWriter(
         render_config=render_config(),
-        template_policy=PDFTemplatePolicy(
-            template_id="synthetic-v1", editable_pages=frozenset({1})
-        ),
+        template_policy=trusted_policy(source),
     )
 
     def fail_mutation(**_kwargs: object) -> None:
@@ -398,6 +450,50 @@ def test_local_writer_does_not_publish_when_mutation_fails(
 
     with pytest.raises(PDFWriteError, match="mutation failure"):
         asyncio.run(writer.write_pdf(write_request(source)))
+
+    assert not destination.exists()
+    assert not list(tmp_path.glob(".published.pdf.*.tmp"))
+
+
+@pytest.mark.parametrize("name", ["output%20file.pdf", "output%2Ffile.pdf", "100%.pdf"])
+def test_local_writer_preserves_literal_percent_filename_and_uri(tmp_path: Path, name: str) -> None:
+    source = tmp_path / "source.pdf"
+    destination = tmp_path / name
+    write_source(source)
+    request = write_request(source).model_copy(update={"destination_uri": destination.as_uri()})
+    writer = LocalPDFWriter(
+        render_config=render_config(),
+        template_policy=trusted_policy(source, request.field_map),
+    )
+
+    result = asyncio.run(writer.write_pdf(request))
+
+    assert result.output_uri == destination.as_uri()
+    assert destination.is_file()
+
+
+@pytest.mark.parametrize("kind", ["scaled_text", "inline_image"])
+def test_local_writer_rejects_ambiguous_occupancy_without_publication(
+    tmp_path: Path, kind: str
+) -> None:
+    source = tmp_path / f"{kind}.pdf"
+    destination = tmp_path / "published.pdf"
+    write_unsafe_source(source, kind)
+    request = write_request(source)
+    request.field_map.fields = [
+        pdf_field(
+            "unsafe",
+            (45, 55, 110, 90) if kind == "scaled_text" else (170, 80, 230, 120),
+            "correct" if kind == "scaled_text" else "fill_blank",
+        )
+    ]
+    writer = LocalPDFWriter(
+        render_config=render_config(),
+        template_policy=trusted_policy(source, request.field_map),
+    )
+
+    with pytest.raises(PDFFieldPlacementError):
+        asyncio.run(writer.write_pdf(request))
 
     assert not destination.exists()
     assert not list(tmp_path.glob(".published.pdf.*.tmp"))
@@ -421,8 +517,8 @@ def test_local_writer_preserves_reference_only_page_structure(tmp_path: Path) ->
     )
     writer = LocalPDFWriter(
         render_config=render_config(),
-        template_policy=PDFTemplatePolicy(
-            template_id="synthetic-v1",
+        template_policy=trusted_policy(
+            source,
             editable_pages=frozenset({1}),
             reference_only_pages=frozenset({2}),
         ),
@@ -453,20 +549,18 @@ def test_local_writer_embeds_and_extracts_generated_cjk_glyph(tmp_path: Path) ->
     write_generated_cjk_font(font_path)
     labels = {grade.value: grade.value for grade in Grade}
     labels[Grade.EXCELLENT.value] = "中"
+    request = write_request(source)
+    request.field_map.fields = [
+        pdf_field("cjk-grade", (170, 100, 280, 130), "fill_blank", value="target_grade")
+    ]
     writer = LocalPDFWriter(
         render_config=render_config(
             font_path=font_path,
             font_name="SyntheticCJK",
             grade_labels=labels,
         ),
-        template_policy=PDFTemplatePolicy(
-            template_id="synthetic-v1", editable_pages=frozenset({1})
-        ),
+        template_policy=trusted_policy(source, request.field_map),
     )
-    request = write_request(source)
-    request.field_map.fields = [
-        pdf_field("cjk-grade", (170, 100, 280, 130), "fill_blank", value="target_grade")
-    ]
 
     result = asyncio.run(writer.write_pdf(request))
 
@@ -483,8 +577,8 @@ def test_verifier_rejects_a_changed_reference_only_page(tmp_path: Path) -> None:
     write_source(source)
     add_reference_page(source)
     config = render_config()
-    template_policy = PDFTemplatePolicy(
-        template_id="synthetic-v1",
+    template_policy = trusted_policy(
+        source,
         editable_pages=frozenset({1}),
         reference_only_pages=frozenset({2}),
     )

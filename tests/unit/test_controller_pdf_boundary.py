@@ -71,6 +71,10 @@ def test_success_writes_once_and_preserves_warning_metadata() -> None:
     assert result.status is WorkflowStatus.VERIFIED
     assert result.artifact_status == "simulated"
     assert len(adapters.pdf_writer.calls) == 1
+    assert set(adapters.pdf_writer.calls[0].protected_source_uris) == {
+        "file:///synthetic/criteria.pdf",
+        "file:///synthetic/verified.pdf",
+    }
     assert result.pdf_result.warnings == ["Synthetic PDF writer: no file was created."]
     assert result.pdf_result.written_field_ids == ["road-rate"]
     assert result.pdf_result.page_count == 1
@@ -137,6 +141,13 @@ def test_missing_output_tools_or_map_and_conflicting_source_do_not_write() -> No
     )
     request = synthetic_request("completed")
     request.output_pdf_uri = request.pdf_template_uri
+    result = run(adapters, request)
+    assert result.status is WorkflowStatus.FAILED
+    assert result.pdf_error.code is PDFErrorCode.SOURCE_DESTINATION_CONFLICT
+    assert not adapters.pdf_writer.calls
+
+    request = synthetic_request("completed")
+    request.output_pdf_uri = request.case_document_uri
     result = run(adapters, request)
     assert result.status is WorkflowStatus.FAILED
     assert result.pdf_error.code is PDFErrorCode.SOURCE_DESTINATION_CONFLICT

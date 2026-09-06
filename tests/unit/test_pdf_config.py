@@ -63,6 +63,8 @@ def test_color_is_normalized_without_relaxing_validation(tmp_path: Path) -> None
 def test_template_policy_separates_editable_and_reference_pages() -> None:
     policy = PDFTemplatePolicy(
         template_id="synthetic-v1",
+        template_sha256="0" * 64,
+        field_map_sha256="1" * 64,
         editable_pages=frozenset({1, 2, 3}),
         reference_only_pages=frozenset({4, 5, 6}),
     )
@@ -94,7 +96,20 @@ def test_template_policy_separates_editable_and_reference_pages() -> None:
 )
 def test_invalid_template_page_policy_fails(values: dict[str, object]) -> None:
     with pytest.raises(ValidationError):
-        PDFTemplatePolicy.model_validate(values)
+        PDFTemplatePolicy.model_validate(
+            {"template_sha256": "0" * 64, "field_map_sha256": "1" * 64} | values
+        )
+
+
+@pytest.mark.parametrize("digest", ["", "abc", "g" * 64, "0" * 63])
+def test_template_policy_requires_sha256_digests(digest: str) -> None:
+    with pytest.raises(ValidationError):
+        PDFTemplatePolicy(
+            template_id="synthetic-v1",
+            template_sha256=digest,
+            field_map_sha256="1" * 64,
+            editable_pages=frozenset({1}),
+        )
 
 
 def test_application_settings_expose_non_secret_pdf_policy() -> None:

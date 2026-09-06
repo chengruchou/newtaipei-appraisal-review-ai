@@ -30,7 +30,9 @@ class LocalPDFWriter:
     async def write_pdf(self, request: PDFWriteRequest) -> PDFWriteResult:
         """Return success only after verified atomic destination publication."""
         with self.object_access.staged_write(
-            request.source_uri, request.destination_uri
+            request.source_uri,
+            request.destination_uri,
+            request.protected_source_uris,
         ) as session:
             plan = self.preflight.validate(request, session.source_path)
             mutation_result = self.mutation.write_temporary(

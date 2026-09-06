@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 from io import BytesIO
 from pathlib import Path
 from typing import Any
@@ -12,7 +13,11 @@ from reportlab.pdfgen.canvas import Canvas
 
 from appraisal_review.adapters.aws.pdf.s3_pdf_writer import S3PDFWriter
 from appraisal_review.adapters.aws.storage.s3_object_store import S3Location, S3ObjectStore
-from appraisal_review.adapters.local.pdf_config import PDFRenderConfig, PDFTemplatePolicy
+from appraisal_review.adapters.local.pdf_config import (
+    PDFRenderConfig,
+    PDFTemplatePolicy,
+    field_map_sha256,
+)
 from appraisal_review.adapters.local.pdf_writer import LocalPDFWriter
 from appraisal_review.domain.factor_models import (
     EvaluationStatus,
@@ -40,7 +45,7 @@ OUTPUT_URI = "s3://result-bucket/reviews//2026/../完成.pdf"
 
 def source_pdf() -> bytes:
     stream = BytesIO()
-    canvas = Canvas(stream, pagesize=(320, 220))
+    canvas = Canvas(stream, pagesize=(320, 220), invariant=1)
     canvas.drawString(20, 190, "UNCHANGED")
     canvas.save()
     return stream.getvalue()
@@ -156,10 +161,14 @@ class NonWritingLocalWriter:
 
 def local_writer() -> LocalPDFWriter:
     font = Path(reportlab.__file__).parent / "fonts" / "Vera.ttf"
+    field_map = request().field_map
     return LocalPDFWriter(
         render_config=PDFRenderConfig(font_path=font),
         template_policy=PDFTemplatePolicy(
-            template_id="synthetic-v1", editable_pages=frozenset({1})
+            template_id="synthetic-v1",
+            template_sha256=hashlib.sha256(source_pdf()).hexdigest(),
+            field_map_sha256=field_map_sha256(field_map),
+            editable_pages=frozenset({1}),
         ),
     )
 
@@ -194,6 +203,21 @@ def test_s3_writer_downloads_validates_then_uploads_literal_keys() -> None:
     uploaded = client.objects[("result-bucket", "reviews//2026/../完成.pdf")]
     assert "+5.00%" in PdfReader(BytesIO(uploaded)).pages[0].extract_text()
     assert all(not path.exists() for path in client.local_paths)
+
+
+def test_s3_writer_rechecks_protected_destination_before_transfer() -> None:
+    client = MemoryS3Client()
+    writer = S3PDFWriter(
+        object_store=S3ObjectStore(client),
+        local_writer=RecordingLocalWriter(local_writer(), client.events),
+    )
+    write_request = request()
+    write_request.protected_source_uris = [OUTPUT_URI]
+
+    with pytest.raises(PDFWriteError, match="protected reviewed source"):
+        asyncio.run(writer.write_pdf(write_request))
+
+    assert client.events == []
 
 
 def test_local_failure_suppresses_upload_and_cleans_temporary_files() -> None:

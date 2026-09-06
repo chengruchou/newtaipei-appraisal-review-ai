@@ -6,12 +6,18 @@ from pathlib import Path
 
 import pytest
 import reportlab
+from PIL import Image
 from pydantic import ValidationError
 from pypdf import PdfReader, PdfWriter
+from pypdf.annotations import FreeText
 from pypdf.generic import RectangleObject
 from reportlab.pdfgen.canvas import Canvas
 
-from appraisal_review.adapters.local.pdf_config import PDFRenderConfig, PDFTemplatePolicy
+from appraisal_review.adapters.local.pdf_config import (
+    PDFRenderConfig,
+    PDFTemplatePolicy,
+    field_map_sha256,
+)
 from appraisal_review.adapters.local.pdf_preflight import PDFPreflightValidator
 from appraisal_review.domain.factor_models import (
     EvaluationStatus,
@@ -107,6 +113,8 @@ def request(source: Path, fields: list[PDFField]) -> PDFWriteRequest:
 
 
 def policy(
+    source: Path,
+    field_map: PDFFieldMap,
     *,
     editable: frozenset[int] = frozenset({1}),
     reference_only: frozenset[int] = frozenset(),
@@ -114,6 +122,8 @@ def policy(
 ) -> PDFTemplatePolicy:
     return PDFTemplatePolicy(
         template_id=template_id,
+        template_sha256=hashlib.sha256(source.read_bytes()).hexdigest(),
+        field_map_sha256=field_map_sha256(field_map),
         editable_pages=editable,
         reference_only_pages=reference_only,
     )
@@ -137,15 +147,54 @@ def write_source(path: Path, *, extra_blank_page: bool = False) -> None:
         writer.write(output)
 
 
-def validator(
-    *,
-    config: PDFRenderConfig | None = None,
-    template_policy: PDFTemplatePolicy | None = None,
-) -> PDFPreflightValidator:
-    return PDFPreflightValidator(
-        render_config=config or render_config(),
-        template_policy=template_policy or policy(),
-    )
+def write_inline_image_source(path: Path) -> None:
+    stream = BytesIO()
+    canvas = Canvas(stream, pagesize=(320, 220))
+    canvas.drawInlineImage(Image.new("RGB", (8, 8), "black"), 180, 105, 40, 20)
+    canvas.save()
+    path.write_bytes(stream.getvalue())
+
+
+class TrustedValidator:
+    def __init__(
+        self,
+        *,
+        config: PDFRenderConfig | None = None,
+        editable: frozenset[int] = frozenset({1}),
+        reference_only: frozenset[int] = frozenset(),
+        template_id: str = "synthetic-v1",
+        template_sha256: str | None = None,
+        approved_field_map_sha256: str | None = None,
+    ) -> None:
+        self.config = config or render_config()
+        self.editable = editable
+        self.reference_only = reference_only
+        self.template_id = template_id
+        self.template_sha256 = template_sha256
+        self.approved_field_map_sha256 = approved_field_map_sha256
+
+    def validate(self, write_request: PDFWriteRequest, source: Path):
+        trusted = policy(
+            source,
+            write_request.field_map,
+            editable=self.editable,
+            reference_only=self.reference_only,
+            template_id=self.template_id,
+        )
+        if self.template_sha256 is not None:
+            trusted = trusted.model_copy(update={"template_sha256": self.template_sha256})
+        if self.approved_field_map_sha256 is not None:
+            trusted = trusted.model_copy(
+                update={"field_map_sha256": self.approved_field_map_sha256}
+            )
+        return PDFPreflightValidator(
+            render_config=self.config,
+            template_policy=trusted,
+        ).validate(write_request, source)
+
+
+def validator(**kwargs: object) -> TrustedValidator:
+    return TrustedValidator(**kwargs)
 
 
 def test_complete_preflight_resolves_operations_without_mutating_source(tmp_path: Path) -> None:
@@ -202,9 +251,57 @@ def test_template_identity_and_complete_page_classification_are_required(
     write_request = request(source, [field()])
 
     with pytest.raises(PDFFieldPlacementError, match="do not match"):
-        validator(template_policy=policy(template_id="other")).validate(write_request, source)
+        validator(template_id="other").validate(write_request, source)
     with pytest.raises(PDFFieldPlacementError, match="classify every"):
-        validator(template_policy=policy()).validate(write_request, source)
+        validator().validate(write_request, source)
+
+
+def test_template_bytes_and_approved_field_map_are_bound_by_digest(tmp_path: Path) -> None:
+    approved = tmp_path / "approved.pdf"
+    substituted = tmp_path / "substituted.pdf"
+    write_source(approved)
+    write_source(substituted)
+    substituted.write_bytes(substituted.read_bytes() + b"\n%different-template")
+    approved_request = request(approved, [field()])
+    approved_policy = policy(approved, approved_request.field_map)
+    raw_validator = PDFPreflightValidator(
+        render_config=render_config(), template_policy=approved_policy
+    )
+
+    with pytest.raises(PDFFieldPlacementError, match="trusted template bytes"):
+        raw_validator.validate(
+            approved_request.model_copy(update={"source_uri": substituted.as_uri()}),
+            substituted,
+        )
+
+    changed_map = approved_request.field_map.model_copy(deep=True)
+    changed_map.fields[0].bounding_box = (171, 100, 280, 130)
+    with pytest.raises(PDFFieldPlacementError, match="approved coordinates"):
+        raw_validator.validate(
+            approved_request.model_copy(update={"field_map": changed_map}), approved
+        )
+
+
+def test_fill_blank_rejects_inline_image_occupancy(tmp_path: Path) -> None:
+    source = tmp_path / "inline-image.pdf"
+    write_inline_image_source(source)
+    write_request = request(source, [field(box=(170, 80, 230, 120))])
+
+    with pytest.raises(PDFFieldPlacementError, match="occupied"):
+        validator().validate(write_request, source)
+
+
+def test_fill_blank_rejects_annotation_occupancy(tmp_path: Path) -> None:
+    source = tmp_path / "annotation.pdf"
+    writer = PdfWriter()
+    writer.add_blank_page(width=320, height=220)
+    writer.add_annotation(0, FreeText(text="EXISTING", rect=(180, 105, 220, 125)))
+    with source.open("wb") as output:
+        writer.write(output)
+    write_request = request(source, [field(box=(170, 80, 230, 120))])
+
+    with pytest.raises(PDFFieldPlacementError, match="occupied"):
+        validator().validate(write_request, source)
 
 
 def test_reference_only_and_out_of_range_pages_are_rejected(tmp_path: Path) -> None:
@@ -212,14 +309,14 @@ def test_reference_only_and_out_of_range_pages_are_rejected(tmp_path: Path) -> N
     write_source(source, extra_blank_page=True)
 
     with pytest.raises(PDFFieldPlacementError, match="not explicitly editable"):
-        validator(
-            template_policy=policy(editable=frozenset({1}), reference_only=frozenset({2}))
-        ).validate(request(source, [field(page=2)]), source)
+        validator(editable=frozenset({1}), reference_only=frozenset({2})).validate(
+            request(source, [field(page=2)]), source
+        )
 
     with pytest.raises(PDFFieldPlacementError, match="outside the source"):
-        validator(
-            template_policy=policy(editable=frozenset({1, 2}), reference_only=frozenset())
-        ).validate(request(source, [field(page=3)]), source)
+        validator(editable=frozenset({1, 2}), reference_only=frozenset()).validate(
+            request(source, [field(page=3)]), source
+        )
 
 
 def test_off_page_and_overlapping_fields_are_rejected(tmp_path: Path) -> None:

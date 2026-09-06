@@ -20,8 +20,12 @@ def source_pdf(tmp_path: Path, name: str = "source file.pdf") -> Path:
     return source
 
 
-def test_file_uri_round_trip_supports_unicode_and_spaces(tmp_path: Path) -> None:
-    source = source_pdf(tmp_path, "範本 file.pdf")
+@pytest.mark.parametrize(
+    "name",
+    ["範本 file.pdf", "output%20file.pdf", "output%2Ffile.pdf", "100%.pdf"],
+)
+def test_file_uri_round_trip_decodes_exactly_once(tmp_path: Path, name: str) -> None:
+    source = source_pdf(tmp_path, name)
 
     assert local_path_from_uri(source.as_uri()) == source
     localhost_uri = source.as_uri().replace("file:///", "file://localhost/")
@@ -75,6 +79,7 @@ def test_missing_destination_parent_fails_without_creating_it(tmp_path: Path) ->
 
 def test_direct_and_normalized_aliases_are_rejected(tmp_path: Path) -> None:
     source = source_pdf(tmp_path)
+    (tmp_path / "child").mkdir()
     alias_uri = (tmp_path / "child" / ".." / source.name).as_uri()
 
     for destination_uri in (source.as_uri(), alias_uri):
@@ -99,6 +104,25 @@ def test_hardlink_alias_is_rejected(tmp_path: Path) -> None:
         ),
     ):
         pass
+
+
+def test_protected_review_source_alias_is_rejected(tmp_path: Path) -> None:
+    template = source_pdf(tmp_path, "template.pdf")
+    reviewed = source_pdf(tmp_path, "reviewed.pdf")
+    destination = tmp_path / "reviewed-hardlink.pdf"
+    os.link(reviewed, destination)
+
+    with (
+        pytest.raises(SourceDestinationConflictError, match="protected source"),
+        LocalObjectAccess(overwrite_existing=True).staged_write(
+            template.as_uri(),
+            destination.as_uri(),
+            [reviewed.as_uri()],
+        ),
+    ):
+        pass
+
+    assert reviewed.read_bytes() == b"%PDF-1.7\nsynthetic source"
 
 
 def test_symlink_alias_is_rejected_when_supported(tmp_path: Path) -> None:
@@ -269,3 +293,21 @@ def test_destination_changed_to_source_alias_before_publish_is_blocked(tmp_path:
             session.publish()
 
     assert source.read_bytes() == b"%PDF-1.7\nsynthetic source"
+
+
+def test_destination_changed_to_protected_alias_before_publish_is_blocked(
+    tmp_path: Path,
+) -> None:
+    template = source_pdf(tmp_path, "template.pdf")
+    reviewed = source_pdf(tmp_path, "reviewed.pdf")
+    destination = tmp_path / "output.pdf"
+
+    with LocalObjectAccess(overwrite_existing=True).staged_write(
+        template.as_uri(), destination.as_uri(), [reviewed.as_uri()]
+    ) as session:
+        session.temporary_path.write_bytes(b"validated")
+        os.link(reviewed, destination)
+        with pytest.raises(SourceDestinationConflictError, match="protected source"):
+            session.publish()
+
+    assert reviewed.read_bytes() == b"%PDF-1.7\nsynthetic source"

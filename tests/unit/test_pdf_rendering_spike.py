@@ -2,7 +2,14 @@ from io import BytesIO
 
 import pytest
 from pypdf import PdfReader, PdfWriter
-from pypdf.generic import FloatObject, NameObject, RectangleObject
+from pypdf.generic import (
+    ArrayObject,
+    FloatObject,
+    NameObject,
+    NumberObject,
+    RectangleObject,
+    TextStringObject,
+)
 from reportlab.pdfgen.canvas import Canvas
 
 from appraisal_review.adapters.local.pdf_overlay import PageGeometry, remove_text_in_box
@@ -149,4 +156,49 @@ def test_correction_rejects_xobject_text() -> None:
     page.merge_page(PdfReader(overlay_stream).pages[0])
 
     with pytest.raises(PDFFieldPlacementError, match="XObjects"):
+        remove_text_in_box(page, (40, 40, 155, 65))
+
+
+@pytest.mark.parametrize(
+    ("setter", "value"),
+    [
+        ("setHorizScale", 300),
+        ("setCharSpace", 2),
+        ("setWordSpace", 2),
+        ("setRise", 3),
+        ("setTextRenderMode", 1),
+    ],
+)
+def test_correction_rejects_unmodeled_text_geometry(setter: str, value: int) -> None:
+    stream = BytesIO()
+    canvas = Canvas(stream, pagesize=(320, 220))
+    text = canvas.beginText(55, 68)
+    getattr(text, setter)(value)
+    text.textOut("STALE TEXT")
+    canvas.drawText(text)
+    canvas.save()
+    page = PdfReader(BytesIO(stream.getvalue())).pages[0]
+    original_operations = list(page.get_contents().operations)
+
+    with pytest.raises(PDFFieldPlacementError, match="unsupported text state"):
+        remove_text_in_box(page, (45, 55, 110, 90))
+
+    assert page.get_contents().operations == original_operations
+
+
+def test_correction_rejects_tj_positioning_adjustments() -> None:
+    writer = PdfWriter()
+    page = writer.add_page(synthetic_page())
+    content = page.get_contents()
+    assert content is not None
+    index = next(
+        index for index, (_operands, operator) in enumerate(content.operations) if operator == b"Tj"
+    )
+    content.operations[index] = (
+        [ArrayObject([TextStringObject("STALE"), NumberObject(50)])],
+        b"TJ",
+    )
+    page.replace_contents(content)
+
+    with pytest.raises(PDFFieldPlacementError, match="positioning adjustments"):
         remove_text_in_box(page, (40, 40, 155, 65))

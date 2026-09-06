@@ -117,6 +117,15 @@ def test_file_alias_conflict_and_s3_key_semantics() -> None:
     assert document_identity("s3://bucket/a/../b.pdf") != document_identity("s3://bucket/b.pdf")
 
 
+def test_destination_cannot_match_any_protected_review_source() -> None:
+    payload = write_request().model_dump()
+    payload["protected_source_uris"] = ["file:///synthetic/case.pdf"]
+    payload["destination_uri"] = "file://localhost/synthetic/child/../case.pdf"
+
+    with pytest.raises(ValidationError, match="every reviewed source"):
+        PDFWriteRequest.model_validate(payload)
+
+
 @pytest.mark.parametrize(
     "change",
     [

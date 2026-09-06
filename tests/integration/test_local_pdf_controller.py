@@ -12,7 +12,11 @@ from pypdf import PdfReader
 from reportlab.pdfgen.canvas import Canvas
 
 from appraisal_review.adapters.local.object_access import local_path_from_uri
-from appraisal_review.adapters.local.pdf_config import PDFRenderConfig, PDFTemplatePolicy
+from appraisal_review.adapters.local.pdf_config import (
+    PDFRenderConfig,
+    PDFTemplatePolicy,
+    field_map_sha256,
+)
 from appraisal_review.adapters.local.pdf_writer import LocalPDFWriter
 from appraisal_review.application.bootstrap import ReviewAdapters, build_controller
 from appraisal_review.config import Settings
@@ -134,12 +138,15 @@ def _write_data_source(path: Path) -> None:
     canvas.showPage()
     canvas.drawString(20, 220, "SYNTHETIC SOURCE DETAILS")
     canvas.save()
+    criteria = Canvas(str(path.parent / "integration-criteria.pdf"), pagesize=(320, 220))
+    criteria.drawString(20, 190, "SYNTHETIC REVIEW CRITERIA")
+    criteria.save()
 
 
 def _request(data_source: Path, template: Path, destination: Path) -> AgentReviewRequest:
     return AgentReviewRequest(
         case_id="integration-case",
-        criteria_document_uri="file:///synthetic/integration-criteria.pdf",
+        criteria_document_uri=(data_source.parent / "integration-criteria.pdf").as_uri(),
         case_document_uri=data_source.as_uri(),
         pdf_template_uri=template.as_uri(),
         output_pdf_uri=destination.as_uri(),
@@ -387,12 +394,21 @@ def _material(
     return ReviewMaterial(policy=policy, facts=facts)
 
 
-def _writer() -> CountingLocalWriter:
+def _writer(
+    template: Path,
+    field_map: PDFFieldMap,
+    *,
+    overwrite_existing: bool = False,
+) -> CountingLocalWriter:
     return CountingLocalWriter(
         LocalPDFWriter(
-            render_config=PDFRenderConfig(font_path=_vera_font()),
+            render_config=PDFRenderConfig(
+                font_path=_vera_font(), overwrite_existing=overwrite_existing
+            ),
             template_policy=PDFTemplatePolicy(
                 template_id="integration-form-v1",
+                template_sha256=hashlib.sha256(template.read_bytes()).hexdigest(),
+                field_map_sha256=field_map_sha256(field_map),
                 editable_pages=frozenset({1}),
             ),
         )
@@ -447,7 +463,8 @@ def test_real_local_writer_completes_through_composition_root(tmp_path: Path) ->
     data_source_hash = hashlib.sha256(data_source.read_bytes()).digest()
     template_hash = hashlib.sha256(template.read_bytes()).digest()
     request = _request(data_source, template, destination)
-    writer = _writer()
+    assert request.field_map is not None
+    writer = _writer(template, request.field_map)
     adapters, parser, _ = _adapters(request, writer)
 
     result = _run(adapters, request)
@@ -473,6 +490,29 @@ def test_real_local_writer_completes_through_composition_root(tmp_path: Path) ->
     assert hashlib.sha256(template.read_bytes()).digest() == template_hash
 
 
+def test_controller_never_overwrites_a_reviewed_source_when_overwrite_is_enabled(
+    tmp_path: Path,
+) -> None:
+    data_source = tmp_path / "evaluation-basis.pdf"
+    template = tmp_path / "form-template.pdf"
+    _write_data_source(data_source)
+    _write_form(template)
+    original = data_source.read_bytes()
+    request = _request(data_source, template, data_source)
+    assert request.field_map is not None
+    writer = _writer(template, request.field_map, overwrite_existing=True)
+    adapters, _, _ = _adapters(request, writer)
+
+    result = _run(adapters, request)
+
+    assert result.status is WorkflowStatus.FAILED
+    assert result.pdf_error is not None
+    assert result.pdf_error.code is PDFErrorCode.SOURCE_DESTINATION_CONFLICT
+    assert writer.calls == []
+    assert result.output_pdf_uri is None
+    assert data_source.read_bytes() == original
+
+
 @pytest.mark.parametrize(
     ("rule_status", "evidence", "factor_id", "expected_status", "case_is_parsed"),
     [
@@ -495,7 +535,8 @@ def test_review_gates_make_zero_real_writer_calls(
     _write_data_source(data_source)
     _write_form(template)
     request = _request(data_source, template, destination)
-    writer = _writer()
+    assert request.field_map is not None
+    writer = _writer(template, request.field_map)
     adapters, parser, extractor = _adapters(
         request,
         writer,
@@ -521,7 +562,8 @@ def test_real_writer_error_retains_review_and_publishes_nothing(tmp_path: Path) 
     _write_data_source(data_source)
     _write_form(template, occupied=True)
     request = _request(data_source, template, destination)
-    writer = _writer()
+    assert request.field_map is not None
+    writer = _writer(template, request.field_map)
     adapters, _, _ = _adapters(request, writer)
 
     result = _run(adapters, request)
