@@ -12,7 +12,15 @@ from fontTools.pens.ttGlyphPen import TTGlyphPen
 from PIL import Image
 from pypdf import PdfReader, PdfWriter
 from pypdf.annotations import FreeText
-from pypdf.generic import ArrayObject, FloatObject, NameObject, NumberObject, RectangleObject
+from pypdf.generic import (
+    ArrayObject,
+    BooleanObject,
+    DictionaryObject,
+    FloatObject,
+    NameObject,
+    NumberObject,
+    RectangleObject,
+)
 from reportlab.pdfgen.canvas import Canvas
 
 from appraisal_review.adapters.local.pdf_config import (
@@ -169,16 +177,90 @@ def write_unsafe_source(path: Path, kind: str) -> None:
         canvas.drawInlineImage(Image.new("RGB", (8, 8), "black"), 180, 105, 40, 20)
     elif kind == "painted_vector":
         canvas.rect(45, 55, 90, 35, fill=1, stroke=0)
-    elif kind == "table_border":
+    elif kind == "thick_stroke":
+        canvas.setStrokeColorRGB(0, 0, 0)
+        canvas.setLineWidth(35)
+        canvas.line(45, 72.5, 135, 72.5)
+    elif kind == "wide_table_border":
+        canvas.setLineWidth(35)
         canvas.rect(45, 55, 90, 35, fill=0, stroke=1)
+    elif kind == "transformed_wide_table_border":
+        canvas.saveState()
+        canvas.scale(3, 1)
+        canvas.setLineWidth(1)
+        canvas.rect(15, 55, 30, 35, fill=0, stroke=1)
+        canvas.restoreState()
+    elif kind == "nondefault_border_style":
+        canvas.setLineCap(1)
+        canvas.setLineJoin(1)
+        canvas.rect(45, 55, 90, 35, fill=0, stroke=1)
+    elif kind in {
+        "extgstate_thick_border",
+        "extgstate_stroke_adjustment",
+        "extgstate_no_stroke_adjustment",
+        "table_border",
+    }:
+        canvas.rect(45, 55, 90, 35, fill=0, stroke=1)
+    elif kind == "line_table_border":
+        for edge in (
+            (45, 55, 135, 55),
+            (135, 55, 135, 90),
+            (135, 90, 45, 90),
+            (45, 90, 45, 55),
+        ):
+            canvas.line(*edge)
+    elif kind == "transformed_table_border":
+        canvas.saveState()
+        canvas.setLineWidth(35)
+        canvas.line(250, 180, 290, 180)
+        canvas.restoreState()
+        canvas.saveState()
+        canvas.translate(5, 5)
+        canvas.rect(40, 50, 90, 35, fill=0, stroke=1)
+        canvas.restoreState()
     elif kind == "custom_font_widths":
         canvas.drawString(55, 68, "STALE")
     else:
         raise ValueError("Unsupported synthetic PDF fixture")
     canvas.save()
     path.write_bytes(stream.getvalue())
+    if kind == "extgstate_thick_border":
+        apply_extgstate(path, line_width=35)
+    elif kind == "extgstate_stroke_adjustment":
+        apply_extgstate(path, stroke_adjustment=True)
+    elif kind == "extgstate_no_stroke_adjustment":
+        apply_extgstate(path, stroke_adjustment=False)
     if kind == "custom_font_widths":
         replace_helvetica_widths(path)
+
+
+def apply_extgstate(
+    path: Path,
+    *,
+    line_width: int | None = None,
+    stroke_adjustment: bool | None = None,
+) -> None:
+    writer = PdfWriter(clone_from=PdfReader(BytesIO(path.read_bytes())))
+    page = writer.pages[0]
+    resources = page["/Resources"].get_object()
+    states = resources.get("/ExtGState")
+    if states is None:
+        states = DictionaryObject()
+        resources[NameObject("/ExtGState")] = states
+    else:
+        states = states.get_object()
+    parameters = DictionaryObject({NameObject("/Type"): NameObject("/ExtGState")})
+    if line_width is not None:
+        parameters[NameObject("/LW")] = NumberObject(line_width)
+    if stroke_adjustment is not None:
+        parameters[NameObject("/SA")] = BooleanObject(stroke_adjustment)
+    states[NameObject("/GSUnsafe")] = writer._add_object(parameters)
+    content = page.get_contents()
+    assert content is not None
+    content.operations.insert(0, ([NameObject("/GSUnsafe")], b"gs"))
+    page.replace_contents(content)
+    with path.open("wb") as output:
+        writer.write(output)
 
 
 def replace_helvetica_widths(path: Path) -> None:
@@ -524,7 +606,19 @@ def test_local_writer_rejects_ambiguous_occupancy_without_publication(
     assert not list(tmp_path.glob(".published.pdf.*.tmp"))
 
 
-@pytest.mark.parametrize("kind", ["painted_vector", "custom_font_widths"])
+@pytest.mark.parametrize(
+    "kind",
+    [
+        "painted_vector",
+        "thick_stroke",
+        "wide_table_border",
+        "transformed_wide_table_border",
+        "nondefault_border_style",
+        "extgstate_thick_border",
+        "extgstate_stroke_adjustment",
+        "custom_font_widths",
+    ],
+)
 def test_local_writer_rejects_untrusted_paint_or_font_before_publication(
     tmp_path: Path, kind: str
 ) -> None:
@@ -533,11 +627,12 @@ def test_local_writer_rejects_untrusted_paint_or_font_before_publication(
     write_unsafe_source(source, kind)
     source_bytes = source.read_bytes()
     request = write_request(source)
+    paint_occupancy = kind != "custom_font_widths"
     request.field_map.fields = [
         pdf_field(
             "unsafe",
-            (45, 55, 135, 90) if kind == "painted_vector" else (45, 55, 110, 90),
-            "fill_blank" if kind == "painted_vector" else "correct",
+            (45, 55, 135, 90) if paint_occupancy else (45, 55, 110, 90),
+            "fill_blank" if paint_occupancy else "correct",
         )
     ]
     writer = LocalPDFWriter(
@@ -545,11 +640,12 @@ def test_local_writer_rejects_untrusted_paint_or_font_before_publication(
         template_policy=trusted_policy(source, request.field_map),
     )
 
-    expected_error = (
-        "occupied"
-        if kind == "painted_vector"
-        else "Source PDF font metrics cannot be established safely"
-    )
+    if kind == "custom_font_widths":
+        expected_error = "Source PDF font metrics cannot be established safely"
+    elif kind == "extgstate_stroke_adjustment":
+        expected_error = "stroke adjustment geometry cannot be established safely"
+    else:
+        expected_error = "occupied"
     with pytest.raises(PDFFieldPlacementError, match=expected_error):
         asyncio.run(writer.write_pdf(request))
 
@@ -558,10 +654,21 @@ def test_local_writer_rejects_untrusted_paint_or_font_before_publication(
     assert not list(tmp_path.glob(".published.pdf.*.tmp"))
 
 
-def test_local_writer_fills_empty_cell_with_ordinary_table_border(tmp_path: Path) -> None:
-    source = tmp_path / "table-border.pdf"
+@pytest.mark.parametrize(
+    "kind",
+    [
+        "table_border",
+        "line_table_border",
+        "transformed_table_border",
+        "extgstate_no_stroke_adjustment",
+    ],
+)
+def test_local_writer_fills_empty_cell_with_ordinary_table_border(
+    tmp_path: Path, kind: str
+) -> None:
+    source = tmp_path / f"{kind}.pdf"
     destination = tmp_path / "published.pdf"
-    write_unsafe_source(source, "table_border")
+    write_unsafe_source(source, kind)
     request = write_request(source)
     request.field_map.fields = [pdf_field("bordered-blank", (45, 55, 135, 90), "fill_blank")]
     writer = LocalPDFWriter(

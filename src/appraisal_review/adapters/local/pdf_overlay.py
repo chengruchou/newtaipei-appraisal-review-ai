@@ -9,8 +9,8 @@ an acceptable fallback.
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
-from typing import Any
+from dataclasses import dataclass, replace
+from typing import Any, Literal
 
 from pypdf import PageObject
 from reportlab.pdfbase import pdfmetrics
@@ -20,6 +20,7 @@ from appraisal_review.domain.pdf_models import PDFFieldPlacementError, PDFReadEr
 Point = tuple[float, float]
 BoundingBox = tuple[float, float, float, float]
 Matrix = tuple[float, float, float, float, float, float]
+PathKind = Literal["move", "line", "rectangle", "other"]
 
 # Quote operators also change the text position. Refuse them until their full
 # line-movement semantics are represented in the measured run.
@@ -59,8 +60,12 @@ _CUSTOM_FONT_METRIC_KEYS = frozenset(
         "/Widths",
     }
 )
-_PATH_FILL_OPERATORS = frozenset({b"f", b"F", b"f*", b"B", b"B*", b"b", b"b*"})
-_PATH_END_OPERATORS = _PATH_FILL_OPERATORS | frozenset({b"S", b"s", b"n"})
+_PATH_FILL_ONLY_OPERATORS = frozenset({b"f", b"F", b"f*"})
+_PATH_FILL_AND_STROKE_OPERATORS = frozenset({b"B", b"B*", b"b", b"b*"})
+_PATH_FILL_OPERATORS = _PATH_FILL_ONLY_OPERATORS | _PATH_FILL_AND_STROKE_OPERATORS
+_PATH_STROKE_OPERATORS = frozenset({b"S", b"s"})
+_MAX_TABLE_BORDER_WIDTH = 2.0
+_GEOMETRY_ABS_TOLERANCE = 1e-6
 
 
 def _multiply_matrices(left: list[float], right: list[float]) -> Matrix:
@@ -162,6 +167,19 @@ class TextShowOperation:
     operation_index: int
     text: str
     bounds: BoundingBox
+
+
+@dataclass(frozen=True)
+class _GraphicsState:
+    """Paint state needed to establish conservative stroke bounds."""
+
+    matrix: Matrix = (1.0, 0.0, 0.0, 1.0, 0.0, 0.0)
+    line_width: float = 1.0
+    line_cap: int = 0
+    line_join: int = 0
+    miter_limit: float = 10.0
+    dash_pattern: tuple[float, ...] = ()
+    dash_phase: float = 0.0
 
 
 def _font_name(font_dictionary: Any, text: str) -> str:
@@ -320,52 +338,110 @@ def visual_content_in_box(page: PageObject, crop_local_box: BoundingBox) -> bool
     page_box = geometry.box_to_page_user_space(crop_local_box)
     content = page.get_contents()
     if content is not None:
-        current: Matrix = (1.0, 0.0, 0.0, 1.0, 0.0, 0.0)
-        stack: list[Matrix] = []
+        state = _GraphicsState()
+        stack: list[_GraphicsState] = []
         path_points: list[Point] = []
+        path_kind: PathKind | None = None
         for operands, operator in content.operations:
             if operator == b"q":
-                stack.append(current)
+                stack.append(state)
             elif operator == b"Q":
                 if not stack:
                     raise PDFFieldPlacementError("PDF graphics state is unbalanced")
-                current = stack.pop()
+                state = stack.pop()
             elif operator == b"cm":
-                try:
-                    transform = [float(value) for value in operands]
-                    if len(transform) != 6 or not all(math.isfinite(v) for v in transform):
-                        raise ValueError
-                except (TypeError, ValueError) as error:
-                    raise PDFFieldPlacementError(
-                        "PDF visual geometry cannot be measured deterministically"
-                    ) from error
-                current = _multiply_matrices(transform, list(current))
+                transform = _finite_numbers(operands, expected=6)
+                state = replace(
+                    state,
+                    matrix=_multiply_matrices(transform, list(state.matrix)),
+                )
+            elif operator == b"w":
+                line_width = _single_finite_number(operands)
+                if line_width < 0:
+                    raise PDFFieldPlacementError("PDF stroke geometry cannot be established safely")
+                state = replace(state, line_width=line_width)
+            elif operator in {b"J", b"j"}:
+                style = _single_pdf_integer(operands, allowed={0, 1, 2})
+                state = replace(
+                    state,
+                    line_cap=style if operator == b"J" else state.line_cap,
+                    line_join=style if operator == b"j" else state.line_join,
+                )
+            elif operator == b"M":
+                miter_limit = _single_finite_number(operands)
+                if miter_limit < 1:
+                    raise PDFFieldPlacementError("PDF stroke geometry cannot be established safely")
+                state = replace(state, miter_limit=miter_limit)
+            elif operator == b"d":
+                state = _with_dash_pattern(state, operands)
+            elif operator == b"gs":
+                state = _with_extended_graphics_state(page, state, operands)
             elif operator == b"INLINE IMAGE":
-                if _boxes_intersect(page_box, _unit_square_bounds(current)):
+                if _boxes_intersect(page_box, _unit_square_bounds(state.matrix)):
                     return True
-            elif operator == b"Do" and _boxes_intersect(page_box, _unit_square_bounds(current)):
+            elif operator == b"Do" and _boxes_intersect(
+                page_box, _unit_square_bounds(state.matrix)
+            ):
                 # Text extraction already refuses XObjects. Treat their painted
                 # unit square as occupancy, and fail closed if it does not give
                 # a trustworthy answer for the requested region.
                 return True
-            elif operator in {b"m", b"l"}:
-                path_points.extend(_path_points(operands, current, pairs=1))
+            elif operator == b"m":
+                path_kind = "move" if not path_points else "other"
+                path_points.extend(_path_points(operands, state.matrix, pairs=1))
+            elif operator == b"l":
+                path_kind = "line" if path_kind == "move" and len(path_points) == 1 else "other"
+                path_points.extend(_path_points(operands, state.matrix, pairs=1))
             elif operator == b"c":
-                path_points.extend(_path_points(operands, current, pairs=3))
+                path_points.extend(_path_points(operands, state.matrix, pairs=3))
+                path_kind = "other"
             elif operator in {b"v", b"y"}:
-                path_points.extend(_path_points(operands, current, pairs=2))
+                path_points.extend(_path_points(operands, state.matrix, pairs=2))
+                path_kind = "other"
             elif operator == b"re":
-                path_points.extend(_rectangle_points(operands, current))
+                path_kind = "rectangle" if not path_points else "other"
+                path_points.extend(_rectangle_points(operands, state.matrix))
             elif operator in _PATH_FILL_OPERATORS:
                 if not path_points:
                     raise PDFFieldPlacementError(
                         "PDF painted path geometry cannot be established safely"
                     )
-                if _boxes_intersect(page_box, _points_bounds(path_points)):
+                if _boxes_intersect(page_box, _points_bounds(path_points)) or (
+                    operator in _PATH_FILL_AND_STROKE_OPERATORS
+                    and _stroke_intersects_box(
+                        page_box,
+                        path_points,
+                        state,
+                        single_rectangle=path_kind == "rectangle",
+                    )
+                ):
                     return True
                 path_points = []
-            elif operator in _PATH_END_OPERATORS:
+                path_kind = None
+            elif operator in _PATH_STROKE_OPERATORS:
+                if not path_points:
+                    raise PDFFieldPlacementError("PDF stroke geometry cannot be established safely")
+                if _is_allowed_table_border(
+                    path_points,
+                    page_box,
+                    state,
+                    path_kind=path_kind,
+                ):
+                    path_points = []
+                    path_kind = None
+                    continue
+                if _stroke_intersects_box(
+                    page_box,
+                    path_points,
+                    state,
+                    single_rectangle=path_kind == "rectangle",
+                ):
+                    return True
                 path_points = []
+                path_kind = None
+            elif operator == b"n":
+                path_points = []
+                path_kind = None
             elif operator == b"sh":
                 raise PDFFieldPlacementError("PDF shading geometry cannot be established safely")
         if stack:
@@ -405,6 +481,227 @@ def _unit_square_bounds(matrix: Matrix) -> BoundingBox:
     xs = [point[0] for point in corners]
     ys = [point[1] for point in corners]
     return (min(xs), min(ys), max(xs), max(ys))
+
+
+def _finite_numbers(operands: Any, *, expected: int) -> list[float]:
+    try:
+        values = [float(value) for value in operands]
+        if len(values) != expected or not all(math.isfinite(value) for value in values):
+            raise ValueError
+    except (TypeError, ValueError) as error:
+        raise PDFFieldPlacementError(
+            "PDF visual geometry cannot be measured deterministically"
+        ) from error
+    return values
+
+
+def _single_finite_number(operands: Any) -> float:
+    return _finite_numbers(operands, expected=1)[0]
+
+
+def _single_pdf_integer(operands: Any, *, allowed: set[int]) -> int:
+    value = _single_finite_number(operands)
+    integer = int(value)
+    if not math.isclose(value, integer) or integer not in allowed:
+        raise PDFFieldPlacementError("PDF stroke geometry cannot be established safely")
+    return integer
+
+
+def _with_dash_pattern(state: _GraphicsState, operands: Any) -> _GraphicsState:
+    try:
+        if len(operands) != 2:
+            raise ValueError
+        pattern = tuple(float(value) for value in operands[0])
+        phase = float(operands[1])
+        if (
+            not math.isfinite(phase)
+            or any(not math.isfinite(value) or value < 0 for value in pattern)
+            or (pattern and math.isclose(sum(pattern), 0.0))
+        ):
+            raise ValueError
+    except (TypeError, ValueError) as error:
+        raise PDFFieldPlacementError("PDF stroke geometry cannot be established safely") from error
+    return replace(state, dash_pattern=pattern, dash_phase=phase)
+
+
+def _with_extended_graphics_state(
+    page: PageObject, state: _GraphicsState, operands: Any
+) -> _GraphicsState:
+    """Apply stroke geometry supplied by a named ExtGState resource."""
+    try:
+        if len(operands) != 1:
+            raise ValueError
+        resources: Any = page["/Resources"].get_object()
+        states: Any = resources["/ExtGState"].get_object()
+        parameters = states[operands[0]].get_object()
+    except Exception as error:
+        raise PDFFieldPlacementError(
+            "PDF extended graphics state cannot be established safely"
+        ) from error
+
+    updated = state
+    try:
+        if "/LW" in parameters:
+            line_width = _single_finite_number([parameters["/LW"].get_object()])
+            if line_width < 0:
+                raise PDFFieldPlacementError("PDF stroke geometry cannot be established safely")
+            updated = replace(updated, line_width=line_width)
+        if "/LC" in parameters:
+            updated = replace(
+                updated,
+                line_cap=_single_pdf_integer([parameters["/LC"].get_object()], allowed={0, 1, 2}),
+            )
+        if "/LJ" in parameters:
+            updated = replace(
+                updated,
+                line_join=_single_pdf_integer([parameters["/LJ"].get_object()], allowed={0, 1, 2}),
+            )
+        if "/ML" in parameters:
+            miter_limit = _single_finite_number([parameters["/ML"].get_object()])
+            if miter_limit < 1:
+                raise PDFFieldPlacementError("PDF stroke geometry cannot be established safely")
+            updated = replace(updated, miter_limit=miter_limit)
+        if "/D" in parameters:
+            updated = _with_dash_pattern(updated, parameters["/D"].get_object())
+        if "/SA" in parameters:
+            stroke_adjustment = getattr(parameters["/SA"].get_object(), "value", None)
+            if not isinstance(stroke_adjustment, bool) or stroke_adjustment:
+                raise PDFFieldPlacementError(
+                    "PDF stroke adjustment geometry cannot be established safely"
+                )
+    except PDFFieldPlacementError:
+        raise
+    except Exception as error:
+        raise PDFFieldPlacementError(
+            "PDF extended graphics state cannot be established safely"
+        ) from error
+    return updated
+
+
+def _maximum_linear_scale(matrix: Matrix) -> float:
+    a, b, c, d, _, _ = matrix
+    squared_sum = a * a + b * b + c * c + d * d
+    determinant = a * d - b * c
+    discriminant = max(0.0, squared_sum * squared_sum - 4.0 * determinant * determinant)
+    scale = math.sqrt((squared_sum + math.sqrt(discriminant)) / 2.0)
+    if not math.isfinite(scale) or scale <= 0:
+        raise PDFFieldPlacementError("PDF stroke geometry cannot be established safely")
+    return scale
+
+
+def _effective_line_width(state: _GraphicsState) -> float:
+    if state.line_width <= 0:
+        # A zero-width PDF hairline is device-dependent rather than a stable
+        # user-space width, so it cannot support a safe blank-field decision.
+        raise PDFFieldPlacementError("PDF stroke geometry cannot be established safely")
+    width = state.line_width * _maximum_linear_scale(state.matrix)
+    if not math.isfinite(width):
+        raise PDFFieldPlacementError("PDF stroke geometry cannot be established safely")
+    return width
+
+
+def _stroke_bounds(
+    points: list[Point], state: _GraphicsState, *, include_joins: bool | None = None
+) -> BoundingBox:
+    width = _effective_line_width(state)
+    radius = width / 2.0
+    if include_joins is None:
+        include_joins = len(points) > 2
+    if include_joins and state.line_join == 0:
+        radius *= state.miter_limit
+    x1, y1, x2, y2 = _points_bounds(points)
+    return (x1 - radius, y1 - radius, x2 + radius, y2 + radius)
+
+
+def _stroke_intersects_box(
+    field_box: BoundingBox,
+    points: list[Point],
+    state: _GraphicsState,
+    *,
+    single_rectangle: bool,
+) -> bool:
+    if not single_rectangle or len(points) != 4:
+        return _boxes_intersect(field_box, _stroke_bounds(points, state))
+    # `_rectangle_points` returns lower-left, lower-right, upper-left, upper-right.
+    # Test each painted edge separately so the unpainted rectangle interior is
+    # not mistaken for occupancy merely because it lies inside the path bounds.
+    rectangle_edges = (
+        (points[0], points[1]),
+        (points[1], points[3]),
+        (points[3], points[2]),
+        (points[2], points[0]),
+    )
+    return any(
+        _boxes_intersect(
+            field_box,
+            _stroke_bounds(list(edge), state, include_joins=True),
+        )
+        for edge in rectangle_edges
+    )
+
+
+def _is_allowed_table_border(
+    points: list[Point],
+    field_box: BoundingBox,
+    state: _GraphicsState,
+    *,
+    path_kind: PathKind | None,
+) -> bool:
+    """Allow only a narrow, solid path coincident with the field boundary."""
+    if (
+        state.line_cap != 0
+        or state.line_join != 0
+        or state.dash_pattern
+        or not _coordinates_close(state.dash_phase, 0.0)
+        or _effective_line_width(state) > _MAX_TABLE_BORDER_WIDTH
+    ):
+        return False
+    if path_kind == "line" and len(points) == 2:
+        return _line_covers_field_boundary(points, field_box)
+    if path_kind != "rectangle" or len(points) != 4:
+        return False
+    expected_corners = (
+        (field_box[0], field_box[1]),
+        (field_box[2], field_box[1]),
+        (field_box[0], field_box[3]),
+        (field_box[2], field_box[3]),
+    )
+    return _same_point_set(points, expected_corners)
+
+
+def _line_covers_field_boundary(points: list[Point], field_box: BoundingBox) -> bool:
+    start, end = points
+    minimum_x, maximum_x = sorted((start[0], end[0]))
+    minimum_y, maximum_y = sorted((start[1], end[1]))
+    horizontal = _coordinates_close(start[1], end[1]) and (
+        _coordinates_close(start[1], field_box[1]) or _coordinates_close(start[1], field_box[3])
+    )
+    vertical = _coordinates_close(start[0], end[0]) and (
+        _coordinates_close(start[0], field_box[0]) or _coordinates_close(start[0], field_box[2])
+    )
+    return (
+        horizontal
+        and minimum_x <= field_box[0] + _GEOMETRY_ABS_TOLERANCE
+        and maximum_x >= field_box[2] - _GEOMETRY_ABS_TOLERANCE
+    ) or (
+        vertical
+        and minimum_y <= field_box[1] + _GEOMETRY_ABS_TOLERANCE
+        and maximum_y >= field_box[3] - _GEOMETRY_ABS_TOLERANCE
+    )
+
+
+def _same_point_set(left: Any, right: Any) -> bool:
+    return all(
+        any(_points_close(point, candidate) for candidate in right) for point in left
+    ) and all(any(_points_close(point, candidate) for point in left) for candidate in right)
+
+
+def _points_close(left: Point, right: Point) -> bool:
+    return _coordinates_close(left[0], right[0]) and _coordinates_close(left[1], right[1])
+
+
+def _coordinates_close(left: float, right: float) -> bool:
+    return math.isclose(left, right, rel_tol=0.0, abs_tol=_GEOMETRY_ABS_TOLERANCE)
 
 
 def _path_points(operands: list[Any], matrix: Matrix, *, pairs: int) -> list[Point]:
