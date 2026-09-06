@@ -15,8 +15,9 @@ those checks.
 
 PDF text and visual content introduce a related trust problem. Nominal font
 width does not bound text whose horizontal scale, spacing, rise, rendering mode,
-or `TJ` positioning has changed. An image or annotation can occupy a field even
-when text extraction reports an empty string.
+`TJ` positioning, or source-font `/Widths` differ. An image, annotation, or
+painted vector fill can occupy a field even when text extraction reports an
+empty string.
 
 ## Decision
 
@@ -36,10 +37,14 @@ neither substitutes for byte and coordinate binding.
 
 Correction accepts only text geometry represented by its bounding calculation.
 Non-default horizontal scale, character spacing, word spacing, rise, rendering
-mode, and non-zero `TJ` adjustments fail explicitly. `fill_blank` treats
-intersecting inline images, painted XObjects, and annotation rectangles as
-occupancy. If geometry cannot be established safely, preflight fails and no
-destination is published.
+mode, non-zero `TJ` adjustments, and fonts with custom or embedded metrics fail
+explicitly. The supported correction subset is printable ASCII using a
+recognized standard Type 1 Base-14 font without custom width, descriptor,
+character-program, descendant-font, or Unicode mapping data. `fill_blank`
+treats intersecting inline images, painted XObjects, annotation rectangles, and
+filled vector paths as occupancy. Ordinary stroke-only table borders remain
+valid. Shadings or malformed paint geometry fail closed. If geometry cannot be
+established safely, preflight fails and no destination is published.
 
 Local file URIs are converted with the platform URI converter exactly once.
 Canonical identity parsing and filesystem conversion therefore agree for literal
@@ -52,8 +57,9 @@ percent sequences, spaces, and Unicode filenames.
   editable/reference page policy.
 - Changing one template byte or field coordinate requires an explicit policy
   version/update, even when template ID and page count remain unchanged.
-- Complex PDF text state and uncertain visual occupancy reduce supported-template
-  coverage but cannot silently produce an incorrect correction or fill.
+- Complex PDF text state, custom source-font metrics, and uncertain visual
+  occupancy reduce supported-template coverage but cannot silently produce an
+  incorrect correction or fill.
 - The new request field is provider-neutral metadata; PDF bytes still do not cross
   the writer port.
 

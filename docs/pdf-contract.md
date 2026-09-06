@@ -105,7 +105,9 @@ page classification, per-page CropBox/rotation/UserUnit geometry, page bounds,
 non-overlapping fields, every value reference, font readability, glyph coverage,
 `max_characters`, measured width and height, blank destinations, and removable
 correction text. `fill_blank` also rejects intersecting inline images, painted
-XObjects, and annotations. Annotation measurement includes its configured label.
+XObjects, annotations, and filled vector paths while allowing ordinary
+stroke-only table borders. Shadings and malformed paint geometry fail closed.
+Annotation measurement includes its configured label.
 
 Preflight rejects encrypted sources, records the SHA-256 digest of the exact
 bytes it inspected, and leaves the source byte-for-byte unchanged. Mutation
@@ -113,10 +115,13 @@ refuses a source whose digest differs from that preflight plan. The current
 conservative correction inspection supports directly
 extractable `Tj`/`TJ` page text with default geometry. Non-default horizontal
 scale, character/word spacing, text rise/rendering mode, non-zero `TJ` advances,
-partial text intersections, ambiguous operator mapping, and text inside Form
-XObjects fail explicitly; they never fall back to painting over source content.
-This limitation must remain visible until those content forms have deterministic
-removal support.
+custom or embedded source-font metrics, partial text intersections, ambiguous
+operator mapping, and text inside Form XObjects fail explicitly. The supported
+font subset is printable ASCII in a recognized standard Type 1 Base-14 font
+without custom width, descriptor, character-program, descendant-font, or
+Unicode mapping data. A matching `/BaseFont` name alone is not trusted. These
+cases never fall back to painting over source content. This limitation must
+remain visible until those content forms have deterministic removal support.
 
 A write requires nonempty fields with value_ref and a single shared
 (scope, target_id, comparable_id). Old unbound field maps still load for

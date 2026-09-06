@@ -165,8 +165,8 @@ interval/category/matrix engine, shared PDF contracts, composition/injection,
 synchronous `POST /v1/reviews`, framework-neutral AgentCore-facing invocation,
 an explicit local synthetic runner, and a provider-local PDF writer core. The
 local writer performs deterministic preflight, cryptographic template and
-field-map binding, genuine text correction, image/annotation occupancy checks,
-embedded-font filling and annotation, reopen verification, reference-page
+field-map binding, genuine text correction, image/annotation/paint occupancy
+checks, source-font metric validation, embedded-font filling and annotation, reopen verification, reference-page
 preservation checks, protected-input alias checks, and atomic publication. An
 injected-client S3 wrapper
 downloads into isolated local storage and uploads only a locally validated PDF
