@@ -51,3 +51,30 @@ immutable writer-time snapshot, multi-context PDF support, #9 jobs/deployment an
 frontend remain future work. These tests create synthetic input PDFs and use
 mocked providers/isolated test authority; live Bedrock, complete real-case goldens,
 human approval and actual reviewed PDF output remain pending.
+
+Assembly retains invalid proposals for inspection but adds explicit source_purpose
+unresolved entries both for the originating page and for citation uses. A criteria
+example cannot establish case context or cells merely by resolving. The shared
+CaseReviewer repeats validation using current Controller-selected documents.
+Approval eligibility remains separate from full-case completeness: unresolved
+inventory/source-purpose findings still block review, even if all fact sides have
+been confirmed. There is no approve/review circular dependency.
+
+Receipt eligibility explicitly accepts measured/native_extraction native_numeric
+sides with a named producer, or reviewer_confirmed sides with current reviewer and
+side digest plus resolved evidence and no side ambiguity. Every side of every pair
+must qualify. model_proposed, unknown provenance, absent/stale/other-reviewer
+confirmation fail both approve and permits. Eligibility does not introduce another
+confidence threshold; CaseReviewer applies the configured measured threshold.
+Historical unconfirmed/partial receipts are rejected in place, never auto-rewritten.
+
+The local reviewer workflow is supported on Linux and macOS with pwd, getuid,
+ownership checks and owner-only 0700/0600 storage. Windows native approval is not
+implemented; use a Linux environment. Generic imports and CLI help do not require
+pwd. Reviewer operations check platform before reading material or creating keys,
+receipts or confirmation. Unsupported systems return unsupported_reviewer_platform
+and CLI exit 2, without a module traceback or identity/permission fallback.
+The local URI helper accepts POSIX absolute file URIs and rejects Windows drive
+and UNC forms; this does not implement Windows storage or ACL support. Tests
+simulate missing pwd/getuid and an unsupported platform in subprocesses. Host
+macOS and Linux CI positive checks are actual POSIX tests, not Windows validation.

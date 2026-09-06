@@ -124,8 +124,10 @@ review, independent verification, exact applicability and source matching,
 observed-value/arithmetic findings, required coverage, shared PDF contracts,
 composition/injection, synchronous HTTP and invocation, and synthetic fixtures.
 
-Real document parsing, Bedrock extraction and the controlled reviewer workflow
-are the dependent #7 delivery. B's actual PDF rendering/storage (#5) and deployed
+Implemented document preparation includes allowlisted native PDF parsing,
+source-bound rule candidates, bounded Bedrock page extraction, local reviewer
+receipts and real-document CLI operations. Live model accuracy and real human
+approval remain pending; local source checks are a limited golden subset. B's actual PDF rendering/storage (#5) and deployed
 asynchronous AWS jobs (#9) remain pending. A fake writer creates no PDF and now
 returns verified/simulated rather than completed. See ADR 0005 for migration.
 

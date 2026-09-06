@@ -130,6 +130,41 @@ source, original value, expected value and comparison trace. A final aggregate
 finding may list multiple expected values by check ID; none is silently selected.
 No PDFWriter request/result fields or public protocol change in this correction.
 
+## Document candidates and reviewer operations (#7)
+
+`SourceDocument` records immutable source identity, role/version/date and every
+page's geometry/regions. `ParsedDocument.source` is typed; the old content dict
+remains for compatibility, not as the source of new critical facts. SourceCitation
+binds an exact region and excerpt; an empty cell/image can have an empty excerpt.
+Individual selection glyphs carry checked/unchecked state, while mixed or unclear
+selections stay ambiguous. No page location implies semantic correctness.
+
+`PageProposal` contains candidate rules, accounted table IDs, context inventory,
+evidenced facts, observed slots/values, arithmetic and explicit unresolved items.
+The model cannot supply approval metadata. `PageExtraction` wraps it with
+server-owned source identity, model/Region, usage, duration and bounded attempts.
+`assemble` builds ReviewMaterial for inspection; missing pages/tables, unresolved
+shapes or duplicate facts cannot become completed coverage.
+
+ApprovalReceipt signs the exact ReviewMaterial digest and OS reviewer identity,
+case/version and time. It is stored outside submitted data in an owner-only local
+store. Confirming model-proposed facts creates a new material version/digest;
+approving uses that exact inspected digest. No automatic production bypass exists.
+ReferenceCatalog sections are versioned citations, and their arithmetic proposals
+must enter the same material approval boundary. See ADR 0006 and the runbook.
+
+For extracted pairs, each side's validated SourceCitations determine its canonical
+FactorObservation.evidence. The adapter resolves the actual document/page/region
+and derives source_file, document_id, page, block_ids, bounding_box and
+coordinate_system locally. No local URI is sent to the model. Optional legacy
+location fields may be absent; explicitly conflicting fields are rejected. Missing
+canonical citations cannot be replaced by model-supplied legacy evidence.
+Canonical evidence confidence and observation confidence are zero after extraction;
+method=model_proposed remains until explicit confirmation. Source binding is not
+proof of semantic accuracy. The receipt covers all normalized evidence and facts,
+so later changes cannot reuse approval. Legacy EvidenceRef and PDFWriter are
+unchanged; Reliability has the explicit material extension described in ADR 0008.
+
 Source identity, complete observed/slot value-anchor sets, DAG derivation and
 loaded-versus-evaluated audit events are specified in [ADR 0007](adr/0007-source-cell-and-derivation-trust.md).
 The PDF writer protocol is unchanged; writer-time snapshot enforcement remains
@@ -143,8 +178,21 @@ receipts require explicit reviewer migration, never automatic re-signing.
 See [ADR 0008](adr/0008-measured-confidence-and-human-confirmation.md).
 Legacy EvidenceRef and HTTP success/error schemas remain unchanged.
 
+The canonical extraction producer is canonical-pdf-localization-v1. It always
+emits localization_only/parser_registry with no confirmation, regardless of model
+provenance claims. confirm-facts adds the local-review-v1 side digest and actual
+OS UID/login. LocalApprovalStore requires that same reviewer and current side
+digest for confirmed material; confirmation alone does not grant authorization.
+
 ADR 0009 specifies one typed fill candidate validated against all incoming and
 independent expectations before it becomes a reusable value. It also defines
 source-purpose restrictions by selected document identity, not role strings alone.
 The original observation and all scores remain unchanged. Public PDF contracts
 are unchanged; source-role exceptions and ambiguous fill selection are unsupported.
+
+Local receipt acceptance uses a fail-closed eligibility check on every factor side
+in both approve and permits. Native measured provenance and complete current reviewer
+confirmation are the only accepted paths; no second confidence threshold is added.
+Invalid historical receipts remain on disk but cannot be used. Serialization and
+public PDF schemas are unchanged in this round. The POSIX reviewer and local URI
+platform contract is documented in ADR 0009 and the runbook.
