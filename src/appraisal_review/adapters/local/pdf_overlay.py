@@ -31,6 +31,36 @@ _DEFAULT_TEXT_STATE = {
     b"Ts": 0.0,
     b"Tr": 0.0,
 }
+_STANDARD_BASE14_FONTS = frozenset(
+    {
+        "Courier",
+        "Courier-Bold",
+        "Courier-BoldOblique",
+        "Courier-Oblique",
+        "Helvetica",
+        "Helvetica-Bold",
+        "Helvetica-BoldOblique",
+        "Helvetica-Oblique",
+        "Times-Bold",
+        "Times-BoldItalic",
+        "Times-Italic",
+        "Times-Roman",
+    }
+)
+_CUSTOM_FONT_METRIC_KEYS = frozenset(
+    {
+        "/CharProcs",
+        "/DescendantFonts",
+        "/FirstChar",
+        "/FontDescriptor",
+        "/FontMatrix",
+        "/LastChar",
+        "/ToUnicode",
+        "/Widths",
+    }
+)
+_PATH_FILL_OPERATORS = frozenset({b"f", b"F", b"f*", b"B", b"B*", b"b", b"b*"})
+_PATH_END_OPERATORS = _PATH_FILL_OPERATORS | frozenset({b"S", b"s", b"n"})
 
 
 def _multiply_matrices(left: list[float], right: list[float]) -> Matrix:
@@ -134,12 +164,20 @@ class TextShowOperation:
     bounds: BoundingBox
 
 
-def _font_name(font_dictionary: Any) -> str:
+def _font_name(font_dictionary: Any, text: str) -> str:
     if font_dictionary is None or "/BaseFont" not in font_dictionary:
         raise PDFFieldPlacementError("Text font cannot be measured deterministically")
     name = str(font_dictionary["/BaseFont"]).lstrip("/")
-    if "+" in name:
-        name = name.split("+", maxsplit=1)[1]
+    subtype = str(font_dictionary.get("/Subtype", ""))
+    encoding = str(font_dictionary.get("/Encoding", ""))
+    if (
+        subtype != "/Type1"
+        or name not in _STANDARD_BASE14_FONTS
+        or any(key in font_dictionary for key in _CUSTOM_FONT_METRIC_KEYS)
+        or encoding not in {"", "/WinAnsiEncoding", "/MacRomanEncoding"}
+        or any(ord(character) < 32 or ord(character) > 126 for character in text)
+    ):
+        raise PDFFieldPlacementError("Source PDF font metrics cannot be established safely")
     return name
 
 
@@ -153,7 +191,15 @@ def _text_bounds(
     if not clean_text or font_size <= 0:
         raise PDFFieldPlacementError("Text operation cannot be measured deterministically")
     try:
-        width = float(pdfmetrics.stringWidth(clean_text, _font_name(font_dictionary), font_size))
+        width = float(
+            pdfmetrics.stringWidth(
+                clean_text,
+                _font_name(font_dictionary, clean_text),
+                font_size,
+            )
+        )
+    except PDFFieldPlacementError:
+        raise
     except (KeyError, TypeError, ValueError) as error:
         raise PDFFieldPlacementError("Text font cannot be measured deterministically") from error
     local_corners = (
@@ -174,6 +220,7 @@ def inspect_text_show_operations(page: PageObject) -> list[TextShowOperation]:
     if content is None:
         return []
     _reject_unsupported_text_geometry(content.operations)
+    _validate_page_font_resources(page)
     if any(operator == b"Do" for _, operator in content.operations):
         raise PDFFieldPlacementError("Text inside page XObjects is unsupported for correction")
 
@@ -227,6 +274,21 @@ def inspect_text_show_operations(page: PageObject) -> list[TextShowOperation]:
     return runs
 
 
+def _validate_page_font_resources(page: PageObject) -> None:
+    """Reject correction when any direct page font has untrusted metrics."""
+    try:
+        resources = page.get("/Resources", {}).get_object()
+        fonts = resources.get("/Font", {}).get_object()
+        for reference in fonts.values():
+            _font_name(reference.get_object(), "A")
+    except PDFFieldPlacementError:
+        raise
+    except Exception as error:
+        raise PDFFieldPlacementError(
+            "Source PDF font metrics cannot be established safely"
+        ) from error
+
+
 def _reject_unsupported_text_geometry(operations: list[tuple[Any, bytes]]) -> None:
     """Fail closed for text state not represented by `_text_bounds`."""
     for operands, operator in operations:
@@ -253,13 +315,14 @@ def _reject_unsupported_text_geometry(operations: list[tuple[Any, bytes]]) -> No
 
 
 def visual_content_in_box(page: PageObject, crop_local_box: BoundingBox) -> bool:
-    """Return whether an image or annotation occupies the requested field box."""
+    """Return whether painted or annotated content occupies the field box."""
     geometry = PageGeometry.from_page(page)
     page_box = geometry.box_to_page_user_space(crop_local_box)
     content = page.get_contents()
     if content is not None:
         current: Matrix = (1.0, 0.0, 0.0, 1.0, 0.0, 0.0)
         stack: list[Matrix] = []
+        path_points: list[Point] = []
         for operands, operator in content.operations:
             if operator == b"q":
                 stack.append(current)
@@ -285,6 +348,26 @@ def visual_content_in_box(page: PageObject, crop_local_box: BoundingBox) -> bool
                 # unit square as occupancy, and fail closed if it does not give
                 # a trustworthy answer for the requested region.
                 return True
+            elif operator in {b"m", b"l"}:
+                path_points.extend(_path_points(operands, current, pairs=1))
+            elif operator == b"c":
+                path_points.extend(_path_points(operands, current, pairs=3))
+            elif operator in {b"v", b"y"}:
+                path_points.extend(_path_points(operands, current, pairs=2))
+            elif operator == b"re":
+                path_points.extend(_rectangle_points(operands, current))
+            elif operator in _PATH_FILL_OPERATORS:
+                if not path_points:
+                    raise PDFFieldPlacementError(
+                        "PDF painted path geometry cannot be established safely"
+                    )
+                if _boxes_intersect(page_box, _points_bounds(path_points)):
+                    return True
+                path_points = []
+            elif operator in _PATH_END_OPERATORS:
+                path_points = []
+            elif operator == b"sh":
+                raise PDFFieldPlacementError("PDF shading geometry cannot be established safely")
         if stack:
             raise PDFFieldPlacementError("PDF graphics state is unbalanced")
 
@@ -321,6 +404,47 @@ def _unit_square_bounds(matrix: Matrix) -> BoundingBox:
     ]
     xs = [point[0] for point in corners]
     ys = [point[1] for point in corners]
+    return (min(xs), min(ys), max(xs), max(ys))
+
+
+def _path_points(operands: list[Any], matrix: Matrix, *, pairs: int) -> list[Point]:
+    try:
+        values = [float(value) for value in operands]
+        if len(values) != pairs * 2 or not all(math.isfinite(value) for value in values):
+            raise ValueError
+    except (TypeError, ValueError) as error:
+        raise PDFFieldPlacementError(
+            "PDF painted path geometry cannot be established safely"
+        ) from error
+    return [
+        _transform_point(matrix, (values[index], values[index + 1]))
+        for index in range(0, len(values), 2)
+    ]
+
+
+def _rectangle_points(operands: list[Any], matrix: Matrix) -> list[Point]:
+    try:
+        x, y, width, height = (float(value) for value in operands)
+        if not all(math.isfinite(value) for value in (x, y, width, height)):
+            raise ValueError
+    except (TypeError, ValueError) as error:
+        raise PDFFieldPlacementError(
+            "PDF painted path geometry cannot be established safely"
+        ) from error
+    return [
+        _transform_point(matrix, point)
+        for point in (
+            (x, y),
+            (x + width, y),
+            (x, y + height),
+            (x + width, y + height),
+        )
+    ]
+
+
+def _points_bounds(points: list[Point]) -> BoundingBox:
+    xs = [point[0] for point in points]
+    ys = [point[1] for point in points]
     return (min(xs), min(ys), max(xs), max(ys))
 
 

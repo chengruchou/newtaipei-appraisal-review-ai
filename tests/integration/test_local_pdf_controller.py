@@ -3,12 +3,14 @@ from __future__ import annotations
 import asyncio
 import hashlib
 from datetime import date
+from io import BytesIO
 from pathlib import Path
 from typing import Literal
 
 import pytest
 import reportlab
-from pypdf import PdfReader
+from pypdf import PdfReader, PdfWriter
+from pypdf.generic import ArrayObject, NameObject, NumberObject
 from reportlab.pdfgen.canvas import Canvas
 
 from appraisal_review.adapters.local.object_access import local_path_from_uri
@@ -124,12 +126,40 @@ def _vera_font() -> Path:
     return Path(reportlab.__file__).parent / "fonts" / "Vera.ttf"
 
 
-def _write_form(path: Path, *, occupied: bool = False) -> None:
+def _write_form(
+    path: Path,
+    *,
+    occupied: bool = False,
+    integrity_gap: Literal["painted_vector", "custom_font_widths"] | None = None,
+) -> None:
     canvas = Canvas(str(path), pagesize=(320, 220))
     canvas.drawString(20, 190, "SYNTHETIC FORM")
+    canvas.rect(
+        160,
+        75,
+        130,
+        35,
+        fill=1 if integrity_gap == "painted_vector" else 0,
+        stroke=0 if integrity_gap == "painted_vector" else 1,
+    )
     if occupied:
         canvas.drawString(175, 90, "OCCUPIED")
+    if integrity_gap == "custom_font_widths":
+        canvas.drawString(55, 68, "STALE")
     canvas.save()
+    if integrity_gap == "custom_font_widths":
+        writer = PdfWriter(clone_from=PdfReader(BytesIO(path.read_bytes())))
+        fonts = writer.pages[0]["/Resources"]["/Font"].get_object().values()
+        font = next(
+            reference.get_object()
+            for reference in fonts
+            if str(reference.get_object().get("/BaseFont")) == "/Helvetica"
+        )
+        font[NameObject("/FirstChar")] = NumberObject(0)
+        font[NameObject("/LastChar")] = NumberObject(255)
+        font[NameObject("/Widths")] = ArrayObject([NumberObject(2000) for _ in range(256)])
+        with path.open("wb") as output:
+            writer.write(output)
 
 
 def _write_data_source(path: Path) -> None:
@@ -143,7 +173,14 @@ def _write_data_source(path: Path) -> None:
     criteria.save()
 
 
-def _request(data_source: Path, template: Path, destination: Path) -> AgentReviewRequest:
+def _request(
+    data_source: Path,
+    template: Path,
+    destination: Path,
+    *,
+    operation: Literal["fill_blank", "correct"] = "fill_blank",
+    box: tuple[float, float, float, float] = (160, 75, 290, 110),
+) -> AgentReviewRequest:
     return AgentReviewRequest(
         case_id="integration-case",
         criteria_document_uri=(data_source.parent / "integration-criteria.pdf").as_uri(),
@@ -156,8 +193,8 @@ def _request(data_source: Path, template: Path, destination: Path) -> AgentRevie
                 PDFField(
                     field_id="road-adjustment",
                     page=1,
-                    bounding_box=(160, 75, 290, 110),
-                    operation="fill_blank",
+                    bounding_box=box,
+                    operation=operation,
                     value_ref=PDFValueRef(
                         scope="regional",
                         target_id="target",
@@ -577,5 +614,42 @@ def test_real_writer_error_retains_review_and_publishes_nothing(tmp_path: Path) 
     assert result.pdf_error.code is PDFErrorCode.PLACEMENT
     assert result.output_pdf_uri is None
     assert result.pdf_result is None
+    assert not destination.exists()
+    assert not list(tmp_path.glob(".form-completed.pdf.*.tmp"))
+
+
+@pytest.mark.parametrize("integrity_gap", ["painted_vector", "custom_font_widths"])
+def test_controller_rejects_untrusted_paint_or_font_before_publication(
+    tmp_path: Path,
+    integrity_gap: Literal["painted_vector", "custom_font_widths"],
+) -> None:
+    data_source = tmp_path / "evaluation-basis.pdf"
+    template = tmp_path / f"{integrity_gap}.pdf"
+    destination = tmp_path / "form-completed.pdf"
+    _write_data_source(data_source)
+    _write_form(template, integrity_gap=integrity_gap)
+    data_source_bytes = data_source.read_bytes()
+    template_bytes = template.read_bytes()
+    request = _request(
+        data_source,
+        template,
+        destination,
+        operation="fill_blank" if integrity_gap == "painted_vector" else "correct",
+        box=(160, 75, 290, 110) if integrity_gap == "painted_vector" else (45, 55, 110, 90),
+    )
+    assert request.field_map is not None
+    writer = _writer(template, request.field_map)
+    adapters, _, _ = _adapters(request, writer)
+
+    result = _run(adapters, request)
+
+    assert len(writer.calls) == 1
+    assert result.status is WorkflowStatus.FAILED
+    assert result.pdf_error is not None
+    assert result.pdf_error.code is PDFErrorCode.PLACEMENT
+    assert result.output_pdf_uri is None
+    assert result.pdf_result is None
+    assert data_source.read_bytes() == data_source_bytes
+    assert template.read_bytes() == template_bytes
     assert not destination.exists()
     assert not list(tmp_path.glob(".form-completed.pdf.*.tmp"))

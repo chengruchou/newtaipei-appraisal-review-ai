@@ -12,7 +12,7 @@ from fontTools.pens.ttGlyphPen import TTGlyphPen
 from PIL import Image
 from pypdf import PdfReader, PdfWriter
 from pypdf.annotations import FreeText
-from pypdf.generic import FloatObject, NameObject, RectangleObject
+from pypdf.generic import ArrayObject, FloatObject, NameObject, NumberObject, RectangleObject
 from reportlab.pdfgen.canvas import Canvas
 
 from appraisal_review.adapters.local.pdf_config import (
@@ -165,10 +165,35 @@ def write_unsafe_source(path: Path, kind: str) -> None:
         text.setHorizScale(300)
         text.textOut("STALE")
         canvas.drawText(text)
-    else:
+    elif kind == "inline_image":
         canvas.drawInlineImage(Image.new("RGB", (8, 8), "black"), 180, 105, 40, 20)
+    elif kind == "painted_vector":
+        canvas.rect(45, 55, 90, 35, fill=1, stroke=0)
+    elif kind == "table_border":
+        canvas.rect(45, 55, 90, 35, fill=0, stroke=1)
+    elif kind == "custom_font_widths":
+        canvas.drawString(55, 68, "STALE")
+    else:
+        raise ValueError("Unsupported synthetic PDF fixture")
     canvas.save()
     path.write_bytes(stream.getvalue())
+    if kind == "custom_font_widths":
+        replace_helvetica_widths(path)
+
+
+def replace_helvetica_widths(path: Path) -> None:
+    writer = PdfWriter(clone_from=PdfReader(BytesIO(path.read_bytes())))
+    fonts = writer.pages[0]["/Resources"]["/Font"].get_object().values()
+    font = next(
+        reference.get_object()
+        for reference in fonts
+        if str(reference.get_object().get("/BaseFont")) == "/Helvetica"
+    )
+    font[NameObject("/FirstChar")] = NumberObject(0)
+    font[NameObject("/LastChar")] = NumberObject(255)
+    font[NameObject("/Widths")] = ArrayObject([NumberObject(2000) for _ in range(256)])
+    with path.open("wb") as output:
+        writer.write(output)
 
 
 def add_reference_page(path: Path) -> None:
@@ -497,6 +522,58 @@ def test_local_writer_rejects_ambiguous_occupancy_without_publication(
 
     assert not destination.exists()
     assert not list(tmp_path.glob(".published.pdf.*.tmp"))
+
+
+@pytest.mark.parametrize("kind", ["painted_vector", "custom_font_widths"])
+def test_local_writer_rejects_untrusted_paint_or_font_before_publication(
+    tmp_path: Path, kind: str
+) -> None:
+    source = tmp_path / f"{kind}.pdf"
+    destination = tmp_path / "published.pdf"
+    write_unsafe_source(source, kind)
+    source_bytes = source.read_bytes()
+    request = write_request(source)
+    request.field_map.fields = [
+        pdf_field(
+            "unsafe",
+            (45, 55, 135, 90) if kind == "painted_vector" else (45, 55, 110, 90),
+            "fill_blank" if kind == "painted_vector" else "correct",
+        )
+    ]
+    writer = LocalPDFWriter(
+        render_config=render_config(),
+        template_policy=trusted_policy(source, request.field_map),
+    )
+
+    expected_error = (
+        "occupied"
+        if kind == "painted_vector"
+        else "Source PDF font metrics cannot be established safely"
+    )
+    with pytest.raises(PDFFieldPlacementError, match=expected_error):
+        asyncio.run(writer.write_pdf(request))
+
+    assert source.read_bytes() == source_bytes
+    assert not destination.exists()
+    assert not list(tmp_path.glob(".published.pdf.*.tmp"))
+
+
+def test_local_writer_fills_empty_cell_with_ordinary_table_border(tmp_path: Path) -> None:
+    source = tmp_path / "table-border.pdf"
+    destination = tmp_path / "published.pdf"
+    write_unsafe_source(source, "table_border")
+    request = write_request(source)
+    request.field_map.fields = [pdf_field("bordered-blank", (45, 55, 135, 90), "fill_blank")]
+    writer = LocalPDFWriter(
+        render_config=render_config(),
+        template_policy=trusted_policy(source, request.field_map),
+    )
+
+    result = asyncio.run(writer.write_pdf(request))
+
+    assert result.written_field_ids == ["bordered-blank"]
+    assert destination.is_file()
+    assert "+5.00%" in PdfReader(destination).pages[0].extract_text()
 
 
 def test_local_writer_preserves_reference_only_page_structure(tmp_path: Path) -> None:
