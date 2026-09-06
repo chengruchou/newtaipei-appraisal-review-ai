@@ -213,7 +213,7 @@ def test_correctly_bound_distinct_cells_and_multilevel_dag_pass():
 @pytest.mark.parametrize(
     "uri", ["file://localhost/synthetic/verified.pdf", "file:///synthetic/./verified.pdf"]
 )
-def test_equivalent_request_uri_uses_reviewed_forms_identity_for_writer(uri):
+def test_equivalent_case_uri_does_not_replace_explicit_template_for_writer(uri):
     material = synthetic_material()
     request = synthetic_request("completed")
     original = request.case_document_uri
@@ -235,7 +235,7 @@ def test_equivalent_request_uri_uses_reviewed_forms_identity_for_writer(uri):
     )
     run = asyncio.run(controller.review(request))
     assert run.verification.can_complete and run.artifact_status == "simulated"
-    assert writer.write_pdf.call_args.args[0].source_uri == original
+    assert writer.write_pdf.call_args.args[0].source_uri == request.pdf_template_uri
     assert run.output_pdf_uri is None
 
 
@@ -379,5 +379,5 @@ def test_parser_equivalence_preserves_file_semantics_and_literal_s3_keys(parsed_
     assert run.verification.can_complete is allowed
     assert writer.write_pdf.call_count == int(allowed)
     if allowed:
-        assert writer.write_pdf.call_args.args[0].source_uri == parsed_uri
+        assert writer.write_pdf.call_args.args[0].source_uri == request.pdf_template_uri
     assert run.output_pdf_uri is None
