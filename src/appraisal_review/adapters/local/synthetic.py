@@ -47,6 +47,7 @@ CRITERIA_URI = "file:///synthetic/criteria.pdf"
 CASE_URI = "file:///synthetic/verified.pdf"
 UNRESOLVED_URI = "file:///synthetic/needs-review.pdf"
 UNRESOLVED_CRITERIA_URI = "file:///synthetic/needs-review-criteria.pdf"
+TEMPLATE_URI = "file:///synthetic/form-template.pdf"
 
 
 def synthetic_material(document_uri: str = CASE_URI) -> ReviewMaterial:
@@ -295,6 +296,7 @@ def synthetic_request(
         if scenario == "needs_review"
         else CRITERIA_URI,
         case_document_uri=UNRESOLVED_URI if scenario == "needs_review" else CASE_URI,
+        pdf_template_uri=None if scenario == "verified" else TEMPLATE_URI,
         output_pdf_uri=None if scenario == "verified" else "file:///synthetic/output.pdf",
         field_map=None
         if scenario == "verified"

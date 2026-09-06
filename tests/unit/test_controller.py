@@ -97,9 +97,11 @@ class Extractor:
 class Writer:
     def __init__(self) -> None:
         self.called = False
+        self.request: PDFWriteRequest | None = None
 
     async def write_pdf(self, request: PDFWriteRequest) -> PDFWriteResult:
         self.called = True
+        self.request = request
         return PDFWriteResult(
             output_uri=request.destination_uri,
             page_count=1,
@@ -143,6 +145,7 @@ def test_missing_evidence_blocks_pdf_writing() -> None:
         case_id="case-1",
         criteria_document_uri="criteria.pdf",
         case_document_uri="file:///synthetic/case.pdf",
+        pdf_template_uri="file:///synthetic/template.pdf",
         output_pdf_uri="file:///synthetic/output.pdf",
         field_map=PDFFieldMap(template_id="v1", fields=[]),
     )
@@ -170,6 +173,8 @@ def test_verified_case_can_reach_completed_pdf_state() -> None:
     assert writer.called
     assert result.artifact_status == "written"
     assert result.case_review.status.value == "verified"
+    assert writer.request is not None
+    assert writer.request.source_uri == "file:///synthetic/form-template.pdf"
     assert [event.sequence for event in result.audit_events] == list(
         range(1, len(result.audit_events) + 1)
     )
