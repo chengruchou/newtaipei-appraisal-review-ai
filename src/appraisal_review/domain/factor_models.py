@@ -316,6 +316,7 @@ class AgentReviewRequest(StrictFactorModel):
     case_id: Identifier
     criteria_document_uri: Identifier
     case_document_uri: Identifier
+    pdf_template_uri: Identifier | None = None
     output_pdf_uri: Identifier | None = None
     field_map: PDFFieldMap | None = None
 

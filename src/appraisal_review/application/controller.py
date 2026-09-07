@@ -361,14 +361,14 @@ class ReviewAgentController:
                 artifact_status="unavailable",
                 audit_events=events,
             )
-        if request.field_map is None:
+        if request.pdf_template_uri is None or request.field_map is None:
             await self._record(
                 events,
                 request.case_id,
                 "pdf_write_blocked",
                 WorkflowStatus.FAILED,
                 "write_pdf",
-                details={"reason": "PDF writer and field map are required"},
+                details={"reason": "PDF writer, template, and field map are required"},
             )
             return AgentReviewRun(
                 case_id=request.case_id,
@@ -381,11 +381,27 @@ class ReviewAgentController:
             )
 
         try:
-            pdf_request = PDFWriteRequest(
-                source_uri=case_document.source.uri
-                if case_document.source
+            protected_source_uris = [
+                criteria.source.uri if criteria.source is not None else criteria.document_uri,
+                case_document.source.uri
+                if case_document.source is not None
                 else case_document.document_uri,
+            ]
+            if isinstance(rule_set, ReviewPolicy):
+                protected_source_uris.extend(
+                    document.uri for document in rule_set.registry.documents
+                )
+            protected_source_uris = list(
+                dict.fromkeys(
+                    uri
+                    for uri in protected_source_uris
+                    if document_identity(uri) != document_identity(request.pdf_template_uri)
+                )
+            )
+            pdf_request = PDFWriteRequest(
+                source_uri=request.pdf_template_uri,
                 destination_uri=request.output_pdf_uri,
+                protected_source_uris=protected_source_uris,
                 result=result,
                 field_map=request.field_map,
             )
@@ -405,18 +421,11 @@ class ReviewAgentController:
             if not isinstance(raw_output, PDFWriteResult):
                 raise InvalidPDFResultError("Writer must return PDFWriteResult")
             output = PDFWriteResult.model_validate(raw_output.model_dump())
-            if (
-                document_identity(output.output_uri)
-                != document_identity(pdf_request.destination_uri)
-                or output.page_count
-                != (
-                    len(case_document.source.pages)
-                    if case_document.source
-                    else case_document.page_count
-                )
-                or set(output.written_field_ids)
-                != {f.field_id for f in pdf_request.field_map.fields}
-            ):
+            if document_identity(output.output_uri) != document_identity(
+                pdf_request.destination_uri
+            ) or set(output.written_field_ids) != {
+                f.field_id for f in pdf_request.field_map.fields
+            }:
                 raise InvalidPDFResultError("Writer result does not match the write request")
         except PDFWriteError as error:
             return await self._pdf_failed(

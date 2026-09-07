@@ -68,7 +68,7 @@ python scripts/http_smoke.py
 from appraisal_review.application.bootstrap import ReviewAdapters, build_controller
 from appraisal_review.config import Settings
 
-# Supply actual implementations, including B's writer when available.
+# Supply actual implementations, including the local or S3 PDF writer when enabled.
 # adapters = ReviewAdapters(mode="local", parser=..., fact_extractor=...,
 #                          rule_provider=..., pdf_writer=...)
 # controller = build_controller(Settings(), adapters=adapters)
@@ -79,11 +79,13 @@ get_controller_factory dependency override. The invocation adapter accepts the
 same factory: async invoke(payload, controller_factory=...). Domain request/run
 models are shared, not reconstructed into a different transport schema.
 
-B imports PDFWriteRequest/PDFWriteResult and errors from domain.pdf_models,
-and PDFWriter from ports.pdf. FakePDFWriter in adapters.local.fake_pdf is the
-contract test double. Inject B's implementation into ReviewAdapters.pdf_writer;
-application/controller.py invokes it after verification.can_complete. B must
-perform real output validation before returning; A validates metadata only.
+The concrete writers import PDFWriteRequest/PDFWriteResult and errors from
+domain.pdf_models, and PDFWriter from ports.pdf. FakePDFWriter in
+adapters.local.fake_pdf remains the contract test double. Inject LocalPDFWriter
+or S3PDFWriter into ReviewAdapters.pdf_writer; application/controller.py invokes
+it after verification.can_complete. Concrete writers validate the reopened output
+before returning; the controller validates metadata only. Requests identify
+`case_document_uri` for extraction and a separate `pdf_template_uri` for writing.
 The PDF operations and value_ref rules are in [PDF contract](pdf-contract.md).
 
 AWS adapters should construct clients explicitly in their AWS composition layer

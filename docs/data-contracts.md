@@ -7,9 +7,18 @@ existing models from unimplemented review semantics.
 ## Complete review schema 2.0
 
 `domain.factor_models` owns ReviewPolicy, CaseFacts, ReviewMaterial and
-CaseReviewResult. `domain.review_contracts` owns explicit case/comparison identity,
-review inventory, original ObservedValue, reliability, findings and coverage.
-`domain.document_models` owns the typed source registry and exact citations.
+CaseReviewResult together with AgentReviewRequest, AgentReviewRun, observations,
+rule sets and factor results. `domain.review_contracts` owns explicit
+case/comparison identity, review inventory, original ObservedValue, reliability,
+findings and coverage. `domain.document_models` owns the typed source registry
+and exact citations. AgentReviewRequest has nonempty case_id,
+criteria_document_uri and case_document_uri, plus optional pdf_template_uri,
+output_pdf_uri and field_map. `case_document_uri` is parsed for case facts;
+`pdf_template_uri` is a separate, preserved form template used only as the PDF
+writer source. The controller never substitutes the case-data document for a
+missing template.
+It describes an internal/local invocation; the future cloud API authorizes
+external document IDs before resolving these URIs (#9).
 
 CaseReviewResult contains every scoped comparison; AgentReviewRun.review is the
 compatibility projection only when exactly one comparison exists. Its
@@ -79,7 +88,17 @@ ports.pdf contains the only PDFWriter protocol. Existing factor_models and
 ports.workflow imports are compatibility aliases. pdf_types holds shared value
 objects below factor_models in the import graph, preventing circular imports.
 
-The request carries source/destination URI, one bound FactorReviewResult and field map.
+The writer request carries source/destination URI, protected review-source URIs,
+one bound FactorReviewResult and field map. The destination cannot share a
+canonical or provider-level identity with the template or any selected criteria,
+forms, reference, or brief input.
+The controller maps `AgentReviewRequest.pdf_template_uri` to the writer's
+`source_uri`; `case_document_uri` remains upstream extraction evidence and is not
+opened by the writer. Output page count therefore belongs to the template artifact,
+not the parsed case-data document. The provider-local template policy binds exact
+template bytes and the canonical complete field map with SHA-256 values. See
+[ADR 0010](adr/0010-separate-pdf-template-source.md) and
+[ADR 0012](adr/0012-bind-pdf-inputs-and-template-policy.md).
 Only after verification.can_complete may the controller construct it. Every
 written field has an explicit value_ref; mixed comparison contexts, duplicate
 IDs, missing values, invalid bounds or conflicting URIs fail explicitly.

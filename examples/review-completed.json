@@ -2,6 +2,7 @@
   "case_id": "synthetic-case",
   "criteria_document_uri": "file:///synthetic/criteria.pdf",
   "case_document_uri": "file:///synthetic/verified.pdf",
+  "pdf_template_uri": "file:///synthetic/form-template.pdf",
   "output_pdf_uri": "file:///synthetic/output.pdf",
   "field_map": {
     "template_id": "synthetic-form",

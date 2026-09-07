@@ -2,30 +2,29 @@
 
 ## Merged delivery snapshot (2026-09-06)
 
-Inspected `main`: `fefce2f2bd7f9fe60a8f63422714f5b993365ff9`.
-PR #15 and PR #16 are merged, alongside the earlier foundation #10, entry #13
-and Runtime preparation #14. Implementation is available from one main branch;
-the original stacked heads below remain historical verification references.
+Inspected `origin/main`: `0e9a5832a84c95fd03f1084847e3b6181ca93f03`.
+PRs #15, #16 and #18 are merged, alongside the earlier foundation #10, entry
+#13 and Runtime preparation #14. The PDF writer commits are rebased onto that
+snapshot; the original stacked heads below remain historical verification references.
 
 | Delivery | Final implementation head | Merge commit |
 |---|---|---|
 | [Review #15](https://github.com/chengruchou/newtaipei-appraisal-review-ai/pull/15) | `a303ed5bd869e4b493d4688b47b44bd7e2c69690` | `3cdc33a822be57707416959910e86bac4029e0cc` |
 | [Extraction #16](https://github.com/chengruchou/newtaipei-appraisal-review-ai/pull/16) | `cacb85b8ae587b74167d1717383aa87703eb6bb8` | `fefce2f2bd7f9fe60a8f63422714f5b993365ff9` |
+| Architecture alignment #18 | `33531c7` | `0e9a5832a84c95fd03f1084847e3b6181ca93f03` |
 
-The inspected main tree is identical to the final #16 tree; all 131 repository
-blobs were checked against that snapshot before this documentation update.
 Historical head validation: #15 had 323 tests plus 8 cloud tests
 ([CI](https://github.com/chengruchou/newtaipei-appraisal-review-ai/actions/runs/34019136768));
 #16 had 402 tests plus 8 cloud tests
 ([CI](https://github.com/chengruchou/newtaipei-appraisal-review-ai/actions/runs/34019738902)).
 These counts are previous implementation evidence, not new live-model, complete
-human-case or cloud acceptance. This update changes documentation only.
+human-case or cloud acceptance.
 
-Formal writer #5 is still open and no production writer exists in this snapshot.
-Durable cloud jobs #9, controlled actions/decision traces/human tasks #17 and the
-web workbench remain planned. Actual Bedrock accuracy, real rule approval and
-complete-case validation are separate remaining acceptance steps. See the
-[delivery plan](mvp-plan.md) for dependencies and proposed parallel workstreams.
+The branch implements the provider-local formal writer core and an injected-client
+S3 transfer wrapper for #5. Runtime selection, approved production field maps and
+fonts, live S3 acceptance and production deployment remain open. Durable cloud
+jobs #9, controlled actions/decision traces/human tasks #17 and the web workbench
+remain planned. See the [delivery plan](mvp-plan.md) for dependencies.
 
 ## Requirement map
 
@@ -44,9 +43,11 @@ The #8/#7 implementation and correction evidence is recorded below as history.
 | Legacy behavior | /health, /v1/validate | #4 | Actual HTTP findings equality and wrong-total test |
 | Legacy detail and review 422/503/500 schema | EntryProblemResponse, routed validation handler | #4, PR #13 | test_api_error_contract.py; JSON Schema checks on actual responses, invocation parity |
 | Candidate/missing/low-confidence/unknown factors block PDF | Engine/verifier + Controller | #4/#8 | PDF boundary and complete-review regressions; #8 extends independent verification |
-| Write once, malformed writer output cannot complete | Controller + FakePDFWriter | #4/#6 | URI/count/field/exception tests, warnings retained |
+| Write once, malformed writer output cannot complete | Controller + PDFWriter | #4/#5/#6 | Boundary tests plus real LocalPDFWriter composition integration; URI/field/error behavior and warnings retained |
 | Runnable synthetic fixture | adapters/local/synthetic.py, demo.py, examples/ | #4 | verified/completed/needs_review scenario names; completed scenario yields verified/simulated, no file |
-| Actual PDF correction/storage | B's future PDF adapters | #5 | Planned; no writer or live S3 integration |
+| Local PDF correction/storage | adapters/local/pdf_*.py and object_access.py | #5 | Synthetic PDFs prove real removal, embedded-font output, reopen verification, protected reference pages and atomic publication; explicit controller injection tested, automatic production selection remains unconfigured |
+| S3 PDF transfer | adapters/aws/storage/s3_object_store.py and adapters/aws/pdf/s3_pdf_writer.py | #5 | Injected-client tests prove literal keys, ordered transfer, conditional no-overwrite, content type, suppression and cleanup; no live S3 claim |
+| PDF source/mutation/publication decisions | ADR 0010 and ADR 0011 | #5/#6 | Separate data/template identities; conservative correction, explicit fonts and atomic/conditional publication documented for human review |
 | Chinese text/marks/coords and Bedrock extraction | Native parser, bounded Converse adapter, material provider | #7 | Implemented; native subset checked, live model accuracy pending |
 | Approval provenance/applicability | Signed local receipts and exact case resolver | #7/#8 | Implemented and synthetic tested; real approval pending |
 | Observed vs expected, sums and copied totals | CaseReviewer and shared arithmetic | #8 | Controller regression tests; complete live case acceptance pending |
@@ -81,6 +82,17 @@ The #8/#7 implementation and correction evidence is recorded below as history.
 - At the Member A delivery, domain/verification.py, adapters/local/audit.py and
   tests/unit/test_verification.py were byte-identical to its origin/main baseline.
   The later #8 revision explicitly changes the verifier and its tests.
+- The PDF writer commit range does not modify domain/verification.py,
+  adapters/local/audit.py or tests/unit/test_verification.py relative to the
+  rebased origin/main.
+- Post-rebase controller/PDF integration and boundary tests pass against the
+  schema-2 source, authorization and coverage gates. The complete suite and
+  platform checks are rerun before publication.
+- The submission-check tests now write Unicode negative fixtures as UTF-8 and compare the
+  checker's portable POSIX path labels on Windows. All 49 submission-check tests pass. The
+  pending-snapshot gate passes for `feat/pdf_writer`, configured Git identity, HEAD, index,
+  and every tracked or untracked non-ignored working file. The gate is rerun over each
+  categorized outgoing commit before publication.
 
 ## Historical Member A source and live-test limits
 
@@ -88,8 +100,13 @@ Source PDFs were read directly from the supplied Downloads files/ZIP without
 modification or repository copies. The forms include mixed page sizes and no
 AcroForm widgets; regional/individual road examples were checked against the
 rendered source tables. Only future acceptance descriptions and synthetic data
-are committed. No real document extraction, font/rendering, PDF correction,
-Bedrock inference, live S3 or deployed AgentCore was validated in A.
+are committed. A did not validate real document extraction or PDF mutation. The
+current local-writer branch validates rendering, correction and publication only
+against generated synthetic PDFs with ReportLab's redistributable Vera test font
+and an original test-time-generated minimal TrueType font that covers one CJK glyph;
+it has not validated the ignored real template, a production CJK font, Bedrock
+inference, live S3 or deployed AgentCore. S3 wrapper evidence uses an injected
+in-memory client and does not require or discover AWS credentials.
 
 ## Historical submission inspection (foundation and Member A)
 

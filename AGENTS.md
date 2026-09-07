@@ -72,6 +72,30 @@ and pytest when available and report failures honestly.
 Changes to a data contract or trust boundary require updated documentation and,
 when the decision is durable, an ADR under `docs/adr/`.
 
+## Commit and remote publication approval
+
+- Implementation instructions such as "start fixing," "continue," or "make the
+  changes" authorize only local working-tree edits and relevant local checks.
+  Never infer permission to commit, push, publish, or mutate remote state from
+  them.
+- Do not create a Git commit unless the user explicitly asks for or approves
+  committing the current changes.
+- Do not push commits, branches, tags, or other refs unless the user explicitly
+  approves that specific push and its target.
+- Never create, update, or otherwise mutate a pull request without the user's
+  explicit approval for the specific remote action. This includes opening or
+  closing a pull request; changing its title, body, base, or head; posting,
+  editing, replying to, resolving, or deleting comments and review threads;
+  submitting reviews; requesting reviewers; changing labels, assignees, or
+  milestones; rerunning CI; and merging.
+- Treat commit approval, push approval, and pull-request interaction approval as
+  separate permission boundaries. Approval for one does not imply approval for
+  another, and earlier approval applies only to the stated action and scope.
+- Read-only inspection of pull-request status, comments, reviews, diffs, and CI
+  results is allowed when it is relevant to the user's request. After local
+  changes and checks are complete, report what is ready and wait for explicit
+  approval before any commit or remote write.
+
 ## No AI attribution in submitted material
 
 - Do not include AI attribution in commits, pull requests, issues, comments,
