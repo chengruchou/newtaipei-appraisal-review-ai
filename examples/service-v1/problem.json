@@ -1,0 +1,5 @@
+{
+  "schema_version": "service-v1",
+  "code": "version_conflict",
+  "message": "Service operation could not be completed."
+}

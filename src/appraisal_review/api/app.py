@@ -6,7 +6,11 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict
 
 from appraisal_review.api.routes.reviews import review, router
-from appraisal_review.application.bootstrap import ReviewAdapters, build_controller
+from appraisal_review.application.bootstrap import (
+    ControllerFactory,
+    ReviewAdapters,
+    build_controller,
+)
 from appraisal_review.application.entrypoint import EntryError, EntryProblem
 from appraisal_review.config import Settings
 from appraisal_review.domain.models import CanonicalCase, ReviewResult, RuleSet
@@ -29,14 +33,21 @@ def validate(request: ValidationRequest) -> ReviewResult:
 
 
 def create_app(
-    *, settings: Settings | None = None, adapters: ReviewAdapters | None = None
+    *,
+    settings: Settings | None = None,
+    adapters: ReviewAdapters | None = None,
+    controller_factory: ControllerFactory | None = None,
 ) -> FastAPI:
+    if controller_factory is not None and (settings is not None or adapters is not None):
+        raise ValueError("Choose an explicit factory or settings/adapters, not both")
     app = FastAPI(
         title="Agentic AI Real Estate Valuation Reviewer",
         version="0.1.0",
         description="Synchronous factor review entry; document extraction requires configuration.",
     )
-    app.state.controller_factory = lambda: build_controller(settings, adapters=adapters)
+    app.state.controller_factory = controller_factory or (
+        lambda: build_controller(settings, adapters=adapters)
+    )
     app.add_api_route("/health", health, methods=["GET"])
     app.add_api_route("/v1/validate", validate, methods=["POST"], response_model=ReviewResult)
     app.include_router(router)

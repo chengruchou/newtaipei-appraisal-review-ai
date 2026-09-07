@@ -1,0 +1,52 @@
+{
+  "schema_version": "service-v1",
+  "run": {
+    "schema_version": "service-v1",
+    "run_id": "00000000-0000-0000-0000-000000000001",
+    "revision": {
+      "schema_version": "service-v1",
+      "case_id": "synthetic-case",
+      "revision_id": "fixture-r1",
+      "material_digest": "0445917fd60f720359309b58c8edff03c93c929c7270f4ebfde304545595c124"
+    },
+    "attempt_id": null,
+    "runtime_session_id": null
+  },
+  "result_version": 1,
+  "execution_status": "succeeded",
+  "business_status": "needs_review",
+  "artifact_status": "not_requested",
+  "findings": [
+    {
+      "id": "fixture-confirmation",
+      "kind": "confirmation",
+      "status": "needs_review",
+      "context": null,
+      "factor_id": null,
+      "rule_id": null,
+      "rule_version": null,
+      "observed": null,
+      "expected": null,
+      "evidence": [
+        {
+          "document_id": "synthetic-forms",
+          "content_hash": "37f1b0a1872d76a68cd0a482eb4aeb0ce4f3dae564f5e23340b470cef41835ab",
+          "version": "1",
+          "page": 1,
+          "region_id": "body",
+          "bbox": [
+            1.0,
+            2.0,
+            90.0,
+            40.0
+          ],
+          "excerpt": "Synthetic target 10 m; comparable 9 m; rate 5"
+        }
+      ],
+      "trace": "Synthetic observation requires explicit human confirmation."
+    }
+  ],
+  "artifacts": [],
+  "problem": null,
+  "durable": false
+}

@@ -196,9 +196,11 @@ appearance/font embedding, and structural fingerprints of reference-only page
 content, resources and annotations. A failed check publishes no new destination;
 an existing destination is replaced only after verification when overwrite was
 explicitly configured. A generated-PDF integration test explicitly injects this
-adapter as `ReviewAdapters.pdf_writer` through `build_controller`. Production
-runtime construction remains unconfigured until an approved template policy,
-field map and CJK font are available.
+adapter as `ReviewAdapters.pdf_writer` through `build_controller`. This core is
+merged in #19. M0 adds explicit local factory configuration, real parser/material/
+authorizer integration and a separate manifest envelope; see the
+[local service runbook](local-service-runbook.md). Production Runtime wiring and
+approved formal field maps/CJK fonts remain open.
 
 ## S3 transfer wrapper
 
@@ -223,8 +225,8 @@ success and failure.
 
 Current evidence uses an injected in-memory client and real synthetic local PDF
 rendering. No AWS credentials are required, and no live S3 transfer or cloud
-atomicity claim is made. Runtime client construction and application composition
-remain separate work.
+atomicity claim is made. AWS Runtime client construction and composition remain
+separate D work; M0 local composition does not construct S3 clients.
 
 The conservative correction, font and publication choices are recorded in
 [ADR 0011](adr/0011-conservative-pdf-mutation-and-publication.md) and the
@@ -257,10 +259,30 @@ A will inject it only through explicitly synthetic setup or tests.
 #6 owns shared schemas, pyproject dependency changes, aliases and the minimal
 controller migration. #4 owns application entrypoints; #5 owns drawing/storage,
 PDF extras and integration tests. Foundation #10, entry #13, review #15 and
-extraction #16 are now merged; new writer integration should start from `main`
+extraction #16 and writer #19 are merged; new integration should start from `main`
 and use the same public PDFWriter contract. The original stacked foundation
 delivery is historical. #8 extended the verifier and its tests under explicit
 authorization; the local audit logger remains unchanged.
 See ADR 0002. Later contract changes require a coordinated migration, not two
 parallel PDFWriter definitions. #9's remote API authorizes document_id/object
 references and resolves internal URIs; local file URIs are never a remote API.
+
+## Service manifest projection (M0 working branch)
+
+The sole writer protocol and its single-context limit are unchanged.
+`ArtifactManifest` in [service-v1](service-contracts.md) projects actual reopened
+local output bytes into an artifact ID/hash, exact context/field IDs, page count,
+template/map hashes and local verification/publication scope. It has no external
+storage URI and is not a durable download capability or authorization receipt.
+The enclosing ServiceResult.run supplies case/revision/run binding. The local
+facade requires this invocation's confined-writer evidence and matching reopened
+identity/hash/result/map; a stale or replaced output cannot become a new manifest.
+See the [M0 review](m0-review.md) for the reproduced failures and regression tests.
+The existing HTTP/invocation still returns AgentReviewRun/PDFWriteResult.
+
+Current responsibility positions are B application assembly, E formal PDF/goldens/
+multiple-context migration, D remote storage and publication. Historical A/B labels
+above describe the original #4/#5 split. New contracts must be reviewed by these
+stewards and consumers, with no parallel PDFWriter definitions. Real CJK/template,
+full-case coverage, multiple-context output, immutable source snapshots and live S3
+remain acceptance gaps, even though the local writer core is merged.

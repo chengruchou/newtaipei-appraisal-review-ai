@@ -1,6 +1,133 @@
 # Requirements to implementation and acceptance
 
-## Merged delivery snapshot (2026-09-06)
+## M0 pre-publication review snapshot (2026-09-07)
+
+At the local review checkpoint, branch `feat/shared-service-contracts` had
+base/HEAD and fetched main at `ea55043d90aa21e6f0a7e3fe05aa34ef8a3553d3`, with no
+staged changes and zero outgoing commits. No remote write, CI rerun, merge, history
+rewrite, AWS/model call or real rule approval had been performed. The original
+checkout and its untracked cloud_tests copies were untouched. This dated snapshot
+records local validation before publication; the actual commit, PR and latest head
+CI must be verified separately after the authorized publication workflow.
+
+The [review report](m0-review.md) covers all five review areas and records three
+pre-fix assertion failures: forged system origin bypassing a model budget, stale
+Controller result claiming an existing PDF, and same-page replacement passing
+manifest validation. Fixes require independent trusted action origin and this
+run's observed writer evidence with exact file/review/result/map binding. Original
+confidence=0 confirmation, exact approval, core gates, explicit overwrite and all
+old HTTP/invocation/PDF contracts remain intact.
+
+Fresh validation under ignored `artifacts/m0-review/`:
+
+- 638 repository tests passed with 7 dependency warnings and branch coverage enabled
+  (combined coverage displays 87%); 8 cloud_tests passed without test warnings.
+- Ruff/format/mypy passed (157 formatted Python files, 74 typed source files);
+  both CloudFormation templates lint locally.
+- Actual legacy/configured loopback HTTP smokes, invoke/run CLI, two reopened real
+  synthetic PDFs, failed retry and needs_review preservation of existing output pass.
+  JSON stdout/stderr and exit semantics are explicitly documented in the runbook.
+- Schema/fixture export equality and roundtrips pass. Archived-main comparison
+  confirms identical OpenAPI/request/run/InputManifest/PDF request/result schemas.
+- The output/manifest.pdf filename denotes the second actual PDF; its machine
+  manifest is artifacts[0] inside result-written.json, bound by that result's run.
+  smoke-report.json records producer/path/response/hash/size/run mapping.
+- Read-only issue recheck confirms #5/#7/#8/#9/#17 open and their latest original
+  bodies preserved verbatim in unpublished update drafts. No B/C/E duplicate
+  work item was found; proposed new issues remain unnumbered and unassigned.
+- 73 relative documentation links/anchors resolve; both Mermaid diagrams parse;
+  rendered PDF fields/borders and metadata pass inspection. Full submission checks
+  pass for 157 blobs, configured identity, functional branch and all 11 drafts.
+  Seven protected/core/gate files, including AGENTS.md, match main byte-for-byte.
+  Checkpoint inventory: 13 modified tracked + 31 new = 44 files, no staged changes,
+  zero outgoing commits.
+- Main's #19 CI 34066702731 was rechecked successful on its old implementation head
+  de2f691ba2adaa0733462e80027764303f7d25da. No M0 head CI existed at this pre-publication checkpoint.
+
+Warnings are the existing Starlette/httpx, AnyIO and PyMuPDF SWIG deprecations;
+no dependency upgrades, filters, coverage changes or weakened assertions. Earlier
+624-test evidence below is retained as historical evidence with its own scope.
+Issue publication is a separate later approval group after contract review.
+
+## Historical initial M0 local handoff (2026-09-07)
+
+Re-fetched main and remote refs: `ea55043d90aa21e6f0a7e3fe05aa34ef8a3553d3`.
+New isolated worktree branch: `feat/shared-service-contracts`; base and HEAD are
+that same full SHA. M0 changes are uncommitted working files at this handoff.
+The original checkout's branch, tracked files and untracked cloud_tests copies
+are preserved. No commit, push, PR/Issue/comment write, assignment, CI rerun,
+merge, history rewrite, AWS call or real rule approval was performed.
+
+Read-only GitHub inspection confirmed #15/#16/#19 merged and #5/#7/#8/#9/#17 open.
+An all-issue search found eight existing issues (#3–#9 and #17), with no separate
+frontend, human backend or formal-PDF follow-up. New issue drafts have no invented
+numbers or assignees. Original issue bodies are retained as history in the five
+prepared update bodies under ignored `artifacts/m0/publication/`.
+
+| Merged delivery | Final implementation head | Merge / historical CI |
+| --- | --- | --- |
+| [Review #15](https://github.com/chengruchou/newtaipei-appraisal-review-ai/pull/15) | `a303ed5bd869e4b493d4688b47b44bd7e2c69690` | `3cdc33a822be57707416959910e86bac4029e0cc` |
+| [Extraction #16](https://github.com/chengruchou/newtaipei-appraisal-review-ai/pull/16) | `cacb85b8ae587b74167d1717383aa87703eb6bb8` | `fefce2f2bd7f9fe60a8f63422714f5b993365ff9` |
+| [Writer #19](https://github.com/chengruchou/newtaipei-appraisal-review-ai/pull/19) | `de2f691ba2adaa0733462e80027764303f7d25da` | `ea55043d90aa21e6f0a7e3fe05aa34ef8a3553d3`; [CI 34066702731 succeeded](https://github.com/chengruchou/newtaipei-appraisal-review-ai/actions/runs/34066702731) |
+
+#19's CI reports 562 repository tests and 8 cloud tests on its implementation
+head. That is baseline evidence, not CI for this M0 change. M0 has no remote head
+or new CI until commit/push are explicitly approved. Earlier review discussions
+are preserved; they are not approval of new working code.
+
+| M0 requirement | Code and focused evidence | Consumer / unresolved acceptance |
+| --- | --- | --- |
+| Shared external references/revision/run/task/action/result contracts | domain/service_contracts.py; schemas/service-v1.json; examples/service-v1; test_service_contracts.py roundtrip/schema/null/Decimal/version tests | A–E use one schema; DTO validity grants no authority |
+| Immutable local material and old-authority invalidation | application/revisions.py; detached-copy/new-version/changed-native tests and real local receipt rejection | B must provide transactional append and validated correction mapping; continuous source snapshot remains D/E work |
+| Trusted permission/version/action/idempotency semantics | application/service_guards.py; denial, stale side/result/version, principal isolation and action/source/budget tests | B/D reserved protocols in ports/service.py; no production repository or auth API |
+| Callable real local composition | adapters/local/service.py, local_service.py; test_local_service.py actual parser/controller/writer and HTTP/invoke parity | B web app assembly and D Runtime composition remain open |
+| Real artifact scope and blocked output | Real synthetic PDFs, zero raw confidence with explicit test confirmation/receipt; real LocalPDFWriter, reopened content/metadata/hash/field/context manifest; missing evidence zero writer calls | E formal CJK/template/full-case goldens and multiple-context migration; D S3 publication |
+| Legacy compatibility | Existing full API/invocation/PDF tests; new factory parity; inspected main OpenAPI/AgentReviewRequest/AgentReviewRun schema equality | No public response change; separate run envelope only |
+| Actual localhost behavior | scripts/http_smoke.py and scripts/local_service_smoke.py | 200 normal/written/needs_review, 422 malformed, 503 missing configuration; actual CLI JSON parses; no jobs/task/download routes |
+| Import/config/source failures | Subprocess import without document access/SDK; wrong identity/version/hash/URI/template/map/font, stale receipt and machine-error category tests | No fallback, no web identity claim, no AWS calls |
+| Documentation/ownership | README, architecture, MVP plan, service authority/runbook, ADR 0013, data/PDF and cloud docs | Corrects stale writer status, current B/E split and historical stacked dependencies |
+
+Local verification uses macOS/Python 3.13.5, Pydantic 2, FastAPI 0.141.1,
+pypdf 6.17.0 and ReportLab 4.5.1 in the isolated worktree environment.
+Commands and raw evidence stay under ignored `artifacts/m0/`:
+
+- `ruff check .`, `ruff format --check .`, `mypy src`: pass.
+- `pytest --cov=appraisal_review --cov-config=pyproject.toml --cov-report=term-missing`:
+  624 passed (562 inherited + 62 M0 regressions), 7 dependency warnings;
+  combined statement/branch coverage displays 87%. This is not pure branch coverage.
+  The branch coverage configuration and all existing assertions are unchanged.
+- `python -m pytest cloud_tests`: 8 passed, no test warnings.
+- `cfn-lint cloud_tests/image-stack.json cloud_tests/runtime-stack.json`: pass.
+  IaC templates were not changed or deployed.
+- Existing HTTP smoke: verified/not_requested, verified/simulated, needs_review,
+  legacy detail and review error/OpenAPI contract passed.
+- New localhost smoke: two real reopened synthetic PDFs, invocation/review parity,
+  validation/config failures, unchanged source hashes and blocked no-output path.
+  Manifest PDF SHA-256: `080270d6ed2ce7e6df04c6a33501a029082f256006c25b3365438ec363326a29`.
+  Rendered inspection confirms readable +5.00% inside the synthetic cell and intact border.
+- Mermaid parsed both current/target diagrams; arrows and pending labels inspected.
+  Relative Markdown links/anchors resolve. The disposable diagram tools reported a
+  whatwg-encoding installation deprecation; it is not a repository runtime dependency.
+- Repository tests report seven dependency warnings: Starlette/httpx, AnyIO alias
+  and PyMuPDF SWIG type/module deprecations. No warnings, coverage or assertions
+  were suppressed to pass tests. Parser package advertising is isolated from CLI
+  JSON stdout; that is not a test-warning filter.
+- Full submission gate checks HEAD/index/working files, branch, configured identity
+  and every draft publication file; there are zero outgoing commits. Core review,
+  independent verifier, audit logger and the three protected files remain byte-identical
+  to the inspected main. AGENTS.md, submission checker and published history are unchanged.
+
+The test count and combined coverage are engineering evidence, not product completion
+or real extraction accuracy. Actual Bedrock/model comparison, formal template/CJK,
+full-case human goldens, live S3, source snapshot, multiple-context PDF and AWS jobs/
+deployment were not performed: they need subsequent owner work, controlled inputs
+and explicit cloud access/authorization. No real cases were authorized here.
+
+See [contracts](service-contracts.md), [local runbook](local-service-runbook.md) and
+[A–E milestones](mvp-plan.md). Historical delivery below retains its original named
+head metrics and scope; it is not the current working-branch acceptance state.
+
+## Historical pre-writer-merge snapshot (2026-09-06)
 
 Inspected `origin/main`: `0e9a5832a84c95fd03f1084847e3b6181ca93f03`.
 PRs #15, #16 and #18 are merged, alongside the earlier foundation #10, entry
@@ -20,8 +147,8 @@ Historical head validation: #15 had 323 tests plus 8 cloud tests
 These counts are previous implementation evidence, not new live-model, complete
 human-case or cloud acceptance.
 
-The branch implements the provider-local formal writer core and an injected-client
-S3 transfer wrapper for #5. Runtime selection, approved production field maps and
+At that historical checkpoint the writer branch implemented the local writer
+core and injected-client S3 wrapper for #5; #19 is now merged. Runtime selection, approved production field maps and
 fonts, live S3 acceptance and production deployment remain open. Durable cloud
 jobs #9, controlled actions/decision traces/human tasks #17 and the web workbench
 remain planned. See the [delivery plan](mvp-plan.md) for dependencies.
@@ -54,8 +181,8 @@ The #8/#7 implementation and correction evidence is recorded below as history.
 | Full coverage and evidence gate | Independent source/page/table inventory and recalculation | #8 | Forged-result regression fixed; source omissions block completion |
 | Async jobs and durable Runtime delivery | Cloud API/persistence/dispatcher/reconciler | #9 | Architecture design; no live test |
 | Runtime packaging/health smoke | cloud_tests/, merged PR #14 | #9 | Local/mocked preparation; live invocation and durable production jobs pending |
-| Model-selected allowed actions and decision records | Future policy/tool/trace contracts | #17 | Planned; current Controller is a fixed gated workflow |
-| Version-bound human tasks and re-entry | Future task/revision API and persistent store | #17/#9 | Planned; current confirmation/approval store is local Linux/macOS only |
+| Model-selected allowed actions and decision records | M0 service contracts and pure action guard | #17 | DTO/admission validation implemented locally; actual model selector/executor remains A work |
+| Version-bound human tasks and re-entry | M0 task/revision DTOs, snapshot helper and pure response guard | #17/#9 | Contract and local checks implemented; B API/D persistence remain future work; local receipt is Linux/macOS only |
 | Browser review workbench | Future source/evidence/task UI | New work item required | Planned; full UI implementation is separate from #17 contracts |
 | Attribution and branch naming | AGENTS.md and scripts/check_submission.py | #4, PR #13 | 49 subprocess CLI tests; full snapshots/index/metadata/publication/branch checks |
 

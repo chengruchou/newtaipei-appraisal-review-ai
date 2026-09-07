@@ -1,0 +1,16 @@
+{
+  "schema_version": "service-v1",
+  "task_id": "00000000-0000-0000-0000-000000000002",
+  "expected_version": 1,
+  "revision": {
+    "schema_version": "service-v1",
+    "case_id": "synthetic-case",
+    "revision_id": "fixture-r1",
+    "material_digest": "0445917fd60f720359309b58c8edff03c93c929c7270f4ebfde304545595c124"
+  },
+  "side_digest": "cf1f887efd3871b180e33a9dd52725a0b056b75ccdb7bb84b13c55256579595b",
+  "result_digest": null,
+  "idempotency_key": "fixture-confirm-1",
+  "action": "confirm",
+  "correction": null
+}

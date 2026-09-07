@@ -71,3 +71,14 @@ stale writers, S3 manifest commit, partial batch failure/DLQ and authenticated
 document access. Only after those and authorized source-document checks pass
 may the project claim full cloud review. No extra Gateway/MCP/vector store is
 needed to make this smoke work.
+
+## M0 integration boundary
+
+Merged #19 supplies real local writing and an injected-client S3 wrapper. M0's
+working branch supplies [shared service contracts](service-contracts.md) and a
+[real local HTTP/parser/writer smoke](local-service-runbook.md), not live cloud
+acceptance. D's next steps are authorized document resolution, durable job/outbox/
+task storage, fenced publication and explicit Runtime composition. B supplies
+trusted human revision transitions; E supplies formal PDF scope. The existing
+synthetic smoke remains durable=false. Keep designated identity/model preflight
+and all deployment approval boundaries separate from these local checks.

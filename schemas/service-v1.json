@@ -1,0 +1,1587 @@
+{
+  "$defs": {
+    "AcceptedResponse": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "service-v1",
+          "default": "service-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "command": {
+          "$ref": "#/$defs/HumanResponse"
+        },
+        "actor": {
+          "$ref": "#/$defs/ActorReference"
+        }
+      },
+      "required": [
+        "command",
+        "actor"
+      ],
+      "title": "AcceptedResponse",
+      "type": "object"
+    },
+    "ActionKind": {
+      "enum": [
+        "extract_page",
+        "inspect_reference",
+        "request_human_review",
+        "deterministic_review"
+      ],
+      "title": "ActionKind",
+      "type": "string"
+    },
+    "ActionProposal": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "service-v1",
+          "default": "service-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "proposal_id": {
+          "format": "uuid",
+          "title": "Proposal Id",
+          "type": "string"
+        },
+        "run": {
+          "$ref": "#/$defs/RunReference"
+        },
+        "action": {
+          "$ref": "#/$defs/ActionKind"
+        },
+        "proposer": {
+          "$ref": "#/$defs/ActorReference"
+        },
+        "model_id": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model Id"
+        },
+        "prompt_version": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Prompt Version"
+        },
+        "document": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DocumentReference"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "page": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Page"
+        },
+        "evidence": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/SourceCitation"
+          },
+          "title": "Evidence",
+          "type": "array"
+        }
+      },
+      "required": [
+        "proposal_id",
+        "run",
+        "action",
+        "proposer"
+      ],
+      "title": "ActionProposal",
+      "type": "object"
+    },
+    "ActorReference": {
+      "additionalProperties": false,
+      "description": "Server-authored record, never an external credential.",
+      "properties": {
+        "schema_version": {
+          "const": "service-v1",
+          "default": "service-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "actor_id": {
+          "minLength": 1,
+          "title": "Actor Id",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "human",
+            "system",
+            "model"
+          ],
+          "title": "Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "actor_id",
+        "kind"
+      ],
+      "title": "ActorReference",
+      "type": "object"
+    },
+    "AllowedAction": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "service-v1",
+          "default": "service-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "action": {
+          "$ref": "#/$defs/ActionKind"
+        },
+        "prerequisites": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Prerequisites",
+          "type": "array"
+        }
+      },
+      "required": [
+        "action"
+      ],
+      "title": "AllowedAction",
+      "type": "object"
+    },
+    "ArtifactManifest": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "service-v1",
+          "default": "service-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "artifact_id": {
+          "format": "uuid",
+          "title": "Artifact Id",
+          "type": "string"
+        },
+        "content_hash": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Content Hash",
+          "type": "string"
+        },
+        "media_type": {
+          "const": "application/pdf",
+          "default": "application/pdf",
+          "title": "Media Type",
+          "type": "string"
+        },
+        "scope": {
+          "const": "single_context",
+          "default": "single_context",
+          "title": "Scope",
+          "type": "string"
+        },
+        "context": {
+          "$ref": "#/$defs/ComparisonContext"
+        },
+        "field_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Field Ids",
+          "type": "array"
+        },
+        "page_count": {
+          "minimum": 1,
+          "title": "Page Count",
+          "type": "integer"
+        },
+        "template_hash": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Template Hash",
+          "type": "string"
+        },
+        "field_map_hash": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Field Map Hash",
+          "type": "string"
+        },
+        "verification": {
+          "const": "local_writer_reopened",
+          "default": "local_writer_reopened",
+          "title": "Verification",
+          "type": "string"
+        },
+        "publication": {
+          "const": "local_only",
+          "default": "local_only",
+          "title": "Publication",
+          "type": "string"
+        }
+      },
+      "required": [
+        "artifact_id",
+        "content_hash",
+        "context",
+        "field_ids",
+        "page_count",
+        "template_hash",
+        "field_map_hash"
+      ],
+      "title": "ArtifactManifest",
+      "type": "object"
+    },
+    "AuthorizationRecord": {
+      "additionalProperties": false,
+      "description": "Reserved server record; never interchangeable with a signed local receipt.",
+      "properties": {
+        "schema_version": {
+          "const": "service-v1",
+          "default": "service-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "authorization_id": {
+          "format": "uuid",
+          "title": "Authorization Id",
+          "type": "string"
+        },
+        "purpose": {
+          "enum": [
+            "rules",
+            "material",
+            "publication"
+          ],
+          "title": "Purpose",
+          "type": "string"
+        },
+        "revision": {
+          "$ref": "#/$defs/MaterialRevision"
+        },
+        "actor": {
+          "$ref": "#/$defs/ActorReference"
+        },
+        "result_digest": {
+          "anyOf": [
+            {
+              "pattern": "^[a-f0-9]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Result Digest"
+        }
+      },
+      "required": [
+        "authorization_id",
+        "purpose",
+        "revision",
+        "actor"
+      ],
+      "title": "AuthorizationRecord",
+      "type": "object"
+    },
+    "Budget": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "service-v1",
+          "default": "service-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "steps_remaining": {
+          "minimum": 0,
+          "title": "Steps Remaining",
+          "type": "integer"
+        },
+        "model_calls_remaining": {
+          "minimum": 0,
+          "title": "Model Calls Remaining",
+          "type": "integer"
+        },
+        "retries_remaining": {
+          "minimum": 0,
+          "title": "Retries Remaining",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "steps_remaining",
+        "model_calls_remaining",
+        "retries_remaining"
+      ],
+      "title": "Budget",
+      "type": "object"
+    },
+    "ComparisonContext": {
+      "additionalProperties": false,
+      "properties": {
+        "scope": {
+          "enum": [
+            "regional",
+            "individual"
+          ],
+          "title": "Scope",
+          "type": "string"
+        },
+        "target_id": {
+          "minLength": 1,
+          "title": "Target Id",
+          "type": "string"
+        },
+        "comparable_id": {
+          "minLength": 1,
+          "title": "Comparable Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "scope",
+        "target_id",
+        "comparable_id"
+      ],
+      "title": "ComparisonContext",
+      "type": "object"
+    },
+    "DecisionEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "service-v1",
+          "default": "service-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "event_id": {
+          "format": "uuid",
+          "title": "Event Id",
+          "type": "string"
+        },
+        "parent_event_ids": {
+          "default": [],
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "title": "Parent Event Ids",
+          "type": "array"
+        },
+        "proposal": {
+          "$ref": "#/$defs/ActionProposal"
+        },
+        "executor": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActorReference"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "policy_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+          "title": "Policy Version",
+          "type": "string"
+        },
+        "disposition": {
+          "enum": [
+            "rejected",
+            "executed",
+            "failed"
+          ],
+          "title": "Disposition",
+          "type": "string"
+        },
+        "executed_action": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActionKind"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "checked_prerequisites": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Checked Prerequisites",
+          "type": "array"
+        },
+        "reason_code": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+          "title": "Reason Code",
+          "type": "string"
+        },
+        "tool_result": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ToolOutcome"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "remaining_blockers": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Remaining Blockers",
+          "type": "array"
+        },
+        "budget": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Budget"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "event_id",
+        "proposal",
+        "policy_version",
+        "disposition",
+        "reason_code"
+      ],
+      "title": "DecisionEvent",
+      "type": "object"
+    },
+    "DocumentReference": {
+      "additionalProperties": false,
+      "description": "External identity: no caller-selected storage URI or asserted authority.",
+      "properties": {
+        "schema_version": {
+          "const": "service-v1",
+          "default": "service-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "case_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+          "title": "Case Id",
+          "type": "string"
+        },
+        "document_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+          "title": "Document Id",
+          "type": "string"
+        },
+        "version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+          "title": "Version",
+          "type": "string"
+        },
+        "content_hash": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Content Hash",
+          "type": "string"
+        },
+        "purpose": {
+          "enum": [
+            "criteria",
+            "forms",
+            "reference",
+            "brief",
+            "template"
+          ],
+          "title": "Purpose",
+          "type": "string"
+        }
+      },
+      "required": [
+        "case_id",
+        "document_id",
+        "version",
+        "content_hash",
+        "purpose"
+      ],
+      "title": "DocumentReference",
+      "type": "object"
+    },
+    "ExecutionStatus": {
+      "enum": [
+        "queued",
+        "running",
+        "succeeded",
+        "failed"
+      ],
+      "title": "ExecutionStatus",
+      "type": "string"
+    },
+    "FactSideReference": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "service-v1",
+          "default": "service-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "context": {
+          "$ref": "#/$defs/ComparisonContext"
+        },
+        "factor_id": {
+          "minLength": 1,
+          "title": "Factor Id",
+          "type": "string"
+        },
+        "side": {
+          "enum": [
+            "target",
+            "comparable"
+          ],
+          "title": "Side",
+          "type": "string"
+        },
+        "input_digest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Input Digest",
+          "type": "string"
+        }
+      },
+      "required": [
+        "context",
+        "factor_id",
+        "side",
+        "input_digest"
+      ],
+      "title": "FactSideReference",
+      "type": "object"
+    },
+    "HumanResponse": {
+      "additionalProperties": false,
+      "description": "Untrusted command: principal/roles and approval flags are not accepted.",
+      "properties": {
+        "schema_version": {
+          "const": "service-v1",
+          "default": "service-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "task_id": {
+          "format": "uuid",
+          "title": "Task Id",
+          "type": "string"
+        },
+        "expected_version": {
+          "minimum": 1,
+          "title": "Expected Version",
+          "type": "integer"
+        },
+        "revision": {
+          "$ref": "#/$defs/RevisionReference"
+        },
+        "side_digest": {
+          "anyOf": [
+            {
+              "pattern": "^[a-f0-9]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Side Digest"
+        },
+        "result_digest": {
+          "anyOf": [
+            {
+              "pattern": "^[a-f0-9]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Result Digest"
+        },
+        "idempotency_key": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+          "title": "Idempotency Key",
+          "type": "string"
+        },
+        "action": {
+          "$ref": "#/$defs/ResponseAction"
+        },
+        "correction": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ValueRevision"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "task_id",
+        "expected_version",
+        "revision",
+        "idempotency_key",
+        "action"
+      ],
+      "title": "HumanResponse",
+      "type": "object"
+    },
+    "HumanTask": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "service-v1",
+          "default": "service-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "task_id": {
+          "format": "uuid",
+          "title": "Task Id",
+          "type": "string"
+        },
+        "run": {
+          "$ref": "#/$defs/RunReference"
+        },
+        "version": {
+          "minimum": 1,
+          "title": "Version",
+          "type": "integer"
+        },
+        "kind": {
+          "$ref": "#/$defs/TaskKind"
+        },
+        "required_permission": {
+          "$ref": "#/$defs/Permission"
+        },
+        "state": {
+          "default": "open",
+          "enum": [
+            "open",
+            "answered",
+            "superseded"
+          ],
+          "title": "State",
+          "type": "string"
+        },
+        "side": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FactSideReference"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "result_digest": {
+          "anyOf": [
+            {
+              "pattern": "^[a-f0-9]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Result Digest"
+        },
+        "question": {
+          "minLength": 1,
+          "title": "Question",
+          "type": "string"
+        },
+        "evidence": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/SourceCitation"
+          },
+          "title": "Evidence",
+          "type": "array"
+        },
+        "finding_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Finding Ids",
+          "type": "array"
+        },
+        "allowed_responses": {
+          "items": {
+            "$ref": "#/$defs/ResponseAction"
+          },
+          "minItems": 1,
+          "title": "Allowed Responses",
+          "type": "array"
+        }
+      },
+      "required": [
+        "task_id",
+        "run",
+        "version",
+        "kind",
+        "required_permission",
+        "question",
+        "finding_ids",
+        "allowed_responses"
+      ],
+      "title": "HumanTask",
+      "type": "object"
+    },
+    "MaterialRevision": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "service-v1",
+          "default": "service-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "reference": {
+          "$ref": "#/$defs/RevisionReference"
+        },
+        "parent": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RevisionReference"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "documents": {
+          "items": {
+            "$ref": "#/$defs/DocumentReference"
+          },
+          "minItems": 2,
+          "title": "Documents",
+          "type": "array"
+        },
+        "rules": {
+          "items": {
+            "$ref": "#/$defs/RuleReference"
+          },
+          "minItems": 1,
+          "title": "Rules",
+          "type": "array"
+        },
+        "changes": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ValueRevision"
+          },
+          "title": "Changes",
+          "type": "array"
+        },
+        "canonicalization": {
+          "const": "review-material-json-v1",
+          "default": "review-material-json-v1",
+          "title": "Canonicalization",
+          "type": "string"
+        }
+      },
+      "required": [
+        "reference",
+        "documents",
+        "rules"
+      ],
+      "title": "MaterialRevision",
+      "type": "object"
+    },
+    "NormalizedValue": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "enum": [
+            "number",
+            "text",
+            "category",
+            "boolean"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            }
+          ],
+          "title": "Value"
+        },
+        "unit": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Unit"
+        }
+      },
+      "required": [
+        "type",
+        "value"
+      ],
+      "title": "NormalizedValue",
+      "type": "object"
+    },
+    "Permission": {
+      "enum": [
+        "review",
+        "confirm_observation",
+        "correct_material",
+        "approve_rules",
+        "approve_material",
+        "publish_artifact"
+      ],
+      "title": "Permission",
+      "type": "string"
+    },
+    "PublicValue": {
+      "additionalProperties": false,
+      "description": "URI-free view of an original/proposed value; never a trusted fact input.",
+      "properties": {
+        "schema_version": {
+          "const": "service-v1",
+          "default": "service-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "state": {
+          "enum": [
+            "present",
+            "blank",
+            "missing",
+            "not_present",
+            "not_applicable"
+          ],
+          "title": "State",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/NormalizedValue"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value"
+        },
+        "raw_text": {
+          "title": "Raw Text",
+          "type": "string"
+        },
+        "unit": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Unit"
+        },
+        "confidence": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Confidence"
+        },
+        "evidence": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/SourceCitation"
+          },
+          "title": "Evidence",
+          "type": "array"
+        }
+      },
+      "required": [
+        "state",
+        "raw_text"
+      ],
+      "title": "PublicValue",
+      "type": "object"
+    },
+    "ResponseAction": {
+      "enum": [
+        "confirm",
+        "correct",
+        "reject",
+        "approve",
+        "authorize_publication"
+      ],
+      "title": "ResponseAction",
+      "type": "string"
+    },
+    "ReviewFinding": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "title": "Kind",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "verified",
+            "needs_review",
+            "failed"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "context": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ComparisonContext"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "factor_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Factor Id"
+        },
+        "rule_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rule Id"
+        },
+        "rule_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rule Version"
+        },
+        "observed": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Observed"
+        },
+        "expected": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expected"
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/SourceCitation"
+          },
+          "title": "Evidence",
+          "type": "array"
+        },
+        "trace": {
+          "title": "Trace",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "status",
+        "trace"
+      ],
+      "title": "ReviewFinding",
+      "type": "object"
+    },
+    "ReviewSubmission": {
+      "additionalProperties": false,
+      "description": "Reserved jobs request; no jobs route or durable implementation in M0.",
+      "properties": {
+        "schema_version": {
+          "const": "service-v1",
+          "default": "service-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "revision": {
+          "$ref": "#/$defs/RevisionReference"
+        },
+        "documents": {
+          "items": {
+            "$ref": "#/$defs/DocumentReference"
+          },
+          "minItems": 2,
+          "title": "Documents",
+          "type": "array"
+        },
+        "idempotency_key": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+          "title": "Idempotency Key",
+          "type": "string"
+        }
+      },
+      "required": [
+        "revision",
+        "documents",
+        "idempotency_key"
+      ],
+      "title": "ReviewSubmission",
+      "type": "object"
+    },
+    "RevisionReference": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "service-v1",
+          "default": "service-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "case_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+          "title": "Case Id",
+          "type": "string"
+        },
+        "revision_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+          "title": "Revision Id",
+          "type": "string"
+        },
+        "material_digest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Material Digest",
+          "type": "string"
+        }
+      },
+      "required": [
+        "case_id",
+        "revision_id",
+        "material_digest"
+      ],
+      "title": "RevisionReference",
+      "type": "object"
+    },
+    "RuleReference": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "service-v1",
+          "default": "service-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "rule_set_id": {
+          "minLength": 1,
+          "title": "Rule Set Id",
+          "type": "string"
+        },
+        "version": {
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        },
+        "context": {
+          "$ref": "#/$defs/ComparisonContext"
+        },
+        "content_hash": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Content Hash",
+          "type": "string"
+        }
+      },
+      "required": [
+        "rule_set_id",
+        "version",
+        "context",
+        "content_hash"
+      ],
+      "title": "RuleReference",
+      "type": "object"
+    },
+    "RunReference": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "service-v1",
+          "default": "service-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "run_id": {
+          "format": "uuid",
+          "title": "Run Id",
+          "type": "string"
+        },
+        "revision": {
+          "$ref": "#/$defs/RevisionReference"
+        },
+        "attempt_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Attempt Id"
+        },
+        "runtime_session_id": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Runtime Session Id"
+        }
+      },
+      "required": [
+        "run_id",
+        "revision"
+      ],
+      "title": "RunReference",
+      "type": "object"
+    },
+    "ServiceErrorCode": {
+      "enum": [
+        "invalid_request",
+        "unauthorized",
+        "not_found",
+        "version_conflict",
+        "capability_unavailable",
+        "execution_failed"
+      ],
+      "title": "ServiceErrorCode",
+      "type": "string"
+    },
+    "ServiceProblem": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "service-v1",
+          "default": "service-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "code": {
+          "$ref": "#/$defs/ServiceErrorCode"
+        },
+        "message": {
+          "const": "Service operation could not be completed.",
+          "default": "Service operation could not be completed.",
+          "title": "Message",
+          "type": "string"
+        }
+      },
+      "required": [
+        "code"
+      ],
+      "title": "ServiceProblem",
+      "type": "object"
+    },
+    "ServiceResult": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "service-v1",
+          "default": "service-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "run": {
+          "$ref": "#/$defs/RunReference"
+        },
+        "result_version": {
+          "minimum": 1,
+          "title": "Result Version",
+          "type": "integer"
+        },
+        "execution_status": {
+          "$ref": "#/$defs/ExecutionStatus"
+        },
+        "business_status": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WorkflowStatus"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "artifact_status": {
+          "default": "not_requested",
+          "enum": [
+            "not_requested",
+            "unavailable",
+            "unsupported_contexts",
+            "simulated",
+            "written"
+          ],
+          "title": "Artifact Status",
+          "type": "string"
+        },
+        "findings": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ReviewFinding"
+          },
+          "title": "Findings",
+          "type": "array"
+        },
+        "artifacts": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ArtifactManifest"
+          },
+          "maxItems": 1,
+          "title": "Artifacts",
+          "type": "array"
+        },
+        "problem": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ServiceProblem"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "durable": {
+          "default": false,
+          "title": "Durable",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "run",
+        "result_version",
+        "execution_status"
+      ],
+      "title": "ServiceResult",
+      "type": "object"
+    },
+    "SourceCitation": {
+      "additionalProperties": false,
+      "properties": {
+        "document_id": {
+          "title": "Document Id",
+          "type": "string"
+        },
+        "content_hash": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Content Hash",
+          "type": "string"
+        },
+        "version": {
+          "title": "Version",
+          "type": "string"
+        },
+        "page": {
+          "minimum": 1,
+          "title": "Page",
+          "type": "integer"
+        },
+        "region_id": {
+          "title": "Region Id",
+          "type": "string"
+        },
+        "bbox": {
+          "maxItems": 4,
+          "minItems": 4,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Bbox",
+          "type": "array"
+        },
+        "excerpt": {
+          "title": "Excerpt",
+          "type": "string"
+        }
+      },
+      "required": [
+        "document_id",
+        "content_hash",
+        "version",
+        "page",
+        "region_id",
+        "bbox",
+        "excerpt"
+      ],
+      "title": "SourceCitation",
+      "type": "object"
+    },
+    "TaskKind": {
+      "enum": [
+        "fact_confirmation",
+        "material_correction",
+        "rule_approval",
+        "material_approval",
+        "publication_authorization"
+      ],
+      "title": "TaskKind",
+      "type": "string"
+    },
+    "ToolOutcome": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "service-v1",
+          "default": "service-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "outcome": {
+          "enum": [
+            "succeeded",
+            "failed"
+          ],
+          "title": "Outcome",
+          "type": "string"
+        },
+        "result_digest": {
+          "anyOf": [
+            {
+              "pattern": "^[a-f0-9]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Result Digest"
+        },
+        "problem": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ServiceProblem"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "outcome"
+      ],
+      "title": "ToolOutcome",
+      "type": "object"
+    },
+    "ValueRevision": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "service-v1",
+          "default": "service-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "subject_id": {
+          "minLength": 1,
+          "title": "Subject Id",
+          "type": "string"
+        },
+        "original": {
+          "$ref": "#/$defs/PublicValue"
+        },
+        "proposed": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PublicValue"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "corrected": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PublicValue"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "corrected_by": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActorReference"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "subject_id",
+        "original"
+      ],
+      "title": "ValueRevision",
+      "type": "object"
+    },
+    "WorkflowStatus": {
+      "enum": [
+        "received",
+        "needs_review",
+        "verified",
+        "completed",
+        "failed"
+      ],
+      "title": "WorkflowStatus",
+      "type": "string"
+    }
+  },
+  "title": "Service v1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}

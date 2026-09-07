@@ -21,3 +21,12 @@ cdk synth
 
 Do not place credentials, account IDs, or fixed globally unique bucket names in
 this directory.
+
+## M0 handoff to D
+
+The current Cases table is a baseline definition, not the job/task/outbox/lease
+transaction model. Use [service-v1 ports](../../docs/service-contracts.md) and the
+[target architecture](../../docs/architecture.md) to design that model, authorized
+document resolution, conditional publication and Runtime recovery. M0 local
+composition and the merged #19 writer do not deploy these definitions or configure
+production S3/Runtime clients. No CDK resource changes are part of M0.

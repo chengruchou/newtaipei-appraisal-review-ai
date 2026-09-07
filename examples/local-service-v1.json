@@ -1,0 +1,37 @@
+{
+  "schema_version": "local-service-v1",
+  "inputs": {
+    "identity": {
+      "case_id": "synthetic-case",
+      "version": "1",
+      "district": "synthetic",
+      "zone": "synthetic",
+      "land_use_category": "synthetic",
+      "effective_date": "2026-09-05"
+    },
+    "documents": [
+      {
+        "path": "/absolute/operator/criteria.pdf",
+        "document_id": "synthetic-criteria",
+        "version": "1",
+        "role": "criteria",
+        "expected_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "document_date": null
+      },
+      {
+        "path": "/absolute/operator/forms.pdf",
+        "document_id": "synthetic-forms",
+        "version": "1",
+        "role": "forms",
+        "expected_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "document_date": null
+      }
+    ]
+  },
+  "material_path": "/absolute/operator/material.json",
+  "expected_material_digest": "0000000000000000000000000000000000000000000000000000000000000000",
+  "revision_id": "operator-r1",
+  "approval_store": "/absolute/operator/approval",
+  "writer": null,
+  "minimum_confidence": 0.85
+}

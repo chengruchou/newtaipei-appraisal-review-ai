@@ -1,0 +1,54 @@
+{
+  "schema_version": "service-v1",
+  "subject_id": "road-rate",
+  "original": {
+    "schema_version": "service-v1",
+    "state": "blank",
+    "value": null,
+    "raw_text": "",
+    "unit": null,
+    "confidence": 0.0,
+    "evidence": [
+      {
+        "document_id": "synthetic-forms",
+        "content_hash": "37f1b0a1872d76a68cd0a482eb4aeb0ce4f3dae564f5e23340b470cef41835ab",
+        "version": "1",
+        "page": 1,
+        "region_id": "body",
+        "bbox": [
+          1.0,
+          2.0,
+          90.0,
+          40.0
+        ],
+        "excerpt": "Synthetic target 10 m; comparable 9 m; rate 5"
+      }
+    ]
+  },
+  "proposed": {
+    "schema_version": "service-v1",
+    "state": "present",
+    "value": "5.00",
+    "raw_text": "Synthetic proposed value",
+    "unit": null,
+    "confidence": 0.0,
+    "evidence": [
+      {
+        "document_id": "synthetic-forms",
+        "content_hash": "37f1b0a1872d76a68cd0a482eb4aeb0ce4f3dae564f5e23340b470cef41835ab",
+        "version": "1",
+        "page": 1,
+        "region_id": "body",
+        "bbox": [
+          1.0,
+          2.0,
+          90.0,
+          40.0
+        ],
+        "excerpt": "Synthetic target 10 m; comparable 9 m; rate 5"
+      }
+    ]
+  },
+  "corrected": null,
+  "corrected_by": null
+}
