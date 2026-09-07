@@ -17,6 +17,12 @@
   "business_status": "completed",
   "artifact_status": "written",
   "findings": [],
+  "verification": {
+    "schema_version": "service-v1",
+    "status": "verified",
+    "critical_errors": [],
+    "warnings": []
+  },
   "artifacts": [
     {
       "schema_version": "service-v1",

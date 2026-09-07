@@ -92,10 +92,18 @@ class RevisionSnapshot:
             old = previous.get((pair.context.key(), pair.pair.factor_id))
             for side in ("target", "comparable"):
                 reliability = getattr(pair, f"{side}_reliability")
-                if old is None or confirmation_digest(old, side) != confirmation_digest(pair, side):
-                    # A correction cannot inherit native extraction authority. Raw scores stay.
+                old_reliability = getattr(old, f"{side}_reliability") if old is not None else None
+                retain_native = (
+                    old is not None
+                    and old_reliability is not None
+                    and old_reliability.method == reliability.method == "native_numeric"
+                    and old_reliability.confirmation is None
+                    and reliability.confirmation is None
+                    and confirmation_digest(old, side) == confirmation_digest(pair, side)
+                )
+                if not retain_native:
+                    # The side digest excludes method for confirmation. It cannot prove origin.
+                    # Only unchanged native lineage survives; a label is not re-extraction.
                     reliability.method = "model_proposed"
                 reliability.confirmation = None
-                if reliability.method == "reviewer_confirmed":
-                    reliability.method = "model_proposed"
         return self.capture(candidate, revision_id, parent=self.revision.reference, changes=changes)

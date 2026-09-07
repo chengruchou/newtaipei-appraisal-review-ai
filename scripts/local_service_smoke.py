@@ -110,6 +110,47 @@ def smoke(directory: Path) -> dict:
         assert set(invoked) == set(response.json())
         assert invoked["case_review"] == response.json()["case_review"]
         assert invoked["artifact_status"] == "not_requested"
+        denied = {**request, "case_document_uri": "file:///private/not-allowed.pdf"}
+        denied_path = directory / "request-source-mismatch.json"
+        denied_path.write_text(json.dumps(denied) + "\n")
+        denied_http = client.post("/v1/reviews", json=denied)
+        assert denied_http.status_code == 200 and denied_http.json()["status"] == "failed"
+        assert denied_http.json()["case_review"] is None
+        for command in ("invoke", "run"):
+            rejected = subprocess.run(
+                [
+                    sys.executable,
+                    "-m",
+                    "appraisal_review.local_service",
+                    command,
+                    "--config",
+                    str(directory / "config.json"),
+                    "--request",
+                    str(denied_path),
+                ],
+                capture_output=True,
+                text=True,
+                timeout=30,
+                check=True,
+            )
+            assert rejected.stderr == ""
+            assert "private" not in rejected.stdout and "not-allowed" not in rejected.stdout
+            if command == "invoke":
+                assert (
+                    json.loads(rejected.stdout)["verification"]
+                    == denied_http.json()["verification"]
+                )
+            else:
+                rejected_envelope = ServiceResult.model_validate_json(rejected.stdout)
+                assert rejected_envelope.execution_status == "succeeded"
+                assert rejected_envelope.business_status == "failed"
+                assert rejected_envelope.problem is None and not rejected_envelope.findings
+                assert not rejected_envelope.artifacts
+                assert rejected_envelope.verification.critical_errors[0].code == "source_binding"
+                (directory / "result-source-binding-failed.json").write_text(
+                    rejected_envelope.model_dump_json(indent=2) + "\n"
+                )
+        assert not list(config.writer.output_directory.iterdir())
         written = client.post("/v1/reviews", json=write)
         assert written.status_code == 200
         assert (
@@ -173,6 +214,9 @@ def smoke(directory: Path) -> dict:
         "http_statuses_checked": [200, 422, 503],
         "legacy_shape_preserved": True,
         "invocation_parity": True,
+        "source_binding_diagnostic_preserved": True,
+        "source_binding_http_invocation_parity": True,
+        "source_binding_no_path_echo": True,
         "reopened_pdfs": 2,
         "source_hashes_unchanged": True,
         "needs_review_has_findings": True,

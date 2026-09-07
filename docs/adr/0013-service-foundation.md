@@ -19,8 +19,12 @@ canonical digest functions, explicit parent/version binding and no automatic reu
 of confirmation/approval after revision. Original/proposed/corrected views remain
 separate, and raw confidence remains unchanged. The original receipt is valid only
 for unchanged original material; a new revision cannot reuse confirmations or
-approvals that fail exact binding. Changed native observations lose
-native authority pending explicit confirmation.
+approvals that fail exact binding. Native authority persists only for an unchanged
+side that was native in the immediate parent and remains native, without human
+confirmation fields. The side digest intentionally omits method/confirmation;
+compare lineage explicitly rather than treating equal digests or a new method
+label as extraction authority. All other revised sides need explicit confirmation;
+trusted re-extraction is a separate entry, not a revision label.
 
 Treat external IDs, digests and DTO validity as untrusted assertions. Internal
 resolvers must authenticate case access before storage URI resolution. The local
@@ -46,6 +50,15 @@ hash-bound template, complete field map, explicit font and output directory.
 Importing modules does not read case files or create SDK clients. Missing or invalid
 configuration fails; there is no synthetic fallback. Fixtures generate and authorize
 only their own fixed synthetic case in a newly created isolated directory.
+
+Project the Controller's verification report into ServiceResult even when preflight
+ends before case_review. Preserve status and ordered critical/warning diagnostics
+with finite codes and fixed public messages; unknown internal reasons receive
+generic diagnostics, never raw text or paths. Keep execution success separate from
+business failure and leave ServiceProblem for entry/execution errors. Update the
+proposed, unmerged service-v1 schema and its consumer fixtures together; existing
+HTTP/invocation payloads and their OpenAPI remain unchanged. This pre-merge change
+requires coordinated B/C/D consumer adoption because service models forbid extras.
 
 Keep existing single-context completion limits. A manifest projects actual reopened
 output bytes and exact field/context coverage; it is not proof of full-case template

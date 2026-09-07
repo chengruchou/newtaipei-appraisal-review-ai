@@ -549,6 +549,15 @@
       "title": "DocumentReference",
       "type": "object"
     },
+    "EvaluationStatus": {
+      "enum": [
+        "verified",
+        "needs_review",
+        "failed"
+      ],
+      "title": "EvaluationStatus",
+      "type": "string"
+    },
     "ExecutionStatus": {
       "enum": [
         "queued",
@@ -1357,6 +1366,17 @@
           "title": "Findings",
           "type": "array"
         },
+        "verification": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ServiceVerification"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "artifacts": {
           "default": [],
           "items": {
@@ -1389,6 +1409,42 @@
         "execution_status"
       ],
       "title": "ServiceResult",
+      "type": "object"
+    },
+    "ServiceVerification": {
+      "additionalProperties": false,
+      "description": "Sanitized projection of the existing verification report, including preflight.",
+      "properties": {
+        "schema_version": {
+          "const": "service-v1",
+          "default": "service-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/EvaluationStatus"
+        },
+        "critical_errors": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/VerificationDiagnostic"
+          },
+          "title": "Critical Errors",
+          "type": "array"
+        },
+        "warnings": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/VerificationDiagnostic"
+          },
+          "title": "Warnings",
+          "type": "array"
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "title": "ServiceVerification",
       "type": "object"
     },
     "SourceCitation": {
@@ -1568,6 +1624,44 @@
         "original"
       ],
       "title": "ValueRevision",
+      "type": "object"
+    },
+    "VerificationDiagnostic": {
+      "additionalProperties": false,
+      "description": "Finite public reasons; never carry raw internal verification messages.",
+      "properties": {
+        "schema_version": {
+          "const": "service-v1",
+          "default": "service-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "code": {
+          "enum": [
+            "source_binding",
+            "source_registry_required",
+            "verification_blocker",
+            "verification_warning"
+          ],
+          "title": "Code",
+          "type": "string"
+        },
+        "message": {
+          "enum": [
+            "Requested documents must match the configured review sources.",
+            "A current source registry is required to review the material.",
+            "Verification could not pass; inspect review findings or request human review.",
+            "Verification reported a warning; request human review before proceeding."
+          ],
+          "title": "Message",
+          "type": "string"
+        }
+      },
+      "required": [
+        "code",
+        "message"
+      ],
+      "title": "VerificationDiagnostic",
       "type": "object"
     },
     "WorkflowStatus": {

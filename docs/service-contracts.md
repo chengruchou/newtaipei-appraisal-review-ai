@@ -32,7 +32,7 @@ live task responses, downloadable PDFs or observed execution evidence.
 | HumanTask, HumanResponse, AcceptedResponse; PrincipalResolver, HumanTaskRepository | B | Server task/admission -> C and subsequent run | Strict commands and pure permission/version checks; no human API mounted |
 | AuthorizationRecord | B, E for publication scope | Trusted authorizer -> job/publisher | Reserved metadata record; existing signed local receipt remains actual local authority |
 | AllowedAction, ActionProposal, DecisionEvent, Budget | A | Trusted policy/executor -> C/D/evaluation | Pure admission and truthful event validation; no model selector, retry loop or event store |
-| ServiceResult, ArtifactManifest | B assembly, E coverage, D publication | Local facade / future publisher -> C | Callable local envelope and real PDF manifest; durable publication reserved |
+| ServiceResult, ServiceVerification, VerificationDiagnostic, ArtifactManifest | B assembly, E coverage, D publication | Local facade / future publisher -> C | Callable local envelope, sanitized verification and real PDF manifest; durable publication reserved |
 | ServiceProblem / ServiceFault | B with D | Guards -> transport adapters | Static sanitized codes; old EntryProblem remains the legacy transport boundary |
 
 B coordinates shared changes; each steward reviews its trust boundary. A–E are
@@ -72,6 +72,11 @@ responsibility positions, not repository usernames or automatic assignees.
   re-exports through document_cli for compatibility; migrate internal imports now,
   retain that alias through v1 and remove only in a documented major migration.
   ArtifactStatus is the existing five-value type factored into an alias.
+- PR #20's pre-merge correction adds nullable `ServiceResult.verification` and its
+  finite diagnostic types to the proposed service-v1 bundle. B/C/D must consume
+  the regenerated schema and fixtures together; older extra-forbid consumers
+  cannot silently accept the added field. This is convergence of the unmerged
+  M0 contract, not a change to any legacy HTTP/invocation schema.
 
 ## External versus trusted input
 
@@ -95,8 +100,15 @@ single-operator workflow, not Windows approval, multi-user login or remote IAM.
 RevisionSnapshot stores serialized immutable material/metadata. Each property
 read returns a detached object. `revise` checks case/new revision identity, copies
 material, changes both case identity versions and removes every old confirmation.
-Changed/new sides lose native-extraction authority; unchanged native observations
-retain their provenance. Raw confidence is never raised. Original snapshots remain
+Native authority survives only if the immediate parent side was `native_numeric`,
+the candidate is still `native_numeric`, neither carries a human confirmation,
+and the exact side digest is unchanged. That digest includes context, factor,
+side, observation, citations and other reliability fields; it deliberately omits
+method/confirmation to support explicit human confirmation. Digest equality alone
+therefore cannot establish native origin. Changed/new/non-native sides remain
+`model_proposed`, even after a later method-only relabeling. Re-extraction must
+use the trusted extraction/assembly entry, not a revision label. Raw confidence
+is never raised. Original snapshots remain
 unchanged. B must populate ValueRevision's original/proposed/corrected views from
 trusted old/new material; supplied original values are never authoritative.
 
@@ -125,8 +137,8 @@ and signed receipt. An original receipt is valid only for the unchanged original
 revision must not reuse confirmations or approvals that fail their exact binding. `revise`
 starts a new case version and deliberately clears all human confirmations: M0 has
 no validated dependency graph for safely carrying human assertions across revisions.
-It does not revoke or rewrite the unchanged parent. Unchanged native observations
-retain native provenance; changed sides require explicit confirmation and the new
+It does not revoke or rewrite the unchanged parent. Only unchanged native lineage
+retains native provenance; other sides require explicit confirmation and the new
 exact material needs separate approval. This conservative revision operation does
 not change the existing eligibility rules for material that was not revised.
 AuthorizationRecord is a reserved server record referencing all revision metadata;
@@ -163,6 +175,7 @@ unchanged; A/D must connect events to its producer/store explicitly.
 | --- | --- |
 | queued or running / null / not_requested | Reserved job in progress; no terminal result claim |
 | succeeded / needs_review / not_requested | Review ran; findings/blockers remain; no completed-form write |
+| succeeded / failed / not_requested | Review ran but preflight or verification failed; inspect verification even when findings is empty |
 | succeeded / verified / not_requested | No PDF requested |
 | succeeded / verified / unavailable | Output requested but no writer assembled |
 | succeeded / verified / unsupported_contexts | Existing single-context writer cannot accept the case |
@@ -172,7 +185,31 @@ unchanged; A/D must connect events to its producer/store explicitly.
 
 A validation finding can also yield business failed after a successful review
 execution. Success of the process is not a claim that the case passed.
-ServiceResult retains review findings, result_version and durable=false locally.
+ServiceResult retains review findings, sanitized verification, result_version and
+durable=false locally. `verification` is null only when the Controller supplied no
+report (for example, entry/configuration failure). Otherwise it includes the
+existing EvaluationStatus plus `critical_errors` and `warnings`, each an ordered
+array of `{schema_version, code, message}` diagnostics. Preserve list membership
+and multiplicity as well as status; a warning is not silently promoted to a blocker.
+The adapter projects the report even without `case_review`, and retains it if a
+subsequent artifact-manifest check fails. `problem` remains reserved for entry or
+execution failure: a source-binding rejection has succeeded/failed, empty findings,
+no artifacts, a source_binding diagnostic and null problem.
+
+| Diagnostic code | Public meaning / consumer action |
+| --- | --- |
+| source_binding | Requested documents must match configured review sources; select the authorized configured documents |
+| source_registry_required | Supply a current typed source registry through trusted material preparation |
+| verification_blocker | An unmapped critical reason remains; inspect available findings or request human review |
+| verification_warning | An unmapped warning remains; request human review before proceeding |
+
+Only exact recognized internal messages map to specific codes; all other text
+uses fixed generic messages. No raw error, local path, storage URI, input excerpt
+or credential is copied into these diagnostics. Generic fallbacks deliberately
+do not promise the detailed internal reason. The existing review findings remain
+separate evidence-bearing content for authorized consumers, not operational logs.
+See [the source-binding fixture](../examples/service-v1/result-source-binding-failed.json).
+
 A written artifact includes one exact context, unique field IDs, page count,
 output/template/map hashes, verification=local_writer_reopened and
 publication=local_only. The enclosing ServiceResult.run binds every nested artifact
@@ -224,7 +261,7 @@ Runtime session string are separate; a session requires an attempt.
 
 Actually callable: GET /health, POST /v1/validate, POST /v1/reviews and existing
 invocation, using the configured factory; separately `LocalReviewService.run` /
-`python -m appraisal_review.local_service run` returns ServiceResult. No v1 shape
-changed. Reserved groups for B/D: documents, review-jobs, human-tasks/responses,
+`python -m appraisal_review.local_service run` returns ServiceResult. No legacy
+HTTP/invocation shape changed. Reserved groups for B/D: documents, review-jobs, human-tasks/responses,
 authorized artifact downloads. They return no fake production success because no
 routes exist. C can validate fixtures now. See the [local runbook](local-service-runbook.md).

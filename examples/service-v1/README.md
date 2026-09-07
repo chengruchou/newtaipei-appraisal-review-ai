@@ -17,6 +17,11 @@ exact export equality, schema validity and roundtrip serialization.
 Use task/response for exact task/revision/side binding, revision for source/rule
 identity, value for original blank versus proposed value, proposal/decision-rejected
 for policy state, and result-needs-review/result-written for distinct execution,
-business and artifact state. No fixture exposes a storage URI or grants authority.
+business and artifact state. result-source-binding-failed shows a preflight
+rejection with succeeded execution, failed business status, empty findings, null
+problem and a structured verification diagnostic. Consume the updated service-v1
+schema and result fixtures together; extra-forbid consumers of the earlier PR #20
+draft must adopt the added verification field. No fixture exposes a storage URI
+or grants authority.
 See [service contracts](../../docs/service-contracts.md) and
 [local runbook](../../docs/local-service-runbook.md) before integration.

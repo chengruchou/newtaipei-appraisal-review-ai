@@ -31,6 +31,7 @@ from appraisal_review.domain.factor_models import (
     AgentReviewRequest,
     AgentReviewRun,
     ReviewMaterial,
+    VerificationReport,
     WorkflowStatus,
 )
 from appraisal_review.domain.pdf_models import PDFFieldMap, PDFWriteRequest, PDFWriteResult
@@ -44,8 +45,39 @@ from appraisal_review.domain.service_contracts import (
     ServiceErrorCode,
     ServiceProblem,
     ServiceResult,
+    ServiceVerification,
+    VerificationDiagnostic,
 )
 from appraisal_review.ports.pdf import PDFWriter
+
+
+def public_verification(report: VerificationReport | None) -> ServiceVerification | None:
+    """Allowlist known reasons; unknown internal text never crosses this boundary."""
+    if report is None:
+        return None
+    known = {
+        "source_binding: requested and reviewed source must match": VerificationDiagnostic(
+            code="source_binding",
+            message="Requested documents must match the configured review sources.",
+        ),
+        "A typed current source registry is required": VerificationDiagnostic(
+            code="source_registry_required",
+            message="A current source registry is required to review the material.",
+        ),
+    }
+    blocker = VerificationDiagnostic(
+        code="verification_blocker",
+        message="Verification could not pass; inspect review findings or request human review.",
+    )
+    warning = VerificationDiagnostic(
+        code="verification_warning",
+        message="Verification reported a warning; request human review before proceeding.",
+    )
+    return ServiceVerification(
+        status=report.status,
+        critical_errors=tuple(known.get(reason, blocker) for reason in report.critical_errors),
+        warnings=tuple(known.get(reason, warning) for reason in report.warnings),
+    )
 
 
 class LocalWriterConfiguration(DocumentModel):
@@ -247,6 +279,7 @@ class LocalReviewService:
                 ),
             )
         findings = tuple(result.case_review.findings) if result.case_review else ()
+        verification = public_verification(result.verification)
         try:
             artifacts = self._manifest(result, request, run, writer.evidence if writer else None)
         except Exception:
@@ -257,6 +290,7 @@ class LocalReviewService:
                 execution_status=ExecutionStatus.FAILED,
                 business_status=WorkflowStatus.FAILED,
                 findings=findings,
+                verification=verification,
                 problem=ServiceProblem(code=ServiceErrorCode.EXECUTION),
             )
         return ServiceResult(
@@ -268,6 +302,7 @@ class LocalReviewService:
             business_status=result.status,
             artifact_status=result.artifact_status,
             findings=findings,
+            verification=verification,
             artifacts=artifacts,
             problem=ServiceProblem(code=ServiceErrorCode.EXECUTION) if result.pdf_error else None,
         )

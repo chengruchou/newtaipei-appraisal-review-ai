@@ -46,6 +46,18 @@
       "trace": "Synthetic observation requires explicit human confirmation."
     }
   ],
+  "verification": {
+    "schema_version": "service-v1",
+    "status": "needs_review",
+    "critical_errors": [
+      {
+        "schema_version": "service-v1",
+        "code": "verification_blocker",
+        "message": "Verification could not pass; inspect review findings or request human review."
+      }
+    ],
+    "warnings": []
+  },
   "artifacts": [],
   "problem": null,
   "durable": false

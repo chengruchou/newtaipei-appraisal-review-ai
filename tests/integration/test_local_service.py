@@ -9,6 +9,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+import jsonschema
 import pytest
 from fastapi.testclient import TestClient
 from pypdf import PdfReader
@@ -23,7 +24,12 @@ from appraisal_review.adapters.local.service import (
 from appraisal_review.api.app import create_app
 from appraisal_review.application.bootstrap import ConfigurationError
 from appraisal_review.application.revisions import RevisionSnapshot
-from appraisal_review.domain.factor_models import AgentReviewRequest, ReviewMaterial
+from appraisal_review.domain.factor_models import (
+    AgentReviewRequest,
+    AgentReviewRun,
+    ReviewMaterial,
+    VerificationReport,
+)
 from appraisal_review.domain.review_contracts import content_digest
 from appraisal_review.domain.service_contracts import ServiceResult
 from appraisal_review.local_service import app_from_environment
@@ -134,6 +140,114 @@ def test_lazy_http_configuration_validation_and_safe_errors(configured, monkeypa
             "source_binding: requested and reviewed source must match"
         ]
         assert "private" not in response.text and "not-allowed" not in response.text
+
+
+def test_service_preserves_source_binding_diagnostics_and_legacy_contract(configured):
+    config, request = configured
+    service = LocalReviewService(config)
+    request.case_document_uri = "file:///private/not-allowed.pdf"
+    payload = request.model_dump(mode="json")
+    with TestClient(create_app(controller_factory=service.controller_factory)) as client:
+        response = client.post("/v1/reviews", json=payload)
+    invoked = asyncio.run(invoke(payload, controller_factory=service.controller_factory))
+    assert response.status_code == 200
+    assert (
+        response.json()["verification"]
+        == invoked["verification"]
+        == {
+            "status": "failed",
+            "critical_errors": ["source_binding: requested and reviewed source must match"],
+            "warnings": [],
+        }
+    )
+    assert response.json()["case_review"] is None and invoked["case_review"] is None
+    result = asyncio.run(service.run(request))
+    assert result.execution_status == "succeeded" and result.business_status == "failed"
+    assert result.problem is None and result.findings == () and result.artifacts == ()
+    verification = result.model_dump(mode="json").get("verification")
+    assert verification is not None
+    assert verification["status"] == "failed"
+    assert verification["critical_errors"] == [
+        {
+            "schema_version": "service-v1",
+            "code": "source_binding",
+            "message": "Requested documents must match the configured review sources.",
+        }
+    ]
+    assert verification["warnings"] == []
+    schema = json.loads((ROOT / "schemas/service-v1.json").read_text())
+    jsonschema.validate(result.model_dump(mode="json"), {**schema, "$ref": "#/$defs/ServiceResult"})
+    assert ServiceResult.model_validate_json(result.model_dump_json()) == result
+    for serialized in (response.text, json.dumps(invoked), result.model_dump_json()):
+        assert "private" not in serialized and "not-allowed" not in serialized
+    assert not list(config.writer.output_directory.iterdir())
+
+
+@pytest.mark.parametrize("status", ["failed", "needs_review"])
+def test_service_preflight_diagnostics_redact_unknown_text(configured, monkeypatch, status):
+    config, request = configured
+    service = LocalReviewService(config)
+    controller = service.controller_factory()
+    report = VerificationReport(
+        status=status,
+        critical_errors=[
+            "A typed current source registry is required",
+            "source_binding: file:///private/secret-case.pdf",
+            "unexpected input from /private/secret-settings",
+        ],
+        warnings=["s3://private-bucket/secret-object?token=hidden"],
+    )
+
+    async def preflight(_):
+        return AgentReviewRun(case_id=request.case_id, status=status, verification=report)
+
+    monkeypatch.setattr(controller, "review", preflight)
+    monkeypatch.setattr(service, "controller_factory", lambda: controller)
+    result = asyncio.run(service.run(request))
+    assert result.execution_status == "succeeded" and result.business_status == status
+    assert result.problem is None and not result.findings and not result.artifacts
+    assert result.verification.status == status
+    assert [error.code for error in result.verification.critical_errors] == [
+        "source_registry_required",
+        "verification_blocker",
+        "verification_blocker",
+    ]
+    assert [warning.code for warning in result.verification.warnings] == ["verification_warning"]
+    for private in ("private", "secret", "file:///", "s3://", "token", "hidden"):
+        assert private not in result.model_dump_json()
+    assert not list(config.writer.output_directory.iterdir())
+
+
+def test_actual_run_cli_preserves_preflight_diagnostic(configured):
+    config, request = configured
+    root = config.material_path.parent
+    request.case_document_uri = "file:///private/not-allowed.pdf"
+    request_path = root / "request-source-mismatch.json"
+    request_path.write_text(request.model_dump_json())
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "appraisal_review.local_service",
+            "run",
+            "--config",
+            str(root / "config.json"),
+            "--request",
+            str(request_path),
+        ],
+        cwd=ROOT,
+        env={**os.environ, "PYTHONPATH": str(ROOT / "src")},
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert result.returncode == 0 and result.stderr == ""
+    envelope = ServiceResult.model_validate_json(result.stdout)
+    assert envelope.execution_status == "succeeded" and envelope.business_status == "failed"
+    assert envelope.verification.critical_errors[0].code == "source_binding"
+    assert not envelope.findings and not envelope.artifacts and envelope.problem is None
+    assert "private" not in result.stdout and "not-allowed" not in result.stdout
+    assert not list(config.writer.output_directory.iterdir())
 
 
 @pytest.mark.parametrize(
@@ -335,6 +449,7 @@ def test_manifest_reopen_failure_cannot_advertise_completed_artifact(configured,
     assert result.execution_status == "failed" and result.business_status == "failed"
     assert result.artifacts == () and result.problem.code == "execution_failed"
     assert result.findings
+    assert result.verification.status == "verified"
     assert "private path" not in result.model_dump_json()
 
 
@@ -368,6 +483,7 @@ def test_facade_preserves_machine_error_categories(configured, monkeypatch, case
     result = asyncio.run(service.run(request))
     assert result.problem.code == expected
     assert result.execution_status == "failed" and result.artifacts == ()
+    assert result.verification is None
     assert "private" not in result.model_dump_json()
     assert not list(config.writer.output_directory.iterdir())
 

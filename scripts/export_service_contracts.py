@@ -41,9 +41,11 @@ from appraisal_review.domain.service_contracts import (
     ServiceModel,
     ServiceProblem,
     ServiceResult,
+    ServiceVerification,
     TaskKind,
     ToolOutcome,
     ValueRevision,
+    VerificationDiagnostic,
 )
 
 MODELS = (
@@ -68,6 +70,8 @@ MODELS = (
     DecisionEvent,
     ArtifactManifest,
     ServiceResult,
+    ServiceVerification,
+    VerificationDiagnostic,
     ReviewSubmission,
 )
 
@@ -121,6 +125,18 @@ def fixtures() -> dict[str, ServiceModel]:
         execution_status=ExecutionStatus.SUCCEEDED,
         business_status=WorkflowStatus.NEEDS_REVIEW,
         findings=(finding,),
+        verification=ServiceVerification(
+            status="needs_review",
+            critical_errors=(
+                VerificationDiagnostic(
+                    code="verification_blocker",
+                    message=(
+                        "Verification could not pass; inspect review findings "
+                        "or request human review."
+                    ),
+                ),
+            ),
+        ),
     )
     artifact = ArtifactManifest(
         artifact_id=UUID(int=4),
@@ -146,6 +162,21 @@ def fixtures() -> dict[str, ServiceModel]:
             budget=Budget(steps_remaining=0, model_calls_remaining=0, retries_remaining=0),
         ),
         "result-needs-review": needs_review,
+        "result-source-binding-failed": ServiceResult(
+            run=run,
+            result_version=1,
+            execution_status=ExecutionStatus.SUCCEEDED,
+            business_status=WorkflowStatus.FAILED,
+            verification=ServiceVerification(
+                status="failed",
+                critical_errors=(
+                    VerificationDiagnostic(
+                        code="source_binding",
+                        message="Requested documents must match the configured review sources.",
+                    ),
+                ),
+            ),
+        ),
         "result-written": ServiceResult(
             run=run,
             result_version=1,
@@ -153,6 +184,7 @@ def fixtures() -> dict[str, ServiceModel]:
             business_status=WorkflowStatus.COMPLETED,
             artifact_status="written",
             artifacts=(artifact,),
+            verification=ServiceVerification(status="verified"),
         ),
         "submission": ReviewSubmission(
             revision=revision.reference,

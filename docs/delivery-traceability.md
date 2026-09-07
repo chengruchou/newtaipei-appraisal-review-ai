@@ -1,5 +1,16 @@
 # Requirements to implementation and acceptance
 
+## PR #20 local P2 correction (2026-09-07)
+
+The [P2 correction record](m0-p2-review.md) supersedes the earlier review's limited
+native-lineage and service-diagnostic conclusions. It fixes method-only restoration
+of extraction authority and preserves sanitized verification when preflight has no
+case_review. Local checks pass with 655 repository tests, 8 cloud tests, quality
+gates, unchanged legacy schemas and actual HTTP/invoke/run smoke. Raw confidence
+and legitimate confirmation remain intact. The current published PR head is still
+89e4c77eea67337cb94ef7f4f0d9afbf7645cef9; its successful CI precedes these local
+changes. Commit/push/PR edits require separate approval and exact new-head CI.
+
 ## M0 pre-publication review snapshot (2026-09-07)
 
 At the local review checkpoint, branch `feat/shared-service-contracts` had

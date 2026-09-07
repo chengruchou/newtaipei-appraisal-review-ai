@@ -1,5 +1,11 @@
 # M0 pre-submission review
 
+This is the historical pre-publication review. The later PR #20 review identified
+two gaps outside its counterexamples: method-only restoration of native authority
+and service projection of preflight diagnostics. See the
+[P2 correction record](m0-p2-review.md) for current fixes and verification; the
+earlier "No core defect found" disposition is limited to the tests recorded below.
+
 Reviewed locally on 2026-09-07 on `feat/shared-service-contracts` against main
 `ea55043d90aa21e6f0a7e3fe05aa34ef8a3553d3`. At the end of the local review,
 HEAD was that base and there were no staged changes or outgoing commits. This is

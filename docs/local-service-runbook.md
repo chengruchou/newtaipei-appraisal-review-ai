@@ -30,6 +30,9 @@ both sides and signs only that generated test material in a fresh private store.
 Both observation and evidence confidence stay 0. It starts loopback HTTP children,
 checks health, legacy validation, review 422, missing-config 503, normal review,
 invocation parity, real writer output, reopen verification and a blocked review.
+It also sends an unauthorized synthetic source through HTTP and both actual CLI
+commands: legacy verification agrees, and the service envelope retains a sanitized
+source_binding diagnostic with succeeded/failed and no artifacts or execution problem.
 It verifies unchanged source hashes and absent jobs/task/artifact routes, then
 stops all children and removes temporary data. Unit/integration tests additionally
 count zero writer calls for needs_review, reject stale/substituted artifacts and
@@ -50,6 +53,7 @@ The retained files have distinct roles:
 | result-written.json | ServiceResult JSON from that CLI's stdout | Machine-readable manifest at artifacts[0]; its enclosing run binds case/revision/material digest/run UUID |
 | smoke-report.json | Local smoke summary JSON | Maps both paths to producer/response/hash/observed byte size, plus the second write's run and artifact IDs |
 | result-retry-failed.json | ServiceResult JSON from a same-destination retry | New run, failed execution, no manifest; prior successful PDF remains untouched |
+| result-source-binding-failed.json | ServiceResult JSON from an unauthorized synthetic source | Successful execution, failed business verification, source_binding diagnostic, no case findings or artifact |
 
 `request-manifest.json` is the second write's reproducible request. The two PDFs
 may have identical hashes because rendering is deterministic; this does not make
@@ -102,7 +106,7 @@ The command exits describe transport/serialization, not business approval:
 | --- | --- | --- |
 | invoke: valid request/result | Legacy AgentReviewRun | Empty in synthetic acceptance; exit 0 |
 | invoke: invalid request shape, missing configuration, controller exception | Legacy EntryProblem error envelope | Empty; exit 0 (existing adapter behavior) |
-| run: valid request, including needs_review or caught execution/PDF failure | ServiceResult; inspect execution_status, business_status, artifact_status and problem | Empty in synthetic acceptance; exit 0 |
+| run: valid request, including needs_review or caught execution/PDF failure | ServiceResult; inspect execution_status, business_status, verification, artifact_status and problem | Empty in synthetic acceptance; exit 0 |
 | run: invalid request shape or configuration cannot load | Empty | Sanitized invalid_local_request JSON; exit 2 |
 | Either command: unreadable request file or malformed JSON text | Empty | Sanitized invalid_local_request JSON; exit 2 |
 
@@ -118,7 +122,13 @@ With no APPRAISAL_LOCAL_CONFIG, health and legacy validation still work, invalid
 review JSON is 422 before configuration I/O, and valid review requests get 503.
 Unknown allowlisted sources preserve legacy 200/business failed with sanitized
 source_binding verification; an unexpected controller exception gets EntryProblem
-500. This distinction is unchanged. No jobs/HITL/download routes are mounted.
+500. This distinction is unchanged. The separate service run facade also retains
+verification when case_review is absent: check verification.critical_errors and
+verification.warnings even if findings is empty and problem is null. Specific
+source_binding/source_registry_required codes guide correction; generic codes
+request human review without exposing internal paths. The regenerated service-v1
+schema and fixtures must be adopted together by B/C/D consumers. No jobs/HITL/download
+routes are mounted.
 
 ## Configure your own prepared documents (no automatic approval)
 
@@ -129,6 +139,11 @@ material digest and required facts/rules; M0 does not perform or authorize these
 operations for real cases. Model approval flags and submitted reviewer names are
 not credentials. An original receipt is valid only for unchanged original material;
 a new revision cannot reuse confirmations or approvals that fail exact binding.
+Revising a side cannot restore native authority by changing its method label.
+Only unchanged native lineage retains that eligibility; other revised sides need
+explicit confirmation and the new exact material needs separate approval. The
+trusted extraction/assembly flow is the entry for actual re-extraction. Raw
+observation and evidence scores are retained through confirmation.
 Actual local reviewer identity comes from the OS and private
 store; Windows native reviewer support and web login are not implemented.
 

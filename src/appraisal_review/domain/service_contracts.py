@@ -14,7 +14,12 @@ from uuid import UUID
 from pydantic import ConfigDict, Field, model_validator
 
 from appraisal_review.domain.document_models import Digest, DocumentModel, SourceCitation
-from appraisal_review.domain.factor_models import ArtifactStatus, NormalizedValue, WorkflowStatus
+from appraisal_review.domain.factor_models import (
+    ArtifactStatus,
+    EvaluationStatus,
+    NormalizedValue,
+    WorkflowStatus,
+)
 from appraisal_review.domain.review_contracts import ComparisonContext, ReviewFinding
 
 OpaqueID = Annotated[str, Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")]
@@ -370,6 +375,46 @@ class ArtifactManifest(ServiceModel):
         return self
 
 
+class VerificationDiagnostic(ServiceModel):
+    """Finite public reasons; never carry raw internal verification messages."""
+
+    code: Literal[
+        "source_binding", "source_registry_required", "verification_blocker", "verification_warning"
+    ]
+    message: Literal[
+        "Requested documents must match the configured review sources.",
+        "A current source registry is required to review the material.",
+        "Verification could not pass; inspect review findings or request human review.",
+        "Verification reported a warning; request human review before proceeding.",
+    ]
+
+    @model_validator(mode="after")
+    def matching_reason(self) -> VerificationDiagnostic:
+        expected = {
+            "source_binding": "Requested documents must match the configured review sources.",
+            "source_registry_required": (
+                "A current source registry is required to review the material."
+            ),
+            "verification_blocker": (
+                "Verification could not pass; inspect review findings or request human review."
+            ),
+            "verification_warning": (
+                "Verification reported a warning; request human review before proceeding."
+            ),
+        }
+        if self.message != expected[self.code]:
+            raise ValueError("Verification code and public message must agree")
+        return self
+
+
+class ServiceVerification(ServiceModel):
+    """Sanitized projection of the existing verification report, including preflight."""
+
+    status: EvaluationStatus
+    critical_errors: tuple[VerificationDiagnostic, ...] = ()
+    warnings: tuple[VerificationDiagnostic, ...] = ()
+
+
 class ServiceResult(ServiceModel):
     run: RunReference
     result_version: int = Field(ge=1, strict=True)
@@ -377,6 +422,7 @@ class ServiceResult(ServiceModel):
     business_status: WorkflowStatus | None = None
     artifact_status: ArtifactStatus = "not_requested"
     findings: tuple[ReviewFinding, ...] = ()
+    verification: ServiceVerification | None = None
     artifacts: tuple[ArtifactManifest, ...] = Field(default=(), max_length=1)
     problem: ServiceProblem | None = None
     durable: bool = Field(default=False, strict=True)
@@ -385,6 +431,7 @@ class ServiceResult(ServiceModel):
     def honest_completion(self) -> ServiceResult:
         if self.execution_status in {ExecutionStatus.QUEUED, ExecutionStatus.RUNNING} and (
             self.business_status is not None
+            or self.verification is not None
             or self.problem is not None
             or self.artifacts
             or self.artifact_status != "not_requested"

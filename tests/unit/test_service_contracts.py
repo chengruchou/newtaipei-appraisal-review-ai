@@ -40,6 +40,7 @@ from appraisal_review.domain.service_contracts import (
     ServiceResult,
     ToolOutcome,
     ValueRevision,
+    VerificationDiagnostic,
 )
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -96,6 +97,24 @@ def test_external_document_rejects_authority_and_uris(values, extra):
     data = values["revision"].documents[0].model_dump(mode="json")
     with pytest.raises(ValidationError):
         DocumentReference.model_validate({**data, **extra})
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"message": "Cannot open file:///private/case.pdf"},
+        {"code": "file:///private/case.pdf"},
+        {"message": "A current source registry is required to review the material."},
+        {"source_uri": "file:///private/case.pdf"},
+    ],
+)
+def test_verification_diagnostic_rejects_private_or_mismatched_reasons(change):
+    data = {
+        "code": "source_binding",
+        "message": "Requested documents must match the configured review sources.",
+    }
+    with pytest.raises(ValidationError):
+        VerificationDiagnostic.model_validate({**data, **change})
 
 
 def test_decimal_blank_null_and_finite():
