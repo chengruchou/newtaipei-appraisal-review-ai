@@ -1,0 +1,516 @@
+{
+  "$defs": {
+    "CaseIdentity": {
+      "additionalProperties": false,
+      "properties": {
+        "case_id": {
+          "title": "Case Id",
+          "type": "string"
+        },
+        "version": {
+          "title": "Version",
+          "type": "string"
+        },
+        "district": {
+          "title": "District",
+          "type": "string"
+        },
+        "zone": {
+          "title": "Zone",
+          "type": "string"
+        },
+        "land_use_category": {
+          "title": "Land Use Category",
+          "type": "string"
+        },
+        "effective_date": {
+          "format": "date",
+          "title": "Effective Date",
+          "type": "string"
+        }
+      },
+      "required": [
+        "case_id",
+        "version",
+        "district",
+        "zone",
+        "land_use_category",
+        "effective_date"
+      ],
+      "title": "CaseIdentity",
+      "type": "object"
+    },
+    "InputManifest": {
+      "additionalProperties": false,
+      "properties": {
+        "identity": {
+          "$ref": "#/$defs/CaseIdentity"
+        },
+        "documents": {
+          "items": {
+            "$ref": "#/$defs/InputSpec"
+          },
+          "minItems": 2,
+          "title": "Documents",
+          "type": "array"
+        }
+      },
+      "required": [
+        "identity",
+        "documents"
+      ],
+      "title": "InputManifest",
+      "type": "object"
+    },
+    "InputSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "format": "path",
+          "title": "Path",
+          "type": "string"
+        },
+        "document_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Document Id",
+          "type": "string"
+        },
+        "version": {
+          "title": "Version",
+          "type": "string"
+        },
+        "role": {
+          "title": "Role",
+          "type": "string"
+        },
+        "expected_hash": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Expected Hash",
+          "type": "string"
+        },
+        "document_date": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Document Date"
+        }
+      },
+      "required": [
+        "path",
+        "document_id",
+        "version",
+        "role",
+        "expected_hash"
+      ],
+      "title": "InputSpec",
+      "type": "object"
+    },
+    "LocalWriterConfiguration": {
+      "additionalProperties": false,
+      "properties": {
+        "template_path": {
+          "format": "path",
+          "title": "Template Path",
+          "type": "string"
+        },
+        "output_directory": {
+          "format": "path",
+          "title": "Output Directory",
+          "type": "string"
+        },
+        "field_map": {
+          "$ref": "#/$defs/PDFFieldMap"
+        },
+        "template_policy": {
+          "$ref": "#/$defs/PDFTemplatePolicy"
+        },
+        "render": {
+          "$ref": "#/$defs/PDFRenderConfig"
+        }
+      },
+      "required": [
+        "template_path",
+        "output_directory",
+        "field_map",
+        "template_policy",
+        "render"
+      ],
+      "title": "LocalWriterConfiguration",
+      "type": "object"
+    },
+    "PDFField": {
+      "additionalProperties": false,
+      "properties": {
+        "field_id": {
+          "minLength": 1,
+          "title": "Field Id",
+          "type": "string"
+        },
+        "page": {
+          "minimum": 1,
+          "title": "Page",
+          "type": "integer"
+        },
+        "bounding_box": {
+          "maxItems": 4,
+          "minItems": 4,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Bounding Box",
+          "type": "array"
+        },
+        "max_characters": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Characters"
+        },
+        "value_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PDFValueRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "operation": {
+          "default": "fill_blank",
+          "enum": [
+            "fill_blank",
+            "annotate",
+            "correct"
+          ],
+          "title": "Operation",
+          "type": "string"
+        }
+      },
+      "required": [
+        "field_id",
+        "page",
+        "bounding_box"
+      ],
+      "title": "PDFField",
+      "type": "object"
+    },
+    "PDFFieldMap": {
+      "additionalProperties": false,
+      "properties": {
+        "template_id": {
+          "minLength": 1,
+          "title": "Template Id",
+          "type": "string"
+        },
+        "page_numbering": {
+          "const": "one_based",
+          "default": "one_based",
+          "title": "Page Numbering",
+          "type": "string"
+        },
+        "coordinate_system": {
+          "const": "pdf_bottom_left",
+          "default": "pdf_bottom_left",
+          "title": "Coordinate System",
+          "type": "string"
+        },
+        "page_space": {
+          "const": "unrotated_crop_box",
+          "default": "unrotated_crop_box",
+          "title": "Page Space",
+          "type": "string"
+        },
+        "fields": {
+          "items": {
+            "$ref": "#/$defs/PDFField"
+          },
+          "title": "Fields",
+          "type": "array"
+        }
+      },
+      "required": [
+        "template_id",
+        "fields"
+      ],
+      "title": "PDFFieldMap",
+      "type": "object"
+    },
+    "PDFRenderConfig": {
+      "additionalProperties": false,
+      "description": "Deterministic text and publication policy injected into a local writer.\n\nConstruction validates values lexically but never checks whether the font\nexists. The writer performs that I/O check when handling a write request.",
+      "properties": {
+        "font_path": {
+          "format": "path",
+          "title": "Font Path",
+          "type": "string"
+        },
+        "font_name": {
+          "default": "AppraisalCJK",
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$",
+          "title": "Font Name",
+          "type": "string"
+        },
+        "font_size": {
+          "default": 10.0,
+          "exclusiveMinimum": 0.0,
+          "maximum": 72.0,
+          "title": "Font Size",
+          "type": "number"
+        },
+        "text_color": {
+          "default": "#000000",
+          "pattern": "^#[0-9A-Fa-f]{6}$",
+          "title": "Text Color",
+          "type": "string"
+        },
+        "text_alignment": {
+          "default": "center",
+          "enum": [
+            "left",
+            "center",
+            "right"
+          ],
+          "title": "Text Alignment",
+          "type": "string"
+        },
+        "annotation_label": {
+          "default": "REVIEW",
+          "minLength": 1,
+          "title": "Annotation Label",
+          "type": "string"
+        },
+        "annotation_color": {
+          "default": "#B00020",
+          "pattern": "^#[0-9A-Fa-f]{6}$",
+          "title": "Annotation Color",
+          "type": "string"
+        },
+        "decimal_places": {
+          "default": 2,
+          "maximum": 6,
+          "minimum": 0,
+          "title": "Decimal Places",
+          "type": "integer"
+        },
+        "show_positive_sign": {
+          "default": true,
+          "title": "Show Positive Sign",
+          "type": "boolean"
+        },
+        "overwrite_existing": {
+          "default": false,
+          "title": "Overwrite Existing",
+          "type": "boolean"
+        },
+        "grade_labels": {
+          "additionalProperties": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Grade Labels",
+          "type": "object"
+        }
+      },
+      "required": [
+        "font_path"
+      ],
+      "title": "PDFRenderConfig",
+      "type": "object"
+    },
+    "PDFTemplatePolicy": {
+      "additionalProperties": false,
+      "description": "Version-specific editable and reference-only page boundaries.",
+      "properties": {
+        "template_id": {
+          "minLength": 1,
+          "title": "Template Id",
+          "type": "string"
+        },
+        "template_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Template Sha256",
+          "type": "string"
+        },
+        "field_map_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Field Map Sha256",
+          "type": "string"
+        },
+        "editable_pages": {
+          "items": {
+            "type": "integer"
+          },
+          "title": "Editable Pages",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "reference_only_pages": {
+          "default": [],
+          "items": {
+            "type": "integer"
+          },
+          "title": "Reference Only Pages",
+          "type": "array",
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "template_id",
+        "template_sha256",
+        "field_map_sha256",
+        "editable_pages"
+      ],
+      "title": "PDFTemplatePolicy",
+      "type": "object"
+    },
+    "PDFValueRef": {
+      "additionalProperties": false,
+      "description": "Explicit binding; field_id is a placement ID, never an expression.",
+      "properties": {
+        "scope": {
+          "enum": [
+            "regional",
+            "individual"
+          ],
+          "title": "Scope",
+          "type": "string"
+        },
+        "target_id": {
+          "minLength": 1,
+          "title": "Target Id",
+          "type": "string"
+        },
+        "comparable_id": {
+          "minLength": 1,
+          "title": "Comparable Id",
+          "type": "string"
+        },
+        "value": {
+          "enum": [
+            "target_grade",
+            "comparable_grade",
+            "adjustment_percent",
+            "total_adjustment_percent"
+          ],
+          "title": "Value",
+          "type": "string"
+        },
+        "factor_id": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Factor Id"
+        }
+      },
+      "required": [
+        "scope",
+        "target_id",
+        "comparable_id",
+        "value"
+      ],
+      "title": "PDFValueRef",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "local-service-v1",
+      "default": "local-service-v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "inputs": {
+      "$ref": "#/$defs/InputManifest"
+    },
+    "material_path": {
+      "format": "path",
+      "title": "Material Path",
+      "type": "string"
+    },
+    "expected_material_digest": {
+      "pattern": "^[a-f0-9]{64}$",
+      "title": "Expected Material Digest",
+      "type": "string"
+    },
+    "revision_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+      "title": "Revision Id",
+      "type": "string"
+    },
+    "approval_store": {
+      "anyOf": [
+        {
+          "format": "path",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Approval Store"
+    },
+    "writer": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/LocalWriterConfiguration"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "minimum_confidence": {
+      "default": 0.85,
+      "maximum": 1,
+      "minimum": 0,
+      "title": "Minimum Confidence",
+      "type": "number"
+    }
+  },
+  "required": [
+    "inputs",
+    "material_path",
+    "expected_material_digest",
+    "revision_id"
+  ],
+  "title": "LocalServiceConfiguration",
+  "type": "object"
+}

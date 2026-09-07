@@ -1,0 +1,13 @@
+{
+  "revision.json": "MaterialRevision",
+  "task.json": "HumanTask",
+  "response.json": "HumanResponse",
+  "proposal.json": "ActionProposal",
+  "decision-rejected.json": "DecisionEvent",
+  "result-needs-review.json": "ServiceResult",
+  "result-source-binding-failed.json": "ServiceResult",
+  "result-written.json": "ServiceResult",
+  "submission.json": "ReviewSubmission",
+  "problem.json": "ServiceProblem",
+  "value.json": "ValueRevision"
+}

@@ -1,8 +1,14 @@
 # Data contracts
 
+M0 adds [service-v1 contracts](service-contracts.md), a separate local result
+envelope and configured [local factory](local-service-runbook.md) on its working
+branch. Existing review schema 2.0 and public HTTP/invocation JSON remain unchanged.
+Document/task/job IDs and ports are reserved for B/D; they are not mounted routes.
+The real local writer and S3 wrapper are already merged in #19.
+
 All boundaries reject unknown fields and serialize to JSON. Policy is versioned
-data, not district-specific branching. Technical status below distinguishes
-existing models from unimplemented review semantics.
+data, not district-specific branching. Implemented review schema 2.0 is separate
+from the reserved service persistence/API capabilities described below.
 
 ## Complete review schema 2.0
 
@@ -107,15 +113,18 @@ Successful PDF metadata lives in AgentReviewRun.pdf_result (URI, page count,
 written IDs and noncritical warnings), with output_pdf_uri retained as the URI
 alias. PDF warnings are not review warnings or audit-schema additions. Errors
 produce a stable pdf_error code, failed workflow, retained review/verification,
-and no published output URI. A validates the interface; B validates file contents.
+and no published output URI. The Controller validates the interface; the concrete
+writer validates file contents. Current B owns app assembly and E owns formal PDF.
 
-## Future cloud job contract (#9; design only)
+## Reserved service and cloud contracts (M0 / #9)
 
 A job includes principal, case_id, run_id, input document/version references,
 rule version, idempotency key + payload hash, execution status, business status,
 active attempt/session_id, lease expiry/fencing token and optional result manifest.
-Public responses omit raw internal storage URIs. The authoritative execution
-state is durable DynamoDB state, not SQS receipt or an invocation response.
+Public responses omit raw internal storage URIs. The target authoritative execution
+state belongs in durable DynamoDB storage, not SQS receipt or invocation response.
+This store and its jobs API are not implemented in M0; use the reserved ports in
+[service contracts](service-contracts.md) for conditional/idempotency semantics.
 
 ## HTTP error compatibility
 

@@ -10,14 +10,14 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from pydantic import Field
-
 from appraisal_review.adapters.aws.document_extraction import (
     BedrockDocumentExtractor,
     ExtractionConfig,
     ExtractionError,
 )
 from appraisal_review.adapters.local.approval import LocalApprovalStore, current_reviewer
+from appraisal_review.adapters.local.document_manifest import InputManifest as InputManifest
+from appraisal_review.adapters.local.document_manifest import InputSpec as InputSpec
 from appraisal_review.adapters.local.native_candidates import native_candidates
 from appraisal_review.adapters.local.pdf_parser import DocumentInput, LocalPDFParser
 from appraisal_review.adapters.local.reviewer_platform import (
@@ -29,7 +29,6 @@ from appraisal_review.application.document_review import assemble, document_adap
 from appraisal_review.config import Settings
 from appraisal_review.domain.confidence import confirm_side
 from appraisal_review.domain.document_models import (
-    Digest,
     DocumentModel,
     SourceDocument,
     SourceRegistry,
@@ -37,29 +36,7 @@ from appraisal_review.domain.document_models import (
 from appraisal_review.domain.extraction_models import PageExtraction
 from appraisal_review.domain.factor_models import AgentReviewRequest, ReviewMaterial
 from appraisal_review.domain.golden import GoldenSet, check_fields
-from appraisal_review.domain.review_contracts import CaseIdentity, content_digest
-
-
-class InputSpec(DocumentModel):
-    path: Path
-    document_id: str = Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
-    version: str
-    role: str
-    expected_hash: Digest
-    document_date: str | None = None
-
-
-class InputManifest(DocumentModel):
-    identity: CaseIdentity
-    documents: list[InputSpec] = Field(min_length=2)
-
-    def parser(self) -> LocalPDFParser:
-        specs = []
-        for spec in self.documents:
-            if spec.role not in {"criteria", "forms", "reference", "brief"}:
-                raise ValueError("Unsupported source role")
-            specs.append(DocumentInput(**spec.model_dump()))
-        return LocalPDFParser(specs)
+from appraisal_review.domain.review_contracts import content_digest
 
 
 def private_json(path: Path, value: DocumentModel | dict[str, Any]) -> None:

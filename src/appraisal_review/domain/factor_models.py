@@ -321,14 +321,17 @@ class AgentReviewRequest(StrictFactorModel):
     field_map: PDFFieldMap | None = None
 
 
+ArtifactStatus = Literal[
+    "not_requested", "unavailable", "unsupported_contexts", "simulated", "written"
+]
+
+
 class AgentReviewRun(StrictFactorModel):
     case_id: str
     status: WorkflowStatus
     review: FactorReviewResult | None = None
     case_review: CaseReviewResult | None = None
-    artifact_status: Literal[
-        "not_requested", "unavailable", "unsupported_contexts", "simulated", "written"
-    ] = "not_requested"
+    artifact_status: ArtifactStatus = "not_requested"
     verification: VerificationReport | None = None
     output_pdf_uri: Identifier | None = None
     pdf_result: PDFWriteResult | None = None

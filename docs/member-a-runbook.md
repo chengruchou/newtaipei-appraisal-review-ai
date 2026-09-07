@@ -3,12 +3,14 @@
 The merged entry supports synthetic demonstrations and configured real-document
 preparation/review. PR #15 adds complete review semantics; PR #16 adds the real
 PDF parser, candidate extraction and local reviewer controls. The demo commands
-below remain synthetic and create no PDF. Formal writing (#5), durable cloud
-jobs (#9), a web workbench and controlled model actions (#17) remain future work.
+below remain synthetic and create no PDF. The real local writer and injected S3
+wrapper are merged in #19. M0 adds an explicit real local service factory; follow
+[its runbook](local-service-runbook.md) for actual parser/writer HTTP and invocation.
+Durable jobs (#9), a web workbench and controlled model selection (#17) remain future work.
 
 ## Fresh checkout
 
-Use `main` after the #15/#16 merges. Shared entry #13, contract #10 and isolated
+Use current `main` after #15/#16/#19; M0 instructions require its working branch. Shared entry #13, contract #10 and isolated
 Runtime preparation #14 are also merged; no old stacked branch is required.
 See [traceability](delivery-traceability.md) for the inspected merge SHAs and
 [migration](pr-migration.md) for the historical branch migration.
@@ -62,7 +64,7 @@ For a self-contained real HTTP smoke (starts and stops its own local server):
 python scripts/http_smoke.py
 ```
 
-## Composition and Member B handoff
+## Composition and writer handoff
 
 ```python
 from appraisal_review.application.bootstrap import ReviewAdapters, build_controller
@@ -74,8 +76,9 @@ from appraisal_review.config import Settings
 # controller = build_controller(Settings(), adapters=adapters)
 ```
 
-The API supports create_app(settings=..., adapters=...) and a
-get_controller_factory dependency override. The invocation adapter accepts the
+The API supports create_app(settings=..., adapters=...), M0
+create_app(controller_factory=...), and a get_controller_factory dependency override.
+An explicit factory cannot be combined with settings/adapters. The invocation adapter accepts the
 same factory: async invoke(payload, controller_factory=...). Domain request/run
 models are shared, not reconstructed into a different transport schema.
 
@@ -92,7 +95,10 @@ AWS adapters should construct clients explicitly in their AWS composition layer
 and inject a mode="aws" bundle. RUNTIME_MODE=aws requires Region, model ID, input
 and result buckets, cases table and actual parser/extractor/provider adapters.
 Missing configuration fails explicitly, even if credentials happen to exist.
-The current Bedrock explanation adapter is not a rule or fact extractor.
+The legacy Bedrock explanation adapter is not a rule/fact extractor; #16 supplies
+the separate bounded extraction adapter. M0 HTTP uses prepared material and does
+not trigger live extraction. Current A–E responsibilities are in the
+[delivery plan](mvp-plan.md); historical Member B in #5 means writer work, now E.
 
 ## Verification and publishing
 

@@ -1,0 +1,50 @@
+{
+  "schema_version": "service-v1",
+  "run": {
+    "schema_version": "service-v1",
+    "run_id": "00000000-0000-0000-0000-000000000001",
+    "revision": {
+      "schema_version": "service-v1",
+      "case_id": "synthetic-case",
+      "revision_id": "fixture-r1",
+      "material_digest": "0445917fd60f720359309b58c8edff03c93c929c7270f4ebfde304545595c124"
+    },
+    "attempt_id": null,
+    "runtime_session_id": null
+  },
+  "result_version": 1,
+  "execution_status": "succeeded",
+  "business_status": "completed",
+  "artifact_status": "written",
+  "findings": [],
+  "verification": {
+    "schema_version": "service-v1",
+    "status": "verified",
+    "critical_errors": [],
+    "warnings": []
+  },
+  "artifacts": [
+    {
+      "schema_version": "service-v1",
+      "artifact_id": "00000000-0000-0000-0000-000000000004",
+      "content_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "media_type": "application/pdf",
+      "scope": "single_context",
+      "context": {
+        "scope": "regional",
+        "target_id": "synthetic-target",
+        "comparable_id": "synthetic-comparable"
+      },
+      "field_ids": [
+        "road-rate"
+      ],
+      "page_count": 1,
+      "template_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "field_map_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "verification": "local_writer_reopened",
+      "publication": "local_only"
+    }
+  ],
+  "problem": null,
+  "durable": false
+}

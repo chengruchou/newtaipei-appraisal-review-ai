@@ -2,7 +2,7 @@
 
 This is an isolated HTTP container for testing A's deployed invocation boundary.
 Preparation merged in PR #14 and is available on `main`. The review and extraction
-code from #15/#16 is also merged; no historical stacked branch is needed. This
+code from #15/#16 and real writer #19 is also merged; no historical stacked branch is needed. This
 packaging remains a synthetic smoke, separate from those real-document adapters.
 It does **not** parse documents, call Bedrock, produce PDF files, or implement the
 production durable review-jobs pipeline. The separate production design is #9.
@@ -160,3 +160,18 @@ is no live cleanup to perform yet.
 
 The completed scenario exercises a fake writer: its review status is verified,
 artifact_status is simulated, and no PDF is created or published.
+
+## M0 service foundation handoff
+
+The working-branch [local service runbook](../docs/local-service-runbook.md) tests
+real generated PDF parsing/writing through configured HTTP/invocation. It is a
+separate acceptance path from this synthetic session-local Runtime server; this
+server still returns durable=false and uses its fake writer.
+
+D should consume [service-v1](../docs/service-contracts.md) document/run/revision/
+manifest contracts and reserved JobRepository guarantees when building #9. B owns
+trusted human response and revision transitions. Persist tasks and end attempts
+while waiting, then start a new authorized revision/run. Local guards do not deliver
+DynamoDB transactions, outbox recovery, leases, fencing or a deployed Runtime.
+E owns formal CJK/maps and multiple-context output; A owns actual model comparison.
+No M0 AWS call or CI rerun is required or claimed.
