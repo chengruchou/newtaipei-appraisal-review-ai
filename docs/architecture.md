@@ -1,15 +1,17 @@
 # Architecture
 
-Snapshot: main `ea55043d90aa21e6f0a7e3fe05aa34ef8a3553d3` inspected on 2026-09-07,
-including merged #15/#16/#19, plus M0 review-branch work on
-`feat/shared-service-contracts`. M0 is not deployed or merged. Current and target
-views below are deliberately separate. [Service contracts](service-contracts.md)
-is the authority for all new shared DTOs and ports.
+Snapshot: main `c3687e0cfe16cee0d38fcb4c1780a6092565aaeb` inspected on 2026-09-09,
+including merged #15/#16/#19/#20. Issue #17 Phases 1–6 add exact contracts, pure policy,
+controlled selectors, an explicitly composed single-decision coordinator and a bounded
+local runner with a non-durable trace, and a local human-task/correction/re-entry
+service. Its repository provides process-local transactions only. These components
+are not wired into legacy endpoints and do not provide durable storage.
+Current and target views below are deliberately separate.
+[Service contracts](service-contracts.md) is the authority for shared DTOs and ports.
 
 ## Current program structure
 
-Solid lines are implemented calls/data flow. Orange nodes are this working-branch
-integration; other nodes are merged core. These are local components, not deployed
+Solid lines are implemented calls/data flow. These are local components, not deployed
 AWS infrastructure. Prepared material may originate from real/native candidate
 adapters or the bounded injected Bedrock adapter; M0 tests make no model calls.
 
@@ -39,8 +41,6 @@ flowchart TD
     REAL -->|Validated real result| COMPLETED["completed / written"]
     COMPLETED --> MANIFEST["M0 local facade: current-run write evidence, byte hash and exact field/context manifest"]
     CORE --> AUDIT["Existing domain audit events / injected audit logger"]
-    classDef m0 fill:#fff0cc,stroke:#8b6508
-    class CONFIG,FACTORY,FACADE,MANIFEST m0
 ```
 
 The configured factory injects real LocalPDFParser, MaterialProvider,
@@ -63,6 +63,16 @@ Linux/macOS local store verifies the actual OS reviewer and private signed recei
 M0 revision copies clear confirmations and change the precise case version, making
 old receipts unusable. B's future API must derive identity from a trusted adapter,
 not request body roles. Windows native reviewer and multi-user login are absent.
+
+The separate Phase 6 `HumanTaskService` creates tasks from stored findings and uses
+`LocalReviewerPrincipalResolver` for explicit local identity, case scope and permissions.
+Its repository atomically admits a response, consumes the task, appends a changed revision
+and records new local review work under one process-local lock. `MaterialSubjectMap`
+resolves the exact configured context/factor/side; corrections preserve original values,
+source anchors and measured confidence. Correction and evidence supply require subsequent
+confirmation/approval where applicable. Re-entry calls the existing `CaseReviewer`.
+The adapter loses state at process exit and provides no leases or outbox. See
+[local human review](local-human-review.md) and [ADR 0015](adr/0015-local-human-task-transactions.md).
 
 The review core handles all comparison contexts. The writer still takes one
 FactorReviewResult; no selecting the first comparison. It checks exact field value
@@ -147,10 +157,11 @@ is compute, not the durable state store.
 | --- | --- |
 | infra/cdk private input/result buckets and Cases table definition | D jobs/tasks/outbox/lease model, API/IAM/queues/runtime/publisher/recovery and actual deployment |
 | cloud_tests HTTP/container/CloudFormation synthetic smoke | D explicit identity preflight, build/live acceptance/cleanup; full document assembly separately |
-| Bounded injected Converse extraction adapter | A permitted action selection, model/prompt trace and comparison against E independent goldens |
+| Injected Converse adapters, pure policy/selectors, single-decision coordinator and bounded runner | Comparison against E independent goldens; D durable trace/storage |
 | Local real parser/material/approval/writer factory | B web identity/tasks/revisions API; D Runtime adapter wiring |
 | Single-context local PDF and injected S3 wrapper | E formal template/font/maps and versioned multiple-context contract; D live transfer/manifests |
-| M0 service DTOs, schema/fixtures and pure guards | B/D transactional repositories; C UI; A execution-time policy/event producer |
+| M0 DTOs/guards and Issue #17 policy/selectors/coordinator/bounded runner/non-durable trace | D durable trace/repository integration; explicit application assembly |
+| Local human-task service, POSIX principal and process-local task/revision/re-entry transaction | B authenticated task API and C UI; D durable transaction/outbox/recovery |
 
 M0 requires no AWS calls. Later preflight uses designated profile/SSO, Region,
 expected account/role and model availability; never chat-delivered access keys.
@@ -162,8 +173,19 @@ MCP, a vector database and another orchestration framework are not required here
 | --- | --- |
 | application/bootstrap.py, entrypoint.py, controller.py | Shared composition/execution and existing review decisions |
 | domain/case_review.py, verification.py, review_contracts.py, confidence.py | Deterministic review, independent gates, source/cell and confidence contracts |
-| domain/service_contracts.py, application/revisions.py, service_guards.py | M0 shared wire projections, immutable copies and pure checks |
-| ports/service.py | Reserved trusted principal/document/revision/task/job adapters |
+| domain/service_contracts.py, application/revisions.py, service_guards.py | Shared wire projections, immutable copies, exact controlled-action contracts and pure admission checks |
+| application/action_policy.py | Trusted state/prerequisite/source/budget derivation of versioned allowed actions; no I/O or tool execution |
+| ports/action_selection.py, adapters/local/action_selector.py | Provider-neutral selector boundary and deterministic no-model baseline |
+| adapters/aws/action_selector.py | Injected Converse selector, strict structured output, bounded provider retry and sanitized failures |
+| docs/prompts/controlled-action-selector-v1.md | Versioned selector prompt and model trust boundary |
+| application/controlled_workflow.py, ports/controlled_workflow.py | One-decision re-admission, exact one-tool routing and executor/snapshot/trace ports |
+| application/bounded_workflow.py | Executable budget ledger, stable failure classes, deterministic retry/backoff, no-progress fingerprint and non-persisted human handoff |
+| adapters/local/decision_trace.py | Explicitly non-durable, detached in-memory causal trace for tests/local composition |
+| application/human_tasks.py, application/material_corrections.py | Purpose-specific tasks, explicit side changes and full deterministic re-entry |
+| adapters/local/human_tasks.py, adapters/local/task_principal.py | Non-durable atomic task/revision/replay/re-entry and configured POSIX principal |
+| docs/local-human-review.md, docs/adr/0015-local-human-task-transactions.md | Local human response operation, authority and transaction limits |
+| docs/adr/0014-controlled-action-policy.md | Issue #17 action authority, causal trace and pause/re-entry decision |
+| ports/service.py | Trusted principal and transactional task ports; durable document/revision/job implementations reserved |
 | adapters/local/service.py, local_service.py | M0 actual configured local assembly and separate envelope |
 | document_cli.py, adapters/local/document_manifest.py | Preparation and compatible allowlist manifest imports |
 | domain/pdf_models.py, pdf_types.py, ports/pdf.py | Sole PDF request/result/error and writer protocol |
