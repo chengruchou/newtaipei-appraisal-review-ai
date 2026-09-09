@@ -1,21 +1,21 @@
 {
   "schema_version": "service-v1",
-  "task_id": "00000000-0000-0000-0000-000000000002",
+  "task_id": "00000000-0000-0000-0000-0000001cfde6",
   "run": {
     "schema_version": "service-v1",
-    "run_id": "00000000-0000-0000-0000-000000000001",
+    "run_id": "00000000-0000-0000-0000-0000001cfde0",
     "revision": {
       "schema_version": "service-v1",
       "case_id": "synthetic-case",
-      "revision_id": "fixture-r1",
-      "material_digest": "0445917fd60f720359309b58c8edff03c93c929c7270f4ebfde304545595c124"
+      "revision_id": "workbench-r1",
+      "material_digest": "66132edd117ff2b00bdaa074f2116b20d83962df98f79f081f10dd5ba40862c7"
     },
     "attempt_id": null,
     "runtime_session_id": null
   },
   "version": 1,
-  "kind": "fact_confirmation",
-  "required_permission": "confirm_observation",
+  "kind": "material_correction",
+  "required_permission": "correct_material",
   "state": "open",
   "side": {
     "schema_version": "service-v1",
@@ -26,10 +26,10 @@
     },
     "factor_id": "synthetic.road_width",
     "side": "target",
-    "input_digest": "cf1f887efd3871b180e33a9dd52725a0b056b75ccdb7bb84b13c55256579595b"
+    "input_digest": "c4b060b4c940436f46db2d3063a060afa71aaf12ae5fd5ce6a26c3daaa3d47ac"
   },
   "result_digest": null,
-  "question": "Confirm this synthetic observation.",
+  "question": "Correct road-target (regional, target) against the cited source. This response will require a full review of the resulting material.",
   "evidence": [
     {
       "document_id": "synthetic-forms",
@@ -47,12 +47,15 @@
     }
   ],
   "finding_ids": [
-    "fixture-confirmation"
+    "[\"regional\",\"synthetic-target\",\"synthetic-comparable\"]/factor/synthetic.road_width",
+    "observed/road-rate"
   ],
   "allowed_responses": [
-    "confirm",
+    "correct",
     "reject"
   ],
-  "reason_code": null,
-  "affected_subject_ids": []
+  "reason_code": "multiple-review-findings",
+  "affected_subject_ids": [
+    "road-target"
+  ]
 }

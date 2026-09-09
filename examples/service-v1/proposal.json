@@ -1,5 +1,5 @@
 {
-  "schema_version": "service-v1",
+  "schema_version": "controlled-action-v1",
   "proposal_id": "00000000-0000-0000-0000-000000000003",
   "run": {
     "schema_version": "service-v1",
@@ -13,30 +13,45 @@
     "attempt_id": null,
     "runtime_session_id": null
   },
+  "action_id": "request-human-review",
   "action": "request_human_review",
+  "policy_version": "controlled-action-policy-v1",
+  "snapshot_digest": "2c1ff3bd86a648bc8c279a50e58ca61c474963e3ed530fbf66641097a14ee939",
   "proposer": {
     "schema_version": "service-v1",
     "actor_id": "fixture-policy",
     "kind": "model"
   },
-  "model_id": null,
-  "prompt_version": null,
-  "document": null,
-  "page": null,
-  "evidence": [
-    {
-      "document_id": "synthetic-forms",
-      "content_hash": "37f1b0a1872d76a68cd0a482eb4aeb0ce4f3dae564f5e23340b470cef41835ab",
-      "version": "1",
-      "page": 1,
-      "region_id": "body",
-      "bbox": [
-        1.0,
-        2.0,
-        90.0,
-        40.0
-      ],
-      "excerpt": "Synthetic target 10 m; comparable 9 m; rate 5"
-    }
-  ]
+  "model_id": "fixture-model",
+  "prompt_version": "controlled-action-prompt-v1",
+  "input_tokens": 250,
+  "output_tokens": 80,
+  "latency_ms": 125,
+  "attempt_count": 1,
+  "arguments": {
+    "schema_version": "controlled-action-v1",
+    "kind": "request_human_review",
+    "reason_code": "low_confidence_observation",
+    "question": "Request trusted review of the synthetic observation.",
+    "affected_subject_ids": [
+      "synthetic.road_width.target"
+    ],
+    "evidence": [
+      {
+        "document_id": "synthetic-forms",
+        "content_hash": "37f1b0a1872d76a68cd0a482eb4aeb0ce4f3dae564f5e23340b470cef41835ab",
+        "version": "1",
+        "page": 1,
+        "region_id": "body",
+        "bbox": [
+          1.0,
+          2.0,
+          90.0,
+          40.0
+        ],
+        "excerpt": "Synthetic target 10 m; comparable 9 m; rate 5"
+      }
+    ]
+  },
+  "proposer_rationale": "The advertised blocker requires a human decision."
 }

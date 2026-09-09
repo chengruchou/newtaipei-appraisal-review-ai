@@ -6,20 +6,21 @@ from uuid import UUID
 from appraisal_review.domain.review_contracts import content_digest
 from appraisal_review.domain.service_contracts import (
     AcceptedResponse,
-    ActionKind,
     ActionProposal,
     ActorReference,
-    AllowedAction,
-    Budget,
+    AllowedActionSet,
+    DeterministicReviewArguments,
+    ExtractPageArguments,
     HumanResponse,
     HumanTask,
-    MaterialRevision,
+    InspectReferenceArguments,
     Permission,
+    RequestHumanReviewArguments,
     ReviewSubmission,
     RevisionReference,
-    RunReference,
     ServiceErrorCode,
     ServiceProblem,
+    WorkflowSnapshot,
 )
 
 
@@ -74,31 +75,91 @@ def admit_action(
     proposal: ActionProposal,
     *,
     proposer: ActorReference,
-    run: RunReference,
-    revision: MaterialRevision,
-    allowed: tuple[AllowedAction, ...],
-    satisfied: frozenset[str],
-    budget: Budget,
+    executor: ActorReference,
+    snapshot: WorkflowSnapshot,
+    allowed: AllowedActionSet,
 ) -> None:
     # The executor supplies the actual origin; a proposal cannot choose its budget class.
     proposal = ActionProposal.model_validate_json(proposal.model_dump_json())
+    snapshot = WorkflowSnapshot.model_validate_json(snapshot.model_dump_json())
+    allowed = AllowedActionSet.model_validate_json(allowed.model_dump_json())
     if proposal.proposer != proposer:
         raise ServiceFault(ServiceErrorCode.UNAUTHORIZED)
-    if proposal.run != run or run.revision != revision.reference:
+    snapshot_digest = content_digest(snapshot)
+    if (
+        proposal.run != snapshot.run
+        or proposal.snapshot_digest != snapshot_digest
+        or proposal.policy_version != allowed.policy_version
+        or proposal.snapshot_digest != allowed.snapshot_digest
+        or snapshot.revision.reference != allowed.revision
+        or snapshot.revision.documents != allowed.documents
+        or snapshot.revision.rules != allowed.rules
+    ):
         raise ServiceFault(ServiceErrorCode.CONFLICT)
-    matches = [a for a in allowed if a.action == proposal.action]
-    if len(matches) != 1 or not set(matches[0].prerequisites) <= satisfied:
+    matches = [
+        action
+        for action in allowed.actions
+        if action.action_id == proposal.action_id and action.action == proposal.action
+    ]
+    if len(matches) != 1:
         raise ServiceFault(ServiceErrorCode.UNAUTHORIZED)
-    if budget.steps_remaining == 0 or (
-        proposer.kind == "model" and budget.model_calls_remaining == 0
+    admitted = matches[0]
+    if (
+        snapshot.state not in admitted.permitted_states
+        or not set(admitted.prerequisites) <= set(snapshot.satisfied_prerequisites)
+        or proposer.kind not in admitted.proposer_kinds
+        or executor.kind not in admitted.executor_kinds
+        or admitted.revision != snapshot.revision.reference
+        or admitted.rules != snapshot.revision.rules
+    ):
+        raise ServiceFault(ServiceErrorCode.UNAUTHORIZED)
+    required_model_calls = (
+        proposal.attempt_count
+        if proposal.proposer.kind == "model" and proposal.attempt_count is not None
+        else admitted.cost.model_calls
+    )
+    provider_retries = (
+        proposal.attempt_count - 1
+        if proposal.proposer.kind == "model" and proposal.attempt_count is not None
+        else 0
+    )
+    if (
+        snapshot.budget.steps_remaining < admitted.cost.steps
+        or snapshot.budget.model_calls_remaining < required_model_calls
+        or snapshot.budget.retries_remaining < admitted.cost.retries + provider_retries
     ):
         raise ServiceFault(ServiceErrorCode.CAPABILITY)
-    if proposal.action in {ActionKind.EXTRACT, ActionKind.REFERENCE}:
-        if proposal.document not in revision.documents or proposal.page is None:
+    arguments = proposal.arguments
+    if isinstance(arguments, (ExtractPageArguments, InspectReferenceArguments)):
+        if (
+            arguments.document not in snapshot.revision.documents
+            or arguments.document.purpose not in admitted.permitted_document_purposes
+        ):
             raise ServiceFault(ServiceErrorCode.UNAUTHORIZED)
-        if proposal.action == ActionKind.REFERENCE and proposal.document.purpose != "reference":
+    elif isinstance(arguments, DeterministicReviewArguments):
+        if (
+            arguments.revision != snapshot.revision.reference
+            or arguments.rules != snapshot.revision.rules
+        ):
             raise ServiceFault(ServiceErrorCode.UNAUTHORIZED)
-    # Actual page/citation resolution and source-purpose checks remain tool/resolver duties.
+    elif isinstance(arguments, RequestHumanReviewArguments):
+        matching_blockers = tuple(
+            blocker
+            for blocker in snapshot.unresolved_blockers
+            if blocker.reason_code == arguments.reason_code
+            and blocker.affected_subject_ids == arguments.affected_subject_ids
+        )
+        documents = {
+            (document.document_id, document.version, document.content_hash)
+            for document in snapshot.revision.documents
+        }
+        if len(matching_blockers) != 1 or any(
+            (citation.document_id, citation.version, citation.content_hash) not in documents
+            or citation not in matching_blockers[0].evidence
+            for citation in arguments.evidence
+        ):
+            raise ServiceFault(ServiceErrorCode.UNAUTHORIZED)
+    # Actual access, page existence, citation resolution and purpose recheck remain resolver duties.
 
 
 @dataclass(frozen=True)

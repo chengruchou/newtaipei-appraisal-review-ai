@@ -24,23 +24,36 @@ from appraisal_review.application.service_guards import (
 from appraisal_review.domain.confidence import confirm_side
 from appraisal_review.domain.review_contracts import content_digest
 from appraisal_review.domain.service_contracts import (
+    ActionCost,
     ActionKind,
+    ActionPrerequisite,
+    ActionProposal,
     ActorReference,
     AllowedAction,
+    AllowedActionSet,
     Budget,
+    BudgetConsumption,
+    ControlledToolReceipt,
     DecisionEvent,
+    DeterministicReviewArguments,
     DocumentReference,
+    ExtractPageArguments,
     HumanResponse,
     HumanTask,
+    InspectReferenceArguments,
     Permission,
     PublicValue,
+    RequestHumanReviewArguments,
     ReviewSubmission,
     RunReference,
+    SelectorInput,
     ServiceErrorCode,
     ServiceResult,
     ToolOutcome,
     ValueRevision,
     VerificationDiagnostic,
+    WorkflowSnapshot,
+    WorkflowState,
 )
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -97,6 +110,23 @@ def test_external_document_rejects_authority_and_uris(values, extra):
     data = values["revision"].documents[0].model_dump(mode="json")
     with pytest.raises(ValidationError):
         DocumentReference.model_validate({**data, **extra})
+
+
+def test_controlled_action_wire_version_is_an_explicit_migration(values):
+    assert values["task"].schema_version == "service-v1"
+    for name in (
+        "workflow-snapshot",
+        "allowed-actions",
+        "selector-input",
+        "proposal",
+        "decision-rejected",
+        "decision-executed",
+    ):
+        assert values[name].schema_version == "controlled-action-v1"
+        with pytest.raises(ValidationError):
+            type(values[name]).model_validate(
+                {**values[name].model_dump(), "schema_version": "service-v1"}
+            )
 
 
 @pytest.mark.parametrize(
@@ -301,24 +331,68 @@ def test_idempotency_is_canonical_principal_scoped_and_conflicts(values, princip
 
 def test_model_actions_are_constrained_and_events_require_execution(values):
     proposal = values["proposal"]
+    snapshot = values["workflow-snapshot"]
+    allowed = values["allowed-actions"]
     kwargs = dict(
-        proposer=values["proposal"].proposer,
-        run=proposal.run,
-        revision=values["revision"],
-        allowed=(AllowedAction(action=ActionKind.HUMAN, prerequisites=("blocked",)),),
-        satisfied=frozenset({"blocked"}),
-        budget=Budget(steps_remaining=1, model_calls_remaining=1, retries_remaining=0),
+        proposer=proposal.proposer,
+        executor=ActorReference(actor_id="fixture-executor", kind="system"),
+        snapshot=snapshot,
+        allowed=allowed,
     )
     assert admit_action(proposal, **kwargs) is None
-    for overrides in (
-        {"allowed": ()},
-        {"satisfied": frozenset()},
-        {"budget": Budget(steps_remaining=0, model_calls_remaining=1, retries_remaining=0)},
-        {"budget": Budget(steps_remaining=1, model_calls_remaining=0, retries_remaining=0)},
-        {"run": proposal.run.model_copy(update={"run_id": UUID(int=100)})},
-    ):
-        with pytest.raises(ServiceFault):
-            admit_action(proposal, **{**kwargs, **overrides})
+    with pytest.raises(ServiceFault, match="unauthorized"):
+        admit_action(proposal, **{**kwargs, "allowed": allowed.model_copy(update={"actions": ()})})
+    stale_run = snapshot.model_copy(
+        update={"run": proposal.run.model_copy(update={"run_id": UUID(int=100)})}
+    )
+    with pytest.raises(ServiceFault, match="version_conflict"):
+        admit_action(proposal, **{**kwargs, "snapshot": stale_run})
+    changed_snapshots = (
+        (
+            snapshot.model_copy(update={"satisfied_prerequisites": ()}),
+            ServiceErrorCode.UNAUTHORIZED,
+        ),
+        (
+            snapshot.model_copy(
+                update={
+                    "budget": Budget(
+                        steps_remaining=0,
+                        model_calls_remaining=1,
+                        retries_remaining=0,
+                        time_remaining_ms=5_000,
+                    )
+                }
+            ),
+            ServiceErrorCode.CAPABILITY,
+        ),
+        (
+            snapshot.model_copy(
+                update={
+                    "budget": Budget(
+                        steps_remaining=1,
+                        model_calls_remaining=0,
+                        retries_remaining=0,
+                        time_remaining_ms=5_000,
+                    )
+                }
+            ),
+            ServiceErrorCode.CAPABILITY,
+        ),
+        (
+            snapshot.model_copy(update={"state": WorkflowState.VERIFIED}),
+            ServiceErrorCode.UNAUTHORIZED,
+        ),
+    )
+    for changed, code in changed_snapshots:
+        digest = content_digest(changed)
+        rebound_proposal = proposal.model_copy(update={"snapshot_digest": digest})
+        rebound_allowed = allowed.model_copy(update={"snapshot_digest": digest})
+        with pytest.raises(ServiceFault) as error:
+            admit_action(
+                rebound_proposal,
+                **{**kwargs, "snapshot": changed, "allowed": rebound_allowed},
+            )
+        assert error.value.problem.code == code
     with pytest.raises(ValidationError):
         type(proposal).model_validate({**proposal.model_dump(), "action": "approve"})
     event = values["decision-rejected"]
@@ -334,6 +408,10 @@ def test_model_actions_are_constrained_and_events_require_execution(values):
             "executor": ActorReference(actor_id="fixture-executor", kind="system"),
             "executed_action": proposal.action,
             "tool_result": tool,
+            "state_after": WorkflowState.WAITING_FOR_HUMAN,
+            "linked_task_id": UUID(int=2),
+            "budget_after": event.budget_after.model_copy(update={"steps_remaining": 1}),
+            "budget_consumed": BudgetConsumption(steps=1, model_calls=1, retries=0, elapsed_ms=0),
         }
     )
     assert executed.tool_result == tool
@@ -342,30 +420,139 @@ def test_model_actions_are_constrained_and_events_require_execution(values):
 
 
 def test_source_actions_reject_wrong_identity_purpose_and_page(values):
-    proposal = values["proposal"].model_copy(update={"action": ActionKind.EXTRACT})
+    snapshot = values["workflow-snapshot"]
+    document = values["revision"].documents[0]
+    allowed_action = AllowedAction(
+        action_id="extract-criteria-page",
+        action=ActionKind.EXTRACT,
+        permitted_states=(snapshot.state,),
+        permitted_document_purposes=("criteria",),
+        revision=snapshot.revision.reference,
+        rules=snapshot.revision.rules,
+        proposer_kinds=("model",),
+        cost=ActionCost(model_calls=1),
+    )
+    allowed = AllowedActionSet(
+        policy_version=values["allowed-actions"].policy_version,
+        snapshot_digest=content_digest(snapshot),
+        revision=snapshot.revision.reference,
+        documents=snapshot.revision.documents,
+        rules=snapshot.revision.rules,
+        actions=(allowed_action,),
+    )
+    proposal = values["proposal"].model_copy(
+        update={
+            "action_id": allowed_action.action_id,
+            "action": ActionKind.EXTRACT,
+            "arguments": ExtractPageArguments(document=document, page=1),
+        }
+    )
     kwargs = dict(
         proposer=values["proposal"].proposer,
-        run=proposal.run,
-        revision=values["revision"],
-        allowed=(
-            AllowedAction(action=ActionKind.EXTRACT),
-            AllowedAction(action=ActionKind.REFERENCE),
-        ),
-        satisfied=frozenset(),
-        budget=Budget(steps_remaining=2, model_calls_remaining=1, retries_remaining=0),
+        executor=ActorReference(actor_id="fixture-executor", kind="system"),
+        snapshot=snapshot,
+        allowed=allowed,
     )
-    with pytest.raises(ServiceFault):
-        admit_action(proposal, **kwargs)
-    proposal = proposal.model_copy(update={"document": values["revision"].documents[0], "page": 1})
     admit_action(proposal, **kwargs)
-    with pytest.raises(ServiceFault):
-        admit_action(proposal.model_copy(update={"action": ActionKind.REFERENCE}), **kwargs)
+    with pytest.raises(ValidationError):
+        ActionProposal.model_validate({**proposal.model_dump(), "action": ActionKind.REFERENCE})
+    with pytest.raises(ValidationError):
+        AllowedAction.model_validate(
+            {
+                **allowed_action.model_dump(),
+                "action": ActionKind.REFERENCE,
+                "permitted_document_purposes": ["criteria"],
+            }
+        )
     with pytest.raises(ServiceFault):
         admit_action(
             proposal.model_copy(
-                update={"document": proposal.document.model_copy(update={"version": "old"})}
+                update={
+                    "arguments": ExtractPageArguments(
+                        document=document.model_copy(update={"version": "old"}), page=1
+                    )
+                }
             ),
             **kwargs,
+        )
+
+
+def test_action_admission_checks_human_evidence_and_deterministic_review_bindings(values):
+    snapshot = values["workflow-snapshot"]
+    executor = ActorReference(actor_id="fixture-executor", kind="system")
+    proposal = values["proposal"]
+    forged_citation = proposal.arguments.evidence[0].model_copy(update={"content_hash": "f" * 64})
+    forged_human = proposal.model_copy(
+        update={"arguments": proposal.arguments.model_copy(update={"evidence": (forged_citation,)})}
+    )
+    with pytest.raises(ServiceFault, match="unauthorized"):
+        admit_action(
+            forged_human,
+            proposer=proposal.proposer,
+            executor=executor,
+            snapshot=snapshot,
+            allowed=values["allowed-actions"],
+        )
+    forged_subject = proposal.model_copy(
+        update={
+            "arguments": proposal.arguments.model_copy(
+                update={"affected_subject_ids": ("invented.subject",)}
+            )
+        }
+    )
+    with pytest.raises(ServiceFault, match="unauthorized"):
+        admit_action(
+            forged_subject,
+            proposer=proposal.proposer,
+            executor=executor,
+            snapshot=snapshot,
+            allowed=values["allowed-actions"],
+        )
+
+    action = AllowedAction(
+        action_id="deterministic-review-current-material",
+        action=ActionKind.REVIEW,
+        permitted_states=(snapshot.state,),
+        revision=snapshot.revision.reference,
+        rules=snapshot.revision.rules,
+        proposer_kinds=("model",),
+        cost=ActionCost(model_calls=1),
+    )
+    allowed = AllowedActionSet(
+        policy_version=values["allowed-actions"].policy_version,
+        snapshot_digest=content_digest(snapshot),
+        revision=snapshot.revision.reference,
+        documents=snapshot.revision.documents,
+        rules=snapshot.revision.rules,
+        actions=(action,),
+    )
+    review = proposal.model_copy(
+        update={
+            "action_id": action.action_id,
+            "action": action.action,
+            "arguments": DeterministicReviewArguments(
+                revision=snapshot.revision.reference,
+                rules=snapshot.revision.rules,
+            ),
+        }
+    )
+    admit_action(
+        review,
+        proposer=review.proposer,
+        executor=executor,
+        snapshot=snapshot,
+        allowed=allowed,
+    )
+    with pytest.raises(ValidationError):
+        ActionProposal.model_validate(
+            {
+                **review.model_dump(),
+                "arguments": review.arguments.model_copy(
+                    update={
+                        "revision": review.run.revision.model_copy(update={"revision_id": "stale"})
+                    }
+                ),
+            }
         )
 
 
@@ -437,21 +624,352 @@ def test_publication_response_binds_result_and_permission(values, principal):
 
 
 def test_action_cannot_claim_system_identity_to_bypass_model_budget(values):
-    proposal = values["proposal"]
+    snapshot = values["workflow-snapshot"].model_copy(
+        update={
+            "budget": Budget(
+                steps_remaining=1,
+                model_calls_remaining=0,
+                retries_remaining=0,
+                time_remaining_ms=5_000,
+            )
+        }
+    )
+    digest = content_digest(snapshot)
+    proposal = values["proposal"].model_copy(update={"snapshot_digest": digest})
     forged = proposal.model_copy(
-        update={"proposer": ActorReference(actor_id="fixture-policy", kind="system")}
+        update={"proposer": ActorReference(actor_id="other-model", kind="model")}
     )
     kwargs = dict(
         proposer=values["proposal"].proposer,
-        run=proposal.run,
-        revision=values["revision"],
-        allowed=(AllowedAction(action=ActionKind.HUMAN),),
-        satisfied=frozenset(),
-        budget=Budget(steps_remaining=1, model_calls_remaining=0, retries_remaining=0),
+        executor=ActorReference(actor_id="fixture-executor", kind="system"),
+        snapshot=snapshot,
+        allowed=values["allowed-actions"].model_copy(update={"snapshot_digest": digest}),
     )
     with pytest.raises(ServiceFault, match="unauthorized"):
         admit_action(forged, **kwargs)
     with pytest.raises(ServiceFault, match="capability_unavailable"):
         admit_action(proposal, **kwargs)
-    # A real trusted system origin can still run without spending a model call.
-    admit_action(forged, **{**kwargs, "proposer": forged.proposer})
+    with pytest.raises(ServiceFault, match="capability_unavailable"):
+        admit_action(
+            values["proposal"].model_copy(update={"attempt_count": 2}),
+            proposer=values["proposal"].proposer,
+            executor=kwargs["executor"],
+            snapshot=values["workflow-snapshot"],
+            allowed=values["allowed-actions"],
+        )
+
+
+def test_trusted_system_proposal_does_not_claim_model_metadata_or_budget(values):
+    snapshot = values["workflow-snapshot"].model_copy(
+        update={
+            "budget": Budget(
+                steps_remaining=1,
+                model_calls_remaining=0,
+                retries_remaining=0,
+            )
+        }
+    )
+    digest = content_digest(snapshot)
+    action = (
+        values["allowed-actions"]
+        .actions[0]
+        .model_copy(
+            update={
+                "proposer_kinds": ("system",),
+                "cost": ActionCost(),
+            }
+        )
+    )
+    allowed = values["allowed-actions"].model_copy(
+        update={"snapshot_digest": digest, "actions": (action,)}
+    )
+    proposer = ActorReference(actor_id="fixture-policy", kind="system")
+    proposal = ActionProposal(
+        proposal_id=UUID(int=30),
+        run=snapshot.run,
+        action_id=action.action_id,
+        action=action.action,
+        policy_version=allowed.policy_version,
+        snapshot_digest=digest,
+        proposer=proposer,
+        arguments=values["proposal"].arguments,
+    )
+    admit_action(
+        proposal,
+        proposer=proposer,
+        executor=ActorReference(actor_id="fixture-executor", kind="system"),
+        snapshot=snapshot,
+        allowed=allowed,
+    )
+
+
+def test_workflow_snapshot_and_allowed_registry_are_exact_and_unambiguous(values):
+    snapshot = values["workflow-snapshot"]
+    with pytest.raises(ValidationError):
+        WorkflowSnapshot.model_validate(
+            {
+                **snapshot.model_dump(),
+                "run": snapshot.run.model_copy(
+                    update={
+                        "revision": snapshot.run.revision.model_copy(
+                            update={"revision_id": "stale"}
+                        )
+                    }
+                ),
+            }
+        )
+    with pytest.raises(ValidationError):
+        WorkflowSnapshot.model_validate(
+            {
+                **snapshot.model_dump(),
+                "satisfied_prerequisites": [
+                    ActionPrerequisite.CRITERIA_DOCUMENT,
+                    ActionPrerequisite.CRITERIA_DOCUMENT,
+                ],
+            }
+        )
+    allowed = values["allowed-actions"]
+    with pytest.raises(ValidationError):
+        AllowedActionSet.model_validate(
+            {**allowed.model_dump(), "actions": [allowed.actions[0], allowed.actions[0]]}
+        )
+    with pytest.raises(ValidationError):
+        AllowedActionSet.model_validate(
+            {
+                **allowed.model_dump(),
+                "actions": [
+                    allowed.actions[0],
+                    allowed.actions[0].model_copy(update={"action_id": "same-kind-other-id"}),
+                ],
+            }
+        )
+    with pytest.raises(ValidationError):
+        AllowedActionSet.model_validate(
+            {
+                **allowed.model_dump(),
+                "revision": allowed.revision.model_copy(update={"revision_id": "stale"}),
+            }
+        )
+    with pytest.raises(ValidationError):
+        AllowedActionSet.model_validate(
+            {
+                **allowed.model_dump(),
+                "rules": [allowed.rules[0].model_copy(update={"version": "stale-rule-version"})],
+            }
+        )
+    wrong_documents = (
+        allowed.documents[0].model_copy(update={"content_hash": "f" * 64}),
+        *allowed.documents[1:],
+    )
+    wrong_sources = allowed.model_copy(update={"documents": wrong_documents})
+    with pytest.raises(ServiceFault, match="version_conflict"):
+        admit_action(
+            values["proposal"],
+            proposer=values["proposal"].proposer,
+            executor=ActorReference(actor_id="fixture-executor", kind="system"),
+            snapshot=snapshot,
+            allowed=wrong_sources,
+        )
+
+
+def test_selector_input_binds_snapshot_allowed_actions_evidence_and_budget(values):
+    selector_input = values["selector-input"]
+    assert selector_input.budget == selector_input.snapshot.budget
+    for change in (
+        {"budget": selector_input.budget.model_copy(update={"steps_remaining": 0})},
+        {
+            "allowed_actions": selector_input.allowed_actions.model_copy(
+                update={"snapshot_digest": "f" * 64}
+            )
+        },
+        {"evidence": (selector_input.evidence[0].model_copy(update={"document_id": "unknown"}),)},
+    ):
+        with pytest.raises(ValidationError):
+            SelectorInput.model_validate({**selector_input.model_dump(), **change})
+    unaffordable = selector_input.allowed_actions.model_copy(
+        update={
+            "actions": (
+                selector_input.allowed_actions.actions[0].model_copy(
+                    update={"cost": ActionCost(steps=3, model_calls=1)}
+                ),
+            )
+        }
+    )
+    with pytest.raises(ValidationError):
+        SelectorInput.model_validate(
+            {**selector_input.model_dump(), "allowed_actions": unaffordable}
+        )
+
+
+def test_every_action_has_strict_action_specific_arguments(values):
+    revision = values["revision"]
+    criteria = revision.documents[0]
+    reference = criteria.model_copy(update={"document_id": "manual", "purpose": "reference"})
+    arguments = (
+        (ActionKind.EXTRACT, ExtractPageArguments(document=criteria, page=1)),
+        (ActionKind.REFERENCE, InspectReferenceArguments(document=reference, page=2)),
+        (
+            ActionKind.HUMAN,
+            RequestHumanReviewArguments(
+                reason_code="missing_evidence",
+                question="Supply the missing source evidence.",
+                affected_subject_ids=("road_width.target",),
+            ),
+        ),
+        (
+            ActionKind.REVIEW,
+            DeterministicReviewArguments(
+                revision=revision.reference,
+                rules=revision.rules,
+            ),
+        ),
+    )
+    base = values["proposal"].model_dump()
+    for index, (action, action_arguments) in enumerate(arguments, start=1):
+        proposal = ActionProposal.model_validate(
+            {
+                **base,
+                "proposal_id": UUID(int=100 + index),
+                "action_id": f"fixture-{action.value}",
+                "action": action,
+                "arguments": action_arguments,
+            }
+        )
+        assert proposal.arguments.kind == action.value
+        purposes = (
+            (action_arguments.document.purpose,)
+            if isinstance(action_arguments, (ExtractPageArguments, InspectReferenceArguments))
+            else ()
+        )
+        allowed = AllowedAction(
+            action_id=f"fixture-{action.value}",
+            action=action,
+            permitted_states=(WorkflowState.EVIDENCE_NEEDS_REVIEW,),
+            permitted_document_purposes=purposes,
+            revision=revision.reference,
+            rules=revision.rules,
+            proposer_kinds=("model",),
+            cost=ActionCost(model_calls=1),
+        )
+        assert allowed.action == action
+    with pytest.raises(ValidationError):
+        ActionProposal.model_validate(
+            {**base, "action": ActionKind.REVIEW, "arguments": arguments[0][1]}
+        )
+    with pytest.raises(ValidationError):
+        ExtractPageArguments.model_validate(
+            {
+                "document": criteria,
+                "page": 1,
+                "region": values["proposal"].arguments.evidence[0].model_copy(update={"page": 2}),
+            }
+        )
+    with pytest.raises(ValidationError):
+        InspectReferenceArguments(document=criteria, page=1)
+    with pytest.raises(ValidationError):
+        RequestHumanReviewArguments(
+            reason_code="missing_evidence",
+            question="Question",
+            affected_subject_ids=("same", "same"),
+        )
+
+
+def test_proposals_reject_claimed_authority_budget_and_incomplete_model_identity(values):
+    data = values["proposal"].model_dump()
+    for extra in (
+        {"budget": values["workflow-snapshot"].budget},
+        {"approved": True},
+        {"verified": True},
+        {"executor": {"actor_id": "model", "kind": "model"}},
+    ):
+        with pytest.raises(ValidationError):
+            ActionProposal.model_validate({**data, **extra})
+    with pytest.raises(ValidationError):
+        ActionProposal.model_validate({**data, "model_id": None})
+    for missing in ("latency_ms", "attempt_count"):
+        with pytest.raises(ValidationError):
+            ActionProposal.model_validate({**data, missing: None})
+    with pytest.raises(ValidationError):
+        ActionProposal.model_validate({**data, "output_tokens": None})
+    with pytest.raises(ValidationError):
+        ActionProposal.model_validate(
+            {
+                **data,
+                "proposer": ActorReference(actor_id="system", kind="system"),
+                "prompt_version": None,
+            }
+        )
+    with pytest.raises(ValidationError):
+        ActionProposal.model_validate(
+            {
+                **data,
+                "proposer": ActorReference(actor_id="reviewer", kind="human"),
+                "model_id": None,
+                "prompt_version": None,
+            }
+        )
+    with pytest.raises(ValidationError):
+        AllowedAction.model_validate(
+            {
+                **values["allowed-actions"].actions[0].model_dump(),
+                "proposer_kinds": ["system"],
+            }
+        )
+    with pytest.raises(ValidationError):
+        Budget.model_validate(
+            {
+                "steps_remaining": True,
+                "model_calls_remaining": 1,
+                "retries_remaining": 0,
+            }
+        )
+
+
+def test_decision_event_requires_truthful_state_causality_and_budget(values):
+    event = values["decision-rejected"]
+    invalid_updates = (
+        {"state_after": WorkflowState.WAITING_FOR_HUMAN},
+        {"parent_event_ids": (event.event_id,)},
+        {"parent_event_ids": (UUID(int=8), UUID(int=8))},
+        {"policy_version": "other-policy"},
+        {"linked_response_key": "response-without-task"},
+        {
+            "disposition": "executed",
+            "executor": ActorReference(actor_id="fixture-model", kind="model"),
+            "executed_action": event.proposal.action,
+            "tool_result": ToolOutcome(outcome="succeeded", result_digest="a" * 64),
+        },
+        {"budget_consumed": BudgetConsumption(steps=1, model_calls=1, retries=0, elapsed_ms=0)},
+        {"budget_after": event.budget_after.model_copy(update={"time_remaining_ms": 4_999})},
+    )
+    for update in invalid_updates:
+        with pytest.raises(ValidationError):
+            DecisionEvent.model_validate({**event.model_dump(), **update})
+
+
+def test_controlled_tool_receipt_and_actual_executed_fixture_are_strict(values):
+    executed = values["decision-executed"]
+    assert executed.disposition == "executed"
+    exporter = runpy.run_path("scripts/export_service_contracts.py")
+    material = synthetic_material()
+    result = exporter["CaseReviewer"](
+        exporter["_FixtureAuthorization"](content_digest(material))
+    ).review(material.policy, material.facts, material.policy.registry)
+    assert executed.tool_result.result_digest == content_digest(result)
+    assert executed.state_after == WorkflowState.VERIFIED
+    with pytest.raises(ValidationError):
+        ControlledToolReceipt(
+            outcome=ToolOutcome(outcome="succeeded", result_digest="a" * 64),
+            reason_code="duplicate-subjects",
+            reviewer_summary="Invalid duplicate subjects.",
+            affected_subject_ids=("same", "same"),
+        )
+    with pytest.raises(ValidationError):
+        ControlledToolReceipt(
+            outcome=ToolOutcome(outcome="succeeded", result_digest="a" * 64),
+            reason_code="response-without-task",
+            reviewer_summary="Invalid response link.",
+            linked_response_key="response-1",
+        )
+    with pytest.raises(ValidationError):
+        DecisionEvent.model_validate({**executed.model_dump(), "linked_task_id": UUID(int=100)})

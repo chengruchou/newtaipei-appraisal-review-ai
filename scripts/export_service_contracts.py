@@ -2,43 +2,68 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
+import runpy
 from pathlib import Path
 from uuid import UUID
 
 from pydantic.json_schema import models_json_schema
 
+from appraisal_review.adapters.local.action_selector import DeterministicActionSelector
+from appraisal_review.adapters.local.decision_trace import NonDurableInMemoryDecisionTrace
 from appraisal_review.adapters.local.service import LocalServiceConfiguration
 from appraisal_review.adapters.local.synthetic import synthetic_material
+from appraisal_review.application.action_policy import ControlledActionPolicy
+from appraisal_review.application.bounded_workflow import BoundedWorkflowRunner
+from appraisal_review.application.controlled_workflow import (
+    ControlledWorkflowCoordinator,
+    RoutedControlledActionExecutor,
+)
 from appraisal_review.application.revisions import RevisionSnapshot
+from appraisal_review.domain.case_review import CaseReviewer
 from appraisal_review.domain.confidence import confirmation_digest
-from appraisal_review.domain.factor_models import WorkflowStatus
-from appraisal_review.domain.review_contracts import ReviewFinding
+from appraisal_review.domain.document_models import DocumentModel
+from appraisal_review.domain.factor_models import CaseReviewResult, ReviewMaterial, WorkflowStatus
+from appraisal_review.domain.review_contracts import ReviewFinding, content_digest
 from appraisal_review.domain.service_contracts import (
     AcceptedResponse,
+    ActionCost,
     ActionKind,
+    ActionPrerequisite,
     ActionProposal,
     ActorReference,
     AllowedAction,
+    AllowedActionSet,
     ArtifactManifest,
     AuthorizationRecord,
+    BoundedWorkflowResult,
     Budget,
+    BudgetConsumption,
+    ControlledToolReceipt,
     DecisionEvent,
+    DeterministicReviewArguments,
     DocumentReference,
     ExecutionStatus,
+    ExtractPageArguments,
     FactSideReference,
     HumanResponse,
+    HumanResponseResult,
+    HumanReviewHandoff,
     HumanTask,
+    InspectReferenceArguments,
     MaterialRevision,
     Permission,
     PublicValue,
+    RequestHumanReviewArguments,
     ResponseAction,
     ReviewSubmission,
     RevisionReference,
     RuleReference,
     RunReference,
+    SelectionFailureEvent,
+    SelectorInput,
     ServiceErrorCode,
-    ServiceModel,
     ServiceProblem,
     ServiceResult,
     ServiceVerification,
@@ -46,9 +71,17 @@ from appraisal_review.domain.service_contracts import (
     ToolOutcome,
     ValueRevision,
     VerificationDiagnostic,
+    WorkflowBlocker,
+    WorkflowContinuation,
+    WorkflowPause,
+    WorkflowSnapshot,
+    WorkflowState,
 )
 
 MODELS = (
+    CaseReviewResult,
+    WorkflowPause,
+    WorkflowContinuation,
     DocumentReference,
     RevisionReference,
     RuleReference,
@@ -60,14 +93,29 @@ MODELS = (
     FactSideReference,
     HumanTask,
     HumanResponse,
+    HumanResponseResult,
     AcceptedResponse,
     AuthorizationRecord,
+    WorkflowBlocker,
+    WorkflowSnapshot,
+    ActionCost,
     AllowedAction,
+    AllowedActionSet,
+    SelectorInput,
+    ExtractPageArguments,
+    InspectReferenceArguments,
+    DeterministicReviewArguments,
+    RequestHumanReviewArguments,
     ActionProposal,
     Budget,
+    BudgetConsumption,
     ServiceProblem,
     ToolOutcome,
     DecisionEvent,
+    SelectionFailureEvent,
+    ControlledToolReceipt,
+    HumanReviewHandoff,
+    BoundedWorkflowResult,
     ArtifactManifest,
     ServiceResult,
     ServiceVerification,
@@ -76,7 +124,87 @@ MODELS = (
 )
 
 
-def fixtures() -> dict[str, ServiceModel]:
+class _FixtureSnapshots:
+    def __init__(self, snapshot: WorkflowSnapshot) -> None:
+        self.snapshot = snapshot
+
+    async def current(self, run: RunReference) -> WorkflowSnapshot:
+        return self.snapshot
+
+
+class _FixtureReviewTool:
+    def __init__(self, snapshots: _FixtureSnapshots) -> None:
+        self.snapshots = snapshots
+
+    async def invoke(self, proposal: ActionProposal) -> ControlledToolReceipt:
+        material = synthetic_material()
+        result = CaseReviewer(_FixtureAuthorization(content_digest(material))).review(
+            material.policy, material.facts, material.policy.registry
+        )
+        state = (
+            WorkflowState.VERIFIED
+            if result.status.value == "verified"
+            else WorkflowState.REVIEW_FAILED
+        )
+        self.snapshots.snapshot = self.snapshots.snapshot.model_copy(
+            update={"state": state, "state_version": 2}
+        )
+        return ControlledToolReceipt(
+            outcome=ToolOutcome(outcome="succeeded", result_digest=content_digest(result)),
+            reason_code="deterministic-review-succeeded",
+            reviewer_summary="The deterministic review returned a validated result.",
+        )
+
+
+class _FixtureAuthorization:
+    """Exact synthetic fixture authority only; not authentication or a signed approval."""
+
+    def __init__(self, digest: str) -> None:
+        self.digest = digest
+
+    def permits(self, material: ReviewMaterial) -> bool:
+        return content_digest(material) == self.digest
+
+
+async def _executed_workflow(revision: MaterialRevision) -> BoundedWorkflowResult:
+    run = RunReference(run_id=UUID(int=6), revision=revision.reference)
+    snapshot = WorkflowSnapshot(
+        state_version=1,
+        run=run,
+        revision=revision,
+        state=WorkflowState.MATERIAL_READY,
+        satisfied_prerequisites=(
+            ActionPrerequisite.FORMS_PARSED,
+            ActionPrerequisite.RULES_APPROVED,
+            ActionPrerequisite.CRITICAL_EVIDENCE_AVAILABLE,
+            ActionPrerequisite.MATERIAL_COMPLETE,
+        ),
+        budget=Budget(
+            steps_remaining=2,
+            model_calls_remaining=0,
+            retries_remaining=0,
+            time_remaining_ms=5_000,
+        ),
+    )
+    snapshots = _FixtureSnapshots(snapshot)
+    coordinator = ControlledWorkflowCoordinator(
+        snapshots=snapshots,
+        policy=ControlledActionPolicy(proposer_kind="system"),
+        selector=DeterministicActionSelector(proposal_id_factory=lambda: UUID(int=7)),
+        executor=RoutedControlledActionExecutor({ActionKind.REVIEW: _FixtureReviewTool(snapshots)}),
+        trace=NonDurableInMemoryDecisionTrace(),
+        executor_actor=ActorReference(actor_id="fixture-controlled-executor", kind="system"),
+        event_id_factory=lambda: UUID(int=8),
+        monotonic=lambda: 1.0,
+    )
+    return await BoundedWorkflowRunner(
+        coordinator=coordinator,
+        snapshots=snapshots,
+        retry_backoff_ms=0,
+    ).run(run)
+
+
+def fixtures() -> dict[str, DocumentModel]:
     material = synthetic_material()
     revision = RevisionSnapshot.capture(material, "fixture-r1").revision
     run = RunReference(run_id=UUID(int=1), revision=revision.reference)
@@ -86,6 +214,54 @@ def fixtures() -> dict[str, ServiceModel]:
         status="needs_review",
         evidence=material.facts.pairs[0].target_sources,
         trace="Synthetic observation requires explicit human confirmation.",
+    )
+    budget = Budget(
+        steps_remaining=2,
+        model_calls_remaining=1,
+        retries_remaining=0,
+        time_remaining_ms=5_000,
+    )
+    snapshot = WorkflowSnapshot(
+        state_version=1,
+        run=run,
+        revision=revision,
+        state=WorkflowState.EVIDENCE_NEEDS_REVIEW,
+        satisfied_prerequisites=(
+            ActionPrerequisite.CRITERIA_DOCUMENT,
+            ActionPrerequisite.FORMS_DOCUMENT,
+        ),
+        unresolved_blockers=(
+            WorkflowBlocker(
+                blocker_id="fixture-confirmation",
+                reason_code="low_confidence_observation",
+                affected_subject_ids=("synthetic.road_width.target",),
+                evidence=tuple(finding.evidence),
+            ),
+        ),
+        budget=budget,
+    )
+    policy_version = "controlled-action-policy-v1"
+    snapshot_digest = content_digest(snapshot)
+    allowed_action = AllowedAction(
+        action_id="request-human-review",
+        action=ActionKind.HUMAN,
+        permitted_states=(WorkflowState.EVIDENCE_NEEDS_REVIEW,),
+        revision=revision.reference,
+        rules=revision.rules,
+        proposer_kinds=("model",),
+        prerequisites=(
+            ActionPrerequisite.CRITERIA_DOCUMENT,
+            ActionPrerequisite.FORMS_DOCUMENT,
+        ),
+        cost=ActionCost(model_calls=1),
+    )
+    allowed_actions = AllowedActionSet(
+        policy_version=policy_version,
+        snapshot_digest=snapshot_digest,
+        revision=revision.reference,
+        documents=revision.documents,
+        rules=revision.rules,
+        actions=(allowed_action,),
     )
     task = HumanTask(
         task_id=UUID(int=2),
@@ -115,9 +291,24 @@ def fixtures() -> dict[str, ServiceModel]:
     proposal = ActionProposal(
         proposal_id=UUID(int=3),
         run=run,
+        action_id=allowed_action.action_id,
         action=ActionKind.HUMAN,
+        policy_version=policy_version,
+        snapshot_digest=snapshot_digest,
         proposer=ActorReference(actor_id="fixture-policy", kind="model"),
-        evidence=tuple(finding.evidence),
+        model_id="fixture-model",
+        prompt_version="controlled-action-prompt-v1",
+        input_tokens=250,
+        output_tokens=80,
+        latency_ms=125,
+        attempt_count=1,
+        arguments=RequestHumanReviewArguments(
+            reason_code="low_confidence_observation",
+            question="Request trusted review of the synthetic observation.",
+            affected_subject_ids=("synthetic.road_width.target",),
+            evidence=tuple(finding.evidence),
+        ),
+        proposer_rationale="The advertised blocker requires a human decision.",
     )
     needs_review = ServiceResult(
         run=run,
@@ -147,20 +338,45 @@ def fixtures() -> dict[str, ServiceModel]:
         template_hash="b" * 64,
         field_map_hash="c" * 64,
     )
+    bounded_result = asyncio.run(_executed_workflow(revision))
+    executed_decision = bounded_result.events[0]
     return {
+        **runpy.run_path(str(Path(__file__).with_name("workbench_fixture.py")))[
+            "workbench_fixtures"
+        ](),
+        **runpy.run_path(str(Path(__file__).with_name("human_task_fixture.py")))[
+            "human_task_fixtures"
+        ](),
         "revision": revision,
+        "workflow-snapshot": snapshot,
+        "allowed-actions": allowed_actions,
+        "selector-input": SelectorInput(
+            snapshot=snapshot,
+            allowed_actions=allowed_actions,
+            evidence=tuple(finding.evidence),
+            budget=budget,
+        ),
         "task": task,
         "response": response,
         "proposal": proposal,
         "decision-rejected": DecisionEvent(
             event_id=UUID(int=5),
             proposal=proposal,
-            policy_version="fixture-policy-v1",
+            policy_version=policy_version,
+            state_before=WorkflowState.EVIDENCE_NEEDS_REVIEW,
+            state_after=WorkflowState.EVIDENCE_NEEDS_REVIEW,
             disposition="rejected",
-            reason_code="budget_exhausted",
+            reason_code="proposal_rejected",
+            reviewer_summary="The proposal was rejected before tool execution.",
+            affected_subject_ids=("synthetic.road_width.target",),
+            evidence=tuple(finding.evidence),
             remaining_blockers=(finding.id,),
-            budget=Budget(steps_remaining=0, model_calls_remaining=0, retries_remaining=0),
+            budget_before=budget,
+            budget_after=budget.model_copy(update={"model_calls_remaining": 0}),
+            budget_consumed=BudgetConsumption(steps=0, model_calls=1, retries=0, elapsed_ms=0),
         ),
+        "decision-executed": executed_decision,
+        "bounded-result": bounded_result,
         "result-needs-review": needs_review,
         "result-source-binding-failed": ServiceResult(
             run=run,
