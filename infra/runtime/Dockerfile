@@ -25,6 +25,10 @@ COPY src/appraisal_review/ ./src/appraisal_review/
 RUN --mount=type=secret,id=runtime_config,required=true \
     cp /run/secrets/runtime_config /opt/appraisal/runtime.json \
     && chmod 0444 /opt/appraisal/runtime.json
+# POSIX reviewer identity requires a passwd entry for the non-root runtime UID.
+RUN groupadd --gid 10001 appraisal \
+    && useradd --uid 10001 --gid 10001 --no-create-home --home-dir /nonexistent \
+    --shell /usr/sbin/nologin appraisal
 USER 10001:10001
 EXPOSE 8080
 HEALTHCHECK --interval=10s --timeout=3s CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/ping', timeout=2)"
