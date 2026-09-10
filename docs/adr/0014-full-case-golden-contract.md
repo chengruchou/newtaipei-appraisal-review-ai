@@ -22,7 +22,11 @@ Every expected value declares the authority a reviewer used: a citation into the
 fixture, a rule classification, a rule correction cell, an arithmetic derivation, or
 an agreed two-reviewer adjudication. `verify_manifest` re-derives each one from the
 synthetic material before the manifest may be written or trusted, using its own
-interval reading and its own rounding rather than the review engine's. An observed
+interval reading and its own rounding rather than the review engine's. Grades are
+re-classified from the fixture measurements rather than taken from the manifest, so
+no part of a derivation is self-asserted; derivations may not be circular, and an
+arithmetic input must carry its own grounded expectation rather than falling back to
+printed text. An observed
 value must additionally be printed in the cited excerpt, and every citation must
 resolve in the fixture registry, so a manifest cannot expect a number the document
 does not show.

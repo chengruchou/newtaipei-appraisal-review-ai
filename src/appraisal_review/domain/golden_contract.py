@@ -50,6 +50,7 @@ class ExpectationBasis(StrEnum):
 
     CLASSIFICATION = "rule_classification"
     CORRECTION = "rule_correction"
+    SUMMARY = "rule_summary"
     ARITHMETIC = "arithmetic_derivation"
     ADJUDICATION = "human_adjudication"
 
@@ -103,6 +104,16 @@ class CorrectionDerivation(GoldenModel):
     comparable_grade: Grade
 
 
+class SummaryDerivation(GoldenModel):
+    """A context total re-derived from every inventoried factor, not from printed text.
+
+    The reviewer names only the rule set. Both grades of every factor are re-classified
+    from the fixture measurements, so nothing about the expected total is self-asserted.
+    """
+
+    rule_set_id: str = Field(min_length=1)
+
+
 class ArithmeticDerivation(GoldenModel):
     """Reviewer-side arithmetic over other expected observations, not over results."""
 
@@ -146,6 +157,7 @@ class IndependentExpectation(GoldenModel):
     value: str
     classification: GradeDerivation | None = None
     correction: CorrectionDerivation | None = None
+    summary: SummaryDerivation | None = None
     arithmetic: ArithmeticDerivation | None = None
     adjudication_id: str | None = None
     rationale: str = Field(min_length=1)
@@ -155,6 +167,7 @@ class IndependentExpectation(GoldenModel):
         supplied = {
             ExpectationBasis.CLASSIFICATION: self.classification is not None,
             ExpectationBasis.CORRECTION: self.correction is not None,
+            ExpectationBasis.SUMMARY: self.summary is not None,
             ExpectationBasis.ARITHMETIC: self.arithmetic is not None,
             ExpectationBasis.ADJUDICATION: self.adjudication_id is not None,
         }

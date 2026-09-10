@@ -6,7 +6,7 @@
       "dimension": "normal",
       "expected_status": "verified",
       "human_tasks": [],
-      "material_digest": "1503a8a59a4e7fa25db6758f6b5abdb12be7a88b786648b49629003ebee1a49f",
+      "material_digest": "92dfe36d550ea3084fe6f9a69147f8b10dfc492884ee71bc7b901df57998eef5",
       "title": "Complete case with cross-page evidence",
       "unresolved": []
     },
@@ -16,7 +16,7 @@
       "dimension": "missing_data",
       "expected_status": "verified",
       "human_tasks": [],
-      "material_digest": "8e23a10f7e73f5a63b8e38e17ed219fd6820239e8a06cda376e5ef19c884c768",
+      "material_digest": "476c0252092019026836534e5968e815b9c2bea90e5ec52ba541e0dca220cb3e",
       "title": "Approved blank filled from a grounded total",
       "unresolved": []
     },
@@ -28,7 +28,7 @@
       "human_tasks": [
         "material_correction"
       ],
-      "material_digest": "cdf011c73026c22dc6e8c94ec77c5a6c45d6ba70de92591728ee7c34be47019f",
+      "material_digest": "5f5ef43bd35cbfcc8290071fdbb82e6d76bacca527687cd25eed7ec0d441f8a6",
       "title": "Incomplete page inventory blocks completion",
       "unresolved": []
     },
@@ -40,7 +40,7 @@
       "human_tasks": [
         "material_correction"
       ],
-      "material_digest": "061ad96a0f2859afb5611cef1ea6215b175aee58c6e66e8d58891bbb4b4e5fcc",
+      "material_digest": "34e543d467cc85afd254308abbda618d58c893123feccda82625a79643c9a682",
       "title": "An unevidenced field withdraws case-wide fill authority",
       "unresolved": [
         "observed/regional-copied-total"
@@ -54,7 +54,7 @@
       "human_tasks": [
         "material_correction"
       ],
-      "material_digest": "eb580aaa35444629be8fe9b08ab91006565aa454b45d4e1e3c0cbe36fd5e48f3",
+      "material_digest": "eec22a8ae61882435caa84408e0e946a6712a87752c4d45a2a3621e44a8c19a3",
       "title": "Copied total contradicts the grounded total",
       "unresolved": []
     },
@@ -67,7 +67,7 @@
         "fact_confirmation",
         "fact_confirmation"
       ],
-      "material_digest": "2467486b0a7b7661aa8b08392605762ab7d773cd28b7a5b28a5ea6d8999691e9",
+      "material_digest": "9f58a1132f843858d45773ef7cde5a09ed407050df888e3d8432cbae34f7833b",
       "title": "Located values with zero measured confidence",
       "unresolved": []
     },
@@ -79,7 +79,7 @@
       "human_tasks": [
         "rule_approval"
       ],
-      "material_digest": "d1129677d4d54a99b2b36b49e545d5e7ac051a6fc3450b93e5381e432338479a",
+      "material_digest": "a0db3e565d58056897a8bc2c51f2f7ed1585eabb767908398f68712ca0950b72",
       "title": "An unsupported criteria rule fails explicitly",
       "unresolved": []
     },
@@ -89,7 +89,7 @@
       "dimension": "multiple_contexts",
       "expected_status": "verified",
       "human_tasks": [],
-      "material_digest": "918c9248a98ff0b16d8722f36b988d8071b2a558a4b4bf3c0c465e165ecd1f57",
+      "material_digest": "cde5f51e162b969c4a0d78e942db02315fa3183f43722c92401323f275e7a7d4",
       "title": "Two verified comparison contexts, one writer boundary",
       "unresolved": []
     },
@@ -101,7 +101,7 @@
       "human_tasks": [
         "material_approval"
       ],
-      "material_digest": "1503a8a59a4e7fa25db6758f6b5abdb12be7a88b786648b49629003ebee1a49f",
+      "material_digest": "92dfe36d550ea3084fe6f9a69147f8b10dfc492884ee71bc7b901df57998eef5",
       "title": "Correct values without exact-material approval",
       "unresolved": []
     },
@@ -114,7 +114,7 @@
         "fact_confirmation",
         "fact_confirmation"
       ],
-      "material_digest": "2467486b0a7b7661aa8b08392605762ab7d773cd28b7a5b28a5ea6d8999691e9",
+      "material_digest": "9f58a1132f843858d45773ef7cde5a09ed407050df888e3d8432cbae34f7833b",
       "title": "Revision 1: model proposals await confirmation",
       "unresolved": []
     },
@@ -124,7 +124,7 @@
       "dimension": "revision_chain",
       "expected_status": "verified",
       "human_tasks": [],
-      "material_digest": "c7285e85e88ae0cd994e8bebb982477526362e3146a1be294060cee893526f6d",
+      "material_digest": "05f3dc9f0f54c8b97c3bd3765ca3a21033f4addf3173964a3041f26a7a82ebfe",
       "title": "Revision 2: confirmed sides verify the same readings",
       "unresolved": []
     },
@@ -137,7 +137,7 @@
         "fact_confirmation",
         "fact_confirmation"
       ],
-      "material_digest": "a326f6ee7c76b5f2075daf29a762019aba3e628e82c9ba903b28f797cb6a7a6c",
+      "material_digest": "a9b76d7e29070790dcfdf75bfa54fe1c6b79e2aee845bd7965ad9a9c513a8fa9",
       "title": "Revision 3: relabelling cannot restore extraction authority",
       "unresolved": []
     }

@@ -146,7 +146,7 @@
             440.0,
             160.0
           ],
-          "content_hash": "57cdaf9e97474e83bfac9a5c92c3739499cdbb596698b5e06458e1492d6ee1a6",
+          "content_hash": "3107794420e4107e404340ad2ff8acc0de0eca5ea9f2edd92ff8f905ec63c4d3",
           "document_id": "golden-forms",
           "excerpt": "regional target grade excellent",
           "page": 1,
@@ -181,7 +181,7 @@
             440.0,
             120.0
           ],
-          "content_hash": "57cdaf9e97474e83bfac9a5c92c3739499cdbb596698b5e06458e1492d6ee1a6",
+          "content_hash": "3107794420e4107e404340ad2ff8acc0de0eca5ea9f2edd92ff8f905ec63c4d3",
           "document_id": "golden-forms",
           "excerpt": "regional comparable grade inferior",
           "page": 1,
@@ -216,7 +216,7 @@
             440.0,
             80.0
           ],
-          "content_hash": "57cdaf9e97474e83bfac9a5c92c3739499cdbb596698b5e06458e1492d6ee1a6",
+          "content_hash": "3107794420e4107e404340ad2ff8acc0de0eca5ea9f2edd92ff8f905ec63c4d3",
           "document_id": "golden-forms",
           "excerpt": "regional road rate 5",
           "page": 1,
@@ -251,7 +251,7 @@
             440.0,
             240.0
           ],
-          "content_hash": "57cdaf9e97474e83bfac9a5c92c3739499cdbb596698b5e06458e1492d6ee1a6",
+          "content_hash": "3107794420e4107e404340ad2ff8acc0de0eca5ea9f2edd92ff8f905ec63c4d3",
           "document_id": "golden-forms",
           "excerpt": "regional subtotal 5",
           "page": 2,
@@ -286,7 +286,7 @@
             440.0,
             200.0
           ],
-          "content_hash": "57cdaf9e97474e83bfac9a5c92c3739499cdbb596698b5e06458e1492d6ee1a6",
+          "content_hash": "3107794420e4107e404340ad2ff8acc0de0eca5ea9f2edd92ff8f905ec63c4d3",
           "document_id": "golden-forms",
           "excerpt": "regional total 5",
           "page": 2,
@@ -321,7 +321,7 @@
             440.0,
             160.0
           ],
-          "content_hash": "57cdaf9e97474e83bfac9a5c92c3739499cdbb596698b5e06458e1492d6ee1a6",
+          "content_hash": "3107794420e4107e404340ad2ff8acc0de0eca5ea9f2edd92ff8f905ec63c4d3",
           "document_id": "golden-forms",
           "excerpt": "regional copied total 5",
           "page": 2,
@@ -454,14 +454,14 @@
   "fixture": {
     "documents": [
       {
-        "content_hash": "d0eba710d31faf32429e0d231392dfe17f1969f3126edf4c3cea5f218cbeae08",
+        "content_hash": "a4a7cc21804923109cc9a3a3e2e42e1189a4c2c93aa07635731ffd776222457c",
         "document_id": "golden-criteria",
         "page_count": 1,
         "role": "criteria",
         "version": "1"
       },
       {
-        "content_hash": "57cdaf9e97474e83bfac9a5c92c3739499cdbb596698b5e06458e1492d6ee1a6",
+        "content_hash": "3107794420e4107e404340ad2ff8acc0de0eca5ea9f2edd92ff8f905ec63c4d3",
         "document_id": "golden-forms",
         "page_count": 2,
         "role": "forms",
@@ -469,7 +469,7 @@
       }
     ],
     "generator_version": "golden-cases-v1",
-    "material_digest": "2467486b0a7b7661aa8b08392605762ab7d773cd28b7a5b28a5ea6d8999691e9"
+    "material_digest": "9f58a1132f843858d45773ef7cde5a09ed407050df888e3d8432cbae34f7833b"
   },
   "identity": {
     "case_id": "golden-case",

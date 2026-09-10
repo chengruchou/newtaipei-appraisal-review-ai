@@ -71,6 +71,7 @@ from appraisal_review.domain.golden_contract import (
     IndependentExpectation,
     ObservedExpectation,
     SlotValue,
+    SummaryDerivation,
     UnresolvedItem,
 )
 from appraisal_review.domain.models import EvidenceRef
@@ -252,7 +253,10 @@ def _document(
     pages: list[SourcePage],
 ) -> SourceDocument:
     payload = json.dumps(
-        [[[r.id, r.kind, r.text, list(r.bbox)] for r in page.regions] for page in pages],
+        [
+            [[r.id, r.kind, r.text, r.table_id, list(r.bbox)] for r in page.regions]
+            for page in pages
+        ],
         sort_keys=True,
     )
     return SourceDocument(
@@ -687,14 +691,15 @@ def _baseline_slots(spec: FixtureSpec, material: ReviewMaterial) -> dict[str, Ex
                 "total",
                 2,
                 IndependentExpectation(
-                    basis=ExpectationBasis.ARITHMETIC,
+                    basis=ExpectationBasis.SUMMARY,
                     value=CORRECTION_RATE,
-                    arithmetic=ArithmeticDerivation(
-                        operation="sum", input_slot_ids=(f"{name}-subtotal",)
+                    summary=SummaryDerivation(rule_set_id=RULE_SET_ID),
+                    rationale=(
+                        "The context total is the sum of the correction rates of every "
+                        "inventoried factor, re-classified from the fixture measurements."
                     ),
-                    rationale="The criteria procedure sums the subtotals into the total.",
                 ),
-                "The total must equal the sum of this context's subtotals.",
+                "The total must equal the corrections of this context's inventoried factors.",
             ),
             _numeric_slot(
                 material,

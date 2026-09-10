@@ -14,10 +14,12 @@ from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from uuid import NAMESPACE_URL, UUID, uuid5
 
 from appraisal_review.domain.confidence import confirmation_digest
+from appraisal_review.domain.document_models import SourceCitation
 from appraisal_review.domain.factor_models import (
     AgentReviewRun,
     CaseReviewResult,
     EvaluationStatus,
+    EvidencedPair,
     FactorRule,
     FactorRuleSet,
     Grade,
@@ -33,8 +35,10 @@ from appraisal_review.domain.golden_contract import (
     GoldenCase,
     GradeDerivation,
     IndependentExpectation,
+    SummaryDerivation,
 )
 from appraisal_review.domain.review_contracts import (
+    ComparisonContext,
     ObservedValue,
     ReviewFinding,
     ReviewSlot,
@@ -169,8 +173,29 @@ def expected_task_contract(
     )
 
 
-def _authoritative(slot: ExpectedSlot) -> str | None:
-    return slot.independent.value if slot.independent is not None else slot.observed.value
+def _fixture_pair(
+    material: ReviewMaterial, context: ComparisonContext, factor_id: str
+) -> EvidencedPair | None:
+    return next(
+        (p for p in material.facts.pairs if p.context == context and p.pair.factor_id == factor_id),
+        None,
+    )
+
+
+def _fixture_grade(rule: FactorRule, pair: EvidencedPair, side: str) -> Grade | None:
+    """Re-classify one side straight from the fixture measurement, asserting nothing."""
+    observation = getattr(pair.pair, side)
+    if observation.value is None or observation.value.unit != rule.unit:
+        return None
+    measured = _decimal(str(observation.value.value))
+    if measured is None:
+        return None
+    bands = [band for band in rule.intervals if _band_contains(band, measured)]
+    return bands[0].grade if len(bands) == 1 else None
+
+
+def _expected_side(slot: ExpectedSlot) -> str | None:
+    return {"target_grade": "target", "comparable_grade": "comparable"}.get(slot.slot_value)
 
 
 def _check_classification(
@@ -191,14 +216,14 @@ def _check_classification(
         "classification",
         f"{slot.slot_id}: measurement unit differs from the rule unit",
     )
-    pair = next(
-        (
-            p
-            for p in material.facts.pairs
-            if p.context == slot.context and p.pair.factor_id == rule.factor_id
-        ),
-        None,
+    # A grade field must be grounded on its own side, never on the other side's measurement.
+    collector.require(
+        derivation.side == _expected_side(slot),
+        "classification",
+        f"{slot.slot_id}: a {slot.slot_value} field cannot be grounded on the "
+        f"{derivation.side} measurement",
     )
+    pair = _fixture_pair(material, slot.context, rule.factor_id)
     if not collector.require(
         pair is not None, "classification", f"{slot.slot_id}: no fixture pair for {rule.factor_id}"
     ):
@@ -238,6 +263,24 @@ def _check_correction(
     ):
         return
     assert rule is not None
+    pair = _fixture_pair(material, slot.context, rule.factor_id)
+    if not collector.require(
+        pair is not None, "correction", f"{slot.slot_id}: no fixture pair for {rule.factor_id}"
+    ):
+        return
+    assert pair is not None
+    # The grade pair is re-classified from the fixture; a declared pair proves nothing.
+    for side, declared in (
+        ("target", derivation.target_grade),
+        ("comparable", derivation.comparable_grade),
+    ):
+        actual = _fixture_grade(rule, pair, side)
+        collector.require(
+            actual is declared,
+            "correction",
+            f"{slot.slot_id}: the reviewed {side} grade {declared.value} is not the band "
+            f"the fixture measurement falls in ({actual.value if actual else 'none'})",
+        )
     row = rule.correction_matrix.values.get(derivation.target_grade.value, {})
     cell = row.get(derivation.comparable_grade.value)
     collector.require(
@@ -247,6 +290,74 @@ def _check_correction(
     )
 
 
+def _check_summary(
+    collector: _Collector,
+    slot: ExpectedSlot,
+    derivation: SummaryDerivation,
+    expected: IndependentExpectation,
+    material: ReviewMaterial,
+) -> None:
+    """Re-derive a context total from every inventoried factor of that context."""
+    rule_set = _rule_set(material, derivation.rule_set_id)
+    entry = next((e for e in material.policy.inventory.contexts if e.context == slot.context), None)
+    if not collector.require(
+        rule_set is not None and entry is not None,
+        "summary",
+        f"{slot.slot_id}: unknown rule set or uninventoried context",
+    ):
+        return
+    assert rule_set is not None and entry is not None
+    total = Decimal("0")
+    for factor_id in entry.factor_ids:
+        rule = next((r for r in rule_set.rules if r.factor_id == factor_id), None)
+        pair = _fixture_pair(material, slot.context, factor_id)
+        if not collector.require(
+            rule is not None and pair is not None,
+            "summary",
+            f"{slot.slot_id}: factor {factor_id} has no rule or no fixture pair",
+        ):
+            return
+        assert rule is not None and pair is not None
+        grades = [_fixture_grade(rule, pair, side) for side in ("target", "comparable")]
+        if not collector.require(
+            all(grade is not None for grade in grades),
+            "summary",
+            f"{slot.slot_id}: factor {factor_id} does not classify from the fixture",
+        ):
+            return
+        cell = rule.correction_matrix.values.get(grades[0].value, {}).get(grades[1].value)  # type: ignore[union-attr]
+        if not collector.require(
+            cell is not None, "summary", f"{slot.slot_id}: factor {factor_id} has no matrix cell"
+        ):
+            return
+        total += Decimal(str(cell))
+    collector.require(
+        _same_value(str(total), expected.value),
+        "summary",
+        f"{slot.slot_id}: the inventoried factors total {total}, not the reviewed {expected.value}",
+    )
+
+
+def _depends_on_itself(slot_id: str, slots: dict[str, ExpectedSlot]) -> bool:
+    """Walk the declared derivation chain; a value that derives from itself proves nothing."""
+    seen: set[str] = set()
+    frontier = [slot_id]
+    while frontier:
+        current = frontier.pop()
+        slot = slots.get(current)
+        expectation = slot.independent if slot is not None else None
+        arithmetic = expectation.arithmetic if expectation is not None else None
+        if arithmetic is None:
+            continue
+        for name in arithmetic.input_slot_ids:
+            if name == slot_id:
+                return True
+            if name not in seen:
+                seen.add(name)
+                frontier.append(name)
+    return False
+
+
 def _check_arithmetic(
     collector: _Collector,
     slot: ExpectedSlot,
@@ -254,12 +365,24 @@ def _check_arithmetic(
     expected: IndependentExpectation,
     slots: dict[str, ExpectedSlot],
 ) -> None:
+    if _depends_on_itself(slot.slot_id, slots):
+        collector.require(
+            False,
+            "arithmetic",
+            f"{slot.slot_id}: the derivation chain is circular and grounds nothing",
+        )
+        return
     inputs: list[Decimal] = []
     for name in derivation.input_slot_ids:
         source = slots.get(name)
-        value = _decimal(_authoritative(source)) if source is not None else None
+        # An input must carry its own grounded expectation. Falling back to the printed
+        # value would ground a derivation in the text the case may have declared untrusted.
+        independent = source.independent if source is not None else None
+        value = _decimal(independent.value) if independent is not None else None
         if not collector.require(
-            value is not None, "arithmetic", f"{slot.slot_id}: input {name} has no expected number"
+            value is not None,
+            "arithmetic",
+            f"{slot.slot_id}: input {name} carries no independently grounded expectation",
         ):
             return
         assert value is not None
@@ -353,6 +476,7 @@ def _verify_slot(
         reviewed is not None, "slot", f"{slot.slot_id}: not part of the reviewed inventory"
     ):
         return
+    assert reviewed is not None
     observation = observations.get(slot.slot_id)
     if collector.require(
         observation is not None, "slot", f"{slot.slot_id}: the fixture records no observation"
@@ -374,6 +498,12 @@ def _verify_slot(
             "citation",
             f"{slot.slot_id}: the cited region does not resolve in the fixture registry",
         )
+        # Resolving somewhere is not enough: it must be this slot's own reviewed cell.
+        collector.require(
+            _anchor(citation) in {_anchor(ref) for ref in reviewed.evidence},
+            "citation",
+            f"{slot.slot_id}: the citation is not one of the slot's own reviewed source cells",
+        )
         if slot.observed.value is not None:
             collector.require(
                 _printed(slot.observed.value, citation.excerpt),
@@ -387,6 +517,8 @@ def _verify_slot(
         _check_classification(collector, slot, expected.classification, expected, material)
     elif expected.basis is ExpectationBasis.CORRECTION and expected.correction is not None:
         _check_correction(collector, slot, expected.correction, expected, material)
+    elif expected.basis is ExpectationBasis.SUMMARY and expected.summary is not None:
+        _check_summary(collector, slot, expected.summary, expected, material)
     elif expected.basis is ExpectationBasis.ARITHMETIC and expected.arithmetic is not None:
         _check_arithmetic(collector, slot, expected.arithmetic, expected, slots)
     else:
@@ -404,6 +536,10 @@ def _verify_slot(
 
 def _finding_counts(findings: Sequence[ReviewFinding]) -> Counter[tuple[str, str, str]]:
     return Counter((f.id, f.kind, str(f.status)) for f in findings)
+
+
+def _anchor(ref: SourceCitation) -> tuple[object, ...]:
+    return (ref.document_id, ref.content_hash, ref.version, ref.page, ref.region_id, ref.bbox)
 
 
 def _reported_candidate(slot: ExpectedSlot) -> str | None:
@@ -434,10 +570,14 @@ def compare_case_review(case: GoldenCase, result: CaseReviewResult) -> GoldenRep
     )
     actual = _finding_counts(result.findings)
     expected = _expected_counts(case)
-    for entry in sorted(set(expected) - set(actual)):
-        collector.require(False, "findings", f"missing finding {entry}")
-    for entry in sorted(set(actual) - set(expected)):
-        collector.require(False, "findings", f"unexpected finding {entry}")
+    # Compare multiplicities, not just identities: a finding reported twice is a difference.
+    for entry in sorted(set(expected) | set(actual)):
+        if expected[entry] != actual[entry]:
+            collector.require(
+                False,
+                "findings",
+                f"finding {entry}: reviewed {expected[entry]}, reported {actual[entry]}",
+            )
     collector.require(
         tuple(result.coverage.missing) == case.expected_coverage.missing,
         "coverage",
@@ -577,6 +717,11 @@ def compare_review_run(case: GoldenCase, run: AgentReviewRun) -> GoldenReport:
             len(run.verification.critical_errors) == len(expected.critical),
             "verification",
             f"{len(run.verification.critical_errors)} blockers, expected {len(expected.critical)}",
+        )
+        collector.require(
+            len(run.verification.warnings) == len(expected.warnings),
+            "verification",
+            f"{len(run.verification.warnings)} warnings, expected {len(expected.warnings)}",
         )
     collector.require(
         run.artifact_status == case.expected_artifact.artifact_status,

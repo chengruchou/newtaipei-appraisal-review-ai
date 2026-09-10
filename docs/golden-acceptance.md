@@ -72,15 +72,32 @@ authority, and `golden_validator.verify_manifest` re-derives it from the fixture
 
 | Basis | Re-derivation performed by CI |
 | --- | --- |
-| `rule_classification` | The stated measurement is read from the fixture pair and must fall inside the stated rule band. |
-| `rule_correction` | The stated rate must equal the correction-matrix cell for the two grades. |
-| `arithmetic_derivation` | The value is recomputed from the other expected fields with `ROUND_HALF_UP`. |
+| `rule_classification` | The measurement is read from the fixture pair, must be the slot's own side, and must fall inside the stated band. |
+| `rule_correction` | Both grades are re-classified from the fixture measurements, and the rate must equal the matrix cell for those grades. |
+| `rule_summary` | A context total is the sum of the corrections of every inventoried factor, each re-classified from the fixture. |
+| `arithmetic_derivation` | Recomputed with `ROUND_HALF_UP` from inputs that each carry their own grounded expectation. |
 | `human_adjudication` | An agreed two-reviewer record must carry exactly that decision. |
 
-In addition, every observed value must be printed in the cited excerpt, and every citation
-must resolve in the fixture registry. A manifest cannot expect a number the synthetic
-document does not show. Where a case cannot ground a field at all, the manifest records no
-independent expectation instead of borrowing one from the result.
+Nothing in a derivation may be self-asserted. A manifest states a grade or a grade pair, but
+the validator re-classifies from the fixture measurement rather than trusting what was
+declared; a manifest that inverts a grade pair and every value below it is rejected, not
+accepted as internally consistent.
+
+Four further rules close the ways a plausible-looking manifest could still ground itself:
+
+- **Citations are bound to the field.** An observed citation must resolve in the registry,
+  must print the value, and must be one of that slot's own reviewed source cells. Citing a
+  neighbouring cell that happens to print the same number is rejected.
+- **Derivations may not be circular.** A chain that returns to the field it is deriving
+  grounds nothing and is rejected.
+- **Arithmetic inputs need their own grounding.** An input must carry its own independent
+  expectation; a derivation may not fall back to a printed value, least of all in a case that
+  declares that text untrusted.
+- **Findings are compared with multiplicity.** The same finding reported twice is a
+  difference, not a match.
+
+Where a case cannot ground a field at all, the manifest records no independent expectation
+instead of borrowing one from the result.
 
 ## Reviewer acceptance checklist
 

@@ -170,3 +170,17 @@ def test_a_wrong_deterministic_result_fails_its_case():
     finding = next(f for f in misreported.findings if f.id == "observed/regional-total")
     finding.observed = "9"
     assert not compare_case_review(reviewed("normal-complete"), misreported).ok
+
+
+def test_a_duplicated_engine_finding_fails_the_case():
+    """Multiplicity is part of the contract: the same finding twice is a difference."""
+    fixture = next(f for f in FIXTURES if f.case_key == "normal-complete")
+    material = fixture.material
+    result = CaseReviewer(GoldenAuthorization(material)).review(
+        material.policy, material.facts, material.policy.registry
+    )
+    doubled = result.model_copy(deep=True)
+    doubled.findings.append(doubled.findings[0].model_copy(deep=True))
+    report = compare_case_review(reviewed("normal-complete"), doubled)
+    assert not report.ok
+    assert any(m.check == "findings" for m in report.mismatches)

@@ -124,7 +124,7 @@
     {
       "id": "observed/regional-total",
       "kind": "observed_comparison",
-      "rationale": "The total must equal the sum of this context's subtotals.",
+      "rationale": "The total must equal the corrections of this context's inventoried factors.",
       "status": "verified"
     },
     {
@@ -160,7 +160,7 @@
     {
       "id": "observed/individual-total",
       "kind": "observed_comparison",
-      "rationale": "The total must equal the sum of this context's subtotals.",
+      "rationale": "The total must equal the corrections of this context's inventoried factors.",
       "status": "verified"
     },
     {
@@ -205,6 +205,7 @@
         },
         "correction": null,
         "rationale": "The criteria band the target width of 12 m falls into is excellent.",
+        "summary": null,
         "value": "excellent"
       },
       "observed": {
@@ -215,7 +216,7 @@
             440.0,
             360.0
           ],
-          "content_hash": "488e2464f1c9fbfe48eb169f114d9b559e030cb68e5998d7c86c08d2ee3eb99f",
+          "content_hash": "10c229936a5efb7efa0b88a634abb3a80dc7246dc8f7488529bbd7e4876ebd81",
           "document_id": "golden-forms",
           "excerpt": "regional target grade excellent",
           "page": 1,
@@ -255,6 +256,7 @@
         },
         "correction": null,
         "rationale": "The criteria band the comparable width of 8 m falls into is inferior.",
+        "summary": null,
         "value": "inferior"
       },
       "observed": {
@@ -265,7 +267,7 @@
             440.0,
             320.0
           ],
-          "content_hash": "488e2464f1c9fbfe48eb169f114d9b559e030cb68e5998d7c86c08d2ee3eb99f",
+          "content_hash": "10c229936a5efb7efa0b88a634abb3a80dc7246dc8f7488529bbd7e4876ebd81",
           "document_id": "golden-forms",
           "excerpt": "regional comparable grade inferior",
           "page": 1,
@@ -303,6 +305,7 @@
           "target_grade": "excellent"
         },
         "rationale": "The excellent/inferior cell of the correction matrix is 5.",
+        "summary": null,
         "value": "5"
       },
       "observed": {
@@ -313,7 +316,7 @@
             440.0,
             280.0
           ],
-          "content_hash": "488e2464f1c9fbfe48eb169f114d9b559e030cb68e5998d7c86c08d2ee3eb99f",
+          "content_hash": "10c229936a5efb7efa0b88a634abb3a80dc7246dc8f7488529bbd7e4876ebd81",
           "document_id": "golden-forms",
           "excerpt": "regional road rate 5",
           "page": 1,
@@ -352,6 +355,7 @@
         "classification": null,
         "correction": null,
         "rationale": "The criteria procedure sums the factor rates into the subtotal.",
+        "summary": null,
         "value": "5"
       },
       "observed": {
@@ -362,7 +366,7 @@
             440.0,
             440.0
           ],
-          "content_hash": "488e2464f1c9fbfe48eb169f114d9b559e030cb68e5998d7c86c08d2ee3eb99f",
+          "content_hash": "10c229936a5efb7efa0b88a634abb3a80dc7246dc8f7488529bbd7e4876ebd81",
           "document_id": "golden-forms",
           "excerpt": "regional subtotal 5",
           "page": 2,
@@ -390,17 +394,14 @@
       "factor_id": null,
       "independent": {
         "adjudication_id": null,
-        "arithmetic": {
-          "input_slot_ids": [
-            "regional-subtotal"
-          ],
-          "operation": "sum",
-          "quantum": "0.01"
-        },
-        "basis": "arithmetic_derivation",
+        "arithmetic": null,
+        "basis": "rule_summary",
         "classification": null,
         "correction": null,
-        "rationale": "The criteria procedure sums the subtotals into the total.",
+        "rationale": "The context total is the sum of the correction rates of every inventoried factor, re-classified from the fixture measurements.",
+        "summary": {
+          "rule_set_id": "golden-road-v1"
+        },
         "value": "5"
       },
       "observed": {
@@ -411,7 +412,7 @@
             440.0,
             400.0
           ],
-          "content_hash": "488e2464f1c9fbfe48eb169f114d9b559e030cb68e5998d7c86c08d2ee3eb99f",
+          "content_hash": "10c229936a5efb7efa0b88a634abb3a80dc7246dc8f7488529bbd7e4876ebd81",
           "document_id": "golden-forms",
           "excerpt": "regional total 5",
           "page": 2,
@@ -423,7 +424,7 @@
         "unit": "percent_points",
         "value": "5"
       },
-      "rationale": "The total must equal the sum of this context's subtotals.",
+      "rationale": "The total must equal the corrections of this context's inventoried factors.",
       "slot_id": "regional-total",
       "slot_value": "total"
     },
@@ -450,6 +451,7 @@
         "classification": null,
         "correction": null,
         "rationale": "The copied field repeats the total of the same context.",
+        "summary": null,
         "value": "5"
       },
       "observed": {
@@ -460,7 +462,7 @@
             440.0,
             360.0
           ],
-          "content_hash": "488e2464f1c9fbfe48eb169f114d9b559e030cb68e5998d7c86c08d2ee3eb99f",
+          "content_hash": "10c229936a5efb7efa0b88a634abb3a80dc7246dc8f7488529bbd7e4876ebd81",
           "document_id": "golden-forms",
           "excerpt": "regional copied total 5",
           "page": 2,
@@ -500,6 +502,7 @@
         },
         "correction": null,
         "rationale": "The criteria band the target width of 12 m falls into is excellent.",
+        "summary": null,
         "value": "excellent"
       },
       "observed": {
@@ -510,7 +513,7 @@
             440.0,
             160.0
           ],
-          "content_hash": "488e2464f1c9fbfe48eb169f114d9b559e030cb68e5998d7c86c08d2ee3eb99f",
+          "content_hash": "10c229936a5efb7efa0b88a634abb3a80dc7246dc8f7488529bbd7e4876ebd81",
           "document_id": "golden-forms",
           "excerpt": "individual target grade excellent",
           "page": 1,
@@ -550,6 +553,7 @@
         },
         "correction": null,
         "rationale": "The criteria band the comparable width of 8 m falls into is inferior.",
+        "summary": null,
         "value": "inferior"
       },
       "observed": {
@@ -560,7 +564,7 @@
             440.0,
             120.0
           ],
-          "content_hash": "488e2464f1c9fbfe48eb169f114d9b559e030cb68e5998d7c86c08d2ee3eb99f",
+          "content_hash": "10c229936a5efb7efa0b88a634abb3a80dc7246dc8f7488529bbd7e4876ebd81",
           "document_id": "golden-forms",
           "excerpt": "individual comparable grade inferior",
           "page": 1,
@@ -598,6 +602,7 @@
           "target_grade": "excellent"
         },
         "rationale": "The excellent/inferior cell of the correction matrix is 5.",
+        "summary": null,
         "value": "5"
       },
       "observed": {
@@ -608,7 +613,7 @@
             440.0,
             80.0
           ],
-          "content_hash": "488e2464f1c9fbfe48eb169f114d9b559e030cb68e5998d7c86c08d2ee3eb99f",
+          "content_hash": "10c229936a5efb7efa0b88a634abb3a80dc7246dc8f7488529bbd7e4876ebd81",
           "document_id": "golden-forms",
           "excerpt": "individual road rate 5",
           "page": 1,
@@ -647,6 +652,7 @@
         "classification": null,
         "correction": null,
         "rationale": "The criteria procedure sums the factor rates into the subtotal.",
+        "summary": null,
         "value": "5"
       },
       "observed": {
@@ -657,7 +663,7 @@
             440.0,
             320.0
           ],
-          "content_hash": "488e2464f1c9fbfe48eb169f114d9b559e030cb68e5998d7c86c08d2ee3eb99f",
+          "content_hash": "10c229936a5efb7efa0b88a634abb3a80dc7246dc8f7488529bbd7e4876ebd81",
           "document_id": "golden-forms",
           "excerpt": "individual subtotal 5",
           "page": 2,
@@ -685,17 +691,14 @@
       "factor_id": null,
       "independent": {
         "adjudication_id": null,
-        "arithmetic": {
-          "input_slot_ids": [
-            "individual-subtotal"
-          ],
-          "operation": "sum",
-          "quantum": "0.01"
-        },
-        "basis": "arithmetic_derivation",
+        "arithmetic": null,
+        "basis": "rule_summary",
         "classification": null,
         "correction": null,
-        "rationale": "The criteria procedure sums the subtotals into the total.",
+        "rationale": "The context total is the sum of the correction rates of every inventoried factor, re-classified from the fixture measurements.",
+        "summary": {
+          "rule_set_id": "golden-road-v1"
+        },
         "value": "5"
       },
       "observed": {
@@ -706,7 +709,7 @@
             440.0,
             280.0
           ],
-          "content_hash": "488e2464f1c9fbfe48eb169f114d9b559e030cb68e5998d7c86c08d2ee3eb99f",
+          "content_hash": "10c229936a5efb7efa0b88a634abb3a80dc7246dc8f7488529bbd7e4876ebd81",
           "document_id": "golden-forms",
           "excerpt": "individual total 5",
           "page": 2,
@@ -718,7 +721,7 @@
         "unit": "percent_points",
         "value": "5"
       },
-      "rationale": "The total must equal the sum of this context's subtotals.",
+      "rationale": "The total must equal the corrections of this context's inventoried factors.",
       "slot_id": "individual-total",
       "slot_value": "total"
     },
@@ -745,6 +748,7 @@
         "classification": null,
         "correction": null,
         "rationale": "The copied field repeats the total of the same context.",
+        "summary": null,
         "value": "5"
       },
       "observed": {
@@ -755,7 +759,7 @@
             440.0,
             240.0
           ],
-          "content_hash": "488e2464f1c9fbfe48eb169f114d9b559e030cb68e5998d7c86c08d2ee3eb99f",
+          "content_hash": "10c229936a5efb7efa0b88a634abb3a80dc7246dc8f7488529bbd7e4876ebd81",
           "document_id": "golden-forms",
           "excerpt": "individual copied total 5",
           "page": 2,
@@ -783,14 +787,14 @@
   "fixture": {
     "documents": [
       {
-        "content_hash": "d0eba710d31faf32429e0d231392dfe17f1969f3126edf4c3cea5f218cbeae08",
+        "content_hash": "a4a7cc21804923109cc9a3a3e2e42e1189a4c2c93aa07635731ffd776222457c",
         "document_id": "golden-criteria",
         "page_count": 1,
         "role": "criteria",
         "version": "1"
       },
       {
-        "content_hash": "488e2464f1c9fbfe48eb169f114d9b559e030cb68e5998d7c86c08d2ee3eb99f",
+        "content_hash": "10c229936a5efb7efa0b88a634abb3a80dc7246dc8f7488529bbd7e4876ebd81",
         "document_id": "golden-forms",
         "page_count": 2,
         "role": "forms",
@@ -798,7 +802,7 @@
       }
     ],
     "generator_version": "golden-cases-v1",
-    "material_digest": "918c9248a98ff0b16d8722f36b988d8071b2a558a4b4bf3c0c465e165ecd1f57"
+    "material_digest": "cde5f51e162b969c4a0d78e942db02315fa3183f43722c92401323f275e7a7d4"
   },
   "identity": {
     "case_id": "golden-case",

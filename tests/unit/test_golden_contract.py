@@ -236,3 +236,138 @@ def test_rule_identity_is_stable_across_the_matrix():
         inventoried = [entry.context for entry in fixture.material.policy.inventory.contexts]
         assert all(slot.context in inventoried for slot in fixture.case.expected_slots)
         assert REGIONAL in inventoried
+
+
+# Soundness regressions. Each of these manifests was accepted by an earlier validator that
+# checked a derivation for internal consistency without binding it back to the fixture.
+
+
+def test_a_consistently_inverted_chain_cannot_re_derive():
+    """Inverting the grade pair and every value that follows it must still be caught."""
+    fixture = case_named("normal-complete")
+    payload = fixture.case.model_dump(mode="json")
+    for slot in payload["expected_slots"]:
+        if slot["slot_id"] == "regional-rate":
+            slot["independent"]["value"] = "-5"
+            slot["independent"]["correction"]["target_grade"] = "inferior"
+            slot["independent"]["correction"]["comparable_grade"] = "excellent"
+        elif slot["slot_id"] in {"regional-subtotal", "regional-total", "regional-copied-total"}:
+            slot["independent"]["value"] = "-5"
+    report = verify_manifest(GoldenCase.model_validate(payload), fixture.material)
+    assert not report.ok
+    assert any(m.check in {"correction", "summary"} for m in report.mismatches)
+
+
+def test_a_grade_cannot_be_grounded_on_the_other_side():
+    fixture = case_named("normal-complete")
+    payload = fixture.case.model_dump(mode="json")
+    slot = payload["expected_slots"][slot_index(payload, "regional-target-grade")]
+    slot["independent"]["classification"]["side"] = "comparable"
+    slot["independent"]["classification"]["measurement"] = "8"
+    slot["independent"]["classification"]["grade"] = "inferior"
+    slot["independent"]["value"] = "inferior"
+    report = verify_manifest(GoldenCase.model_validate(payload), fixture.material)
+    assert not report.ok
+    assert any("cannot be grounded on" in m.detail for m in report.mismatches)
+
+
+def test_a_circular_derivation_grounds_nothing():
+    fixture = case_named("normal-complete")
+    payload = fixture.case.model_dump(mode="json")
+    circular = {
+        "regional-subtotal": "regional-total",
+        "regional-total": "regional-subtotal",
+    }
+    for slot in payload["expected_slots"]:
+        source = circular.get(slot["slot_id"])
+        if source is None:
+            continue
+        slot["independent"] = {
+            "basis": "arithmetic_derivation",
+            "value": "9",
+            "classification": None,
+            "correction": None,
+            "summary": None,
+            "arithmetic": {
+                "operation": "sum",
+                "input_slot_ids": [source],
+                "quantum": "0.01",
+            },
+            "adjudication_id": None,
+            "rationale": "Circular derivation under test.",
+        }
+    report = verify_manifest(GoldenCase.model_validate(payload), fixture.material)
+    assert not report.ok
+    assert any("circular" in m.detail for m in report.mismatches)
+
+
+def test_a_citation_must_be_the_slots_own_source_cell():
+    fixture = case_named("normal-complete")
+    payload = fixture.case.model_dump(mode="json")
+    total = payload["expected_slots"][slot_index(payload, "regional-total")]
+    subtotal = payload["expected_slots"][slot_index(payload, "regional-subtotal")]
+    subtotal["observed"]["citation"] = total["observed"]["citation"]
+    report = verify_manifest(GoldenCase.model_validate(payload), fixture.material)
+    assert not report.ok
+    assert any("own reviewed source cells" in m.detail for m in report.mismatches)
+
+
+def test_an_arithmetic_input_needs_its_own_grounded_expectation():
+    """A derivation may not fall back to the printed value of an untrusted field."""
+    fixture = case_named("normal-complete")
+    payload = fixture.case.model_dump(mode="json")
+    payload["expected_slots"][slot_index(payload, "regional-total")]["independent"] = None
+    payload["expected_slots"][slot_index(payload, "regional-total")]["expected_status"] = (
+        "needs_review"
+    )
+    for finding in payload["expected_findings"]:
+        if finding["id"] == "observed/regional-total":
+            finding["status"] = "needs_review"
+    payload["expected_status"] = "needs_review"
+    payload["expected_coverage"]["missing"] = sorted(
+        {*payload["expected_coverage"]["missing"], "observed/regional-total"}
+    )
+    payload["expected_verification"]["status"] = "needs_review"
+    payload["expected_verification"]["critical"] = [
+        {
+            "code": "verification_blocker",
+            "message": (
+                "Verification could not pass; inspect review findings or request human review."
+            ),
+        }
+    ]
+    payload["expected_artifact"] = {
+        "artifact_status": "not_requested",
+        "field_ids": [],
+        "context": None,
+        "rationale": "Not exercised by this regression.",
+    }
+    report = verify_manifest(GoldenCase.model_validate(payload), fixture.material)
+    assert not report.ok
+    assert any("independently grounded expectation" in m.detail for m in report.mismatches)
+
+
+def test_a_table_binding_change_moves_the_fixture_hash():
+    """The document hash must cover table binding, or a table edit leaves manifests matching."""
+    from appraisal_review.adapters.local import golden_cases
+
+    material = build_material(FixtureSpec())
+    forms = golden_cases.forms_document(material)
+    before = forms.content_hash
+    rebuilt = golden_cases._document(
+        forms.document_id,
+        forms.uri,
+        "forms",
+        [
+            page.model_copy(
+                update={
+                    "regions": [
+                        region.model_copy(update={"table_id": None}) if region.table_id else region
+                        for region in page.regions
+                    ]
+                }
+            )
+            for page in forms.pages
+        ],
+    )
+    assert rebuilt.content_hash != before
