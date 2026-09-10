@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import hashlib
 import json
+import os
 from collections.abc import Callable
 from contextlib import closing
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 from uuid import UUID, uuid4
@@ -26,6 +29,7 @@ from appraisal_review.adapters.local.privacy.ocr import TesseractConfig, Tessera
 from appraisal_review.adapters.local.privacy.pdf_worker import ScanLimits
 from appraisal_review.adapters.local.privacy.refill import IsolatedPrivacyRefillProcessor
 from appraisal_review.adapters.local.privacy.sanitize import TesseractPrivacyOutputOCR
+from appraisal_review.adapters.local.privacy_bridge import PrivacyBridgeRestore
 from appraisal_review.adapters.local.privacy_restore_resolver import (
     LocalRestoreCoordinator,
     RestorePublication,
@@ -39,7 +43,71 @@ from appraisal_review.application.document_transfer import DocumentTransferServi
 from appraisal_review.application.revisions import RevisionSnapshot
 from appraisal_review.domain.artifact_publication import SourceVersion
 from appraisal_review.domain.document_transfer import DocumentMetadata, DocumentOperation
+from appraisal_review.domain.privacy_models import PrivacyPage
+from appraisal_review.domain.privacy_review import PrivacyPagePreview
+from appraisal_review.domain.privacy_scan import TextObservation
 from appraisal_review.domain.service_contracts import Permission, ServiceResult
+from appraisal_review.ports.privacy import PrivacyOutputOCR
+
+
+class RecordedOCR:
+    """Private same-request evidence; preserve all raw observations and exceptions."""
+
+    def __init__(self, delegate: PrivacyOutputOCR, directory: Path) -> None:
+        self.delegate, self.directory = delegate, directory
+
+    def read(
+        self, preview: PrivacyPagePreview, page: PrivacyPage, *, timeout: float
+    ) -> tuple[TextObservation, ...]:
+        target = self.directory / f"ocr-{uuid4()}.json"
+        record: dict[str, Any] = {
+            "page": page.model_dump(mode="json"),
+            "input_sha256": hashlib.sha256(preview.png).hexdigest(),
+            "width": preview.width,
+            "height": preview.height,
+            "observed_at": datetime.now(UTC).isoformat(),
+        }
+        try:
+            observations = self.delegate.read(preview, page, timeout=timeout)
+        except Exception as error:
+            record.update(status="failed", exception_type=type(error).__name__)
+            _private_json(target, record)
+            raise
+        record.update(
+            status="observed",
+            observations=[value.model_dump(mode="json") for value in observations],
+        )
+        _private_json(target, record)
+        return observations
+
+
+class RecordedRestoreResolver:
+    """Keep the real plan and exact published bytes before the existing executor."""
+
+    def __init__(self, delegate: LocalRestoreCoordinator, directory: Path) -> None:
+        self.delegate, self.directory = delegate, directory
+
+    def resolve(self, principal_id: str, result_id: UUID) -> PrivacyBridgeRestore:
+        result = self.delegate.resolve(principal_id, result_id)
+        artifact = result.publisher.current(result.plan)
+        identifier = str(uuid4())
+        target = self.directory / f"published-{identifier}.pdf"
+        descriptor = os.open(target, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+        with os.fdopen(descriptor, "wb") as stream:
+            stream.write(artifact.pdf)
+            stream.flush()
+            os.fsync(stream.fileno())
+        _private_json(
+            self.directory / f"plan-{identifier}.json",
+            {
+                "observed_at": datetime.now(UTC).isoformat(),
+                "restore_result_id": str(result_id),
+                "plan": result.plan.model_dump(mode="json"),
+                "published_pdf_file": target.name,
+                "published_pdf_sha256": hashlib.sha256(artifact.pdf).hexdigest(),
+            },
+        )
+        return result
 
 
 class PublishedResults:
@@ -275,15 +343,17 @@ async def create_rehearsal(
     results = PublishedResults(core, forms)
     ocr = TesseractOCR(TesseractConfig.model_validate_json(ocr_config.read_bytes()), root)
     await asyncio.to_thread(ocr.preflight, timeout=5)
+    evidence_directory = bridge.config.workspace / "private-evidence"
+    evidence_directory.mkdir(mode=0o700)
     coordinator = LocalRestoreCoordinator(
         workspace=bridge.config.workspace,
         session=bridge.session,
         documents=documents,
         publication=results,
         processor=IsolatedPrivacyRefillProcessor(bridge.config.workspace, limits=render_limits),
-        ocr=TesseractPrivacyOutputOCR(ocr, dpi=ocr_dpi),
+        ocr=RecordedOCR(TesseractPrivacyOutputOCR(ocr, dpi=ocr_dpi), evidence_directory),
     )
-    bridge.session.results = coordinator
+    bridge.session.results = RecordedRestoreResolver(coordinator, evidence_directory)
     private_fixture = bridge.config.workspace / "browser-private.json"
     bridge.write_browser_fixture(private_fixture)
     return CombinedRehearsal(

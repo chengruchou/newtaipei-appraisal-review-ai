@@ -130,3 +130,14 @@ Core state can reopen independently. The combined launcher intentionally require
 a fresh privacy session: its mapping keys remain session-local, and this command
 does not claim recovery of those keys across process restart. Keep both private
 fixture files and all generated PDFs out of public evidence reports.
+
+
+The combined launcher records same-request restoration evidence under the private
+`privacy/private-evidence` directory (mode 0700), with files mode 0600. The recorder
+retains the actual plan, exact published PDF bytes and digest, and every unchanged
+OCR text, bounding box and raw confidence. It forwards the OCR method arguments,
+returns the original observations, and re-raises the same exception on failure;
+failed records contain the exception class without its potentially private message.
+The recorder prints no document values. A failed HTTP restoration attempt does
+not produce evidence of a restored PDF. Browser checkpoints and response statuses
+must be collected from that actual run, with source hashes checked independently.
