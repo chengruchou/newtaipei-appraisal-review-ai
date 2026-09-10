@@ -198,13 +198,13 @@ async def probe(profile: str, config: LiveConfiguration, directory: Path) -> dic
             break
     attempts = [a for o in outcomes for a in o.telemetry.attempts]
     known = sum(
-        (
-            Decimal(a.input_tokens) * config.pricing.input_per_million_usd
-            + Decimal(a.output_tokens) * config.pricing.output_per_million_usd
-        )
-        / Decimal(1_000_000)
+        Decimal(tokens) * rate / Decimal(1_000_000)
         for a in attempts
-        if a.input_tokens is not None and a.output_tokens is not None
+        for tokens, rate in (
+            (a.input_tokens, config.pricing.input_per_million_usd),
+            (a.output_tokens, config.pricing.output_per_million_usd),
+        )
+        if tokens is not None
     )
     complete_usage = not failures and all(
         a.input_tokens is not None and a.output_tokens is not None for a in attempts

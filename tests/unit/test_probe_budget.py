@@ -146,22 +146,39 @@ def test_priced_boundary_failure_preserves_code_through_execution():
     call.assert_called_once()
 
 
-def test_late_source_failure_keeps_first_page_usage_and_unknown_remainder(monkeypatch, tmp_path):
+@pytest.mark.parametrize("later_failure", [False, True], ids=["two-pages", "later-failure"])
+@pytest.mark.parametrize(
+    "input_tokens,output_tokens,expected_cost",
+    [
+        (100, 20, "0.0006"),
+        (100, None, "0.0003"),
+        (None, 20, "0.0003"),
+        (None, None, "0"),
+        (0, 0, "0"),
+    ],
+    ids=["complete", "input-only", "output-only", "unknown", "zero"],
+)
+def test_probe_retains_each_known_cost_component(
+    monkeypatch, tmp_path, input_tokens, output_tokens, expected_cost, later_failure
+):
     path = Path(__file__).resolve().parents[2] / "cloud_tests/extraction_smoke.py"
     spec = importlib.util.spec_from_file_location("synthetic_probe_regression", path)
     module = importlib.util.module_from_spec(spec)
     monkeypatch.setitem(sys.modules, spec.name, module)
     spec.loader.exec_module(module)
     data = payload("candidate.json")
-    data["telemetry"]["attempts"][0].update(input_tokens=100, output_tokens=20)
+    data["telemetry"]["attempts"][0].update(input_tokens=input_tokens, output_tokens=output_tokens)
     first = PageOutcome.model_validate(data)
     second = first.request.model_copy(update={"page": 2})
     monkeypatch.setattr(module, "synthetic_source", lambda _: (None, None, (first.request, second)))
     monkeypatch.setattr(module, "DocumentSnapshotResolver", lambda _: None)
     monkeypatch.setattr(module, "BedrockSnapshotBackend", lambda **_: None)
-    service = SimpleNamespace(
-        extract=AsyncMock(side_effect=[first, ExtractionBoundaryError("source_changed")])
+    second_outcome = (
+        ExtractionBoundaryError("source_changed")
+        if later_failure
+        else first.model_copy(update={"request": second})
     )
+    service = SimpleNamespace(extract=AsyncMock(side_effect=[first, second_outcome]))
     monkeypatch.setattr(module, "AuthorizedExtractionService", lambda **_: service)
     report = asyncio.run(
         module.probe(
@@ -170,16 +187,23 @@ def test_late_source_failure_keeps_first_page_usage_and_unknown_remainder(monkey
             tmp_path,
         )
     )
-    assert not report["all_candidates"]
+    assert report["all_candidates"] is (not later_failure)
     assert report["pages"][0]["attempts"] == [
         a.model_dump(mode="json") for a in first.telemetry.attempts
     ]
-    assert report["pages"][1] == {
-        "page": 2,
-        "status": "failed",
-        "failure": "source_changed",
-        "attempts": None,
-    }
-    assert report["estimated_token_cost_usd"] is None
-    assert Decimal(report["known_token_cost_usd"]) > 0
+    if later_failure:
+        assert report["pages"][1] == {
+            "page": 2,
+            "status": "failed",
+            "failure": "source_changed",
+            "attempts": None,
+        }
+    else:
+        assert report["pages"][1]["attempts"] == report["pages"][0]["attempts"]
+    expected = Decimal(expected_cost) * (1 if later_failure else 2)
+    assert Decimal(report["known_token_cost_usd"]) == expected
+    if later_failure or input_tokens is None or output_tokens is None:
+        assert report["estimated_token_cost_usd"] is None
+    else:
+        assert Decimal(report["estimated_token_cost_usd"]) == expected
     assert report["scheduled_pages"] == 2 and report["not_run_pages"] == 0
