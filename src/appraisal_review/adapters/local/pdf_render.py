@@ -135,7 +135,7 @@ class PDFMutationExecutor:
 
         writer.add_metadata(
             {
-                "/AppraisalReviewWriterVersion": "1",
+                "/AppraisalReviewWriterVersion": "2",
                 "/AppraisalReviewFieldIds": json.dumps(
                     field_ids, ensure_ascii=True, separators=(",", ":")
                 ),

@@ -13,19 +13,28 @@ from appraisal_review.domain.pdf_models import PDFWriteRequest, PDFWriteResult
 class LocalPDFWriter:
     """Validate, mutate, verify and atomically publish one local PDF copy."""
 
+    # Fields resolve against their exact bound comparison; ambiguity fails in
+    # request validation and preflight, never as a partial first-context write.
+    supports_multiple_contexts = True
+
     def __init__(
         self,
         *,
         render_config: PDFRenderConfig,
         template_policy: PDFTemplatePolicy,
+        placeholder_values: dict[str, str] | None = None,
     ) -> None:
         self.object_access = LocalObjectAccess(overwrite_existing=render_config.overwrite_existing)
         self.preflight = PDFPreflightValidator(
             render_config=render_config,
             template_policy=template_policy,
+            placeholder_values=placeholder_values,
         )
         self.mutation = PDFMutationExecutor(render_config)
         self.verifier = PDFArtifactVerifier(template_policy)
+        # A writer holding revealed placeholder values is local-only output
+        # tooling; publication wrappers must refuse to wrap it.
+        self.reveals_placeholders = placeholder_values is not None
 
     async def write_pdf(self, request: PDFWriteRequest) -> PDFWriteResult:
         """Return success only after verified atomic destination publication."""

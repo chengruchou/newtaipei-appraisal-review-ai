@@ -60,6 +60,9 @@ class PDFRenderConfig(PDFAdapterConfig):
 
     font_path: Path
     font_name: FontName = "AppraisalCJK"
+    # When set, preflight verifies the loaded font file bytes against this
+    # registry-approved digest before any measurement or embedding.
+    approved_font_sha256: SHA256Hex | None = None
     font_size: float = Field(default=10.0, gt=0.0, le=72.0)
     text_color: RGBColor = "#000000"
     text_alignment: Literal["left", "center", "right"] = "center"

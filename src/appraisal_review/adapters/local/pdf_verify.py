@@ -66,7 +66,7 @@ class PDFArtifactVerifier:
     @staticmethod
     def _verify_metadata(reader: PdfReader, expected_ids: tuple[str, ...]) -> None:
         metadata = reader.metadata
-        if metadata is None or metadata.get("/AppraisalReviewWriterVersion") != "1":
+        if metadata is None or metadata.get("/AppraisalReviewWriterVersion") != "2":
             raise PDFWriteError("PDF writer metadata verification failed")
         try:
             field_ids = json.loads(metadata.get("/AppraisalReviewFieldIds", ""))
