@@ -28,6 +28,7 @@ aws = [
   "mangum>=0.19,<1",
 ]
 dev = [
+  "boto3>=1.40,<2",
   "cryptography>=46,<51",
   "pymupdf>=1.26,<2",
   "fonttools>=4.59,<5",

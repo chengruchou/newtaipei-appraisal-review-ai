@@ -110,8 +110,13 @@ def test_http_invocation_share_config_and_legacy_schemas(configured):
         assert "business_status" not in actual.json()
         assert client.get("/health").json() == {"status": "ok"}
         assert "detail" in client.post("/v1/validate", json={}).json()
-        for route in ("/v1/review-jobs", "/v1/human-tasks", "/v1/artifacts"):
+        for route in ("/v1/human-tasks", "/v1/artifacts"):
             assert client.get(route).status_code == 404
+        # The durable job group is mounted by #29, but this app has no job store, so it
+        # reports an undeployed capability instead of a fabricated acceptance.
+        undeployed = client.post("/v1/review-jobs", json={})
+        assert undeployed.status_code == 503
+        assert undeployed.json()["code"] == "capability_unavailable"
     assert (
         create_app().openapi()
         == create_app(controller_factory=service.controller_factory).openapi()

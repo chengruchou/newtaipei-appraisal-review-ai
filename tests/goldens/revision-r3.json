@@ -1,0 +1,853 @@
+{
+  "adjudications": [],
+  "case_key": "revision-r3",
+  "data_use": {
+    "contains_real_case_data": false,
+    "generator": "golden-cases-v1",
+    "origin": "synthetic",
+    "statement": "Fully synthetic acceptance fixture. Documents, districts, measurements and rules are invented for testing and are not derived from any real appraisal case."
+  },
+  "dimension": "revision_chain",
+  "expected_artifact": {
+    "artifact_status": "not_requested",
+    "context": null,
+    "field_ids": [],
+    "rationale": "The revision chain exercises authority lineage, not the writer boundary."
+  },
+  "expected_coverage": {
+    "missing": [
+      "[\"regional\",\"golden-target\",\"golden-comparable-a\"]",
+      "[\"regional\",\"golden-target\",\"golden-comparable-a\"]/factor/golden.frontage_depth",
+      "[\"regional\",\"golden-target\",\"golden-comparable-a\"]/factor/golden.lane_width",
+      "[\"regional\",\"golden-target\",\"golden-comparable-a\"]/factor/golden.road_width",
+      "arithmetic/regional-access-subtotal-sum",
+      "arithmetic/regional-copy",
+      "arithmetic/regional-site-subtotal-sum",
+      "arithmetic/regional-total-sum",
+      "observed/regional-access-subtotal",
+      "observed/regional-copied-total",
+      "observed/regional-frontage-comparable-grade",
+      "observed/regional-frontage-rate",
+      "observed/regional-frontage-target-grade",
+      "observed/regional-lane-comparable-grade",
+      "observed/regional-lane-rate",
+      "observed/regional-lane-target-grade",
+      "observed/regional-road-comparable-grade",
+      "observed/regional-road-rate",
+      "observed/regional-road-target-grade",
+      "observed/regional-site-subtotal",
+      "observed/regional-total"
+    ],
+    "unsupported": []
+  },
+  "expected_findings": [
+    {
+      "id": "trust",
+      "kind": "approval",
+      "rationale": "Reviewing the exact material requires separately injected authority.",
+      "status": "verified"
+    },
+    {
+      "id": "sources",
+      "kind": "source_identity",
+      "rationale": "The reviewed registry is the current parser registry.",
+      "status": "verified"
+    },
+    {
+      "id": "inventory",
+      "kind": "inventory",
+      "rationale": "The inventory was examined independently of any result.",
+      "status": "verified"
+    },
+    {
+      "id": "[\"regional\",\"golden-target\",\"golden-comparable-a\"]",
+      "kind": "calculation",
+      "rationale": "Every comparison is recalculated from facts and the rule matrix.",
+      "status": "needs_review"
+    },
+    {
+      "id": "[\"regional\",\"golden-target\",\"golden-comparable-a\"]/factor/golden.road_width",
+      "kind": "evidence_reliability",
+      "rationale": "Located text and model confidence alone cannot prove a reading.",
+      "status": "needs_review"
+    },
+    {
+      "id": "[\"regional\",\"golden-target\",\"golden-comparable-a\"]/factor/golden.frontage_depth",
+      "kind": "evidence_reliability",
+      "rationale": "Located text and model confidence alone cannot prove a reading.",
+      "status": "needs_review"
+    },
+    {
+      "id": "[\"regional\",\"golden-target\",\"golden-comparable-a\"]/factor/golden.lane_width",
+      "kind": "evidence_reliability",
+      "rationale": "Located text and model confidence alone cannot prove a reading.",
+      "status": "needs_review"
+    },
+    {
+      "id": "arithmetic/regional-site-subtotal-sum",
+      "kind": "arithmetic_dependency",
+      "rationale": "Each declared arithmetic constraint is checked on one candidate.",
+      "status": "needs_review"
+    },
+    {
+      "id": "arithmetic/regional-access-subtotal-sum",
+      "kind": "arithmetic_dependency",
+      "rationale": "Each declared arithmetic constraint is checked on one candidate.",
+      "status": "needs_review"
+    },
+    {
+      "id": "arithmetic/regional-total-sum",
+      "kind": "arithmetic_dependency",
+      "rationale": "Each declared arithmetic constraint is checked on one candidate.",
+      "status": "needs_review"
+    },
+    {
+      "id": "arithmetic/regional-copy",
+      "kind": "arithmetic_dependency",
+      "rationale": "Each declared arithmetic constraint is checked on one candidate.",
+      "status": "needs_review"
+    },
+    {
+      "id": "observed/regional-road-target-grade",
+      "kind": "observed_missing",
+      "rationale": "A revision clears confirmations, and a method label cannot replace them.",
+      "status": "needs_review"
+    },
+    {
+      "id": "observed/regional-road-comparable-grade",
+      "kind": "observed_missing",
+      "rationale": "A revision clears confirmations, and a method label cannot replace them.",
+      "status": "needs_review"
+    },
+    {
+      "id": "observed/regional-road-rate",
+      "kind": "observed_missing",
+      "rationale": "A revision clears confirmations, and a method label cannot replace them.",
+      "status": "needs_review"
+    },
+    {
+      "id": "observed/regional-frontage-target-grade",
+      "kind": "observed_missing",
+      "rationale": "A revision clears confirmations, and a method label cannot replace them.",
+      "status": "needs_review"
+    },
+    {
+      "id": "observed/regional-frontage-comparable-grade",
+      "kind": "observed_missing",
+      "rationale": "A revision clears confirmations, and a method label cannot replace them.",
+      "status": "needs_review"
+    },
+    {
+      "id": "observed/regional-frontage-rate",
+      "kind": "observed_missing",
+      "rationale": "A revision clears confirmations, and a method label cannot replace them.",
+      "status": "needs_review"
+    },
+    {
+      "id": "observed/regional-lane-target-grade",
+      "kind": "observed_missing",
+      "rationale": "A revision clears confirmations, and a method label cannot replace them.",
+      "status": "needs_review"
+    },
+    {
+      "id": "observed/regional-lane-comparable-grade",
+      "kind": "observed_missing",
+      "rationale": "A revision clears confirmations, and a method label cannot replace them.",
+      "status": "needs_review"
+    },
+    {
+      "id": "observed/regional-lane-rate",
+      "kind": "observed_missing",
+      "rationale": "A revision clears confirmations, and a method label cannot replace them.",
+      "status": "needs_review"
+    },
+    {
+      "id": "observed/regional-site-subtotal",
+      "kind": "arithmetic_dependency",
+      "rationale": "Every derivation input traces back to an unconfirmed reading, so no grounded candidate exists for this field.",
+      "status": "needs_review"
+    },
+    {
+      "id": "observed/regional-access-subtotal",
+      "kind": "arithmetic_dependency",
+      "rationale": "Every derivation input traces back to an unconfirmed reading, so no grounded candidate exists for this field.",
+      "status": "needs_review"
+    },
+    {
+      "id": "observed/regional-total",
+      "kind": "arithmetic_dependency",
+      "rationale": "Every derivation input traces back to an unconfirmed reading, so no grounded candidate exists for this field.",
+      "status": "needs_review"
+    },
+    {
+      "id": "observed/regional-copied-total",
+      "kind": "arithmetic_dependency",
+      "rationale": "Every derivation input traces back to an unconfirmed reading, so no grounded candidate exists for this field.",
+      "status": "needs_review"
+    }
+  ],
+  "expected_rules": [
+    {
+      "authored_status": "candidate",
+      "business_approval": "pending",
+      "material_authority": "exact_material_approved",
+      "rationale": "The rule set is a candidate extracted from the synthetic criteria. Exact-material authority is a test grant and is not a formal business approval of the bands.",
+      "rule_set_id": "golden-site-v1",
+      "version": "1.0.0"
+    }
+  ],
+  "expected_slots": [
+    {
+      "context": {
+        "comparable_id": "golden-comparable-a",
+        "scope": "regional",
+        "target_id": "golden-target"
+      },
+      "derivable_blank": false,
+      "expected_kind": "observed_missing",
+      "expected_status": "needs_review",
+      "factor_id": "golden.road_width",
+      "independent": null,
+      "observed": {
+        "citation": {
+          "bbox": [
+            20.0,
+            535.0,
+            440.0,
+            560.0
+          ],
+          "content_hash": "7bf8d50e4f9227c40347c06808814e1c4e1991f13ef825f7f616e65580c90fe1",
+          "document_id": "golden-forms",
+          "excerpt": "regional road width target grade excellent",
+          "page": 1,
+          "region_id": "regional-road-target-grade",
+          "version": "1"
+        },
+        "raw_text": "regional road width target grade excellent",
+        "state": "present",
+        "unit": "grade",
+        "value": "excellent"
+      },
+      "rationale": "A revision clears confirmations, and a method label cannot replace them.",
+      "slot_id": "regional-road-target-grade",
+      "slot_value": "target_grade"
+    },
+    {
+      "context": {
+        "comparable_id": "golden-comparable-a",
+        "scope": "regional",
+        "target_id": "golden-target"
+      },
+      "derivable_blank": false,
+      "expected_kind": "observed_missing",
+      "expected_status": "needs_review",
+      "factor_id": "golden.road_width",
+      "independent": null,
+      "observed": {
+        "citation": {
+          "bbox": [
+            20.0,
+            495.0,
+            440.0,
+            520.0
+          ],
+          "content_hash": "7bf8d50e4f9227c40347c06808814e1c4e1991f13ef825f7f616e65580c90fe1",
+          "document_id": "golden-forms",
+          "excerpt": "regional road width comparable grade inferior",
+          "page": 1,
+          "region_id": "regional-road-comparable-grade",
+          "version": "1"
+        },
+        "raw_text": "regional road width comparable grade inferior",
+        "state": "present",
+        "unit": "grade",
+        "value": "inferior"
+      },
+      "rationale": "A revision clears confirmations, and a method label cannot replace them.",
+      "slot_id": "regional-road-comparable-grade",
+      "slot_value": "comparable_grade"
+    },
+    {
+      "context": {
+        "comparable_id": "golden-comparable-a",
+        "scope": "regional",
+        "target_id": "golden-target"
+      },
+      "derivable_blank": false,
+      "expected_kind": "observed_missing",
+      "expected_status": "needs_review",
+      "factor_id": "golden.road_width",
+      "independent": null,
+      "observed": {
+        "citation": {
+          "bbox": [
+            20.0,
+            455.0,
+            440.0,
+            480.0
+          ],
+          "content_hash": "7bf8d50e4f9227c40347c06808814e1c4e1991f13ef825f7f616e65580c90fe1",
+          "document_id": "golden-forms",
+          "excerpt": "regional road width rate 5",
+          "page": 1,
+          "region_id": "regional-road-rate",
+          "version": "1"
+        },
+        "raw_text": "regional road width rate 5",
+        "state": "present",
+        "unit": "percent_points",
+        "value": "5"
+      },
+      "rationale": "A revision clears confirmations, and a method label cannot replace them.",
+      "slot_id": "regional-road-rate",
+      "slot_value": "adjustment_percent"
+    },
+    {
+      "context": {
+        "comparable_id": "golden-comparable-a",
+        "scope": "regional",
+        "target_id": "golden-target"
+      },
+      "derivable_blank": false,
+      "expected_kind": "observed_missing",
+      "expected_status": "needs_review",
+      "factor_id": "golden.frontage_depth",
+      "independent": null,
+      "observed": {
+        "citation": {
+          "bbox": [
+            20.0,
+            335.0,
+            440.0,
+            360.0
+          ],
+          "content_hash": "7bf8d50e4f9227c40347c06808814e1c4e1991f13ef825f7f616e65580c90fe1",
+          "document_id": "golden-forms",
+          "excerpt": "regional frontage depth target grade inferior",
+          "page": 1,
+          "region_id": "regional-frontage-target-grade",
+          "version": "1"
+        },
+        "raw_text": "regional frontage depth target grade inferior",
+        "state": "present",
+        "unit": "grade",
+        "value": "inferior"
+      },
+      "rationale": "A revision clears confirmations, and a method label cannot replace them.",
+      "slot_id": "regional-frontage-target-grade",
+      "slot_value": "target_grade"
+    },
+    {
+      "context": {
+        "comparable_id": "golden-comparable-a",
+        "scope": "regional",
+        "target_id": "golden-target"
+      },
+      "derivable_blank": false,
+      "expected_kind": "observed_missing",
+      "expected_status": "needs_review",
+      "factor_id": "golden.frontage_depth",
+      "independent": null,
+      "observed": {
+        "citation": {
+          "bbox": [
+            20.0,
+            295.0,
+            440.0,
+            320.0
+          ],
+          "content_hash": "7bf8d50e4f9227c40347c06808814e1c4e1991f13ef825f7f616e65580c90fe1",
+          "document_id": "golden-forms",
+          "excerpt": "regional frontage depth comparable grade excellent",
+          "page": 1,
+          "region_id": "regional-frontage-comparable-grade",
+          "version": "1"
+        },
+        "raw_text": "regional frontage depth comparable grade excellent",
+        "state": "present",
+        "unit": "grade",
+        "value": "excellent"
+      },
+      "rationale": "A revision clears confirmations, and a method label cannot replace them.",
+      "slot_id": "regional-frontage-comparable-grade",
+      "slot_value": "comparable_grade"
+    },
+    {
+      "context": {
+        "comparable_id": "golden-comparable-a",
+        "scope": "regional",
+        "target_id": "golden-target"
+      },
+      "derivable_blank": false,
+      "expected_kind": "observed_missing",
+      "expected_status": "needs_review",
+      "factor_id": "golden.frontage_depth",
+      "independent": null,
+      "observed": {
+        "citation": {
+          "bbox": [
+            20.0,
+            255.0,
+            440.0,
+            280.0
+          ],
+          "content_hash": "7bf8d50e4f9227c40347c06808814e1c4e1991f13ef825f7f616e65580c90fe1",
+          "document_id": "golden-forms",
+          "excerpt": "regional frontage depth rate -3",
+          "page": 1,
+          "region_id": "regional-frontage-rate",
+          "version": "1"
+        },
+        "raw_text": "regional frontage depth rate -3",
+        "state": "present",
+        "unit": "percent_points",
+        "value": "-3"
+      },
+      "rationale": "A revision clears confirmations, and a method label cannot replace them.",
+      "slot_id": "regional-frontage-rate",
+      "slot_value": "adjustment_percent"
+    },
+    {
+      "context": {
+        "comparable_id": "golden-comparable-a",
+        "scope": "regional",
+        "target_id": "golden-target"
+      },
+      "derivable_blank": false,
+      "expected_kind": "observed_missing",
+      "expected_status": "needs_review",
+      "factor_id": "golden.lane_width",
+      "independent": null,
+      "observed": {
+        "citation": {
+          "bbox": [
+            20.0,
+            135.0,
+            440.0,
+            160.0
+          ],
+          "content_hash": "7bf8d50e4f9227c40347c06808814e1c4e1991f13ef825f7f616e65580c90fe1",
+          "document_id": "golden-forms",
+          "excerpt": "regional lane width target grade excellent",
+          "page": 1,
+          "region_id": "regional-lane-target-grade",
+          "version": "1"
+        },
+        "raw_text": "regional lane width target grade excellent",
+        "state": "present",
+        "unit": "grade",
+        "value": "excellent"
+      },
+      "rationale": "A revision clears confirmations, and a method label cannot replace them.",
+      "slot_id": "regional-lane-target-grade",
+      "slot_value": "target_grade"
+    },
+    {
+      "context": {
+        "comparable_id": "golden-comparable-a",
+        "scope": "regional",
+        "target_id": "golden-target"
+      },
+      "derivable_blank": false,
+      "expected_kind": "observed_missing",
+      "expected_status": "needs_review",
+      "factor_id": "golden.lane_width",
+      "independent": null,
+      "observed": {
+        "citation": {
+          "bbox": [
+            20.0,
+            95.0,
+            440.0,
+            120.0
+          ],
+          "content_hash": "7bf8d50e4f9227c40347c06808814e1c4e1991f13ef825f7f616e65580c90fe1",
+          "document_id": "golden-forms",
+          "excerpt": "regional lane width comparable grade inferior",
+          "page": 1,
+          "region_id": "regional-lane-comparable-grade",
+          "version": "1"
+        },
+        "raw_text": "regional lane width comparable grade inferior",
+        "state": "present",
+        "unit": "grade",
+        "value": "inferior"
+      },
+      "rationale": "A revision clears confirmations, and a method label cannot replace them.",
+      "slot_id": "regional-lane-comparable-grade",
+      "slot_value": "comparable_grade"
+    },
+    {
+      "context": {
+        "comparable_id": "golden-comparable-a",
+        "scope": "regional",
+        "target_id": "golden-target"
+      },
+      "derivable_blank": false,
+      "expected_kind": "observed_missing",
+      "expected_status": "needs_review",
+      "factor_id": "golden.lane_width",
+      "independent": null,
+      "observed": {
+        "citation": {
+          "bbox": [
+            20.0,
+            55.0,
+            440.0,
+            80.0
+          ],
+          "content_hash": "7bf8d50e4f9227c40347c06808814e1c4e1991f13ef825f7f616e65580c90fe1",
+          "document_id": "golden-forms",
+          "excerpt": "regional lane width rate 7",
+          "page": 1,
+          "region_id": "regional-lane-rate",
+          "version": "1"
+        },
+        "raw_text": "regional lane width rate 7",
+        "state": "present",
+        "unit": "percent_points",
+        "value": "7"
+      },
+      "rationale": "A revision clears confirmations, and a method label cannot replace them.",
+      "slot_id": "regional-lane-rate",
+      "slot_value": "adjustment_percent"
+    },
+    {
+      "context": {
+        "comparable_id": "golden-comparable-a",
+        "scope": "regional",
+        "target_id": "golden-target"
+      },
+      "derivable_blank": false,
+      "expected_kind": "arithmetic_dependency",
+      "expected_status": "needs_review",
+      "factor_id": null,
+      "independent": null,
+      "observed": {
+        "citation": {
+          "bbox": [
+            20.0,
+            615.0,
+            440.0,
+            640.0
+          ],
+          "content_hash": "7bf8d50e4f9227c40347c06808814e1c4e1991f13ef825f7f616e65580c90fe1",
+          "document_id": "golden-forms",
+          "excerpt": "regional site subtotal 2",
+          "page": 2,
+          "region_id": "regional-site-subtotal",
+          "version": "1"
+        },
+        "raw_text": "regional site subtotal 2",
+        "state": "present",
+        "unit": "percent_points",
+        "value": "2"
+      },
+      "rationale": "Every derivation input traces back to an unconfirmed reading, so no grounded candidate exists for this field.",
+      "slot_id": "regional-site-subtotal",
+      "slot_value": "subtotal"
+    },
+    {
+      "context": {
+        "comparable_id": "golden-comparable-a",
+        "scope": "regional",
+        "target_id": "golden-target"
+      },
+      "derivable_blank": false,
+      "expected_kind": "arithmetic_dependency",
+      "expected_status": "needs_review",
+      "factor_id": null,
+      "independent": null,
+      "observed": {
+        "citation": {
+          "bbox": [
+            20.0,
+            575.0,
+            440.0,
+            600.0
+          ],
+          "content_hash": "7bf8d50e4f9227c40347c06808814e1c4e1991f13ef825f7f616e65580c90fe1",
+          "document_id": "golden-forms",
+          "excerpt": "regional access subtotal 7",
+          "page": 2,
+          "region_id": "regional-access-subtotal",
+          "version": "1"
+        },
+        "raw_text": "regional access subtotal 7",
+        "state": "present",
+        "unit": "percent_points",
+        "value": "7"
+      },
+      "rationale": "Every derivation input traces back to an unconfirmed reading, so no grounded candidate exists for this field.",
+      "slot_id": "regional-access-subtotal",
+      "slot_value": "subtotal"
+    },
+    {
+      "context": {
+        "comparable_id": "golden-comparable-a",
+        "scope": "regional",
+        "target_id": "golden-target"
+      },
+      "derivable_blank": false,
+      "expected_kind": "arithmetic_dependency",
+      "expected_status": "needs_review",
+      "factor_id": null,
+      "independent": null,
+      "observed": {
+        "citation": {
+          "bbox": [
+            20.0,
+            535.0,
+            440.0,
+            560.0
+          ],
+          "content_hash": "7bf8d50e4f9227c40347c06808814e1c4e1991f13ef825f7f616e65580c90fe1",
+          "document_id": "golden-forms",
+          "excerpt": "regional total 9",
+          "page": 2,
+          "region_id": "regional-total",
+          "version": "1"
+        },
+        "raw_text": "regional total 9",
+        "state": "present",
+        "unit": "percent_points",
+        "value": "9"
+      },
+      "rationale": "Every derivation input traces back to an unconfirmed reading, so no grounded candidate exists for this field.",
+      "slot_id": "regional-total",
+      "slot_value": "total"
+    },
+    {
+      "context": {
+        "comparable_id": "golden-comparable-a",
+        "scope": "regional",
+        "target_id": "golden-target"
+      },
+      "derivable_blank": false,
+      "expected_kind": "arithmetic_dependency",
+      "expected_status": "needs_review",
+      "factor_id": null,
+      "independent": null,
+      "observed": {
+        "citation": {
+          "bbox": [
+            20.0,
+            495.0,
+            440.0,
+            520.0
+          ],
+          "content_hash": "7bf8d50e4f9227c40347c06808814e1c4e1991f13ef825f7f616e65580c90fe1",
+          "document_id": "golden-forms",
+          "excerpt": "regional copied total 9",
+          "page": 2,
+          "region_id": "regional-copied-total",
+          "version": "1"
+        },
+        "raw_text": "regional copied total 9",
+        "state": "present",
+        "unit": "percent_points",
+        "value": "9"
+      },
+      "rationale": "Every derivation input traces back to an unconfirmed reading, so no grounded candidate exists for this field.",
+      "slot_id": "regional-copied-total",
+      "slot_value": "total"
+    }
+  ],
+  "expected_status": "needs_review",
+  "expected_tasks": [
+    {
+      "allowed_responses": [
+        "confirm",
+        "reject"
+      ],
+      "finding_ids": [
+        "[\"regional\",\"golden-target\",\"golden-comparable-a\"]/factor/golden.road_width"
+      ],
+      "kind": "fact_confirmation",
+      "question": "Confirm the located target road width against the source page.",
+      "rationale": "A located value with no measured confidence stays a proposal until a reviewer confirms that exact side.",
+      "required_permission": "confirm_observation",
+      "result_digest": null,
+      "side": {
+        "context": {
+          "comparable_id": "golden-comparable-a",
+          "scope": "regional",
+          "target_id": "golden-target"
+        },
+        "factor_id": "golden.road_width",
+        "side": "target"
+      },
+      "task_ref": "confirm-target"
+    },
+    {
+      "allowed_responses": [
+        "confirm",
+        "reject"
+      ],
+      "finding_ids": [
+        "[\"regional\",\"golden-target\",\"golden-comparable-a\"]/factor/golden.road_width"
+      ],
+      "kind": "fact_confirmation",
+      "question": "Confirm the located comparable road width against the source page.",
+      "rationale": "A located value with no measured confidence stays a proposal until a reviewer confirms that exact side.",
+      "required_permission": "confirm_observation",
+      "result_digest": null,
+      "side": {
+        "context": {
+          "comparable_id": "golden-comparable-a",
+          "scope": "regional",
+          "target_id": "golden-target"
+        },
+        "factor_id": "golden.road_width",
+        "side": "comparable"
+      },
+      "task_ref": "confirm-comparable"
+    }
+  ],
+  "expected_verification": {
+    "critical": [
+      {
+        "code": "verification_blocker",
+        "message": "Verification could not pass; inspect review findings or request human review.",
+        "schema_version": "service-v1"
+      },
+      {
+        "code": "verification_blocker",
+        "message": "Verification could not pass; inspect review findings or request human review.",
+        "schema_version": "service-v1"
+      },
+      {
+        "code": "verification_blocker",
+        "message": "Verification could not pass; inspect review findings or request human review.",
+        "schema_version": "service-v1"
+      },
+      {
+        "code": "verification_blocker",
+        "message": "Verification could not pass; inspect review findings or request human review.",
+        "schema_version": "service-v1"
+      },
+      {
+        "code": "verification_blocker",
+        "message": "Verification could not pass; inspect review findings or request human review.",
+        "schema_version": "service-v1"
+      },
+      {
+        "code": "verification_blocker",
+        "message": "Verification could not pass; inspect review findings or request human review.",
+        "schema_version": "service-v1"
+      },
+      {
+        "code": "verification_blocker",
+        "message": "Verification could not pass; inspect review findings or request human review.",
+        "schema_version": "service-v1"
+      },
+      {
+        "code": "verification_blocker",
+        "message": "Verification could not pass; inspect review findings or request human review.",
+        "schema_version": "service-v1"
+      },
+      {
+        "code": "verification_blocker",
+        "message": "Verification could not pass; inspect review findings or request human review.",
+        "schema_version": "service-v1"
+      },
+      {
+        "code": "verification_blocker",
+        "message": "Verification could not pass; inspect review findings or request human review.",
+        "schema_version": "service-v1"
+      },
+      {
+        "code": "verification_blocker",
+        "message": "Verification could not pass; inspect review findings or request human review.",
+        "schema_version": "service-v1"
+      },
+      {
+        "code": "verification_blocker",
+        "message": "Verification could not pass; inspect review findings or request human review.",
+        "schema_version": "service-v1"
+      },
+      {
+        "code": "verification_blocker",
+        "message": "Verification could not pass; inspect review findings or request human review.",
+        "schema_version": "service-v1"
+      },
+      {
+        "code": "verification_blocker",
+        "message": "Verification could not pass; inspect review findings or request human review.",
+        "schema_version": "service-v1"
+      },
+      {
+        "code": "verification_blocker",
+        "message": "Verification could not pass; inspect review findings or request human review.",
+        "schema_version": "service-v1"
+      },
+      {
+        "code": "verification_blocker",
+        "message": "Verification could not pass; inspect review findings or request human review.",
+        "schema_version": "service-v1"
+      },
+      {
+        "code": "verification_blocker",
+        "message": "Verification could not pass; inspect review findings or request human review.",
+        "schema_version": "service-v1"
+      },
+      {
+        "code": "verification_blocker",
+        "message": "Verification could not pass; inspect review findings or request human review.",
+        "schema_version": "service-v1"
+      },
+      {
+        "code": "verification_blocker",
+        "message": "Verification could not pass; inspect review findings or request human review.",
+        "schema_version": "service-v1"
+      },
+      {
+        "code": "verification_blocker",
+        "message": "Verification could not pass; inspect review findings or request human review.",
+        "schema_version": "service-v1"
+      },
+      {
+        "code": "verification_blocker",
+        "message": "Verification could not pass; inspect review findings or request human review.",
+        "schema_version": "service-v1"
+      }
+    ],
+    "rationale": "Approving the exact material does not restore a cleared confirmation.",
+    "status": "needs_review",
+    "warnings": []
+  },
+  "fixture": {
+    "documents": [
+      {
+        "content_hash": "a4a7cc21804923109cc9a3a3e2e42e1189a4c2c93aa07635731ffd776222457c",
+        "document_id": "golden-criteria",
+        "page_count": 1,
+        "role": "criteria",
+        "version": "1"
+      },
+      {
+        "content_hash": "7bf8d50e4f9227c40347c06808814e1c4e1991f13ef825f7f616e65580c90fe1",
+        "document_id": "golden-forms",
+        "page_count": 2,
+        "role": "forms",
+        "version": "1"
+      }
+    ],
+    "generator_version": "golden-cases-v1",
+    "material_digest": "f3f11733c5678083bc0c55288747dac8da6bb49497213ade99fb50bbb7ce51c1"
+  },
+  "identity": {
+    "case_id": "golden-case",
+    "district": "golden-district",
+    "effective_date": "2026-09-01",
+    "land_use_category": "golden-commercial",
+    "version": "r3",
+    "zone": "golden-zone"
+  },
+  "material_authority": "exact_material_approved",
+  "parent_case_key": "revision-r2",
+  "schema_version": "golden-1",
+  "summary": "The third revision only relabels one side as native extraction. The relabelled side is demoted to a proposal and every confirmation in the revision is cleared, so the case returns to needing review.",
+  "title": "Revision 3: relabelling cannot restore extraction authority",
+  "unresolved": []
+}

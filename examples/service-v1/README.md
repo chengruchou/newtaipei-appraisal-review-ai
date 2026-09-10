@@ -19,7 +19,13 @@ identity, value for original blank versus proposed value, proposal/decision-reje
 for policy state, and result-needs-review/result-written for distinct execution,
 business and artifact state. result-source-binding-failed shows a preflight
 rejection with succeeded execution, failed business status, empty findings, null
-problem and a structured verification diagnostic. Consume the updated service-v1
+problem and a structured verification diagnostic. job-acceptance is the 202 body,
+whose job_status is pinned to queued because acceptance can never advertise progress;
+job-status-queued, job-status-waiting and job-status-failed show the durable status
+view in progress, awaiting a reviewer with an open task, and terminally failed with a
+sanitized problem. None of the four carries findings, a storage URI or a lease owner:
+the control plane keeps identifiers, versions, digests, statuses and counts only.
+Consume the updated service-v1
 schema and result fixtures together; extra-forbid consumers of the earlier PR #20
 draft must adopt the added verification field. No fixture exposes a storage URI
 or grants authority.

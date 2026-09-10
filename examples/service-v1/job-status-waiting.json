@@ -1,0 +1,28 @@
+{
+  "schema_version": "service-v1",
+  "job": {
+    "schema_version": "service-v1",
+    "case_id": "synthetic-case",
+    "job_id": "00000000-0000-0000-0000-000000000006"
+  },
+  "job_status": "waiting_for_human",
+  "current_run": {
+    "schema_version": "service-v1",
+    "run_id": "00000000-0000-0000-0000-000000000001",
+    "revision": {
+      "schema_version": "service-v1",
+      "case_id": "synthetic-case",
+      "revision_id": "fixture-r1",
+      "material_digest": "0445917fd60f720359309b58c8edff03c93c929c7270f4ebfde304545595c124"
+    },
+    "attempt_id": null,
+    "runtime_session_id": null
+  },
+  "attempt_count": 0,
+  "result_version": 0,
+  "cancel_requested": false,
+  "open_task_ids": [
+    "00000000-0000-0000-0000-000000000002"
+  ],
+  "problem": null
+}

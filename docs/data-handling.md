@@ -51,12 +51,19 @@ for sensitive cases until that integration is accepted.
 - Block public S3 access.
 - Require TLS and encryption at rest.
 - Grant least-privilege access by workflow role.
-- Keep raw documents separate from derived findings.
+- Original documents and re-identification maps stay local. C2 accepts only exact
+  sanitized bytes from the trusted local export gate, with a value-free public
+  PrivacyManifest and an authenticated, time-bound human export attestation.
+- Do not upload original filenames, paths, maps, raw text drafts or receipt/key files.
 - Record rule version and source-object version in every result.
 - Set retention and deletion policy with the data owner before production use.
 
 ## Logs
 
-Logs may contain case IDs, object keys, rule IDs, status, latency, and request
-correlation IDs. They must not contain document text, full extracted tables, or
-credentials.
+Document-service audit contains random actor/case/document/run IDs, operation,
+timestamp, outcome and a finite error code. Public results and errors contain no
+bucket/key, storage URI, private path or raw SDK diagnostic. Do not enable request
+body or SDK wire logging in the production gateway. Logs must not contain document
+text, original filenames, full extracted tables, mapping values or credentials.
+See [document transfer](document-transfer.md) for the explicit trust boundary and
+the limits of synthetic canary evidence.
