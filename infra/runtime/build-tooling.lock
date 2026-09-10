@@ -1,0 +1,2 @@
+# Build-only installer; preserve its full notices before uninstalling the complete package.
+pip==26.2 --hash=sha256:931c303696af6fa3417112103b1cad26890e5a07eccb5b99783700e33f2b8aad

@@ -17,6 +17,7 @@ from unittest.mock import Mock
 
 import pytest
 import yaml
+from packaging.version import Version
 
 ROOT = Path(__file__).resolve().parents[2]
 INFRA = ROOT / "infra" / "runtime"
@@ -448,6 +449,10 @@ def test_build_context_allowlist_and_container_entry(tmp_path: Path) -> None:
         p.startswith("src/appraisal_review/") or p.startswith("infra/runtime/") for p in paths
     )
     assert not any("runtime.json" in p or "/.tools/" in p or p.endswith(".pdf") for p in paths)
+    assert "infra/runtime/build-tooling.lock" in paths
+    assert (tmp_path / "infra/runtime/build-tooling.lock").read_bytes() == (
+        INFRA / "build-tooling.lock"
+    ).read_bytes()
     dockerfile = (INFRA / "Dockerfile").read_text()
     assert "appraisal_review.adapters.aws.runtime_app:app" in dockerfile
     assert '"--port", "8080"' in dockerfile and "USER 10001:10001" in dockerfile
@@ -457,13 +462,36 @@ def test_build_context_allowlist_and_container_entry(tmp_path: Path) -> None:
     assert '"--load"' in script and '"--push"' not in script
 
 
-def test_lock_is_complete_and_hash_pinned() -> None:
+@pytest.mark.parametrize("filename,minimum", [("requirements.lock", 20), ("build-tooling.lock", 1)])
+def test_lock_is_complete_and_hash_pinned(filename: str, minimum: int) -> None:
     lines = [
-        line
-        for line in (INFRA / "requirements.lock").read_text().splitlines()
-        if not line.startswith("#")
+        line for line in (INFRA / filename).read_text().splitlines() if not line.startswith("#")
     ]
-    assert len(lines) >= 20
+    assert len(lines) >= minimum
     assert all(
         re.fullmatch(r"[A-Za-z0-9-]+==[^ ]+ --hash=sha256:[a-f0-9]{64}", line) for line in lines
     )
+
+
+def test_container_python_platform_and_security_floors() -> None:
+    pins = {}
+    for name in ("requirements.lock", "build-tooling.lock"):
+        for line in (INFRA / name).read_text().splitlines():
+            if line and not line.startswith("#"):
+                package, version = line.split(" --hash=", 1)[0].split("==")
+                pins[package] = Version(version)
+    assert pins["pillow"] >= Version("12.3.0")
+    assert pins["pip"] >= Version("26.2")
+    for name in ("Dockerfile", "lambda.Dockerfile"):
+        recipe = (INFRA / name).read_text()
+        assert "sys.version_info[:2] == (3, 12)" in recipe
+        assert "--platform manylinux_2_28_aarch64" in recipe
+        assert "--python-version 3.12 --implementation cp --abi cp312" in recipe
+        assert "build-tooling.lock" in recipe
+        assert "!infra/runtime/build-tooling.lock" in (INFRA / f"{name}.dockerignore").read_text()
+        assert not re.search(r"(?:apt(?:-get)?|yum|dnf)\s+(?:update|upgrade)", recipe)
+        assert "/usr/share/licenses/appraisal-build/pip" in recipe
+        assert "importlib.util.find_spec('pip') is None" in recipe
+        assert recipe.index("--target ") < recipe.index("shutil.copytree(")
+        assert recipe.index("shutil.copytree(") < recipe.index("pip uninstall --yes pip")
+        assert "pip install" not in recipe.split("pip uninstall --yes pip", 1)[1]

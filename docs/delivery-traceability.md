@@ -10,6 +10,7 @@
 | Observability | Nine alarms, dashboard, aggregate query; schema tests | Authenticated metric publishing and alarm transitions |
 | Safe publication status | Plan/offline/localhost/live separation, synthetic remains Draft | Exact-head CI and all live dependencies |
 
+[Draft PR #44](https://github.com/chengruchou/newtaipei-appraisal-review-ai/pull/44),
 [Issue 31 delivery](issue-31-delivery.md) and [cloud acceptance](cloud-acceptance.md)
 retain missing dependencies; a CLI or mocked pass is not substituted for them.
 

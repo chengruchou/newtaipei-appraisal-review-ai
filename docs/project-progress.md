@@ -1,5 +1,14 @@
 # Project progress, 2026-09-10
 
+Published review order: [#42](https://github.com/chengruchou/newtaipei-appraisal-review-ai/pull/42)
+→ [#43](https://github.com/chengruchou/newtaipei-appraisal-review-ai/pull/43)
+→ [#44](https://github.com/chengruchou/newtaipei-appraisal-review-ai/pull/44), all Draft.
+This layer incorporates #43's packaging correction at
+32c5028e17ac4ada86eb9ac911a3d41bb724e203 without rewriting either branch.
+Current PR descriptions record actual CI run/head pairs and remaining scan,
+owner-integration and live/browser gates. AWS environment details will be supplied
+separately; no deployment or paid model call was started.
+
 The wrap-up stack now includes [Draft #42](https://github.com/chengruchou/newtaipei-appraisal-review-ai/pull/42)
 and [Draft #43](https://github.com/chengruchou/newtaipei-appraisal-review-ai/pull/43);
 #31 follows with [acceptance-evidence integration](issue-31-delivery.md).

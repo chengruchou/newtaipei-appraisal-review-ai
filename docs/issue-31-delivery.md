@@ -2,7 +2,7 @@
 
 Status: Draft. Related to #31; the actual browser/AWS rehearsal is not complete.
 
-Direct base is PR #43 at bf255668bb8ea49fcbe0e100763cb020f2e82ce8, on top of
+Direct base is PR #43 at 32c5028e17ac4ada86eb9ac911a3d41bb724e203, on top of
 PR #42 at fa36fb714c6628bef4f0fd66aae0278372f57fae. This work preserves those
 histories through a normal merge. Review order is #42, #43, then this layer.
 Exact new head and remote CI belong in the published PR, not a historical run.
@@ -82,3 +82,17 @@ mypy (125 source/script files), 14 golden manifests, both local HTTP/invocation
 smokes and six CloudFormation templates passed. The new loopback regression
 first failed with CLI exit 0, then all five Runtime HTTP integration tests passed.
 This record is local evidence, not head CI or live acceptance.
+
+## Packaging follow-up integration
+
+PR #43's security follow-up is integrated through another normal merge. It
+updates both image targets to Python 3.12 and compatible fixed Pillow wheels,
+preserves license notices and removes the complete build-only installer.
+Remaining OS/vendor scan findings continue to block deployment. The #43 image
+receipts bind its own exact source; no image of this #31 head is claimed.
+The complete post-merge suite passed 1722 repository tests plus 12 cloud tests
+(1734 total, 7 dependency warnings) in 116.31 seconds without coverage collection.
+Ruff/format, mypy, all 14 golden manifests, both localhost HTTP/invocation smokes
+and all six CloudFormation templates passed again. The earlier coverage run above
+is separate evidence; neither local run substitutes for the exact new-head CI
+recorded in the final PR.

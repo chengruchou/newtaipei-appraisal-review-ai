@@ -82,12 +82,41 @@ this path for composition integration; the baseline application does not consume
 it to invent a worker. A JSON file by itself cannot make `/ping` healthy.
 
 The source context is an allowlist of package `.py` files, Dockerfiles and the
-hash lock. Private files, PDFs, cache directories, Git metadata and the broader
-working tree are excluded. The dependency lock targets CPython 3.11 and
-`manylinux2014_aarch64`; the Dockerfiles force that platform during installation
-to avoid selecting a different wheel for the same version. Review and regenerate
-the lock if the provider bundle adds dependencies. Font/template packaging for
-the final PDF provider remains an integration requirement.
+hash locks. Private files, PDFs, cache directories, Git metadata and the broader
+working tree are excluded. Both images require CPython 3.12. The application lock
+targets `manylinux_2_28_aarch64`, also accepting older compatible
+`manylinux2014_aarch64` wheels. Both Dockerfiles pass the same platform, Python
+and ABI selectors so installation must match the reviewed wheel hashes.
+Use an official Python 3.12 slim base for HTTP and an official AWS Lambda
+Python 3.12 / Amazon Linux 2023 base for the bridge, each pinned by digest.
+[AWS documents the Python 3.12 AL2023 base](https://docs.aws.amazon.com/lambda/latest/dg/python-image.html).
+
+Pillow 12.3.0 is explicitly required because ReportLab's older minimum alone
+permits affected Pillow versions. Its CPython ARM64 wheel requires glibc 2.27
+or newer; the former Lambda AL2 base's glibc 2.26 cannot load it. The selected
+Python 3.12 bases do not contain the old setuptools installation or its vendored
+jaraco.context and wheel copies. `build-tooling.lock` upgrades the build-time pip
+to 26.2 using a reviewed wheel hash. After all dependencies are installed, both
+Dockerfiles copy pip's complete license/notice directory to
+`/usr/share/licenses/appraisal-build/pip`, then uninstall the entire pip package
+through its normal uninstaller. The application does not require an installer.
+This removes pip's vendored msgpack and pkg_resources code together with pip;
+those copies still had advisory matches in pip 26.2. Application package metadata
+and licenses remain installed, and pip's notices remain separately readable.
+Do not remove scanner metadata, license notices, or individual
+vendored files to make a report pass, and do not run mutable OS upgrade commands
+during the build.
+
+When refreshing dependencies, download wheels from public PyPI with
+`--only-binary=:all: --platform manylinux_2_28_aarch64 --platform manylinux2014_aarch64
+--python-version 3.12 --implementation cp --abi cp312`, resolve the complete
+dependency graph from `requirements.in`, then record each wheel's package name,
+version and SHA-256 in `requirements.lock`. Review version changes, native-library
+compatibility and advisory findings before rebuilding both targets. Refresh
+`build-tooling.lock` separately. Preserve the wheel-resolution log and full image
+scan reports under ignored `artifacts/`; dependency resolution is a public
+registry operation and must be explicitly initiated by the operator.
+Font/template packaging for the final PDF provider remains an integration requirement.
 
 ## Limits, network and permissions
 
@@ -138,8 +167,9 @@ account-wide tracing or telemetry capture.
 
 ## Offline validation and local image
 
-Recorded local checks on 2026-09-11: cfn-lint 1.56.2 accepts both templates;
-27 infrastructure tests, scoped Ruff/format and mypy pass. Docker 28.3.2 built
+Before the Python 3.12 correction, recorded local checks on 2026-09-11 were:
+cfn-lint 1.56.2 accepted both templates; 27 infrastructure tests and scoped
+Ruff/format/mypy passed. Docker 28.3.2 built
 `appraisal-runtime:offline-20260911`; exported manifest/config verification
 reports `linux/arm64`, and executing Python in the container reports `aarch64`.
 The container ran with a read-only root, no credential mounts and no supplied
@@ -155,8 +185,8 @@ identifiers and scan findings are recorded in the PR after source publication. N
 ECR push or deployment operation was performed.
 
 Docker reports `InvalidDefaultArgInFrom` because the Dockerfiles intentionally
-require an explicit `BASE_IMAGE`; the build script supplied a verified
-digest-pinned Python 3.11 image. This warning is retained in the build log.
+require an explicit `BASE_IMAGE`; the build script supplies a verified
+digest-pinned image. This warning is retained in the build log.
 No successful health or live AWS acceptance is inferred from the build.
 
 From this worktree, the existing sibling virtual environment can run checks:
@@ -175,13 +205,14 @@ PYTHONPATH="$PWD/infra/runtime/.tools:$PWD/src" "$VENV/bin/python" infra/runtime
 These are structural/security tests, not a cfn-guard run, deployed IAM test, or
 CloudFormation change-set validation. No cfn-lint schema suppression is used.
 
-For a local build, explicitly supply a digest-pinned Python 3.11 base, unique tag
+For a local build, explicitly supply a digest-pinned Python 3.12 base, unique tag
 and private non-secret configuration. Logs and receipts stay under ignored
-`artifacts/`. The Lambda target requires a digest-pinned AWS Lambda Python 3.11
-base and no `--runtime-config` argument.
+`artifacts/`. The Lambda target requires a digest-pinned AWS Lambda Python 3.12
+AL2023 base and no `--runtime-config` argument. The Dockerfile rejects other
+Python minor versions before installing dependencies.
 
 ```bash
-: "${RUNTIME_BASE_IMAGE:?digest-pinned Python 3.11 base}" "${LOCAL_RUNTIME_TAG:?unique tag}"
+: "${RUNTIME_BASE_IMAGE:?digest-pinned Python 3.12 base}" "${LOCAL_RUNTIME_TAG:?unique tag}"
 : "${PRIVATE_RUNTIME_CONFIG:?private non-secret JSON file}"
 mkdir -p artifacts/runtime-build
 python scripts/build_runtime_image.py --target runtime \
@@ -194,7 +225,9 @@ The script checks Docker inspect **and** a Docker save manifest's actual config
 digest, OS and architecture before writing a receipt. It disables automatic
 build attestations/metadata. Depending on Docker's image store, a local image ID
 identifies a config or a manifest; the verifier checks the corresponding content
-and binding. Neither identifies a verified ECR push. The receipt does not claim actual container execution or a
+and binding. Receipts bind both application and build-tooling lock hashes, the
+source commit and dirty status. Neither image identifier establishes a verified
+ECR push. The receipt does not claim actual container execution or a
 registry push. Re-verify the same tag immediately before any manual push.
 
 Run a temporary container without AWS environment variables or credential
@@ -203,6 +236,26 @@ and a valid reference invocation; the current expected status is 503 for both.
 Check malformed input is rejected without echoing input. Stop/remove only that
 container. This proves runnable packaging and fail-closed behavior, not AWS
 Runtime health, real job execution or production-case correctness.
+
+Also execute a synthetic PDF compatibility probe inside each actual ARM64 image
+with networking disabled: generate a PDF in memory with ReportLab, parse and
+reopen it with pypdf, render it with PyMuPDF, and reopen the rendered PNG with
+Pillow. Check Python 3.12 and the installed native-library versions, that importing
+pip fails, and that its complete saved notices match the pre-uninstall image.
+Keep every
+document ephemeral and report this as packaging/ABI evidence only; it does not
+supply or validate a production review provider.
+
+Scan the exact exported image after rebuilding, including OS, Python and embedded
+binary packages. Preserve complete findings and the scanner exit code; do not
+filter severity, ignore unfixed findings or add suppressions. Bound advisory DB
+retrieval and report a download failure as unavailable scan evidence. An updated
+Python base and dependency lock do not clear unrelated OS or vendor findings:
+those remain explicit Draft gates pending review or an upstream fix. Keep the
+earlier reports alongside replacement-image reports, with each bound to its
+own image/config digest. An uncommitted packaging correction must record
+`working_tree_dirty: true`; a parent must rebuild after its final commit to
+establish clean-head evidence.
 
 ## Manual sandbox create/update
 

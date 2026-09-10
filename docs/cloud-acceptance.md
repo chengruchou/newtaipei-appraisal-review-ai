@@ -26,7 +26,7 @@ does not publish metrics or demonstrate that alarms have fired.
 | Deployment | #43 ARM64 images and role-separated IaC | Complete reviewed execution bundle and deployment |
 | Monitoring | infra/rehearsal/stack.json | Authenticated metric publisher and actual alarm evidence |
 
-Direct base: PR #43, bf255668bb8ea49fcbe0e100763cb020f2e82ce8, on top of
+Direct base: PR #43, 32c5028e17ac4ada86eb9ac911a3d41bb724e203, on top of
 PR #42, fa36fb714c6628bef4f0fd66aae0278372f57fae. Neither dependent PR nor
 #34-39 is treated as merged or approved. The exact source/dependency inspection
 is recorded in [Issue 21](issue-21-delivery.md) and

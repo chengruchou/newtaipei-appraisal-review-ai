@@ -61,3 +61,19 @@ Ruff/format passed (256 files); mypy passed (122 source/build files); 14 golden
 manifests matched. Actual loopback HTTP, invocation and reopened synthetic PDF
 smokes passed. All five CloudFormation templates linted. SDK service emulation
 and loopback execution are separate from live AWS and browser acceptance.
+
+## Packaging scan correction
+
+The initial Python 3.11 / Lambda AL2 packaging scans failed. The follow-up moves
+both images to Python 3.12 with an AL2023 Lambda base, pins compatible ARM64
+wheels and Pillow 12.3.0, upgrades the build installer with a wheel hash, then
+uninstalls that complete build-only tool after preserving its license notices.
+It does not remove individual vulnerable files or scanner metadata while keeping
+the affected code. Installed runtime dependency licenses remain intact.
+
+The full local suite passed 1611 tests with 7 warnings after the Python/lock
+update; final installer-removal infrastructure/protocol regressions also passed.
+Both native-ABI images are checked with generated PDF parse/render/reopen probes,
+separate from production provider acceptance. OS and vendor findings remain
+unsuppressed Draft gates. Exact clean-head images, final scan totals and new CI
+are recorded in PR #43; earlier scans retain their own source/image binding.
