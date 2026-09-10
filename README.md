@@ -1,5 +1,12 @@
 # Agentic AI Real Estate Valuation Reviewer
 
+Current integration: [#21 extraction/evaluation](docs/issue-21-delivery.md) is
+followed by [#30 durable Runtime delivery](docs/issue-30-delivery.md). Both remain
+Draft pending their named dependency and live gates. [Runtime operations](docs/runtime-deployment.md)
+cover local ARM64 packaging and the guarded deployment procedure. [#31](docs/issue-31-delivery.md) adds strict evidence validation, real localhost
+rejection probes and monitoring templates. The actual browser/AWS rehearsal
+remains blocked; no current local test establishes that acceptance.
+
 An evidence-grounded system for reviewing real estate valuation cases for the
 2026 New Taipei City AI Smart City Hackathon. Document adapters propose facts and
 rules; deterministic code checks applicability, grades, correction matrices,
@@ -9,11 +16,11 @@ not the whole product.
 
 ## Current delivery
 
-Rechecked main on 2026-09-10:
-`463880af3a6dc6aad2bfa6fdfc3bc267afc4d4a5`. Review #15, extraction #16,
+Rechecked main on 2026-09-11:
+`c132e4ee4b1797098bd22676245cdfc01a26ffdb`. Review #15, extraction #16,
 local PDF writer #19, M0 service foundation #20 and full-case goldens #33 are
 merged. [Project progress](docs/project-progress.md) distinguishes this baseline,
-other active work lines, this branch's #27 implementation and remaining acceptance.
+other active work lines, merged #27 and this branch's #30 implementation and remaining acceptance.
 Local test results, historical CI and a future published head's CI are separate evidence.
 
 | Capability | Implemented behavior | Remaining acceptance |
@@ -24,7 +31,7 @@ Local test results, historical CI and a future published head's CI are separate 
 | M0 local integration (#20) | Configured HTTP/invocation using real parser/material/authorizer; optional real writer; separate service envelope | B web assembly and D full Runtime wiring |
 | M0 shared contracts (#20) | Versioned DTOs, immutable material helper, pure admission/idempotency guards, schema/fixtures | Transactional adapters, model selector and real event persistence |
 | Full-case goldens (#33) | Independently derived expectations, 13 case/revision manifests plus an index | Business rule approval and independent reviewer acceptance |
-| Sanitized document transfer (#27, this branch) | Authorized ingestion, exact privacy attestation, local/S3 immutable storage and run snapshots | A3 production export composition, authenticated gateway/D1 wiring and live S3 acceptance |
+| Sanitized document transfer (#27, merged) | Authorized ingestion, exact privacy attestation, local/S3 immutable storage and run snapshots | A3 production export composition, authenticated gateway/D1 wiring and live S3 acceptance |
 | Runtime smoke (#14) | Synthetic HTTP/container/template preparation, durable=false | D durable jobs, identity, outbox/recovery and deployment |
 | Browser human review | Consumer fixtures only | B task APIs; C workbench |
 
@@ -51,7 +58,7 @@ The writer produces a new file from a trusted original template and configured
 field coordinates. Multiple comparison contexts are supported by case review, but
 the existing writer accepts only one context. A multiple-context output request
 remains `verified/unsupported_contexts`; it never writes the first comparison as a
-partial report. End-to-end immutable source snapshots remain future work.
+partial report. Authorized immutable C2 snapshots now feed extraction and job admission; complete cloud execution still needs the reviewed provider bundle.
 
 ## Quick start: real local integration with synthetic inputs
 
@@ -104,9 +111,10 @@ The durable review-jobs group is now mounted: POST /v1/review-jobs accepts a
 submission with 202 once the job and its outbox entry are persisted, and
 GET /v1/review-jobs/{job_id}, GET /v1/review-jobs/{job_id}/result and
 POST /v1/review-jobs/{job_id}/cancel serve the same principal. It runs over an
-injected store, and only an in-memory reference adapter exists: state does not
-survive the process, and there is no DynamoDB, queue, dead-letter queue or alarm
-yet. Without a configured store and authenticator the routes answer
+injected store, with a local in-memory reference adapter or the new DynamoDB implementation.
+The #30 adapter persists job/run/attempt/outbox authority and immutable result
+references. SQS transport and DLQ/alarm templates are implemented; live
+recovery, IAM and alarm delivery remain unvalidated. Without a configured store and authenticator the routes answer
 capability_unavailable rather than a fabricated acceptance. See
 [ADR 0015](docs/adr/0015-durable-review-jobs.md).
 
@@ -127,7 +135,7 @@ python -m pytest cloud_tests
 python scripts/http_smoke.py
 python scripts/local_service_smoke.py
 python -m pip install -r cloud_tests/requirements-dev.txt
-cfn-lint cloud_tests/image-stack.json cloud_tests/runtime-stack.json
+cfn-lint cloud_tests/image-stack.json cloud_tests/runtime-stack.json infra/documents/stack.json infra/runtime/image-stack.yaml infra/runtime/runtime-stack.yaml infra/rehearsal/stack.json
 python scripts/check_submission.py --base origin/main
 ```
 

@@ -1,0 +1,785 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Durable sandbox job transport and HTTP Runtime; production provider integration remains a deployment gate.
+Metadata:
+  com.aws.cloudformation.Context:
+    arch: Scheduled reconciliation -> durable outbox -> SQS -> Lambda bridge -> HTTP Runtime.
+    must:
+      - Enable triggers only after the private production execution bundle passes acceptance.
+      - Original documents, reidentification mappings and restored PDFs are outside every grant.
+      - Deployment and image publishing roles are external to workload execution roles.
+    ref:
+      - at: docs/runtime-deployment.md
+        has: Trust boundaries, private configuration, acceptance gates and rollback
+Parameters:
+  DeploymentPrefix:
+    Type: String
+    AllowedPattern: '[a-z][a-z0-9]{3,19}'
+    Description: Unique identifier shared with the image bootstrap stack.
+  Environment:
+    Type: String
+    AllowedValues: [sandbox]
+  Owner:
+    Type: String
+    MinLength: 1
+    MaxLength: 128
+    Description: Team identifier used for alarm ownership.
+  ExpiresOn:
+    Type: String
+    AllowedPattern: '\d{4}-\d{2}-\d{2}'
+  RuntimeImageDigest:
+    Type: String
+    AllowedPattern: 'sha256:[a-f0-9]{64}'
+  LambdaImageDigest:
+    Type: String
+    AllowedPattern: 'sha256:[a-f0-9]{64}'
+  SanitizedBucketArn:
+    Type: String
+    AllowedPattern: 'arn:aws(-[a-z]+)*:s3:::[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]'
+    Description: Existing versioned sanitized-document bucket; no originals or mappings.
+  SanitizedObjectPrefix:
+    Type: String
+    AllowedPattern: '[a-z0-9][a-z0-9/_-]{0,199}/'
+    Description: Exact authorized namespace, including its trailing slash.
+  DocumentStoreTableArn:
+    Type: String
+    Default: ''
+    AllowedPattern: '(^$|arn:aws(-[a-z]+)*:dynamodb:[a-z0-9-]+:[0-9]{12}:table/[A-Za-z0-9_.-]+)'
+    Description: Optional existing authorized document catalog; read-only, no indexes granted.
+  ModelResourceArns:
+    Type: CommaDelimitedList
+    AllowedPattern: 'arn:aws(-[a-z]+)*:bedrock:[a-z0-9-]+:([0-9]{12})?:(foundation-model|inference-profile|application-inference-profile|provisioned-model|custom-model-deployment)/[A-Za-z0-9._:/-]+'
+    Description: Exact invocation resources, including all backing model ARNs for an inference profile.
+  WorkerConcurrency:
+    Type: Number
+    Default: 2
+    MinValue: 2
+    MaxValue: 10
+  WorkerMemoryMb:
+    Type: Number
+    Default: 512
+    AllowedValues: [256, 512, 1024, 2048]
+  DispatcherMemoryMb:
+    Type: Number
+    Default: 256
+    AllowedValues: [256, 512, 1024]
+  QueueVisibilitySeconds:
+    Type: Number
+    Default: 720
+    MinValue: 720
+    MaxValue: 43200
+    Description: At least six times the fixed 120-second bridge timeout; no batching window.
+  LogRetentionDays:
+    Type: Number
+    Default: 14
+    AllowedValues: [7, 14, 30, 60, 90]
+  EnableTriggers:
+    Type: String
+    Default: 'false'
+    AllowedValues: ['false', 'true']
+    Description: Explicit activation after provider, authorization and operational acceptance.
+  AlarmTopicArn:
+    Type: String
+    AllowedPattern: 'arn:aws(-[a-z]+)*:sns:[a-z0-9-]+:[0-9]{12}:[A-Za-z0-9_-]+'
+    Description: Existing operator-owned alarm destination; no subscriptions created here.
+Conditions:
+  HasDocumentStore: !Not [!Equals [!Ref DocumentStoreTableArn, '']]
+  TriggersEnabled: !Equals [!Ref EnableTriggers, 'true']
+Resources:
+  Jobs:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: Separate job, run, attempt, outbox and idempotency rows survive process replacement.
+        must:
+          - Primary key pk/sk is authoritative; recovery index is sparse and eventually consistent.
+          - Recovery candidates must be reread and conditionally mutated on the base table.
+          - No TTL on audit or idempotency rows without a reviewed retention contract.
+    Properties:
+      TableName: !Sub '${DeploymentPrefix}-jobs'
+      BillingMode: PAY_PER_REQUEST
+      SSESpecification: {SSEEnabled: true}
+      PointInTimeRecoverySpecification: {PointInTimeRecoveryEnabled: true}
+      DeletionProtectionEnabled: true
+      AttributeDefinitions:
+        - {AttributeName: pk, AttributeType: S}
+        - {AttributeName: sk, AttributeType: S}
+        - {AttributeName: recovery_pk, AttributeType: S}
+        - {AttributeName: recovery_at, AttributeType: N}
+      KeySchema:
+        - {AttributeName: pk, KeyType: HASH}
+        - {AttributeName: sk, KeyType: RANGE}
+      GlobalSecondaryIndexes:
+        - IndexName: job-recovery
+          KeySchema:
+            - {AttributeName: recovery_pk, KeyType: HASH}
+            - {AttributeName: recovery_at, KeyType: RANGE}
+          Projection: {ProjectionType: KEYS_ONLY}
+      Tags:
+        - {Key: Project, Value: appraisal-review}
+        - {Key: Environment, Value: !Ref Environment}
+        - {Key: DeploymentPrefix, Value: !Ref DeploymentPrefix}
+        - {Key: Owner, Value: !Ref Owner}
+        - {Key: ExpiresOn, Value: !Ref ExpiresOn}
+  Results:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: Attempt-scoped sanitized results are written before a fenced manifest is committed.
+        must:
+          - Retain versions for audit and rollback; no automatic deletion of review evidence.
+          - No original files, mappings or locally restored PDFs.
+    Properties:
+      BucketName: !Sub '${DeploymentPrefix}-${AWS::AccountId}-${AWS::Region}-results'
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault: {SSEAlgorithm: AES256}
+      VersioningConfiguration: {Status: Enabled}
+      OwnershipControls:
+        Rules: [{ObjectOwnership: BucketOwnerEnforced}]
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags:
+        - {Key: Project, Value: appraisal-review}
+        - {Key: Environment, Value: !Ref Environment}
+        - {Key: DeploymentPrefix, Value: !Ref DeploymentPrefix}
+        - {Key: Owner, Value: !Ref Owner}
+        - {Key: ExpiresOn, Value: !Ref ExpiresOn}
+  ResultsTransportPolicy:
+    Type: AWS::S3::BucketPolicy
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: Deny non-TLS object and listing operations for every principal.
+        must: [The universal deny principal does not grant access.]
+    Properties:
+      Bucket: !Ref Results
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: RequireTLS
+            Effect: Deny
+            Principal: '*'
+            Action: [s3:GetObject, s3:GetObjectVersion, s3:PutObject, s3:DeleteObject, s3:DeleteObjectVersion, s3:ListBucket, s3:ListBucketVersions, s3:AbortMultipartUpload, s3:ListMultipartUploadParts]
+            Resource: [!GetAtt Results.Arn, !Sub '${Results.Arn}/*']
+            Condition: {Bool: {aws:SecureTransport: 'false'}}
+  WorkDLQ:
+    Type: AWS::SQS::Queue
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: Preserve failed delivery references for deliberate investigation and redrive.
+        must: [No document bodies in messages; do not purge as a retry strategy.]
+    Properties:
+      QueueName: !Sub '${DeploymentPrefix}-work-dlq'
+      SqsManagedSseEnabled: true
+      MessageRetentionPeriod: 1209600
+      RedriveAllowPolicy:
+        redrivePermission: byQueue
+        sourceQueueArns:
+          - !Sub 'arn:${AWS::Partition}:sqs:${AWS::Region}:${AWS::AccountId}:${DeploymentPrefix}-work'
+      Tags:
+        - {Key: Project, Value: appraisal-review}
+        - {Key: Environment, Value: !Ref Environment}
+        - {Key: DeploymentPrefix, Value: !Ref DeploymentPrefix}
+        - {Key: Owner, Value: !Ref Owner}
+        - {Key: ExpiresOn, Value: !Ref ExpiresOn}
+  WorkQueue:
+    Type: AWS::SQS::Queue
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: At-least-once references wake workers; DynamoDB remains the source of authority.
+        must:
+          - Visibility >= 6 * 120 seconds with batch size one and no batching window.
+          - Duplicate receives must not bypass conditional claims or fencing.
+    Properties:
+      QueueName: !Sub '${DeploymentPrefix}-work'
+      SqsManagedSseEnabled: true
+      VisibilityTimeout: !Ref QueueVisibilitySeconds
+      MessageRetentionPeriod: 345600
+      ReceiveMessageWaitTimeSeconds: 20
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt WorkDLQ.Arn
+        maxReceiveCount: 5
+      Tags:
+        - {Key: Project, Value: appraisal-review}
+        - {Key: Environment, Value: !Ref Environment}
+        - {Key: DeploymentPrefix, Value: !Ref DeploymentPrefix}
+        - {Key: Owner, Value: !Ref Owner}
+        - {Key: ExpiresOn, Value: !Ref ExpiresOn}
+  DispatchDLQ:
+    Type: AWS::SQS::Queue
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: Retain schedule delivery failures and asynchronous dispatcher failures separately from work.
+        must: [Scheduled events contain no case material.]
+    Properties:
+      QueueName: !Sub '${DeploymentPrefix}-dispatch-dlq'
+      SqsManagedSseEnabled: true
+      MessageRetentionPeriod: 1209600
+      Tags:
+        - {Key: Project, Value: appraisal-review}
+        - {Key: Environment, Value: !Ref Environment}
+        - {Key: DeploymentPrefix, Value: !Ref DeploymentPrefix}
+        - {Key: Owner, Value: !Ref Owner}
+        - {Key: ExpiresOn, Value: !Ref ExpiresOn}
+  QueueTransportPolicy:
+    Type: AWS::SQS::QueuePolicy
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: Enforce TLS for queue data operations without adding a public allow.
+        must: [All three queues share the transport boundary.]
+    Properties:
+      Queues: [!Ref WorkQueue, !Ref WorkDLQ, !Ref DispatchDLQ]
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Deny
+            Principal: '*'
+            Action: [sqs:SendMessage, sqs:ReceiveMessage, sqs:DeleteMessage, sqs:ChangeMessageVisibility, sqs:PurgeQueue, sqs:GetQueueAttributes]
+            Resource: [!GetAtt WorkQueue.Arn, !GetAtt WorkDLQ.Arn, !GetAtt DispatchDLQ.Arn]
+            Condition: {Bool: {aws:SecureTransport: 'false'}}
+          - Effect: Allow
+            Principal: {Service: events.amazonaws.com}
+            Action: sqs:SendMessage
+            Resource: !GetAtt DispatchDLQ.Arn
+            Condition:
+              ArnEquals: {aws:SourceArn: !GetAtt DispatchSchedule.Arn}
+              StringEquals: {aws:SourceAccount: !Ref AWS::AccountId}
+  DispatcherLogs:
+    Type: AWS::Logs::LogGroup
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: Precreated logs avoid account-wide create-group privileges.
+        must: [Log only correlation identifiers and sanitized errors.]
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${DeploymentPrefix}-dispatcher'
+      RetentionInDays: !Ref LogRetentionDays
+      Tags:
+        - {Key: Project, Value: appraisal-review}
+        - {Key: Environment, Value: !Ref Environment}
+        - {Key: DeploymentPrefix, Value: !Ref DeploymentPrefix}
+        - {Key: Owner, Value: !Ref Owner}
+        - {Key: ExpiresOn, Value: !Ref ExpiresOn}
+  WorkerLogs:
+    Type: AWS::Logs::LogGroup
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: Worker bridge diagnostics are separate from document processing.
+        must: [Log only correlation identifiers and sanitized errors.]
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${DeploymentPrefix}-worker'
+      RetentionInDays: !Ref LogRetentionDays
+      Tags:
+        - {Key: Project, Value: appraisal-review}
+        - {Key: Environment, Value: !Ref Environment}
+        - {Key: DeploymentPrefix, Value: !Ref DeploymentPrefix}
+        - {Key: Owner, Value: !Ref Owner}
+        - {Key: ExpiresOn, Value: !Ref ExpiresOn}
+  DispatcherRole:
+    Type: AWS::IAM::Role
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: Reconciler can recover state and send references, but cannot execute review or read documents.
+        must: [No Runtime invocation, S3, model or document-catalog permissions.]
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: {Service: lambda.amazonaws.com}
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: ReconcileAndDispatch
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: [dynamodb:GetItem, dynamodb:PutItem, dynamodb:UpdateItem, dynamodb:DeleteItem, dynamodb:Query]
+                Resource: !GetAtt Jobs.Arn
+              - Effect: Allow
+                Action: dynamodb:Query
+                Resource: !Sub '${Jobs.Arn}/index/job-recovery'
+              - Effect: Allow
+                Action: sqs:SendMessage
+                Resource: [!GetAtt WorkQueue.Arn, !GetAtt DispatchDLQ.Arn]
+              - Effect: Allow
+                Action: [logs:CreateLogStream, logs:PutLogEvents]
+                Resource: !GetAtt DispatcherLogs.Arn
+      Tags:
+        - {Key: Project, Value: appraisal-review}
+        - {Key: Environment, Value: !Ref Environment}
+        - {Key: DeploymentPrefix, Value: !Ref DeploymentPrefix}
+        - {Key: Owner, Value: !Ref Owner}
+        - {Key: ExpiresOn, Value: !Ref ExpiresOn}
+  WorkerRole:
+    Type: AWS::IAM::Role
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: Queue bridge forwards one reference to the DEFAULT Runtime endpoint and waits for its result.
+        must: [No model, document, results or database access in the bridge.]
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: {Service: lambda.amazonaws.com}
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: InvokeConfiguredRuntime
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: [sqs:ReceiveMessage, sqs:DeleteMessage, sqs:GetQueueAttributes, sqs:ChangeMessageVisibility]
+                Resource: !GetAtt WorkQueue.Arn
+              - Effect: Allow
+                Action: bedrock-agentcore:InvokeAgentRuntime
+                Resource: [!GetAtt Runtime.AgentRuntimeArn, !Sub '${Runtime.AgentRuntimeArn}/runtime-endpoint/DEFAULT']
+              - Effect: Allow
+                Action: [logs:CreateLogStream, logs:PutLogEvents]
+                Resource: !GetAtt WorkerLogs.Arn
+      Tags:
+        - {Key: Project, Value: appraisal-review}
+        - {Key: Environment, Value: !Ref Environment}
+        - {Key: DeploymentPrefix, Value: !Ref DeploymentPrefix}
+        - {Key: Owner, Value: !Ref Owner}
+        - {Key: ExpiresOn, Value: !Ref ExpiresOn}
+  RuntimeRole:
+    Type: AWS::IAM::Role
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: Execution owns the conditional claim, fenced result and exact authorized model/document access.
+        must:
+          - Resource '*' only for ECR authorization, which has no resource-level scope.
+          - Runtime log and trust suffixes cover only this runtime's service-generated identifier.
+          - No table Scan, queue administration, raw-data access or deployment privileges.
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: {Service: bedrock-agentcore.amazonaws.com}
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals: {aws:SourceAccount: !Ref AWS::AccountId}
+              ArnLike:
+                aws:SourceArn: !Sub 'arn:${AWS::Partition}:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:runtime/${DeploymentPrefix}_runtime-*'
+      Policies:
+        - PolicyName: ExecuteReview
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: [ecr:BatchGetImage, ecr:GetDownloadUrlForLayer]
+                Resource: !Sub 'arn:${AWS::Partition}:ecr:${AWS::Region}:${AWS::AccountId}:repository/${DeploymentPrefix}-runtime'
+              - Effect: Allow
+                Action: ecr:GetAuthorizationToken
+                Resource: '*'
+              - Effect: Allow
+                Action: [dynamodb:GetItem, dynamodb:PutItem, dynamodb:UpdateItem, dynamodb:DeleteItem, dynamodb:Query]
+                Resource: !GetAtt Jobs.Arn
+              - Effect: Allow
+                Action: [s3:GetObjectVersion]
+                Resource: !Sub '${SanitizedBucketArn}/${SanitizedObjectPrefix}*'
+              - Effect: Allow
+                Action: [s3:GetObject, s3:GetObjectVersion, s3:PutObject]
+                Resource: !Sub '${Results.Arn}/results/*'
+              - !If
+                - HasDocumentStore
+                - Effect: Allow
+                  Action: [dynamodb:GetItem, dynamodb:Query]
+                  Resource: !Ref DocumentStoreTableArn
+                - !Ref AWS::NoValue
+              - Effect: Allow
+                Action: [bedrock:InvokeModel, bedrock:InvokeModelWithResponseStream]
+                Resource: !Ref ModelResourceArns
+              - Effect: Allow
+                Action: logs:DescribeLogStreams
+                Resource: !Sub 'arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/bedrock-agentcore/runtimes/${DeploymentPrefix}_runtime-*-DEFAULT:*'
+              - Effect: Allow
+                Action: [logs:CreateLogStream, logs:PutLogEvents]
+                Resource: !Sub 'arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/bedrock-agentcore/runtimes/${DeploymentPrefix}_runtime-*-DEFAULT:log-stream:*'
+      Tags:
+        - {Key: Project, Value: appraisal-review}
+        - {Key: Environment, Value: !Ref Environment}
+        - {Key: DeploymentPrefix, Value: !Ref DeploymentPrefix}
+        - {Key: Owner, Value: !Ref Owner}
+        - {Key: ExpiresOn, Value: !Ref ExpiresOn}
+  Runtime:
+    Type: AWS::BedrockAgentCore::Runtime
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: Executes configured production work in a replaceable HTTP session with durable state outside the process.
+        must:
+          - ARM64 image digest; no default synthetic execution bundle.
+          - PUBLIC is sandbox egress, not anonymous invocation; callers require IAM authorization.
+          - AgentCore manages CPU and memory; Lambda settings do not size the runtime.
+    Properties:
+      AgentRuntimeName: !Sub '${DeploymentPrefix}_runtime'
+      Description: Configured appraisal review execution with durable jobs and fenced results.
+      AgentRuntimeArtifact:
+        ContainerConfiguration:
+          ContainerUri: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.${AWS::URLSuffix}/${DeploymentPrefix}-runtime@${RuntimeImageDigest}'
+      RoleArn: !GetAtt RuntimeRole.Arn
+      NetworkConfiguration: {NetworkMode: PUBLIC}
+      ProtocolConfiguration: HTTP
+      LifecycleConfiguration:
+        IdleRuntimeSessionTimeout: 60
+        MaxLifetime: 900
+      EnvironmentVariables:
+        REVIEW_RUNTIME_CONFIG: /opt/appraisal/runtime.json
+        REVIEW_REGION: !Ref AWS::Region
+        REVIEW_ACCOUNT_ID: !Ref AWS::AccountId
+        RUNTIME_MODE: aws
+        SYNTHETIC_DEMO: 'false'
+        REVIEW_JOB_TABLE: !Ref Jobs
+        REVIEW_RESULT_BUCKET: !Ref Results
+      Tags:
+        Project: appraisal-review
+        Environment: !Ref Environment
+        DeploymentPrefix: !Ref DeploymentPrefix
+        Owner: !Ref Owner
+        ExpiresOn: !Ref ExpiresOn
+  RetentionLogs:
+    Type: AWS::Logs::LogGroup
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: Precreate diagnostics for the scoped retention maintenance function.
+        must: [Never log a custom-resource event or its response URL.]
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${DeploymentPrefix}-retention'
+      RetentionInDays: !Ref LogRetentionDays
+      Tags:
+        - {Key: Project, Value: appraisal-review}
+        - {Key: Environment, Value: !Ref Environment}
+        - {Key: DeploymentPrefix, Value: !Ref DeploymentPrefix}
+        - {Key: Owner, Value: !Ref Owner}
+        - {Key: ExpiresOn, Value: !Ref ExpiresOn}
+  RetentionRole:
+    Type: AWS::IAM::Role
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: Manage retention on the exact service-created Runtime group without a duplicate CFN group.
+        must: [No delete-group, discovery, wildcard resource or workload permissions.]
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: {Service: lambda.amazonaws.com}
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: ExactRuntimeLogRetention
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: [logs:CreateLogGroup, logs:PutRetentionPolicy]
+                Resource: !Sub 'arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/bedrock-agentcore/runtimes/${Runtime.AgentRuntimeId}-DEFAULT:*'
+              - Effect: Allow
+                Action: [logs:CreateLogStream, logs:PutLogEvents]
+                Resource: !GetAtt RetentionLogs.Arn
+      Tags:
+        - {Key: Project, Value: appraisal-review}
+        - {Key: Environment, Value: !Ref Environment}
+        - {Key: DeploymentPrefix, Value: !Ref DeploymentPrefix}
+        - {Key: Owner, Value: !Ref Owner}
+        - {Key: ExpiresOn, Value: !Ref ExpiresOn}
+  RetentionHandler:
+    Type: AWS::Lambda::Function
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: Idempotently adopt the auto-created log group; leave it retained on deletion.
+        must: [Explicit region and exact group; bounded SDK retries; sanitized CFN failure.]
+    Properties:
+      FunctionName: !Sub '${DeploymentPrefix}-retention'
+      Runtime: python3.11
+      Architectures: [arm64]
+      Handler: index.handler
+      Role: !GetAtt RetentionRole.Arn
+      Timeout: 30
+      MemorySize: 128
+      ReservedConcurrentExecutions: 1
+      Environment:
+        Variables:
+          REVIEW_REGION: !Ref AWS::Region
+          REVIEW_LOG_GROUP: !Sub '/aws/bedrock-agentcore/runtimes/${Runtime.AgentRuntimeId}-DEFAULT'
+      Code:
+        ZipFile: |
+          import os
+          import boto3
+          import cfnresponse
+          from botocore.config import Config
+
+          def handler(event, context):
+              status = cfnresponse.SUCCESS
+              physical_id = event.get("PhysicalResourceId", "runtime-log-retention")
+              try:
+                  if event["RequestType"] != "Delete":
+                      props = event["ResourceProperties"]
+                      group = os.environ["REVIEW_LOG_GROUP"]
+                      days = int(props["RetentionInDays"])
+                      if props["LogGroupName"] != group or days not in (7, 14, 30, 60, 90):
+                          raise ValueError("Invalid retention configuration")
+                      client = boto3.client(
+                          "logs", region_name=os.environ["REVIEW_REGION"],
+                          config=Config(connect_timeout=2, read_timeout=3,
+                                        retries={"total_max_attempts": 2}))
+                      try:
+                          client.create_log_group(logGroupName=group)
+                      except client.exceptions.ResourceAlreadyExistsException:
+                          pass
+                      client.put_retention_policy(logGroupName=group, retentionInDays=days)
+              except Exception:
+                  status = cfnresponse.FAILED
+              cfnresponse.send(event, context, status, {}, physicalResourceId=physical_id,
+                               reason="Runtime log retention operation finished.")
+      Tags:
+        - {Key: Project, Value: appraisal-review}
+        - {Key: Environment, Value: !Ref Environment}
+        - {Key: DeploymentPrefix, Value: !Ref DeploymentPrefix}
+        - {Key: Owner, Value: !Ref Owner}
+        - {Key: ExpiresOn, Value: !Ref ExpiresOn}
+  RuntimeLogRetention:
+    Type: Custom::RuntimeLogRetention
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: Gate schedule activation on successful retention configuration.
+        must: [Retain runtime logs on deletion; never treat failure as successful deployment.]
+    Properties:
+      ServiceToken: !GetAtt RetentionHandler.Arn
+      ServiceTimeout: 60
+      LogGroupName: !Sub '/aws/bedrock-agentcore/runtimes/${Runtime.AgentRuntimeId}-DEFAULT'
+      RetentionInDays: !Ref LogRetentionDays
+  Dispatcher:
+    Type: AWS::Lambda::Function
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: A synchronous handler runs reconciliation and bounded outbox dispatch on each scheduled invocation.
+        must: [The Python handler must return its result, never a coroutine.]
+    Properties:
+      FunctionName: !Sub '${DeploymentPrefix}-dispatcher'
+      PackageType: Image
+      Architectures: [arm64]
+      Code:
+        ImageUri: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.${AWS::URLSuffix}/${DeploymentPrefix}-runtime@${LambdaImageDigest}'
+      ImageConfig:
+        Command: [appraisal_review.adapters.aws.runtime_jobs.dispatch_handler]
+      Role: !GetAtt DispatcherRole.Arn
+      Timeout: 60
+      MemorySize: !Ref DispatcherMemoryMb
+      ReservedConcurrentExecutions: 1
+      DeadLetterConfig: {TargetArn: !GetAtt DispatchDLQ.Arn}
+      Environment:
+        Variables:
+          REVIEW_REGION: !Ref AWS::Region
+          REVIEW_ACCOUNT_ID: !Ref AWS::AccountId
+          REVIEW_JOB_TABLE: !Ref Jobs
+          REVIEW_QUEUE_URL: !Ref WorkQueue
+      Tags:
+        - {Key: Project, Value: appraisal-review}
+        - {Key: Environment, Value: !Ref Environment}
+        - {Key: DeploymentPrefix, Value: !Ref DeploymentPrefix}
+        - {Key: Owner, Value: !Ref Owner}
+        - {Key: ExpiresOn, Value: !Ref ExpiresOn}
+  DispatcherAsyncConfig:
+    Type: AWS::Lambda::EventInvokeConfig
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: Bound asynchronous schedule retries; retained DLQ references support recovery.
+        must: [Recovery must be idempotent across asynchronous retries.]
+    Properties:
+      FunctionName: !Ref Dispatcher
+      Qualifier: '$LATEST'
+      MaximumEventAgeInSeconds: 300
+      MaximumRetryAttempts: 2
+  Worker:
+    Type: AWS::Lambda::Function
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: A synchronous SQS handler waits for the Runtime invocation before acknowledging delivery.
+        must:
+          - Timeout stays 120 seconds; visibility minimum must remain >= 720 seconds.
+          - Partial batch failures preserve unprocessed references.
+    Properties:
+      FunctionName: !Sub '${DeploymentPrefix}-worker'
+      PackageType: Image
+      Architectures: [arm64]
+      Code:
+        ImageUri: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.${AWS::URLSuffix}/${DeploymentPrefix}-runtime@${LambdaImageDigest}'
+      ImageConfig:
+        Command: [appraisal_review.adapters.aws.runtime_jobs.worker_handler]
+      Role: !GetAtt WorkerRole.Arn
+      Timeout: 120
+      MemorySize: !Ref WorkerMemoryMb
+      ReservedConcurrentExecutions: !Ref WorkerConcurrency
+      Environment:
+        Variables:
+          REVIEW_REGION: !Ref AWS::Region
+          REVIEW_ACCOUNT_ID: !Ref AWS::AccountId
+          REVIEW_RUNTIME_ARN: !GetAtt Runtime.AgentRuntimeArn
+      Tags:
+        - {Key: Project, Value: appraisal-review}
+        - {Key: Environment, Value: !Ref Environment}
+        - {Key: DeploymentPrefix, Value: !Ref DeploymentPrefix}
+        - {Key: Owner, Value: !Ref Owner}
+        - {Key: ExpiresOn, Value: !Ref ExpiresOn}
+  WorkMapping:
+    Type: AWS::Lambda::EventSourceMapping
+    DependsOn: RuntimeLogRetention
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: Bound concurrent bridge invocations and isolate acknowledgement to one message.
+        must: [One message per invocation; report failures; enable only after dependency acceptance.]
+    Properties:
+      EventSourceArn: !GetAtt WorkQueue.Arn
+      FunctionName: !Ref Worker
+      BatchSize: 1
+      MaximumBatchingWindowInSeconds: 0
+      FunctionResponseTypes: [ReportBatchItemFailures]
+      ScalingConfig: {MaximumConcurrency: !Ref WorkerConcurrency}
+      Enabled: !If [TriggersEnabled, true, false]
+  DispatchSchedule:
+    Type: AWS::Events::Rule
+    DependsOn: [DispatcherAsyncConfig, RuntimeLogRetention]
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: Reclaim leases and retry orphaned outbox sends without waiting for new submissions.
+        must: [Bounded one-minute sandbox cadence; no document payload in schedule events.]
+    Properties:
+      Name: !Sub '${DeploymentPrefix}-reconcile'
+      Description: Recover durable jobs and dispatch pending references.
+      ScheduleExpression: rate(1 minute)
+      State: !If [TriggersEnabled, ENABLED, DISABLED]
+      Targets:
+        - Id: Dispatcher
+          Arn: !GetAtt Dispatcher.Arn
+          Input: '{"schema_version":"reconcile-v1"}'
+          RetryPolicy: {MaximumEventAgeInSeconds: 300, MaximumRetryAttempts: 2}
+          DeadLetterConfig: {Arn: !GetAtt DispatchDLQ.Arn}
+  DispatchPermission:
+    Type: AWS::Lambda::Permission
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: Only the named schedule in this account can invoke the dispatcher as a service.
+        must: [Preserve both source ARN and source account.]
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref Dispatcher
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt DispatchSchedule.Arn
+      SourceAccount: !Ref AWS::AccountId
+  WorkDLQAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: Any exhausted work delivery requires owner investigation.
+        must: [Do not redrive before checking the fenced durable state.]
+    Properties:
+      AlarmName: !Sub '${DeploymentPrefix}-work-dlq'
+      AlarmDescription: !Sub 'Owner ${Owner}: investigate durable state and sanitized errors before redrive; see runtime-deployment runbook.'
+      Namespace: AWS/SQS
+      MetricName: ApproximateNumberOfMessagesVisible
+      Dimensions: [{Name: QueueName, Value: !GetAtt WorkDLQ.QueueName}]
+      Statistic: Maximum
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!Ref AlarmTopicArn]
+      Tags:
+        - {Key: Project, Value: appraisal-review}
+        - {Key: Environment, Value: !Ref Environment}
+        - {Key: DeploymentPrefix, Value: !Ref DeploymentPrefix}
+        - {Key: Owner, Value: !Ref Owner}
+        - {Key: ExpiresOn, Value: !Ref ExpiresOn}
+  DispatchDLQAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: Reconciliation delivery failure can strand every pending job.
+        must: [Inspect both schedule delivery and asynchronous dispatcher failures.]
+    Properties:
+      AlarmName: !Sub '${DeploymentPrefix}-dispatch-dlq'
+      AlarmDescription: !Sub 'Owner ${Owner}: inspect scheduler permissions and dispatcher failure before replay.'
+      Namespace: AWS/SQS
+      MetricName: ApproximateNumberOfMessagesVisible
+      Dimensions: [{Name: QueueName, Value: !GetAtt DispatchDLQ.QueueName}]
+      Statistic: Maximum
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!Ref AlarmTopicArn]
+      Tags:
+        - {Key: Project, Value: appraisal-review}
+        - {Key: Environment, Value: !Ref Environment}
+        - {Key: DeploymentPrefix, Value: !Ref DeploymentPrefix}
+        - {Key: Owner, Value: !Ref Owner}
+        - {Key: ExpiresOn, Value: !Ref ExpiresOn}
+  QueueAgeAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: A growing backlog is visible before messages exhaust retries.
+        must: [Inspect throttling and health before increasing concurrency.]
+    Properties:
+      AlarmName: !Sub '${DeploymentPrefix}-queue-age'
+      AlarmDescription: !Sub 'Owner ${Owner}: inspect worker timeout, throttles and Runtime availability.'
+      Namespace: AWS/SQS
+      MetricName: ApproximateAgeOfOldestMessage
+      Dimensions: [{Name: QueueName, Value: !GetAtt WorkQueue.QueueName}]
+      Statistic: Maximum
+      Period: 60
+      EvaluationPeriods: 3
+      Threshold: 900
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!Ref AlarmTopicArn]
+      Tags:
+        - {Key: Project, Value: appraisal-review}
+        - {Key: Environment, Value: !Ref Environment}
+        - {Key: DeploymentPrefix, Value: !Ref DeploymentPrefix}
+        - {Key: Owner, Value: !Ref Owner}
+        - {Key: ExpiresOn, Value: !Ref ExpiresOn}
+Outputs:
+  RuntimeArn:
+    Description: Private IAM-authorized invocation target.
+    Value: !GetAtt Runtime.AgentRuntimeArn
+  RuntimeVersion:
+    Description: Capture with both image digests in the private deployment receipt.
+    Value: !GetAtt Runtime.AgentRuntimeVersion
+  RuntimeLogGroup:
+    Description: Scoped DEFAULT endpoint logs with managed retention.
+    Value: !Sub '/aws/bedrock-agentcore/runtimes/${Runtime.AgentRuntimeId}-DEFAULT'
+  JobsTableArn:
+    Description: Durable state retained on stack deletion.
+    Value: !GetAtt Jobs.Arn
+  WorkQueueUrl:
+    Description: Queue transport; messages contain references only.
+    Value: !Ref WorkQueue
+  WorkDLQUrl:
+    Description: Inspect durable state before an explicitly authorized redrive.
+    Value: !Ref WorkDLQ
+  DispatchDLQUrl:
+    Description: Scheduler and dispatcher failures retained on deletion.
+    Value: !Ref DispatchDLQ
+  ResultsBucketArn:
+    Description: Retained versioned results; originals and mappings are prohibited.
+    Value: !GetAtt Results.Arn
+  ResultsObjectPrefix:
+    Description: Configure the result adapter with this exact prefix.
+    Value: results/

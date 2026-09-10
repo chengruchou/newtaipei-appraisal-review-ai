@@ -117,7 +117,7 @@ def extracted_pdf_material(tmp_path, *, case_role="forms"):
             }
             extractions.append(
                 asyncio.run(
-                    extractor.extract_page(
+                    extractor._extract_page(
                         source, page.number, asyncio.run(parser.render(source.uri, page.number))
                     )
                 )

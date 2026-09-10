@@ -1,0 +1,84 @@
+# Issue 31: Integrated acceptance-evidence delivery
+
+Status: Draft. Related to #31; the actual browser/AWS rehearsal is not complete.
+
+Direct base is PR #43 at bf255668bb8ea49fcbe0e100763cb020f2e82ce8, on top of
+PR #42 at fa36fb714c6628bef4f0fd66aae0278372f57fae. This work preserves those
+histories through a normal merge. Review order is #42, #43, then this layer.
+Exact new head and remote CI belong in the published PR, not a historical run.
+
+## Requirement map
+
+| Issue requirement | Implemented offline | Still required |
+| --- | --- | --- |
+| Happy and human browser paths | Exact material/source/task/revision/output evidence binding, mandatory probes | Actual integrated authenticated UI, reviewed providers and live execution |
+| Idempotency and command replay | Signed scenario invariants and rejection of stale/mismatched receipts | UI timeout interception and durable observed admissions |
+| Worker/outbox recovery | Same-run takeover, distinct attempt and dispatch evidence requirements | Actual process replacement and live queue/store observation |
+| Failure/DLQ | Mandatory fault, no-output, alarm and terminal/redrive checks | Real fault injection and bounded recovery |
+| Authorization/privacy | Independent browser/network/AWS/local collector scopes, finite public data | Complete capture and scoped cloud inventory inspection |
+| Output | Actual hash/size/version/manifest/run/template/golden bindings | Reopened authorized download from formal integrated writer |
+| Rollback/cleanup | Distinct rollback digest, exact inventory and retained-audit checks | One safe sandbox rehearsal and verified resource cleanup |
+| Observability | Nine alarm resources, private dashboard and value-free aggregate query | Metric publisher, owned routing and actual alarm transitions |
+| Evidence and CI | Strict schema, independent signatures, 122 checks/16 scenarios, exact tested commit/run pins | Reviewed live collectors, successful current-revision CI and independent human acceptance |
+
+The CLI distinguishes plan, synthetic verification, localhost rejection checks
+and unavailable live collection. Missing collectors exit nonzero. Synthetic
+receipts always report Draft, never Ready. The stacked integration test requires
+the real #43 Runtime module and uses real loopback TCP; it has no absent-module
+success branch or substitute provider. Its five probes establish rejection only.
+
+## Dependency and trust boundaries
+
+No fake browser collector or production signing authority is shipped. PR #34-39
+remain independently reviewed work; missing publication and human/privacy/UI
+integration cannot be bypassed by producing signed success declarations. The
+gate authenticates collector attestations and exact bindings, but cannot prove
+collector honesty or reconstruct captures. Provision reviewed isolated collectors
+and independently inspect retained captures before accepting their signatures.
+
+The monitoring stack grants no permissions and emits no samples. Its resources
+alone cannot demonstrate operational coverage. Compose an authenticated publisher
+against the reviewed execution bundle; cost samples need actual usage and dated
+pricing, not zero for missing telemetry. See [cloud acceptance](cloud-acceptance.md)
+and [ADR 0031](adr/0031-rehearsal-evidence.md).
+
+## Verification and operations
+
+Run Ruff, format, mypy, all tests/cloud_tests, immutable goldens, both existing
+HTTP/invocation smokes, the rehearsal TCP tests and cfn-lint for all six templates.
+The PR records final local counts, warnings and exact head CI separately.
+Image execution evidence from #43 binds that earlier exact source/image; it does
+not establish an image of this new head. A future release must build and test
+its precise integrated revision and satisfy every additional required CI gate.
+
+The existing submission checker is unchanged and inspects complete working/index
+snapshots, every outgoing commit tree and Git metadata, branch and actual PR
+text. No actual receipt, private source, credential, original PDF, generated PDF
+or raw capture is submitted. The original dirty checkout and teammate changes
+are preserved. No Issue is closed and no PR approved or merged.
+
+No AWS account operation, model inference, deployment, billing change or real
+rule approval was performed. After reviewed integration and successful CI, live
+setup requires the designated short-lived profile/SSO, Region, account/role,
+model/routing, budget, owned prefix/lifetime and data-region restrictions. Use
+the #30 runbook; do not deploy the unavailable default application to manufacture
+an acceptance result.
+
+## Pre-publication regression correction
+
+An actual loopback adversarial server reproduced a false pass: an escaped
+synthetic canary in the first duplicate message key was discarded by ordinary
+JSON parsing, so the CLI returned zero despite the leaked response. The new
+regression failed on that exit-code assertion before the fix. The runner now
+rejects duplicate JSON keys and checks decoded values; the same server must
+return a failed validation report with finite reasons. Legitimate unready
+Runtime responses still pass their explicitly limited rejection probes.
+
+Integrated local check before the packaging follow-up (macOS/Python 3.13.5):
+1720 repository tests plus 12 cloud tests passed, 801 warnings, 89% displayed
+combined statement/branch coverage. Warnings remain visible and include SQLite
+connection ResourceWarnings and dependency deprecations. Ruff/format (265 files),
+mypy (125 source/script files), 14 golden manifests, both local HTTP/invocation
+smokes and six CloudFormation templates passed. The new loopback regression
+first failed with CLI exit 0, then all five Runtime HTTP integration tests passed.
+This record is local evidence, not head CI or live acceptance.

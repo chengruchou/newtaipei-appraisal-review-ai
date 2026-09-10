@@ -1,0 +1,47 @@
+{
+  "schema_version": "extraction-v1",
+  "request": {
+    "schema_version": "extraction-v1",
+    "run": {
+      "schema_version": "service-v1",
+      "run_id": "00000000-0000-0000-0000-000000000001",
+      "revision": {
+        "schema_version": "service-v1",
+        "case_id": "synthetic-case",
+        "revision_id": "r1",
+        "material_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "attempt_id": null,
+      "runtime_session_id": null
+    },
+    "source": {
+      "schema_version": "extraction-v1",
+      "document": {
+        "schema_version": "service-v1",
+        "case_id": "synthetic-case",
+        "document_id": "synthetic-forms",
+        "version": "v1",
+        "content_hash": "0a5d3bef47afd27b9a4ad381a2f40c82f42b25e247d4368027b463e0b1d7c39b",
+        "purpose": "forms"
+      },
+      "privacy_contract_version": "privacy-v1",
+      "privacy_manifest_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "page_count": 2
+    },
+    "page": 1,
+    "context": {
+      "schema_version": "extraction-v1",
+      "language": "zh-Hant",
+      "task": "propose_case"
+    }
+  },
+  "reason": "page_failed",
+  "locations": [
+    {
+      "schema_version": "extraction-v1",
+      "page": 1,
+      "region_id": null,
+      "field_id": null
+    }
+  ]
+}

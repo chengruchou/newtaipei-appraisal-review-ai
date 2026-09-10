@@ -1,5 +1,47 @@
 # Requirements to implementation and acceptance
 
+## Issue 31 acceptance evidence, 2026-09-11
+
+| Requirement | Implementation / test | Missing real evidence |
+| --- | --- | --- |
+| Complete scenario matrix and exact release | rehearsal-v1; test_rehearsal_evidence.py | 122 measured checks across 16 scenarios |
+| Independent source/mode trust | Signed receipt verifier; CLI adversarial fixtures | Protected live collectors and independent reviewer |
+| Runtime protocol | Actual #43 loopback process, five HTTP rejection probes | Successful browser/AWS execution |
+| Observability | Nine alarms, dashboard, aggregate query; schema tests | Authenticated metric publishing and alarm transitions |
+| Safe publication status | Plan/offline/localhost/live separation, synthetic remains Draft | Exact-head CI and all live dependencies |
+
+[Issue 31 delivery](issue-31-delivery.md) and [cloud acceptance](cloud-acceptance.md)
+retain missing dependencies; a CLI or mocked pass is not substituted for them.
+
+
+## Issue 30 durable Runtime integration, 2026-09-11
+
+| Requirement | Implementation / regression evidence | Remaining acceptance |
+| --- | --- | --- |
+| Process-independent authority | DynamoDBJobStore; shared contract, independent-client races and SDK errors | Live table/process replacement and IAM |
+| Immutable fenced result | S3ResultStore; stale-first-object and reconstruction tests | Live S3 and publication authority |
+| Recovery and bounded worker | runtime_jobs/runtime_worker; duplicate dispatch, lease/cancel/failure tests | Real dispatcher/Runtime/DLQ delivery |
+| Current authorized source | runtime_sources; real local C2 admission/revocation tests | Reviewed principal/revision repositories |
+| ARM64 and deployment | runtime Dockerfiles, build verifier, IaC tests/cfn-lint | Accepted execution bundle, scan review and create/update/rollback |
+
+[Issue 30 delivery](issue-30-delivery.md) records direct PR #42 dependency and
+separate local, emulated-service, container, CI and live scopes.
+
+
+## Issue 21 integration, 2026-09-11
+
+| Requirement | Implementation and test | Acceptance boundary |
+| --- | --- | --- |
+| Current authorized immutable source | DocumentSnapshotResolver; test_snapshot_extraction.py | Real local C2/parser; no AWS source access |
+| Located low-confidence/missing questions | extraction_handoffs.py; test_extraction_handoffs.py | Candidate requests; human-task persistence pending |
+| Bounded provider attempts and safe errors | Existing snapshot backend/preflight/ledger regression suite | SDK doubles; live access/routing pending |
+| Frozen independent evaluation | extraction_evaluation.py; 104 scorer/CLI tests | Synthetic #23 source fixtures; real accuracy unmeasured |
+| Tiny Chinese live probe | cloud_tests/extraction_smoke.py | Dry by default; explicit environment/budget gate |
+
+[Issue 21 delivery](issue-21-delivery.md) records branch/base and dependency heads.
+PR publication supplies the new head and its own CI URL. Historical sections below
+are retained as evidence of their original scope, not substituted for current CI.
+
 ## Full-case goldens and reviewer acceptance (#23, 2026-09-10)
 
 The [golden acceptance protocol](golden-acceptance.md) and

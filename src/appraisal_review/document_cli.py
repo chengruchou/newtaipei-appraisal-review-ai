@@ -10,11 +10,6 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from appraisal_review.adapters.aws.document_extraction import (
-    BedrockDocumentExtractor,
-    ExtractionConfig,
-    ExtractionError,
-)
 from appraisal_review.adapters.local.approval import LocalApprovalStore, current_reviewer
 from appraisal_review.adapters.local.document_manifest import InputManifest as InputManifest
 from appraisal_review.adapters.local.document_manifest import InputSpec as InputSpec
@@ -26,17 +21,23 @@ from appraisal_review.adapters.local.reviewer_platform import (
 )
 from appraisal_review.application.bootstrap import build_controller
 from appraisal_review.application.document_review import assemble, document_adapters
+from appraisal_review.application.extraction import request_plan
 from appraisal_review.config import Settings
 from appraisal_review.domain.confidence import confirm_side
 from appraisal_review.domain.document_models import (
     DocumentModel,
-    SourceDocument,
     SourceRegistry,
+)
+from appraisal_review.domain.extraction_contracts import (
+    ExecutionBudget,
+    PageRequest,
+    ProviderConfiguration,
 )
 from appraisal_review.domain.extraction_models import PageExtraction
 from appraisal_review.domain.factor_models import AgentReviewRequest, ReviewMaterial
 from appraisal_review.domain.golden import GoldenSet, check_fields
 from appraisal_review.domain.review_contracts import content_digest
+from appraisal_review.ports.document_extraction import ExtractionBoundaryError
 
 
 def private_json(path: Path, value: DocumentModel | dict[str, Any]) -> None:
@@ -78,37 +79,13 @@ def reviewable(material: ReviewMaterial, path: Path) -> None:
 
 
 def bedrock_client(args: argparse.Namespace) -> Any:
-    """No implicit default profile and no credential discovery before explicit opt-in."""
-    import boto3
-    from botocore.config import Config
-
-    session = boto3.Session(profile_name=args.profile, region_name=args.region)
-    caller = session.client("sts").get_caller_identity()
-    expected_prefix = f"arn:aws:sts::{args.expected_account}:assumed-role/{args.expected_role}/"
-    if caller["Account"] != args.expected_account or not caller["Arn"].startswith(expected_prefix):
-        raise PermissionError("AWS account/role does not match explicit project identity")
-    control = session.client("bedrock")
-    model_id = args.model_id
-    if (
-        model_id.startswith(("us.", "eu.", "apac.", "au.", "jp.", "global."))
-        or ":inference-profile/" in model_id
-    ):
-        if not args.allow_cross_region:
-            raise PermissionError("Inference profiles require explicit cross-region opt-in")
-        profile = control.get_inference_profile(inferenceProfileIdentifier=model_id)
-        model_id = profile["models"][0]["modelArn"].split("/", 1)[1]
-    model = control.get_foundation_model(modelIdentifier=model_id)["modelDetails"]
-    if "IMAGE" not in model["inputModalities"] or "TEXT" not in model["outputModalities"]:
-        raise ValueError("Selected model does not support image input and text output")
-    return session.client(
-        "bedrock-runtime",
-        config=Config(
-            connect_timeout=10, read_timeout=args.timeout, retries={"total_max_attempts": 1}
-        ),
-    )
+    """Legacy factory is closed; clients belong to the authorized assembly."""
+    raise ExtractionBoundaryError("privacy_unavailable")
 
 
 async def preparation(args: argparse.Namespace) -> None:
+    if args.command == "extract":
+        raise ExtractionBoundaryError("privacy_unavailable")
     manifest = InputManifest.model_validate_json(args.manifest.read_text())
     parser = manifest.parser()
     documents = []
@@ -151,48 +128,6 @@ async def preparation(args: argparse.Namespace) -> None:
         private_json(args.output / "material.json", material.model_dump(mode="json"))
         reviewable(material, args.output / "review.md")
         return
-    selections: list[tuple[SourceDocument, int]] = []
-    for selection in args.pages:
-        document_id, page_numbers = selection.split(":", 1)
-        source = next(d for d in documents if d.document_id == document_id)
-        selections.extend((source, int(number)) for number in page_numbers.split(","))
-    if not 0 < len(selections) <= args.page_limit <= 30:
-        raise ValueError("Page selection exceeds explicit extraction budget")
-    if len({(d.document_id, p) for d, p in selections}) != len(selections):
-        raise ValueError("Duplicate extraction page selection")
-    client = bedrock_client(args)
-    config = ExtractionConfig(
-        model_id=args.model_id,
-        region=args.region,
-        max_output_tokens=args.max_output_tokens,
-        attempts=args.attempts,
-        timeout_seconds=args.timeout,
-    )
-    extractor = BedrockDocumentExtractor(client, config)
-    metrics = []
-    context = manifest.identity.model_dump_json()
-    for source, page in selections:
-        try:
-            result = await extractor.extract_page(
-                source, page, await parser.render(source.uri, page), context=context
-            )
-            private_json(args.output / f"{source.document_id}-page-{page}.json", result)
-            metrics.append(result.model_dump(mode="json", exclude={"proposal"}))
-            context = (
-                manifest.identity.model_dump_json()
-                + "\nKnown explicit entity contexts: "
-                + json.dumps([c.context.model_dump() for c in result.proposal.contexts])
-            )
-        except ExtractionError as error:
-            metrics.append({"document_id": source.document_id, "page": page, "error": error.code})
-            private_json(
-                args.output / "metrics.json",
-                {"configuration": config.model_dump(), "pages": metrics},
-            )
-            raise
-    private_json(
-        args.output / "metrics.json", {"configuration": config.model_dump(), "pages": metrics}
-    )
 
 
 def _main() -> None:
@@ -215,6 +150,9 @@ def _main() -> None:
             parser.add_argument("--attempts", type=int, default=2)
             parser.add_argument("--timeout", type=float, default=180)
             parser.add_argument("--allow-cross-region", action="store_true")
+    plan = sub.add_parser("extract-plan")
+    for name in ("request", "configuration", "budget"):
+        plan.add_argument(f"--{name}", type=Path, required=True)
     init = sub.add_parser("init-store")
     init.add_argument("--store", type=Path, required=True)
     for command in ("inspect", "confirm-facts", "approve", "review"):
@@ -227,6 +165,19 @@ def _main() -> None:
         if command in {"confirm-facts", "approve"}:
             parser.add_argument("--expected-digest", required=True)
     args = cli.parse_args()
+    if args.command == "extract-plan":
+        try:
+            result = request_plan(
+                PageRequest.model_validate_json(args.request.read_text(encoding="utf-8")),
+                ProviderConfiguration.model_validate_json(
+                    args.configuration.read_text(encoding="utf-8")
+                ),
+                ExecutionBudget.model_validate_json(args.budget.read_text(encoding="utf-8")),
+            )
+        except Exception:
+            raise ExtractionBoundaryError("configuration_error") from None
+        print(json.dumps(result))
+        return
     if args.command in {"init-store", "confirm-facts", "approve", "review"}:
         require_reviewer_platform()
     if args.command in {"parse", "extract", "assemble", "native-candidates", "check-golden"}:
@@ -297,7 +248,7 @@ def _file_path(uri: str) -> Path:
 def main() -> None:
     try:
         _main()
-    except UnsupportedReviewerPlatform as error:
+    except (UnsupportedReviewerPlatform, ExtractionBoundaryError) as error:
         print(str(error), file=sys.stderr)
         raise SystemExit(2) from None
 

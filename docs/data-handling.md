@@ -1,5 +1,11 @@
 # Data handling
 
+Issue 21 Phase 2 gates cloud document extraction through the
+[authorized snapshot assembly](extraction-preflight.md). Raw-manifest extraction,
+legacy explanation and unversioned Textract entrypoints fail closed. Only native
+local preparation and the no-network request plan are available without the
+actual privacy/source integration; a plan is not an export authorization.
+
 Appraisal documents may contain personal, location, ownership, or financial
 information. Treat every real case as sensitive unless the data owner states
 otherwise.

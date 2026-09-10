@@ -1,5 +1,39 @@
 # Architecture
 
+## Integration view, 2026-09-11
+
+```mermaid
+flowchart LR
+  subgraph Local
+    P["Privacy UI · pending"]
+  end
+  subgraph Cloud["Cloud target · live pending"]
+    D["C2 snapshots · merged"] --> E["Extraction · PR 42"]
+    D --> J["Admission · PR 43"]
+    J --> DB["DynamoDB · PR 43"]
+    DB --> Q["Outbox / SQS · PR 43"]
+    Q --> R["Runtime worker · PR 43"]
+    R --> DB
+    R -.-> B["Execution bundle · pending"]
+    E -.-> B
+    B -.-> H["Human tasks · pending"]
+    B -.-> V["Review core · merged"]
+    V -.-> W["Formal output · pending"]
+    W -.-> A["Publication · pending"]
+  end
+  P -.->|Sanitized reference| D
+  R --> S["Versioned result · PR 43"]
+  Cloud -.-> C["Live collectors · pending"]
+  C -.-> G["Evidence gate · this PR"]
+```
+
+Solid edges are implemented adapters, not a deployed topology. Dotted edges
+require reviewed integration. The default Runtime has no execution bundle and
+returns 503; a durable result is not an authorized published PDF. [Issue 30](issue-30-delivery.md)
+records dependency heads, trust boundaries and separate local/container/live gates.
+The evidence gate validates independently signed observations; it does not create
+missing browser/AWS observations. The diagrams below retain earlier baseline detail and the larger target scope.
+
 Snapshot: main `463880af3a6dc6aad2bfa6fdfc3bc267afc4d4a5` inspected on 2026-09-10,
 including merged #15/#16/#19/#20/#33. M0 is merged and is not deployed.
 [Service contracts](service-contracts.md) define the shared service-v1 DTOs.

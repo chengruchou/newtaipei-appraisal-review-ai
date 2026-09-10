@@ -1,5 +1,32 @@
 # Project progress, 2026-09-10
 
+The wrap-up stack now includes [Draft #42](https://github.com/chengruchou/newtaipei-appraisal-review-ai/pull/42)
+and [Draft #43](https://github.com/chengruchou/newtaipei-appraisal-review-ai/pull/43);
+#31 follows with [acceptance-evidence integration](issue-31-delivery.md).
+Both published heads have their own CI startup failure due to the reported
+account payment/spending-limit block; no tests ran in those jobs. The actual
+#43 run is [34512339154](https://github.com/chengruchou/newtaipei-appraisal-review-ai/actions/runs/34512339154).
+Local validation and retained Draft status do not clear the remote or live gates.
+
+
+Current wrap-up: #21 has [Draft PR #42](https://github.com/chengruchou/newtaipei-appraisal-review-ai/pull/42).
+The dependent #30 adds persistent job execution, C2 admission and ARM64/IaC
+packaging; [its delivery record](issue-30-delivery.md) identifies missing owner
+providers and live gates. #31 follows for browser/AWS evidence collection.
+PR #42 head fa36fb714c6628bef4f0fd66aae0278372f57fae did not execute CI tests:
+[run 34511311725](https://github.com/chengruchou/newtaipei-appraisal-review-ai/actions/runs/34511311725)
+reports an account payment/spending-limit startup block. Local passes are separate.
+
+
+## Current work, 2026-09-11
+
+Main is `c132e4ee4b1797098bd22676245cdfc01a26ffdb`, including merged #32,
+#33, #40 and #41. The current sequence is #21 extraction/evaluation, #30 durable
+Runtime deployment preparation, then #31 cloud/browser rehearsal preparation.
+See [Issue 21 delivery](issue-21-delivery.md) for exact dependencies, implemented
+additions and remaining gates. The sections below retain the earlier C2 delivery
+history; their branch and CI statements are historical snapshots.
+
 ## Re-established baseline
 
 The competition requires valuation case review. PDF completion is an output of

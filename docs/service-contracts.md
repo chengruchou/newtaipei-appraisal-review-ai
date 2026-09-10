@@ -1,5 +1,9 @@
 # Service v1 contract authority
 
+Issue 21 adds separate [extraction/evaluation contracts](extraction-contracts.md)
+and reserved consumer ports. They reuse service references without changing
+service-v1 fields, authority or mounted endpoints.
+
 Status: M0 working-branch implementation based on main
 `ea55043d90aa21e6f0a7e3fe05aa34ef8a3553d3`; not a merged or deployed service.
 [ADR 0013](adr/0013-service-foundation.md) records the trust boundaries.
@@ -316,3 +320,25 @@ both configured, and capability_unavailable otherwise; separately `LocalReviewSe
 HTTP/invocation shape changed. Reserved groups for B/D: documents, review-jobs, human-tasks/responses,
 authorized artifact downloads. They return no fake production success because no
 routes exist. C can validate fixtures now. See the [local runbook](local-service-runbook.md).
+
+## Runtime persistence integration (#30)
+
+The unchanged JobStore and service-v1 models are consumed by DynamoDBJobStore,
+S3ResultStore, SnapshotJobService and RuntimeWorker. Durable status requires a
+committed database reference; an S3 object or transport acknowledgement alone
+cannot establish it. Result bodies are addressed by run/version/content digest
+and only the fenced committed reference selects one. The reference-only Runtime
+transport is internal and does not replace HTTP/invocation review contracts.
+See [ADR 0026](adr/0026-dynamodb-job-store.md),
+[ADR 0027](adr/0027-runtime-composition.md) and the
+[Runtime runbook](runtime-deployment.md). Human confirmation, precise material
+approval and original confidence (including zero) retain existing semantics.
+
+## Rehearsal evidence projection (#31)
+
+rehearsal-v1 is a separately named evidence projection, not a service-v1 change.
+It binds independent observations to exact source/job/run/attempt/revision/task/
+artifact versions and digests. Synthetic receipts cannot establish live acceptance
+or material authority. [ADR 0031](adr/0031-rehearsal-evidence.md) and
+[cloud acceptance](cloud-acceptance.md) define collector trust, CI revision pins,
+finite error reports and mandatory scenarios. Original shared schemas remain intact.

@@ -2,21 +2,23 @@
 
 from __future__ import annotations
 
-import asyncio
+import hashlib
 import json
-import struct
-import time
-from collections.abc import Mapping
 from typing import Any, Protocol
 
 from pydantic import Field, ValidationError
 
+from appraisal_review.adapters.aws.extraction_errors import ExtractionError as ExtractionError
+from appraisal_review.adapters.aws.extraction_execution import execute
+from appraisal_review.adapters.local.png_validation import validate_png
+from appraisal_review.application.extraction_budget import ExtractionLedger
 from appraisal_review.domain.document_models import (
     DocumentModel,
     SourceCitation,
     SourceDocument,
     SourceRegistry,
 )
+from appraisal_review.domain.extraction_contracts import ExecutionBudget
 from appraisal_review.domain.extraction_models import PageExtraction, PageProposal
 from appraisal_review.domain.models import EvidenceRef
 
@@ -28,19 +30,19 @@ class ConverseClient(Protocol):
 class ExtractionConfig(DocumentModel):
     model_id: str = Field(min_length=1)
     region: str = Field(min_length=1)
-    max_output_tokens: int = Field(default=12000, ge=1024, le=32000)
-    max_input_characters: int = Field(default=180000, ge=1000, le=500000)
-    attempts: int = Field(default=2, ge=1, le=3)
+    max_output_tokens: int = Field(default=12000, ge=1024, le=32000, strict=True)
+    max_input_characters: int = Field(default=180000, ge=1000, le=500000, strict=True)
+    attempts: int = Field(default=2, ge=1, le=3, strict=True)
+    max_response_characters: int = Field(default=1_000_000, ge=1, le=2_000_000, strict=True)
     timeout_seconds: float = Field(default=180, gt=0, le=600)
     temperature: float = Field(default=0, ge=0, le=1)
-
-
-class ExtractionError(Exception):
-    """Stable code only; do not disclose model output, documents or credentials."""
-
-    def __init__(self, code: str) -> None:
-        self.code = code
-        super().__init__(code)
+    max_image_bytes: int = Field(default=3_750_000, gt=0, le=3_750_000, strict=True)
+    max_image_width: int = Field(default=8000, gt=0, le=8000, strict=True)
+    max_image_height: int = Field(default=8000, gt=0, le=8000, strict=True)
+    max_image_pixels: int = Field(default=16_000_000, gt=0, le=16_000_000, strict=True)
+    total_timeout_seconds: float = Field(default=600, gt=0, le=3600)
+    backoff_base_seconds: float = Field(default=0.25, ge=0, le=30)
+    backoff_cap_seconds: float = Field(default=2, ge=0, le=60)
 
 
 def citations(value: object) -> list[SourceCitation]:
@@ -118,6 +120,10 @@ Model confidence is only a self-report, not approval or measured reliability.
 """
 
 
+PROMPT_VERSION = "appraisal-page-v1"
+PROMPT_DIGEST = hashlib.sha256(_SYSTEM.encode("utf-8")).hexdigest()
+
+
 class BedrockDocumentExtractor:
     def __init__(self, client: ConverseClient, config: ExtractionConfig) -> None:
         self.client, self.config = client, config
@@ -125,17 +131,42 @@ class BedrockDocumentExtractor:
     async def extract_page(
         self, source: SourceDocument, page_number: int, image: bytes, *, context: str = ""
     ) -> PageExtraction:
-        if not 1 <= page_number <= len(source.pages) or not image.startswith(b"\x89PNG\r\n\x1a\n"):
+        """Legacy raw-document entry is closed; use AuthorizedExtractionService."""
+        raise ExtractionError("privacy_unavailable")
+
+    @staticmethod
+    def _request_payload(
+        source: SourceDocument,
+        page_number: int,
+        image: bytes,
+        *,
+        config: ExtractionConfig,
+        context: str = "",
+    ) -> str:
+        if not 1 <= page_number <= len(source.pages):
             raise ExtractionError("unsupported_input")
-        if len(image) < 24 or image[12:16] != b"IHDR":
-            raise ExtractionError("unsupported_input")
-        width, height = struct.unpack(">II", image[16:24])
-        if not 0 < width <= 8000 or not 0 < height <= 8000:
-            raise ExtractionError("image_limit")
-        if len(image) > 3_750_000:
-            raise ExtractionError("image_limit")
+        try:
+            validate_png(
+                image,
+                max_bytes=config.max_image_bytes,
+                max_width=config.max_image_width,
+                max_height=config.max_image_height,
+                max_pixels=config.max_image_pixels,
+            )
+        except Exception:
+            raise ExtractionError("unsupported_input") from None
         page = source.pages[page_number - 1]
-        document = source.model_dump(mode="json", exclude={"pages", "uri"})
+        document = source.model_dump(
+            mode="json",
+            include={
+                "document_id",
+                "content_hash",
+                "version",
+                "role",
+                "coordinate_system",
+                "page_space",
+            },
+        )
         document["page"] = page.model_dump(mode="json")
         payload = json.dumps(
             {
@@ -145,67 +176,91 @@ class BedrockDocumentExtractor:
             },
             ensure_ascii=False,
         )
-        if len(payload) > self.config.max_input_characters:
+        if len(payload) + len(_SYSTEM) > config.max_input_characters:
             raise ExtractionError("page_context_limit")
-        started = time.monotonic()
-        for attempt in range(1, self.config.attempts + 1):
+        return payload
+
+    async def _extract_page(
+        self, source: SourceDocument, page_number: int, image: bytes, *, context: str = ""
+    ) -> PageExtraction:
+        payload = self._request_payload(
+            source, page_number, image, config=self.config, context=context
+        )
+        ledger = ExtractionLedger(
+            ExecutionBudget(
+                max_pages=1,
+                max_calls=self.config.attempts,
+                max_attempts_per_page=self.config.attempts,
+                max_concurrency=1,
+                max_input_bytes=self.config.max_image_bytes,
+                max_context_characters=self.config.max_input_characters,
+                max_output_tokens=self.config.max_output_tokens * self.config.attempts,
+                max_elapsed_seconds=self.config.total_timeout_seconds,
+            )
+        )
+        ledger.begin_page("private-core-regression")
+        record = await execute(
+            lambda: self._converse(payload, image),
+            lambda response: self._validate_response(response, source, page_number),
+            ledger=ledger,
+            attempts=self.config.attempts,
+            tokens=self.config.max_output_tokens,
+            timeout=self.config.timeout_seconds,
+            backoff_base=self.config.backoff_base_seconds,
+            backoff_cap=self.config.backoff_cap_seconds,
+        )
+        if record.code is not None:
+            raise ExtractionError(record.code) from None
+        final = record.attempts[-1]
+        if final.input_tokens is None or final.output_tokens is None:
+            raise ExtractionError("usage_unavailable") from None
+        assert record.proposal is not None
+        return PageExtraction(
+            document_id=source.document_id,
+            page=page_number,
+            content_hash=source.content_hash,
+            proposal=record.proposal,
+            model_id=self.config.model_id,
+            region=self.config.region,
+            input_tokens=final.input_tokens,
+            output_tokens=final.output_tokens,
+            elapsed_seconds=record.elapsed_seconds,
+            attempts=len(record.attempts),
+        )
+
+    def _converse(self, payload: str, image: bytes) -> dict[str, Any]:
+        return self.client.converse(
+            modelId=self.config.model_id,
+            system=[{"text": _SYSTEM}],
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {"text": payload},
+                        {"image": {"format": "png", "source": {"bytes": image}}},
+                    ],
+                }
+            ],
+            inferenceConfig={
+                "maxTokens": self.config.max_output_tokens,
+                "temperature": self.config.temperature,
+            },
+        )
+
+    def _validate_response(
+        self, response: dict[str, Any], source: SourceDocument, page: int
+    ) -> PageProposal:
+        if response.get("stopReason") == "end_turn":
             try:
-                response = await asyncio.wait_for(
-                    asyncio.to_thread(
-                        self.client.converse,
-                        modelId=self.config.model_id,
-                        system=[{"text": _SYSTEM}],
-                        messages=[
-                            {
-                                "role": "user",
-                                "content": [
-                                    {"text": payload},
-                                    {"image": {"format": "png", "source": {"bytes": image}}},
-                                ],
-                            }
-                        ],
-                        inferenceConfig={
-                            "maxTokens": self.config.max_output_tokens,
-                            "temperature": self.config.temperature,
-                        },
-                    ),
-                    timeout=self.config.timeout_seconds,
-                )
-                proposal = self._validate(response, source, page_number)
-                usage = response.get("usage", {})
-                return PageExtraction(
-                    document_id=source.document_id,
-                    page=page_number,
-                    content_hash=source.content_hash,
-                    proposal=proposal,
-                    model_id=self.config.model_id,
-                    region=self.config.region,
-                    input_tokens=usage.get("inputTokens", 0),
-                    output_tokens=usage.get("outputTokens", 0),
-                    elapsed_seconds=time.monotonic() - started,
-                    attempts=attempt,
-                )
-            except TimeoutError as error:
-                # A timed-out SDK thread can still finish; do not launch overlapping retries.
-                raise ExtractionError("timeout") from error
-            except ExtractionError:
-                raise
-            except Exception as error:
-                response_error = getattr(error, "response", {})
-                code = (
-                    response_error.get("Error", {}).get("Code", "")
-                    if isinstance(response_error, Mapping)
-                    else ""
-                )
-                if code in {"ThrottlingException", "ServiceUnavailableException"}:
-                    if attempt < self.config.attempts:
-                        await asyncio.sleep(0.25 * attempt)
-                        continue
-                    raise ExtractionError("throttled") from error
-                if type(error).__name__ in {"ReadTimeoutError", "ConnectTimeoutError"}:
-                    raise ExtractionError("timeout") from error
-                raise ExtractionError("provider_error") from error
-        raise ExtractionError("retry_exhausted")
+                blocks = response["output"]["message"]["content"]
+                if (
+                    len(blocks) == 1
+                    and len(blocks[0].get("text", "")) > self.config.max_response_characters
+                ):
+                    raise ExtractionError("malformed_output")
+            except (KeyError, TypeError, AttributeError):
+                raise ExtractionError("malformed_output") from None
+        return self._validate(response, source, page)
 
     @staticmethod
     def _validate(response: dict[str, Any], source: SourceDocument, page: int) -> PageProposal:
@@ -247,7 +302,5 @@ class BedrockDocumentExtractor:
                     reliability.confirmation = None
                     observation.confidence = 0.0
             return proposal
-        except (ValidationError, KeyError, TypeError, ValueError) as error:
-            if isinstance(error, ExtractionError):
-                raise
-            raise ExtractionError("malformed_output") from error
+        except (ValidationError, KeyError, TypeError, ValueError):
+            raise ExtractionError("malformed_output") from None
