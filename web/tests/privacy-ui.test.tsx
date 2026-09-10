@@ -6,6 +6,17 @@ import { PrivacyReviewPanel } from "@/privacy/PrivacyWorkbench";
 
 import { SOURCE, snapshot, preview } from "./privacy-fixtures";
 
+// These state-transition tests control rendering completion; the browser suite renders real PDFs.
+vi.mock("@/privacy/PdfPreview", () => ({
+  PdfPreview: ({ onReady }: { onReady: (ready: boolean) => void }) => (
+    <img
+      title="Sanitized PDF preview"
+      alt="Synthetic preview rendering event"
+      onLoad={() => onReady(true)}
+    />
+  ),
+}));
+
 function client(confirmed = true) {
   return {
     sources: vi.fn().mockResolvedValue([SOURCE]),
