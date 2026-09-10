@@ -15,11 +15,11 @@ from appraisal_review.application.controlled_workflow import (
     ControlledWorkflowCoordinator,
     RoutedControlledActionExecutor,
 )
-from appraisal_review.application.human_tasks import HumanTaskBinding, HumanTaskService
 from appraisal_review.application.material_corrections import MaterialSubject, MaterialSubjectMap
 from appraisal_review.application.pause_resume import PauseResumeService
 from appraisal_review.application.revisions import RevisionSnapshot
 from appraisal_review.application.service_guards import Principal
+from appraisal_review.application.workflow_tasks import HumanTaskBinding, WorkflowTaskService
 from appraisal_review.domain.case_review import CaseReviewer
 from appraisal_review.domain.document_models import DocumentModel
 from appraisal_review.domain.factor_models import NormalizedValue
@@ -75,7 +75,7 @@ async def scenario(
     )
     repository = NonDurableInMemoryHumanTaskRepository(event_id_factory=next_id)
     principals = FixturePrincipal()
-    service = HumanTaskService(
+    service = WorkflowTaskService(
         repository=repository, principals=principals, subjects=subjects, id_factory=next_id
     )
     review = CaseReviewer(None).review(material.policy, material.facts, material.policy.registry)

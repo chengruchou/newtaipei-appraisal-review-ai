@@ -8,6 +8,7 @@ from collections.abc import Awaitable, Callable
 from hashlib import sha256
 
 from appraisal_review.application.controlled_workflow import ControlledWorkflowCoordinator
+from appraisal_review.application.service_guards import ServiceFault
 from appraisal_review.domain.document_models import SourceCitation
 from appraisal_review.domain.service_contracts import (
     BoundedWorkflowResult,
@@ -24,6 +25,10 @@ from appraisal_review.domain.service_contracts import (
 )
 from appraisal_review.ports.action_selection import ActionSelectionError, SelectorErrorCode
 from appraisal_review.ports.controlled_workflow import WorkflowSnapshotProvider
+from appraisal_review.ports.workflow_run_ledger import (
+    WorkflowRunReservation,
+    WorkflowRunUnavailable,
+)
 
 Sleep = Callable[[float], Awaitable[None]]
 
@@ -39,7 +44,7 @@ def classify_event_failure(event: DecisionEvent) -> FailureCategory | None:
         if event.state_after == WorkflowState.REVIEW_FAILED:
             return FailureCategory.DETERMINISTIC_REVIEW_BLOCKER
         return None
-    if event.reason_code == "tool-time-exhausted":
+    if event.reason_code in {"tool-time-exhausted", "tool-result-unknown"}:
         return FailureCategory.UNRESOLVED_EXECUTION
     if event.reason_code in {"invalid-tool-receipt", "proposal-unauthorized"}:
         return FailureCategory.UNAUTHORIZED_SOURCE
@@ -131,22 +136,36 @@ class BoundedWorkflowRunner:
         *,
         evidence: tuple[SourceCitation, ...] = (),
     ) -> BoundedWorkflowResult:
-        before = {event.event_id for event in await self._coordinator.selection_failures(run)}
-        result = await self._run(run, evidence=evidence)
-        failures = tuple(
-            event
-            for event in await self._coordinator.selection_failures(run)
-            if event.event_id not in before
-        )
-        return BoundedWorkflowResult.model_validate(
-            {**result.model_dump(), "selection_failures": failures}
-        )
+        snapshot = await self._current(run)
+        try:
+            owner = await self._coordinator.ledger.acquire(run, snapshot.budget)
+        except WorkflowRunUnavailable:
+            raise ServiceFault(ServiceErrorCode.CONFLICT) from None
+        if isinstance(owner, BoundedWorkflowResult):
+            return owner
+        try:
+            result = await self._run(run, evidence=evidence, owner=owner)
+            result = BoundedWorkflowResult.model_validate(
+                {
+                    **result.model_dump(),
+                    "selection_failures": await self._coordinator.selection_failures(run),
+                }
+            )
+            await self._coordinator.ledger.complete(owner, result)
+            return result
+        except BaseException:
+            await self._coordinator.ledger.abandon(owner)
+            raise
 
     async def _run(
-        self, run: RunReference, *, evidence: tuple[SourceCitation, ...]
+        self,
+        run: RunReference,
+        *,
+        evidence: tuple[SourceCitation, ...],
+        owner: WorkflowRunReservation,
     ) -> BoundedWorkflowResult:
-        snapshot = await self._current(run)
-        budget = snapshot.budget
+        budget = await self._coordinator.ledger.remaining(owner)
+        snapshot = await self._current(run, budget=budget)
         events: list[DecisionEvent] = []
         seen_failures: set[str] = set()
         selection_retry_count = 0
@@ -166,6 +185,7 @@ class BoundedWorkflowRunner:
             )
 
         while True:
+            await self._coordinator.ledger.checkpoint(owner, budget)
             terminal = self._terminal(snapshot)
             if terminal is not None:
                 return BoundedWorkflowResult(
@@ -195,8 +215,8 @@ class BoundedWorkflowRunner:
                     "workflow-retries-exhausted",
                 )
             try:
-                event = await self._coordinator.decide_once(
-                    run,
+                event = await self._coordinator.decide_reserved(
+                    owner,
                     evidence=evidence,
                     budget=budget,
                     retry_charge=retry_charge,

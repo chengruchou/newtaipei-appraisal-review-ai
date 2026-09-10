@@ -52,3 +52,26 @@ re-entry. Exact material signing remains a separate explicit operator action; th
 integration test invokes that existing approval flow directly. This is not a
 general automatic finding classifier, a raw-PDF parsing pipeline, a live provider
 test, new HTTP routes, durable job recovery or production acceptance.
+
+## Review repair: shared run reservations
+
+The action-specific receipt constraints are now validated inside protected failure
+handling. A tool side effect, including a VERIFIED snapshot, cannot override an
+invalid receipt, omitted failed trace or quarantined run. Failure receipts discard
+untrusted receipt content before persistence.
+
+A coordinator-owned, injectable `WorkflowRunLedger` now reserves the entire remaining
+allowance before selection/execution and retains terminal results and consumed budgets
+across runner reconstruction. Same-process concurrent admission is rejected under a
+shared authority. Direct decisions use the same reservation boundary. Cancellation,
+unknown external results and failed trace persistence quarantine the reservation;
+stale tokens cannot change budget or complete work. The local reference uses a mutex
+and is explicitly non-durable.
+
+The port defines transactional admission, monotonic checkpoint, fencing and recovery
+requirements. The separate SQLite adapter implements these with serialized write
+transactions and non-expiring owner reservations. Subprocess tests verify durable
+terminal replay, exclusion and crash quarantine; combined job/task/outbox transactions
+and cloud acceptance remain outside this change. See [Workflow run authority](../workflow-run-ledger.md) for the operation
+contract, integration obligations and local regression scope. This extends this ADR's
+existing failure-boundary decision and allocates no new ADR number.

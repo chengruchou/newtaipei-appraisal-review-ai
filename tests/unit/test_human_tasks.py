@@ -11,10 +11,10 @@ from appraisal_review.adapters.local.approval import LocalApprovalStore, current
 from appraisal_review.adapters.local.human_tasks import NonDurableInMemoryHumanTaskRepository
 from appraisal_review.adapters.local.synthetic import synthetic_material
 from appraisal_review.adapters.local.task_principal import LocalReviewerPrincipalResolver
-from appraisal_review.application.human_tasks import HumanTaskBinding, HumanTaskService
 from appraisal_review.application.material_corrections import MaterialSubject, MaterialSubjectMap
 from appraisal_review.application.revisions import RevisionSnapshot
 from appraisal_review.application.service_guards import Principal, ServiceFault
+from appraisal_review.application.workflow_tasks import HumanTaskBinding, WorkflowTaskService
 from appraisal_review.domain.case_review import CaseReviewer
 from appraisal_review.domain.factor_models import EvaluationStatus, NormalizedValue
 from appraisal_review.domain.review_contracts import content_digest
@@ -91,7 +91,7 @@ async def _setup(tmp_path: Path, *, both_sides=False, missing=False):
     ).current_principal()
     resolver = Resolver(principal)
     subjects = _mapping(snapshot)
-    service = HumanTaskService(
+    service = WorkflowTaskService(
         repository=repo, principals=resolver, subjects=subjects, authorization=approval
     )
     finding = next(
@@ -296,7 +296,7 @@ def test_rule_approval_records_only_rule_authority_and_preserves_changes(tmp_pat
         )
         repo = NonDurableInMemoryHumanTaskRepository()
         await repo.register(snapshot, run, review)
-        service = HumanTaskService(
+        service = WorkflowTaskService(
             repository=repo, principals=resolver, subjects=subjects, authorization=approval
         )
         task = await service.create_task(run, kind=TaskKind.RULES, finding_ids=("trust",))

@@ -5,9 +5,15 @@ from __future__ import annotations
 import asyncio
 import time
 from collections.abc import Callable, Mapping
+from contextlib import suppress
 from typing import Literal
 from uuid import UUID, uuid4
 
+from pydantic import ValidationError
+
+from appraisal_review.adapters.local.workflow_run_ledger import (
+    NonDurableInMemoryWorkflowRunLedger,
+)
 from appraisal_review.application.service_guards import ServiceFault, admit_action
 from appraisal_review.domain.document_models import SourceCitation, SourceRegistry
 from appraisal_review.domain.review_contracts import content_digest
@@ -15,6 +21,7 @@ from appraisal_review.domain.service_contracts import (
     ActionKind,
     ActionProposal,
     ActorReference,
+    BoundedWorkflowResult,
     Budget,
     BudgetConsumption,
     ControlledToolReceipt,
@@ -40,6 +47,12 @@ from appraisal_review.ports.controlled_workflow import (
     ControlledActionTool,
     DecisionTrace,
     WorkflowSnapshotProvider,
+)
+from appraisal_review.ports.workflow_run_ledger import (
+    WorkflowExternalResultUnknown,
+    WorkflowRunLedger,
+    WorkflowRunReservation,
+    WorkflowRunUnavailable,
 )
 
 
@@ -73,6 +86,7 @@ class ControlledWorkflowCoordinator:
         event_id_factory: Callable[[], UUID] = uuid4,
         monotonic: Callable[[], float] = time.monotonic,
         source_registry: SourceRegistry | None = None,
+        ledger: WorkflowRunLedger | None = None,
     ) -> None:
         if executor_actor.kind != "system":
             raise ValueError("A controlled executor requires a trusted system actor")
@@ -89,7 +103,9 @@ class ControlledWorkflowCoordinator:
             if source_registry is not None
             else None
         )
-        self._uncertain_runs: set[UUID] = set()
+        self.ledger: WorkflowRunLedger = (
+            ledger if ledger is not None else NonDurableInMemoryWorkflowRunLedger()
+        )
 
     async def selection_failures(self, run: RunReference) -> tuple[SelectionFailureEvent, ...]:
         return await self._trace.read_failures(run.run_id)
@@ -102,12 +118,84 @@ class ControlledWorkflowCoordinator:
         budget: Budget | None = None,
         retry_charge: int = 0,
     ) -> DecisionEvent:
+        """Reserve shared authority for a direct decision, including external calls."""
+        initial = await self._current(run, budget=budget)
+        try:
+            owner = await self.ledger.acquire(run, initial.budget)
+        except WorkflowRunUnavailable:
+            raise ActionSelectionError(SelectorErrorCode.IN_FLIGHT) from None
+        if isinstance(owner, BoundedWorkflowResult):
+            raise ActionSelectionError(SelectorErrorCode.IN_FLIGHT)
+        try:
+            return await self.decide_reserved(
+                owner,
+                evidence=evidence,
+                budget=budget,
+                retry_charge=retry_charge,
+                initial=initial,
+            )
+        except ActionSelectionError:
+            # Known selection failures were traced and charged before propagation.
+            raise
+        except BaseException:
+            await self.ledger.abandon(owner)
+            raise
+        finally:
+            # An abandoned owner is already fenced and quarantined.
+            with suppress(WorkflowRunUnavailable):
+                await self.ledger.release(owner)
+
+    async def decide_reserved(
+        self,
+        owner: WorkflowRunReservation,
+        *,
+        evidence: tuple[SourceCitation, ...] = (),
+        budget: Budget | None = None,
+        retry_charge: int = 0,
+        initial: WorkflowSnapshot | None = None,
+    ) -> DecisionEvent:
+        """Internal runner entry; the caller owns the entire invocation reservation."""
+        if budget is not None:
+            await self.ledger.checkpoint(owner, budget)
+        current_budget = await self.ledger.remaining(owner)
+        try:
+            event = await self._decide_once(
+                owner.run,
+                owner=owner,
+                evidence=evidence,
+                budget=current_budget,
+                retry_charge=retry_charge,
+                initial=initial,
+            )
+        except ActionSelectionError as error:
+            if error.event is not None:
+                await self.ledger.checkpoint(owner, error.event.budget_after)
+            else:
+                await self.ledger.quarantine(owner)
+            raise
+        await self.ledger.checkpoint(owner, event.budget_after)
+        return event
+
+    async def _decide_once(
+        self,
+        run: RunReference,
+        *,
+        owner: WorkflowRunReservation,
+        evidence: tuple[SourceCitation, ...],
+        budget: Budget,
+        retry_charge: int,
+        initial: WorkflowSnapshot | None,
+    ) -> DecisionEvent:
         """Execute at most one tool; selection failures without a proposal propagate."""
 
         if type(retry_charge) is not int or retry_charge < 0:
             raise ValueError("Retry charge must be a non-negative integer")
         started = self._monotonic()
-        initial = await self._current(run, budget=budget)
+        initial = (
+            await self._current(run, budget=budget)
+            if initial is None
+            else WorkflowSnapshot.model_validate({**initial.model_dump(), "budget": budget})
+        )
         parents = self._frontier(
             (*await self._trace.read(run.run_id), *await self._trace.read_failures(run.run_id))
         )
@@ -119,8 +207,10 @@ class ControlledWorkflowCoordinator:
             budget=initial.budget,
         )
         try:
-            if run.run_id in self._uncertain_runs:
-                raise ActionSelectionError(SelectorErrorCode.IN_FLIGHT)
+            try:
+                await self.ledger.assert_active(owner)
+            except WorkflowRunUnavailable:
+                raise ActionSelectionError(SelectorErrorCode.IN_FLIGHT) from None
             remaining = self._remaining(initial.budget, started)
             if remaining is not None and remaining <= 0:
                 raise ActionSelectionError(SelectorErrorCode.TIMEOUT)
@@ -131,14 +221,14 @@ class ControlledWorkflowCoordinator:
             error = ActionSelectionError(
                 SelectorErrorCode.TIMEOUT, attempts_known=self._selector.actor.kind == "system"
             )
-            self._uncertain_runs.add(run.run_id)
+            await self.ledger.quarantine(owner)
             await self._record_selection_failure(
                 error, initial, allowed.policy_version, parents, started
             )
             raise error from None
         except ActionSelectionError as error:
             if error.code in {SelectorErrorCode.TIMEOUT, SelectorErrorCode.IN_FLIGHT}:
-                self._uncertain_runs.add(run.run_id)
+                await self.ledger.quarantine(owner)
             await self._record_selection_failure(
                 error, initial, allowed.policy_version, parents, started
             )
@@ -192,6 +282,7 @@ class ControlledWorkflowCoordinator:
             )
             await self._trace.append(event)
             return event
+        await self.ledger.assert_active(owner)
         try:
             remaining = self._remaining(initial.budget, started)
             if remaining is not None and remaining <= 0:
@@ -202,13 +293,30 @@ class ControlledWorkflowCoordinator:
             if remaining is not None and remaining <= 0:
                 raise TimeoutError
         except TimeoutError:
-            self._uncertain_runs.add(run.run_id)
+            await self.ledger.quarantine(owner)
             receipt = ControlledToolReceipt(
                 outcome=ToolOutcome(
                     outcome="failed", problem=ServiceProblem(code=ServiceErrorCode.CAPABILITY)
                 ),
                 reason_code="tool-time-exhausted",
                 reviewer_summary="The tool exceeded its deadline; automatic retry is prohibited.",
+            )
+        except WorkflowExternalResultUnknown:
+            await self.ledger.quarantine(owner)
+            receipt = ControlledToolReceipt(
+                outcome=ToolOutcome(
+                    outcome="failed", problem=ServiceProblem(code=ServiceErrorCode.EXECUTION)
+                ),
+                reason_code="tool-result-unknown",
+                reviewer_summary="The external result is unknown; automatic retry is prohibited.",
+            )
+        except ValidationError:
+            await self.ledger.quarantine(owner)
+            receipt = self._invalid_receipt().model_copy(
+                update={
+                    "reason_code": "tool-execution-failed",
+                    "reviewer_summary": "The admitted tool failed without an accepted result.",
+                }
             )
         except ServiceFault as error:
             receipt = ControlledToolReceipt(
@@ -227,14 +335,8 @@ class ControlledWorkflowCoordinator:
             )
         result_snapshot = await self._current(run)
         if not self._receipt_evidence_is_current(receipt, result_snapshot):
-            receipt = ControlledToolReceipt(
-                outcome=ToolOutcome(
-                    outcome="failed",
-                    problem=ServiceProblem(code=ServiceErrorCode.EXECUTION),
-                ),
-                reason_code="invalid-tool-receipt",
-                reviewer_summary="The admitted tool returned an invalid result receipt.",
-            )
+            await self.ledger.quarantine(owner)
+            receipt = self._invalid_receipt()
         model_calls = proposal.attempt_count if proposal.proposer.kind == "model" else 0
         budget_after, consumed = self._consume(
             initial.budget,
@@ -243,36 +345,56 @@ class ControlledWorkflowCoordinator:
             retries=actual_retries,
             started=started,
         )
-        disposition: Literal["executed", "failed"] = (
-            "executed" if receipt.outcome.outcome == "succeeded" else "failed"
-        )
-        event = DecisionEvent(
-            event_id=self._event_id_factory(),
-            parent_event_ids=parents,
-            proposal=proposal,
-            executor=self._executor_actor,
-            policy_version=proposal.policy_version,
-            state_before=initial.state,
-            state_after=result_snapshot.state,
-            disposition=disposition,
-            executed_action=proposal.action,
-            checked_prerequisites=admitted.prerequisites,
-            reason_code=receipt.reason_code,
-            reviewer_summary=receipt.reviewer_summary,
-            affected_subject_ids=receipt.affected_subject_ids,
-            evidence=receipt.evidence,
-            tool_result=receipt.outcome,
-            remaining_blockers=tuple(
-                blocker.blocker_id for blocker in result_snapshot.unresolved_blockers
-            ),
-            linked_task_id=receipt.linked_task_id,
-            linked_response_key=receipt.linked_response_key,
-            budget_before=initial.budget,
-            budget_after=budget_after,
-            budget_consumed=consumed,
-        )
+
+        def decision(value: ControlledToolReceipt) -> DecisionEvent:
+            disposition: Literal["executed", "failed"] = (
+                "executed" if value.outcome.outcome == "succeeded" else "failed"
+            )
+            return DecisionEvent(
+                event_id=self._event_id_factory(),
+                parent_event_ids=parents,
+                proposal=proposal,
+                executor=self._executor_actor,
+                policy_version=proposal.policy_version,
+                state_before=initial.state,
+                state_after=result_snapshot.state,
+                disposition=disposition,
+                executed_action=proposal.action,
+                checked_prerequisites=admitted.prerequisites,
+                reason_code=value.reason_code,
+                reviewer_summary=value.reviewer_summary,
+                affected_subject_ids=value.affected_subject_ids,
+                evidence=value.evidence,
+                tool_result=value.outcome,
+                remaining_blockers=tuple(
+                    blocker.blocker_id for blocker in result_snapshot.unresolved_blockers
+                ),
+                linked_task_id=value.linked_task_id,
+                linked_response_key=value.linked_response_key,
+                budget_before=initial.budget,
+                budget_after=budget_after,
+                budget_consumed=consumed,
+            )
+
+        try:
+            event = decision(receipt)
+        except ValidationError:
+            # Tools may already have committed state. Never trust partial receipts,
+            # including task links on review and human success without a waiting task.
+            await self.ledger.quarantine(owner)
+            event = decision(self._invalid_receipt())
         await self._trace.append(event)
         return event
+
+    @staticmethod
+    def _invalid_receipt() -> ControlledToolReceipt:
+        return ControlledToolReceipt(
+            outcome=ToolOutcome(
+                outcome="failed", problem=ServiceProblem(code=ServiceErrorCode.EXECUTION)
+            ),
+            reason_code="invalid-tool-receipt",
+            reviewer_summary="The admitted tool returned an invalid result receipt.",
+        )
 
     async def prior_decisions(self, run: RunReference) -> tuple[DecisionEvent, ...]:
         """Expose detached local history for terminal-state replay validation."""

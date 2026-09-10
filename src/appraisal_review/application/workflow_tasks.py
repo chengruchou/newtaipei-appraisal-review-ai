@@ -58,7 +58,7 @@ class HumanTaskBinding:
     subject_id: str | None = None
 
 
-class HumanTaskService:
+class WorkflowTaskService:
     def __init__(
         self,
         *,

@@ -20,9 +20,9 @@ from appraisal_review.application.controlled_workflow import (
     ControlledWorkflowCoordinator,
     RoutedControlledActionExecutor,
 )
-from appraisal_review.application.human_tasks import HumanTaskBinding, HumanTaskService
 from appraisal_review.application.material_corrections import MaterialSubject, MaterialSubjectMap
 from appraisal_review.application.revisions import RevisionSnapshot
+from appraisal_review.application.workflow_tasks import HumanTaskBinding, WorkflowTaskService
 from appraisal_review.domain.case_review import CaseReviewer
 from appraisal_review.domain.factor_models import EvaluationStatus, NormalizedValue
 from appraisal_review.domain.review_contracts import content_digest
@@ -105,7 +105,7 @@ def setup(tmp_path, *, blocked):
         reviewer, frozenset({run.revision.case_id}), frozenset(Permission)
     )
     repo = NonDurableInMemoryHumanTaskRepository()
-    service = HumanTaskService(
+    service = WorkflowTaskService(
         repository=repo, principals=principal, subjects=subjects, authorization=approval
     )
     return snapshot, run, subjects, principal, repo, service, approval, receipt

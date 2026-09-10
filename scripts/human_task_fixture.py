@@ -9,10 +9,10 @@ from uuid import UUID
 
 from appraisal_review.adapters.local.human_tasks import NonDurableInMemoryHumanTaskRepository
 from appraisal_review.adapters.local.synthetic import synthetic_material
-from appraisal_review.application.human_tasks import HumanTaskService
 from appraisal_review.application.material_corrections import MaterialSubject, MaterialSubjectMap
 from appraisal_review.application.revisions import RevisionSnapshot
 from appraisal_review.application.service_guards import Principal
+from appraisal_review.application.workflow_tasks import WorkflowTaskService
 from appraisal_review.domain.case_review import CaseReviewer
 from appraisal_review.domain.factor_models import EvaluationStatus, NormalizedValue
 from appraisal_review.domain.service_contracts import (
@@ -69,7 +69,7 @@ async def _execute() -> dict[str, ServiceModel]:
     )
     repository = NonDurableInMemoryHumanTaskRepository(event_id_factory=next_id)
     await repository.register(snapshot, run, initial_review)
-    service = HumanTaskService(
+    service = WorkflowTaskService(
         repository=repository,
         principals=_FixturePrincipalResolver(),
         subjects=subjects,

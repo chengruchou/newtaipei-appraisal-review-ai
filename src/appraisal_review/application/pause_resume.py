@@ -15,8 +15,9 @@ class PauseResumeService:
     """Capture an ended bounded workflow; never wait, dispatch or revive an attempt.
 
     Supply actual runner results from trusted composition, never request-body state.
-    HumanTaskService owns responses; its repository records continuations in the
-    same response transaction. Durable dispatch and resource release are deferred.
+    WorkflowTaskService owns reference-workflow responses; its repository records
+    continuations in the same response transaction. Durable dispatch and resource
+    release are deferred.
     """
 
     def __init__(self, repository: PauseResumeRepository, principals: PrincipalResolver) -> None:

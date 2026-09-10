@@ -3,9 +3,9 @@
 from pydantic import RootModel
 
 from appraisal_review.adapters.local.human_tasks import NonDurableInMemoryHumanTaskRepository
-from appraisal_review.application.human_tasks import HumanTaskBinding, HumanTaskService
 from appraisal_review.application.revisions import RevisionSnapshot
 from appraisal_review.application.service_guards import ServiceFault
+from appraisal_review.application.workflow_tasks import HumanTaskBinding, WorkflowTaskService
 from appraisal_review.domain.case_review import CaseReviewer
 from appraisal_review.domain.factor_models import CaseReviewResult, EvaluationStatus
 from appraisal_review.domain.review_contracts import content_digest
@@ -44,7 +44,7 @@ class LocalControlledCase:
         run: RunReference,
         budget: Budget,
         repository: NonDurableInMemoryHumanTaskRepository,
-        human_tasks: HumanTaskService,
+        human_tasks: WorkflowTaskService,
         bindings: tuple[HumanTaskBinding, ...],
         authorization: ReviewAuthorization | None = None,
         reentry: bool = False,
