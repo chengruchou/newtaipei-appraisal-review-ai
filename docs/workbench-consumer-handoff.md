@@ -1,5 +1,15 @@
 # Workbench consumer preparation for Issue 17
 
+Integration scope note: this document records the controlled local reference
+workflow and its originating delivery. Its human service now lives in
+`application/workflow_tasks.py`; the authenticated API service is separately
+`application/human_tasks.py`. The internal HumanResponseResult/next_run contract
+requires an explicit adapter to API ResponseReceipt/resumed_run. For current
+ownership, the synchronized service-v1 consumer migration and actual SQLite
+durability, use [service contracts](service-contracts.md) and
+[project progress](project-progress.md). Historical phase/status statements below
+do not describe the combined integration's current acceptance.
+
 Status: Phase 9 local preparation only. Real browser/API acceptance is deferred.
 
 ## Ownership and scope

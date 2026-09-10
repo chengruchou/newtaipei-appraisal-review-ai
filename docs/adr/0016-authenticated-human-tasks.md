@@ -7,10 +7,11 @@ Gives an implementation to the human-task duties reserved by
 [ADR 0013](0013-service-foundation.md), and consumes the resume seam introduced by the
 durable-jobs ADR on that branch.
 
-Numbering note: `main` already carries ADR 0014 (full-case golden contract) and the
-durable-jobs branch independently numbered its own ADR 0014. That collision is real and
-belongs to whichever branch merges second; this ADR takes 0016 so that renaming the
-durable-jobs ADR to 0015 resolves it without touching this file.
+Registry note: [the consolidated index](README.md) preserves main's full-case
+golden decision as 0014 and durable jobs as 0015. This decision remains 0016;
+other independently allocated branch IDs were moved to unique numbers. The
+originating-branch status above is retained as decision provenance, not a claim
+about the current integration worktree or deployed approval.
 
 ## Context
 

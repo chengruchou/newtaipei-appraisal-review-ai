@@ -1,5 +1,15 @@
 # Local human review and correction
 
+Integration scope note: this document records the controlled local reference
+workflow and its originating delivery. Its human service now lives in
+`application/workflow_tasks.py`; the authenticated API service is separately
+`application/human_tasks.py`. The internal HumanResponseResult/next_run contract
+requires an explicit adapter to API ResponseReceipt/resumed_run. For current
+ownership, the synchronized service-v1 consumer migration and actual SQLite
+durability, use [service contracts](service-contracts.md) and
+[project progress](project-progress.md). Historical phase/status statements below
+do not describe the combined integration's current acceptance.
+
 For the optional local Phase 8 handoff, construct `PauseResumeService` with the
 same in-memory repository and principal resolver as `HumanTaskService`. After the
 bounded runner returns an actual waiting result, call `pause(result)`. This captures
@@ -18,7 +28,7 @@ remain in the stored result and must be recomputed after resolving their mapped
 causes. The admitted human action creates the entire authorized batch atomically.
 After a response, instantiate a new run adapter with `reentry=True`. Exact material
 signing remains a separate operator action, not model authority. See
-[ADR 0016](adr/0016-controlled-execution-failure-boundaries.md) for trust boundaries.
+[ADR 0028](adr/0028-controlled-execution-failure-boundaries.md) for trust boundaries.
 
 Issue #17 Phase 6 provides `HumanTaskService`, explicit material subject bindings,
 a POSIX reviewer resolver and `NonDurableInMemoryHumanTaskRepository`. These are
@@ -149,7 +159,7 @@ an in-progress review into storing an obsolete result.
 
 These guarantees stop at the process boundary. There is no database transaction,
 durable outbox, resumed Runtime session or cross-process lease. The
-[Phase 6 ADR](adr/0015-local-human-task-transactions.md) records this scope and the
+[Phase 6 ADR](adr/0020-local-human-task-transactions.md) records this scope and the
 [service contract](service-contracts.md) defines the port a durable adapter must
 implement. Source PDFs and local approval keys/receipts remain outside submitted
 repository material.

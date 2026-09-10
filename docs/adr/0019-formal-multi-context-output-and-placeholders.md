@@ -1,4 +1,4 @@
-# ADR 0015: Multiple-context output, template registry and opaque placeholders
+# ADR 0019: Multiple-context output, template registry and opaque placeholders
 
 - Status: Proposed for human review
 - Date: 2026-09-10

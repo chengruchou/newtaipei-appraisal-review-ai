@@ -4,7 +4,7 @@ The shared core in `adapters/local/artifact_publication.py` accepts the
 `ArtifactObjectStore` and `ManifestRepository` ports. It imports no AWS SDK.
 The AWS module composes that same core with immutable S3 objects and the actual
 DynamoDB transaction adapter. See [integration signatures and ownership](artifact-publication-integration.md)
-and [ADR 0016](adr/0016-fenced-artifact-publication.md).
+and [ADR 0029](adr/0029-fenced-artifact-publication.md).
 
 ## Verified objects and manifests
 

@@ -1,293 +1,143 @@
 # Architecture
 
-## Integration view, 2026-09-11
+## Current local integration
+
+The local composition is being assembled from implemented components. Component
+regressions and SQLite process/restart checks exist; combined browser/service
+acceptance is still pending. See [project progress](project-progress.md) for the
+single current status and [traceability](delivery-traceability.md) for evidence.
+The earlier component diagrams and deployment snapshots are
+[archived](history/2026-09-11-pre-convergence/architecture.md).
 
 ```mermaid
 flowchart LR
-  subgraph Local
-    P["Privacy UI · pending"]
-  end
-  subgraph Cloud["Cloud target · live pending"]
-    D["C2 snapshots · merged"] --> E["Extraction · PR 42"]
-    D --> J["Admission · PR 43"]
-    J --> DB["DynamoDB · PR 43"]
-    DB --> Q["Outbox / SQS · PR 43"]
-    Q --> R["Runtime worker · PR 43"]
-    R --> DB
-    R -.-> B["Execution bundle · pending"]
-    E -.-> B
-    B -.-> H["Human tasks · pending"]
-    B -.-> V["Review core · merged"]
-    V -.-> W["Formal output · pending"]
-    W -.-> A["Publication · pending"]
-  end
-  P -.->|Sanitized reference| D
-  R --> S["Versioned result · PR 43"]
-  Cloud -.-> C["Live collectors · pending"]
-  C -.-> G["Evidence gate · this PR"]
+    U["User and local privacy"] --> A["Local API and jobs"]
+    A --> R["Model proposals and deterministic review"]
+    R --> H["Human revision"]
+    H --> A
+    R --> P["Verified PDF and authorized result"]
+    P --> U
 ```
 
-Solid edges are implemented adapters, not a deployed topology. Dotted edges
-require reviewed integration. The default Runtime has no execution bundle and
-returns 503; a durable result is not an authorized published PDF. [Issue 30](issue-30-delivery.md)
-records dependency heads, trust boundaries and separate local/container/live gates.
-The evidence gate validates independently signed observations; it does not create
-missing browser/AWS observations. The diagrams below retain earlier baseline detail and the larger target scope.
+The arrows describe the local path under integration, not a claim that every
+scenario has passed. The actual implementations and their boundaries are:
 
-Snapshot: main `463880af3a6dc6aad2bfa6fdfc3bc267afc4d4a5` inspected on 2026-09-10,
-including merged #15/#16/#19/#20/#33. M0 is merged and is not deployed.
-[Service contracts](service-contracts.md) define the shared service-v1 DTOs.
-[Document transfer](document-transfer.md) adds this branch's controlled C2 ingestion
-and immutable source snapshots without changing those DTOs or mounting new HTTP routes.
-[Project progress](project-progress.md) records the active work lines.
+| Boundary | Implementation | Integration status |
+| --- | --- | --- |
+| User/local privacy | Local privacy review SDK, exact export mapping and restoration; restricted loopback bridge | Privacy component repair implemented; bridge/browser acceptance is separate |
+| API/jobs | `create_integrated_service`, trusted local session directory, C2 admission, job/outbox dispatcher and Runtime worker | Configured composition being integrated; no implicit synthetic fallback |
+| Durable local state | `SQLiteReviewStore`, `SQLiteResultStore`, immutable revisions and receipt replay | Actual cross-process tests; production/cloud guarantees not implied |
+| Proposal/review | Actual PDF parser, authorized extraction snapshots, controlled selector/executor, run ledger, `CaseReviewer` and verifier | Reused implementation; complete pipeline and recovery being joined |
+| Human revision | #38 authenticated task API and exact subject projection, canonical task fields from #36 | Shared model migration and #39 consumer regeneration required |
+| PDF/result | Versioned template/map/font registry, multi-context writer, reopen, fenced publication and authorized bytes | Actual writer/adapter regressions; complete service manifest and grant composition under acceptance |
 
-Local privacy review, exact export mapping and restore adapters are integrated from PR #37; browser and combined service acceptance are tracked in the integration delivery record. See [privacy review repairs](privacy-review-repair.md).
+The source is read again only through approved identities. An authorized
+immutable C2 snapshot binds case, document, version/hash and run. A later revision
+gets its own current-source check and snapshot; it cannot inherit permission
+merely because the previous run had it. Local originals and mapping values never
+become accepted cloud payload fields.
 
-## Current program structure
+## Local privacy and public API separation
 
-Solid lines are implemented calls/data flow. Orange nodes highlight the merged M0
-integration. These are local components, not deployed
-Snapshot: main `c3687e0cfe16cee0d38fcb4c1780a6092565aaeb` inspected on 2026-09-09,
-including merged #15/#16/#19/#20. Issue #17 Phases 1–6 add exact contracts, pure policy,
-controlled selectors, an explicitly composed single-decision coordinator and a bounded
-local runner with a non-durable trace, and a local human-task/correction/re-entry
-service. Its repository provides process-local transactions only. These components
-are not wired into legacy endpoints and do not provide durable storage.
-Current and target views below are deliberately separate.
-[Service contracts](service-contracts.md) is the authority for shared DTOs and ports.
+The user-side bridge must authenticate its Origin/session, constrain selected
+source handles and destinations, and show the exact command/payload before
+submission. A browser request cannot choose an arbitrary local path or claim an
+actor/role. The application backend accepts authorized document IDs and sanitized
+references. It is not a remote file reader for the user's originals.
 
-## Current program structure
+The mapping is built, encrypted, persisted and read back for the same immutable
+export payload the user confirms. Rebuilding a second bundle can change
+occurrence IDs and is not equivalent. Key/store/confirmation failure blocks all
+transfer. Restore creates another local file; the pristine original and downloaded
+placeholder artifact remain unchanged. A revealing writer cannot be wrapped for
+publication. Synthetic CJK box-glyph fixtures test mapping, not legible formal fonts.
 
-Solid lines are implemented calls/data flow. These are local components, not deployed
-AWS infrastructure. Prepared material may originate from real/native candidate
-adapters or the bounded injected Bedrock adapter; M0 tests make no model calls.
+## Transaction and authority boundaries
 
-```mermaid
-flowchart TD
-    DOC["Allowlisted PDFs: criteria, forms, registered references"] --> PREP["Document CLI: parser and candidate preparation"]
-    PREP --> HUMAN["Local OS reviewer: inspect, confirm, separately approve"]
-    HUMAN --> MAT["Prepared material and exact signed receipt"]
-    MAT --> CONFIG["M0 operator-owned configuration and immutable material copy"]
-    DOC --> CONFIG
-    CONFIG --> FACTORY["M0 configured controller factory"]
-    HTTP["HTTP /v1/reviews"] --> ENTRY["execute_review"]
-    INVOKE["Invocation adapter"] --> ENTRY
-    FACADE["M0 local run facade"] --> ENTRY
-    FACTORY --> ENTRY
-    ENTRY --> CORE["ReviewAgentController: reparse pinned sources"]
-    CORE --> REVIEW["CaseReviewer, deterministic factors and independent verification"]
-    REVIEW --> GATE{"Complete and verified?"}
-    GATE -->|No| FIND["Findings, blockers, no writer"]
-    GATE -->|Yes, no output| VERIFIED["verified / not_requested"]
-    GATE -->|Output requested| CONTEXT{"Single supported context?"}
-    CONTEXT -->|No| UNSUPPORTED["verified / unsupported_contexts"]
-    CONTEXT -->|Yes| WRITER["PDFWriter port"]
-    WRITER -->|Not configured| UNAVAILABLE["verified / unavailable"]
-    WRITER -->|Explicit test double| SIMULATED["verified / simulated; no PDF"]
-    WRITER -->|Configured M0 local policy| REAL["LocalPDFWriter: preflight, write copy, reopen, atomically publish"]
-    REAL -->|Validated real result| COMPLETED["completed / written"]
-    COMPLETED --> MANIFEST["M0 local facade: current-run write evidence, byte hash and exact field/context manifest"]
-    CORE --> AUDIT["Existing domain audit events / injected audit logger"]
-```
+SQLite local mode uses `BEGIN IMMEDIATE` and freshly loaded typed state for each
+operation. A human response commits task state, revision/head, superseded siblings,
+job transition, resumed document references, outbox and receipt together. Exceptions
+roll back; process death before COMMIT recovers the old state. Cancelling an
+awaiting thread-backed operation may leave the outcome unknown, so clients retry
+the exact idempotency key/payload rather than infer rollback.
 
-The configured factory injects real LocalPDFParser, MaterialProvider,
-LocalApprovalStore and optional confined LocalPDFWriter through existing
-ReviewAdapters/build_controller. No second calculation path exists. The service
-facade calls the same entry execution; HTTP/invocation keep AgentReviewRun and
-EntryProblem. Local service-v1 is a separate boundary, not a hidden v1 migration.
-Legacy /health and /v1/validate remain available without a configured review service.
+Result candidates are immutable per run/version/attempt. Only a committed
+reference's exact digest is readable; a prior attempt's body cannot occupy the
+new attempt's candidate slot. Publication checks current run/attempt, owner,
+unexpired lease, fence, result-version CAS, cancellation, source binding and
+independent grant in its transaction. Local publication/source tables must share
+that authority where atomicity is claimed. Artifact-manifest commit and final job
+result commit are distinct operations and require recovery if interrupted.
 
-Configuration is explicit and lazy. Importing modules constructs no cloud clients
-and reads no documents/fonts. Review-only configuration needs no writer font.
-The real writer requires a hash-bound trusted template, full field-map digest,
-explicit font and confined output directory. The parser rechecks its allowlisted
-source/version/hash and Controller matches the selected criteria/forms to reviewed
-material. There is no production synthetic fallback.
+The workflow reservation ledger bounds the whole run across retries/reconstruction.
+Unknown external effects retain their reservations and quarantine evidence.
+Its own SQLite persistence does not automatically make it atomic with jobs,
+publication or traces. The configured integration must define that recovery
+boundary explicitly. See [the workflow ledger](workflow-run-ledger.md) and
+[local SQLite decision](adr/0030-sqlite-local-review-transactions.md).
 
-Receipt eligibility is distinct from complete review success. Human confirmation
-binds an exact side, retains raw confidence and does not approve material. The
-Linux/macOS local store verifies the actual OS reviewer and private signed receipt.
-M0 revision copies clear confirmations and change the precise case version, making
-old receipts unusable. B's future API must derive identity from a trusted adapter,
-not request body roles. Windows native reviewer and multi-user login are absent.
+## Deterministic completion and human control
 
-The separate Phase 6 `HumanTaskService` creates tasks from stored findings and uses
-`LocalReviewerPrincipalResolver` for explicit local identity, case scope and permissions.
-Its repository atomically admits a response, consumes the task, appends a changed revision
-and records new local review work under one process-local lock. `MaterialSubjectMap`
-resolves the exact configured context/factor/side; corrections preserve original values,
-source anchors and measured confidence. Correction and evidence supply require subsequent
-confirmation/approval where applicable. Re-entry calls the existing `CaseReviewer`.
-The adapter loses state at process exit and provides no leases or outbox. See
-[local human review](local-human-review.md) and [ADR 0015](adr/0015-local-human-task-transactions.md).
+AI interprets documents and chooses among allowed actions. Trusted code derives
+available actions, budgets, source authority and execution origin. Receipt
+validation is part of the protected execution path; malformed receipts produce
+failed/quarantined evidence and cannot replay as completed work.
 
-The review core handles all comparison contexts. The writer still takes one
-FactorReviewResult; no selecting the first comparison. It checks exact field value
-refs, pages, bounds, occupancy, font coverage, overflow, correction integrity,
-template and full map hashes, protected source URI aliases and final output.
-The merged S3 wrapper injects a client and uploads only after local validation;
-local/mock tests are not live S3 or Runtime wiring. A local material snapshot and
-repeated byte-hash checks are not a continuous immutable source snapshot.
+Intervals, units, semantic categories, distance ranges, matrix orientation,
+arithmetic and independent verification remain deterministic. Facts include raw
+text, measured confidence, page/box evidence and source identity. Missing or
+unsupported critical inputs stay `needs_review`. Human confirmation preserves
+confidence, including zero, and binds the exact side. Material approval and
+publication authorization are independent exact-scope grants, never a side effect
+of a correction or a model proposal.
 
-## Target AWS integration (future B/D/A/E work)
+The PDF writer uses a trusted original template and full field map. Every verified
+comparison must be covered; only literal `supports_multiple_contexts is True`
+enables that path. Measurement and embedding use the same approved immutable font
+bytes. Preflight, mutation, reopen and atomic publication all retain source
+protection. A blocked review calls no writer. A fake write stays simulated; a
+real local PDF alone is not a durable publication grant.
 
-Every box in this diagram is a target service or integration duty. Dashed borders
-mark pending wiring/deployment, including services with existing adapter or IaC
-preparation. No arrow asserts a deployed pipeline.
-
-```mermaid
-flowchart TD
-    UI["C browser review workbench"] --> API["B/D authenticated API: case permissions and authorized IDs"]
-    API --> TRANSFER["D controlled upload/download authorization"]
-    TRANSFER --> S3IN["Private versioned S3 documents and templates"]
-    UI --> LOCALPRIVACY["Trusted local scan, human review, sanitization and export confirmation"]
-    LOCALPRIVACY -->|Verified sanitized payload only| TRANSFER
-    API --> DB["D DynamoDB: jobs, revisions, human tasks, outbox, manifests"]
-    DB --> PUBLISHER["D outbox publisher"]
-    PUBLISHER --> QUEUE["SQS work queue"]
-    QUEUE --> DISPATCH["D dispatcher: conditional claim and invocation"]
-    QUEUE --> DLQ["DLQ and bounded manual recovery"]
-    DISPATCH --> RUNTIME["AgentCore Runtime: one attempt and fenced lease"]
-    RUNTIME --> RESOLVER["D authorized document resolver: version and hash"]
-    RESOLVER --> S3IN
-    RUNTIME --> POLICY["A allowed-action policy and actual decision events"]
-    POLICY --> MODEL["Bedrock extraction / bounded action proposal"]
-    MODEL -->|Untrusted proposals| POLICY
-    POLICY --> CORE["Existing review core and deterministic gate"]
-    CORE -->|Needs human: findings retained| TASKS["B persist human task, finish attempt, release resources"]
-    TASKS --> DB
-    API -->|Authorized task response| REVISE["B new revision and required confirmation / approvals"]
-    REVISE -->|New run and outbox; no old lease revival| DB
-    CORE -->|Verified complete output scope| PDF["E trusted PDF template/map/font and validated writer"]
-    PDF --> S3OUT["D attempt-specific S3 artifact"]
-    S3OUT --> COMMIT["D human publication authority + fenced conditional manifest/result publication"]
-    COMMIT --> DB
-    DB --> QUERY["B/D authorized status, findings and manifest queries"]
-    QUERY --> UI
-    QUERY -->|Authorized manifest references only| TRANSFER
-    TRANSFER --> S3OUT
-    RECOVERY["D reconciler: expired lease, lost invocation and outbox recovery"] --> DB
-    RECOVERY --> PUBLISHER
-    DLQ --> RECOVERY
-    RUNTIME -->|Lease heartbeat and terminal state| DB
-    RUNTIME --> AUDIT["Version-bound domain audit and decision event storage"]
-    RUNTIME --> LOGS["CloudWatch operational health and alarms"]
-    classDef planned fill:#f3f3f3,stroke:#666,stroke-dasharray:5 5
-    class UI,API,TRANSFER,LOCALPRIVACY,S3IN,DB,PUBLISHER,QUEUE,DISPATCH,DLQ,RUNTIME,RESOLVER,POLICY,MODEL,CORE,TASKS,REVISE,PDF,S3OUT,COMMIT,QUERY,RECOVERY,AUDIT,LOGS planned
-```
-
-API Gateway/Lambda/FastAPI is the planned API hosting arrangement. D resolves
-storage locations only after authorizing case/document IDs and pinned versions.
-A supplies the trusted model/system origin for proposal admission; a body actor
-cannot change its budget class. A principal-scoped idempotency key identifies one
-canonical payload. The API
-persists queued job plus outbox before dispatch; publisher/recovery closes the
-DB-to-SQS gap. SQS acceptance is responsibility transfer, not completed review.
-
-Run, attempt and Runtime session have different identities. Runtime acquires a
-conditional lease, heartbeats and writes attempt-specific artifacts; only a current
-fencing token/result-version CAS can publish a manifest. Recovery reconciles expired
-leases, bounded retries and lost acknowledgements. Stale attempts cannot overwrite
-new results. HTTP contract/health preparation is in [cloud_tests](../cloud_tests/README.md);
-its durable=false session store does not provide any of these guarantees.
-
-Human needs_review persists findings/tasks and ends the attempt. C obtains task
-versions/evidence; B authenticates response, rejects stale/conflicting commands and
-appends new material with necessary approvals. A subsequent run uses the new revision.
-It never waits indefinitely in Runtime, reuses obsolete authority or treats business
-needs_review as an infrastructure retry. Bedrock never grants approval or writes
-final fields. CloudWatch provides operational telemetry, not domain audit. Runtime
-is compute, not the durable state store.
-
-## Preparation versus integration gaps
-
-| Existing component | Remaining work / steward |
-| --- | --- |
-| infra/cdk private input/result buckets and Cases table definition | D jobs/tasks/outbox/lease model, API/IAM/queues/runtime/publisher/recovery and actual deployment |
-| cloud_tests HTTP/container/CloudFormation synthetic smoke | D explicit identity preflight, build/live acceptance/cleanup; full document assembly separately |
-| Injected Converse adapters, pure policy/selectors, single-decision coordinator and bounded runner | Comparison against E independent goldens; D durable trace/storage |
-| Local real parser/material/approval/writer factory | B web identity/tasks/revisions API; D Runtime adapter wiring |
-| Single-context local PDF and injected S3 wrapper | E formal template/font/maps and versioned multiple-context contract; D live transfer/manifests |
-| M0 DTOs/guards and Issue #17 policy/selectors/coordinator/bounded runner/non-durable trace | D durable trace/repository integration; explicit application assembly |
-| Local human-task service, POSIX principal and process-local task/revision/re-entry transaction | B authenticated task API and C UI; D durable transaction/outbox/recovery |
-
-M0 requires no AWS calls. Later preflight uses designated profile/SSO, Region,
-expected account/role and model availability; never chat-delivered access keys.
-MCP, a vector database and another orchestration framework are not required here.
-
-## Local privacy boundary
-
-This flow describes callable local components and explicitly pending consumer
-connections. No remote adapter or UI is installed by the privacy work. Ordinary
-service-v1 review and its business completion gates remain unchanged.
+## AWS target: not deployed or accepted by this integration
 
 ```mermaid
 flowchart LR
-    ORIGINAL["Owned local original"] --> SCAN["Isolated PDF scan and configured local OCR"]
-    SCAN --> REVIEW["Versioned review SDK and trusted human source approval"]
-    REVIEW --> BUILD["Raster rebuild and independent structure/pixel/OCR verification"]
-    BUILD --> CONFIRM["Exact immutable export payload and human confirmation port"]
-    CONFIRM --> GATE["Live source approval and verifier recheck"]
-    GATE --> SINK["Trusted sink port; tests use a local sink"]
-    SINK -.-> CLOUD["Pending cloud consumer and authenticated publisher"]
-    BUILD --> MAP["Local AEAD mapping service; Linux storage and key provisioning pending acceptance"]
-    CLOUD -.-> REFILL["Local refill with exact approved fields and publisher authority"]
-    MAP --> REFILL
-    ORIGINAL --> REFILL
-    REFILL --> FINAL["New local final PDF; no upload or business completion authority"]
+    U["User and local privacy"] --> A["Authenticated API and document admission"]
+    A --> J["DynamoDB jobs and outbox / SQS"]
+    J --> R["Runtime: proposals and deterministic review"]
+    R --> H["Persisted human revision"]
+    H --> J
+    R --> P["Versioned PDF and fenced publication"]
+    P --> U
 ```
 
-The map must bind the manifest of the actual confirmed export. Rebuilding a bundle
-issues new occurrence IDs even when visible content is unchanged. A future
-application composition must persist the mapping for that exact payload before
-its network sink accepts responsibility. Independently building a mapping and
-then calling a gate that builds another bundle is not a valid composition.
-The current ports and stage tests do not provide a durable end-to-end coordinator.
+Existing AWS adapters and infrastructure templates support this target, but the
+diagram is not an observed deployment. The durable cloud composition must include
+transactional task/revision/outbox effects, current source authorization,
+independent grant revocation, attempt-scoped objects, result references and
+recovery. Runtime is compute, not a state store. CloudWatch is operational
+telemetry, not domain audit; a queue acknowledgement is not completed review.
 
-Originals, previews, source hashes, review commands, maps, key references and
-refilled PDFs remain local. The export payload contains only sanitized PDF bytes,
-public manifest JSON, a fixed filename and optional locally sanitized, explicitly
-reviewed text. Known text replacement is not a general detector of newly typed
-private facts. The trusted human adapter must review all outgoing text.
+Live validation requires a scoped non-root account/role, region, designated model,
+budget/data-region authorization, image/package/scan evidence and actual
+create/update/rollback, IAM, recovery and alarm observations. Fail-closed 503
+behavior without configuration is necessary but does not prove configured success.
+See [Runtime operations](runtime-deployment.md), [publication](artifact-publication.md)
+and [cloud acceptance](cloud-acceptance.md).
 
-Scan, sanitizer and refill workers use bounded local subprocesses and Python
-network denial before their target imports. Linux network namespace, real OCR,
-private storage and actual terminal tests remain acceptance requirements; Windows
-does not provide equivalent evidence. Synthetic SDK/telemetry probes are not live
-AWS isolation tests. Existing S3 upload paths remain outside the privacy gate and
-must not process sensitive cases until #27/#31 integration is accepted.
+## Contract and module ownership
 
-Local contracts and ports are under `domain/privacy_*.py`, `ports/privacy*.py` and
-`application/privacy_*.py`; implementation adapters are under
-`adapters/local/privacy/`. [ADRs 0021-0027](privacy-contracts.md) and the
-[stage runbooks](issue-22-acceptance.md) describe their individual trust boundaries.
+`domain/service_contracts.py` is the current union model authority and
+`domain/task_contracts.py` defines API projections. `controlled-action-v1`
+remains separate from service-v1. #38 `HumanTaskService` and #36 controlled local
+continuation are different consumers; their receipt/result types are not
+interchangeable. The [contract migration matrix](service-contracts.md) assigns
+adapters, synchronized consumer regeneration and legacy HTTP regression gates to the
+integration owner. The [ADR registry](adr/README.md) gives unique decision IDs
+without changing their original approval status.
 
-## Business-core module map
-
-| Location | Authority |
-| --- | --- |
-| application/bootstrap.py, entrypoint.py, controller.py | Shared composition/execution and existing review decisions |
-| domain/case_review.py, verification.py, review_contracts.py, confidence.py | Deterministic review, independent gates, source/cell and confidence contracts |
-| domain/service_contracts.py, application/revisions.py, service_guards.py | Shared wire projections, immutable copies, exact controlled-action contracts and pure admission checks |
-| application/action_policy.py | Trusted state/prerequisite/source/budget derivation of versioned allowed actions; no I/O or tool execution |
-| ports/action_selection.py, adapters/local/action_selector.py | Provider-neutral selector boundary and deterministic no-model baseline |
-| adapters/aws/action_selector.py | Injected Converse selector, strict structured output, bounded provider retry and sanitized failures |
-| docs/prompts/controlled-action-selector-v1.md | Versioned selector prompt and model trust boundary |
-| application/controlled_workflow.py, ports/controlled_workflow.py | One-decision re-admission, exact one-tool routing and executor/snapshot/trace ports |
-| application/bounded_workflow.py | Executable budget ledger, stable failure classes, deterministic retry/backoff, no-progress fingerprint and non-persisted human handoff |
-| adapters/local/decision_trace.py | Explicitly non-durable, detached in-memory causal trace for tests/local composition |
-| application/human_tasks.py, application/material_corrections.py | Purpose-specific tasks, explicit side changes and full deterministic re-entry |
-| adapters/local/human_tasks.py, adapters/local/task_principal.py | Non-durable atomic task/revision/replay/re-entry and configured POSIX principal |
-| docs/local-human-review.md, docs/adr/0015-local-human-task-transactions.md | Local human response operation, authority and transaction limits |
-| docs/adr/0014-controlled-action-policy.md | Issue #17 action authority, causal trace and pause/re-entry decision |
-| ports/service.py | Trusted principal and transactional task ports; durable document/revision/job implementations reserved |
-| adapters/local/service.py, local_service.py | M0 actual configured local assembly and separate envelope |
-| document_cli.py, adapters/local/document_manifest.py | Preparation and compatible allowlist manifest imports |
-| domain/pdf_models.py, pdf_types.py, ports/pdf.py | Sole PDF request/result/error and writer protocol |
-| adapters/local/pdf_writer.py, pdf_overlay.py, pdf_config.py | Local deterministic writing and trusted policy |
-| adapters/aws/pdf/s3_pdf_writer.py, storage/s3_object_store.py | Injected-client S3 wrapper; no automatic clients |
-| adapters/aws/agentcore/runtime.py | Existing invocation contract |
-| schemas/service-v1.json, examples/service-v1/ | Shared consumer schema and illustrative fixtures |
-
-See [milestones](mvp-plan.md), [local acceptance](local-service-runbook.md),
-[traceability](delivery-traceability.md) and [ADR 0013](adr/0013-service-foundation.md).
+The selected artifact migration retains legacy `ArtifactManifest` unchanged and
+adds `FencedArtifactManifest` (`artifact-manifest-v2`) to the service result union.
+The new projection binds primary and complete contexts, fenced publication and
+exact digest/font/writer identity. Actual service coverage and regenerated
+consumers are integration gates; a multi-context writer alone does not satisfy them.

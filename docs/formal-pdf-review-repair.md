@@ -1,7 +1,7 @@
 # Formal PDF output review repair
 
 This repair enforces the existing local-output guarantees of
-[ADR 0015](adr/0015-formal-multi-context-output-and-placeholders.md). It does not
+[ADR 0019](adr/0019-formal-multi-context-output-and-placeholders.md). It does not
 change a service schema or the `PDFWriter.write_pdf` protocol.
 
 ## Protected downloaded artifact

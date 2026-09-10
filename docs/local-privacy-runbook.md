@@ -21,7 +21,7 @@ endpoint, complete privacy pipeline or agent orchestration implementation.
 
 No approval issuer, sanitizer, encrypted mapping store, export boundary or
 rehydrator is provided. Existing upload paths must not receive sensitive originals.
-[ADR 0022](adr/0022-local-privacy-scan-isolation.md) documents security assumptions,
+[ADR 0033](adr/0033-local-privacy-scan-isolation.md) documents security assumptions,
 coordinate conventions, limits and the dependency on later stages.
 
 ## Environment and approved assets

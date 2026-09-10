@@ -1,136 +1,103 @@
-# Project progress, 2026-09-10
+# Project progress
 
-Published review order: [#42](https://github.com/chengruchou/newtaipei-appraisal-review-ai/pull/42)
-→ [#43](https://github.com/chengruchou/newtaipei-appraisal-review-ai/pull/43)
-→ [#44](https://github.com/chengruchou/newtaipei-appraisal-review-ai/pull/44), all Draft.
-This layer incorporates #43's packaging correction at
-32c5028e17ac4ada86eb9ac911a3d41bb724e203 without rewriting either branch.
-Current PR descriptions record actual CI run/head pairs and remaining scan,
-owner-integration and live/browser gates. AWS environment details will be supplied
-separately; no deployment or paid model call was started.
+## Current status
 
-The wrap-up stack now includes [Draft #42](https://github.com/chengruchou/newtaipei-appraisal-review-ai/pull/42)
-and [Draft #43](https://github.com/chengruchou/newtaipei-appraisal-review-ai/pull/43);
-#31 follows with [acceptance-evidence integration](issue-31-delivery.md).
-Both published heads have their own CI startup failure due to the reported
-account payment/spending-limit block; no tests ran in those jobs. The actual
-#43 run is [34512339154](https://github.com/chengruchou/newtaipei-appraisal-review-ai/actions/runs/34512339154).
-Local validation and retained Draft status do not clear the remote or live gates.
+The local integration worktree is assembling reviewed component repairs into one
+configured service. **The combined local/browser release is not yet accepted;
+AWS deployment, live model quality and formal business approval are not
+accepted.** This page is the current status authority. Older branch/main/CI
+snapshots are preserved only in the [history index](history/2026-09-11-pre-convergence/README.md).
+No test total is used as a completion percentage.
 
+Component code being present, an isolated test passing, a configured service
+being integrated, and an accepted user workflow are distinct claims. The
+[traceability matrix](delivery-traceability.md) records those distinctions and
+required evidence. The integration branch preserves original PR histories;
+local integration merges do not mean those PRs were approved or merged on GitHub.
 
-Current wrap-up: #21 has [Draft PR #42](https://github.com/chengruchou/newtaipei-appraisal-review-ai/pull/42).
-The dependent #30 adds persistent job execution, C2 admission and ARM64/IaC
-packaging; [its delivery record](issue-30-delivery.md) identifies missing owner
-providers and live gates. #31 follows for browser/AWS evidence collection.
-PR #42 head fa36fb714c6628bef4f0fd66aae0278372f57fae did not execute CI tests:
-[run 34511311725](https://github.com/chengruchou/newtaipei-appraisal-review-ai/actions/runs/34511311725)
-reports an account payment/spending-limit startup block. Local passes are separate.
+## Work lines and next acceptance
 
-
-## Current work, 2026-09-11
-
-Main is `c132e4ee4b1797098bd22676245cdfc01a26ffdb`, including merged #32,
-#33, #40 and #41. The current sequence is #21 extraction/evaluation, #30 durable
-Runtime deployment preparation, then #31 cloud/browser rehearsal preparation.
-See [Issue 21 delivery](issue-21-delivery.md) for exact dependencies, implemented
-additions and remaining gates. The sections below retain the earlier C2 delivery
-history; their branch and CI statements are historical snapshots.
-
-## Re-established baseline
-
-The competition requires valuation case review. PDF completion is an output of
-an evidence-bound, deterministic review, not the entire application. The reviewed
-baseline is main `463880af3a6dc6aad2bfa6fdfc3bc267afc4d4a5`, the merge of
-[PR #33](https://github.com/chengruchou/newtaipei-appraisal-review-ai/pull/33).
-It includes #15/#16/#19 and the M0 foundation and follow-up fixes in #20.
-
-The implemented core parses authorized local documents, preserves source evidence
-and measured confidence, prepares proposed rules/facts, admits explicit human
-confirmation and exact material approval, calculates grades/corrections/totals,
-and verifies original cells and derived fields. A configured local service uses
-the actual parser, controller and optional PDF writer. The writer preserves the
-source and creates a separately verified output. HTTP/invocation compatibility
-and structured preflight diagnostics are present.
-
-The #20 revision fix preserves native status only across unchanged native sides.
-Legitimate explicit human confirmation, including confidence zero, remains valid
-and separate from precise material approval. An original receipt applies only to
-its unchanged original material; a revised material cannot reuse a confirmation
-or approval that does not match the required exact binding.
-
-#33 adds independently derived full-case goldens and reviewer protocol: 13
-case/revision manifests plus an index. Candidate rules still need business approval;
-golden success does not establish accuracy on real cases or complete formal CJK
-output. The main commit's workflow lookup returned no runs during this refresh;
-neither a PR-body test count nor historical CI is treated as fresh local evidence.
-
-## Open work and integration order
-
-These statuses describe inspected implementation and issue scope, not estimates
-of teammates' completion or approval. Open issues can contain merged partial work.
-
-| Issue | Work line and current boundary |
-| --- | --- |
-| #17 | Controlled model action selection, trace and human handoff; active branch separate from main |
-| #21 | Real Chinese extraction/evaluation; consumes authorized sanitized page inputs |
-| #22 | Local privacy processing, original/map isolation, exact export confirmation and local rehydration; active branch |
-| #23 | Full-case goldens merged through #33; formal business/reviewer acceptance remains |
-| #24 | Authenticated persisted human tasks, revisions and precise approvals; a new work branch is published |
-| #25 | Browser private upload, review workbench and result flow |
-| #26 | Formal CJK and multiple-context PDF output; a new work branch is published |
-| **#27** | **This branch: controlled sanitized ingestion, authorized document versions and immutable run sources** |
-| #28 | Fenced artifact publication and authorized downloads; a new work branch is published |
-| #29 | Durable jobs, outbox, leases and recovery; active branch |
-| #30 | Full AgentCore Runtime assembly and deployment |
-| #31 | Full AWS and browser/privacy rehearsal |
-
-Older #5/#7/#8/#9 remain broader PDF/extraction/review/cloud tracking issues. They
-do not mean the corresponding local core is absent. #27 does not take over these
-work lines or approve their real rules or materials.
-
-Read-only coordination used these published branch snapshots:
-
-| Branch | Inspected head | Relevant interface |
+| Work line | Current component delivery | Required next evidence |
 | --- | --- | --- |
-| feat/local-privacy-pipeline | 6131957d8859ddf47c71cab8eb4130614efeeb77 | PrivacyManifest, PrivacyExportPayload, confirmation/sink and phase-7 gate |
-| feat/model-extraction-evaluation | 6043aaae897475659f8fff5e7d8249fd4c7a0295 | SanitizedSourceReference, PageRequest, AuthorizedSanitizedSnapshot |
-| feat/durable-review-jobs | 644a34ff5d9c3d728ddaf3dfaf3e55dc09f54438 | Durable run/revision admission and worker assembly |
-| feat/controlled_model_selection | 98c7f34efe70955ca37f0955a175db31373cd24a | Bounded policy decisions over shared contracts |
+| #34 PDF | Downloaded artifact alias protection, immutable approved font bytes, literal-True capability and real multi-context registry/write/backfill regressions | Complete integrated manifest coverage and actual download/backfill; formal CJK/template/map approval |
+| #35 publication | Restored publication implementation and current job/attempt/source/grant conditions; local SQLite publication composition being joined | Same-database authority/grant revocation race and actual authorized download through the service |
+| #36 workflow | Controlled action/receipt failure repair and persistent run reservation/budget recovery | Canonical #38 handoff, source-bound resumed work and combined job/ledger recovery |
+| #37 privacy | No-op/group/category edits preserve raw evidence; mapping is persisted for the exact reviewed export | Actual local bridge/browser export and restoration; failure must cause zero transfer |
+| #38 human tasks | Applied-value receipts, owned empty-task reads, rejection projection and idempotent revision registration | Complete revision/task/job/outbox/receipt transaction through real API; exact source and approval rebinding |
+| Local SQLite mode | New combined job/task/result store with real file, transaction, process-race and crash/restart tests | Review and service composition; publication/source tables and workflow ledger remain explicit integration boundaries |
+| #39 workbench | Existing consumer requires the canonical union and authoritative subject/unit projection | Generate/verify without drift; immutable confirmation/retry command, body-timeout recovery and real browser API flow |
+| #42 extraction | Actual parser/snapshot/extraction/evaluation adapters and conservative budget controls | Report known partial usage without inventing unknown totals; run source authorization and live model evaluation separately |
+| #43 Runtime | Durable job/result adapters, worker/recovery and packaging; configured local composition being assembled | Deadline before late heartbeat/publication, restart and outbox recovery, actual packaged success; live deployment later |
+| #44 acceptance | Strict evidence validator and scoped collectors | Independently observed complete local/browser scenario matrix; live collectors stay unaccepted when not executed |
 
-A final fetch preserved main at the same baseline and found additional published
-branches: `feat/human-task-api` at `4911c2b6ce70ffe7f4191cee6d6d9b30c76f8ef0`,
-`feat/formal-pdf-output` at `ca4149439ce65dbf8176043aadad13b5d76ba0f9`, and
-`feat/artifact-publication` at `debf034b60e2c50f62aa9dc58b7006d13285280d`.
-Their publication does not establish integration or acceptance here. D1's updated
-head was checked for contract changes; its outbox/recovery changes preserve the
-DocumentReference boundary. No teammate branch was modified or incorporated wholesale.
+The deterministic review core, original-cell checks, confidence/source gates and
+full-case golden protocol remain required foundations. No owner is permitted to
+replace those checks with a success-shaped fixture, increased confidence or an
+implicit approval.
 
-The practical sequence is A3 exact local export, C2 document admission, D1 pinned
-run admission, A2 authorized extraction, human review and deterministic checking,
-C1 output, C3 publication, then D2/D3 cloud assembly and acceptance. Independent
-contract work may proceed in parallel. The integration has not been demonstrated
-end to end merely because the individual branch interfaces exist.
+## Contract and composition ownership
 
-## Publication refresh, 2026-09-11
+The integration owner maintains one canonical model set and composition root.
+Current source combines #36 `domain/service_contracts.py` with #38
+`domain/task_contracts.py`. `controlled-action-v1` is retained. All undeployed
+strict task consumers must regenerate together; accepting extra fields or
+silently dropping task data is not a migration. The decision is a synchronized
+migration of the undeployed union; frozen
+commands and baseline success responses remain compatibility obligations, while
+new serialized nested task keys require upgraded strict consumers. See
+[the migration matrix](service-contracts.md#canonical-36-and-38-migration).
 
-Remote main is now `b0917732cb0bd4597cb7a098421a2dd19a4cea28`, following
-[PR #32](https://github.com/chengruchou/newtaipei-appraisal-review-ai/pull/32).
-It adds review-job state/recovery and mounted routes with an injected store; its
-reference store is in memory, not evidence of deployed durable infrastructure.
-This branch remains based on the earlier #33 snapshot above. The PR targets main;
-GitHub CI checks the proposed merge independently of the local branch tests.
-A3 advanced to `ec8367a`; its three adopted shared files still match the pinned
-contract byte-for-byte. Published teammate updates were preserved.
+Artifact projection ownership includes the new `FencedArtifactManifest`
+(`artifact-manifest-v2`): primary and complete contexts, review-context scope,
+fenced publication and exact digest/font/writer bindings. Legacy `ArtifactManifest`
+stays unchanged. The service result accepts the legacy/new union; consumers must
+regenerate to read the new version. The projection owner must demonstrate actual
+multi-context service, manifest and reader coverage, not only writer output.
 
-## This branch
+`integrated_service.py` and associated application assembly are owned by the
+integration owner. The local SQLite adapter owns its job/task/result transaction;
+the publication adapter owns manifest/grant/object tables, and source authority
+owns current C2 document authorization and revision snapshots. The workflow
+budget ledger cannot be treated as the same transaction merely because both
+stores use SQLite.
 
-`feat/versioned-document-transfer` starts from the above main, in an isolated
-repository-local worktree. The older working checkout and its untracked
-`cloud_tests/` copy were preserved. [The C2 contract](document-transfer.md),
-[ADR 0024](adr/0024-versioned-document-transfer.md) and
-[storage runbook](../infra/documents/README.md) record scope and remaining acceptance.
+## Local evidence recorded in this repair round
 
-The implementation offers the controlled ingestion service alternative allowed
-by #27. It does not yet mount browser upload routes or wire the A3/D1
-applications. No AWS account, real source material, model call, business approval
-or deployment is required for its local checks.
+| Scope | Observed result | What it does not establish |
+| --- | --- | --- |
+| PDF repair on original PR worktree | Initial 10 failing regressions; corrected full suite 686 passed, with actual PDF reopen, multi-context fields and unchanged sources | Full merged-service/browser acceptance or production CJK typography |
+| Combined SQLite store | 45 dedicated checks including 31 existing JobStore contract checks; broader job/human/API selection 410 passed | Entire evolving integration checkout, AWS transactions, source grants or browser acceptance |
+| #36 integration merge | Integration owner reports 78 focused checks passed before the workflow merge | Regenerated #39 consumer, whole-service acceptance or live model behavior |
+
+Evidence counts are scoped observations from their own tested trees. Do not add
+them together or present them as an exact-head full integration gate. Logs and
+synthetic artifacts remain ignored under their worktrees' `artifacts/` directories.
+The integration owner must attach final exact commit/configuration/command
+records after its complete rehearsal. Remote CI is not refreshed by this
+Markdown consolidation; earlier CI links remain historical.
+
+## Required integrated rehearsal
+
+Use a small synthetic case, isolated stores and clearly designated test assets.
+Observe actual parser, HTTP, deterministic review, writer, reopen, publication,
+authorized download and local backfill. Model responses may be injected; that
+must remain visible in the evidence classification.
+
+1. Inspect the exact sanitized payload. Mapping persistence/key/confirmation
+   failure causes zero transfer, and original/map canaries do not reach cloud
+   request bodies, keys, metadata or logs.
+2. Read a legitimate job with no tasks, then complete a normal case. The PDF and
+   complete manifest must belong to this exact run and attempt.
+3. Run needs_review, explicit correction/confirmation and two revision rounds.
+   Scores do not increase and obsolete confirmation/approval cannot be reused.
+4. Retry identical commands and restart processes. Preserve idempotency,
+   reservations, trace failures, job fences and immutable result selection.
+5. Refuse other principals/cases, revoked sources, wrong versions/hashes, stale
+   approvals and timed-out/cancelled attempts. Blocked review calls no writer.
+6. Download and restore a multi-context artifact to a new local PDF while the
+   original template and downloaded placeholder bytes remain unchanged.
+
+Live AWS acceptance additionally needs explicit account/role/region/model and
+budget scope, actual IAM/storage/worker recovery, package/scan gates and operator
+observations. Formal rules/fonts/templates and human approval are separate gates.
+None is cleared by documenting it or by accepting a synthetic signature.

@@ -1,4 +1,4 @@
-# ADR 0016: Authoritative artifact publication and immutable downloads
+# ADR 0029: Authoritative artifact publication and immutable downloads
 
 - Status: Proposed for human review
 - Date: 2026-09-11

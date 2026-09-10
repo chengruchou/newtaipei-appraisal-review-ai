@@ -10,9 +10,11 @@ represent unknown usage or failed pages. The CLI has no integrated privacy/sourc
 authorization gate. Service v1 consumers reject extra fields. Issues 22, 27, 23
 and 24 have separate ownership of privacy, storage, goldens and human authority.
 
-Main ends at ADR 0013. The existing local privacy branch uses 0014 through 0020;
-0021 avoids that known integration collision without renumbering another branch.
-Recheck numbering before publication if additional decisions merge.
+Historical numbering context: this branch originally selected 0021 after checking
+the then-existing main and privacy decisions. The consolidated [registry](README.md)
+now preserves main IDs and assigns unique integration IDs, including 0032–0038
+for the privacy sequence. This changes neither this decision's ID nor its approval
+status.
 
 ## Decision
 

@@ -1,4 +1,4 @@
-# ADR 0027: Owned export snapshots and offline regression evidence
+# ADR 0038: Owned export snapshots and offline regression evidence
 
 Status: Accepted for Phase 7 local core behavior. Linux isolation, real OCR,
 production export confirmation and cloud integration acceptance remain pending.

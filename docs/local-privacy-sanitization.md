@@ -74,7 +74,7 @@ The isolated workers use shared library dependencies but separate build/verify
 requests. The verifier's byte-level mask algorithm is independent of the builder's
 pixel mutation. The canonical PDF encoder and MuPDF rendering remain shared
 dependencies; this is not a formal proof against common library defects.
-See [ADR 0024](adr/0024-raster-privacy-bundles.md).
+See [ADR 0035](adr/0035-raster-privacy-bundles.md).
 
 ## Synthetic acceptance harness
 

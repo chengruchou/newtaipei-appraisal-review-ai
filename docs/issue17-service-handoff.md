@@ -1,5 +1,15 @@
 # Issue #17 service-boundary handoff
 
+Integration scope note: this document records the controlled local reference
+workflow and its originating delivery. Its human service now lives in
+`application/workflow_tasks.py`; the authenticated API service is separately
+`application/human_tasks.py`. The internal HumanResponseResult/next_run contract
+requires an explicit adapter to API ResponseReceipt/resumed_run. For current
+ownership, the synchronized service-v1 consumer migration and actual SQLite
+durability, use [service contracts](service-contracts.md) and
+[project progress](project-progress.md). Historical phase/status statements below
+do not describe the combined integration's current acceptance.
+
 Phase 9 local consumer preparation is described in the
 [workbench handoff](workbench-consumer-handoff.md). Connected synthetic records and
 consumer tests are available; real API and browser acceptance remain with #24/#25.

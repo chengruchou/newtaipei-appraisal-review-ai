@@ -106,7 +106,7 @@ Terminal tests use explicit OS/terminal doubles. A real Linux controlling-termin
 interaction in an isolated trusted operator session remains required. Approved
 OCR assets and actual recognition, Linux security checks and later sanitization,
 encryption and export acceptance are also pending. See
-[ADR 0023](adr/0023-local-privacy-human-review.md).
+[ADR 0034](adr/0034-local-privacy-human-review.md).
 
 ## Development validation, 2026-09-10
 

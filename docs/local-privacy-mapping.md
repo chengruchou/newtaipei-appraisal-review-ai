@@ -13,7 +13,7 @@ Do not describe the current Windows environment as secure persistent storage.
 Install the declared `privacy` optional dependency into a repository-local
 environment, or use the development dependencies. No runtime download occurs.
 The adapter uses `cryptography` AESGCM and HKDF-SHA256; exact format decisions are
-in [ADR 0025](adr/0025-encrypted-local-mapping.md).
+in [ADR 0036](adr/0036-encrypted-local-mapping.md).
 
 Trusted local composition supplies:
 

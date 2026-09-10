@@ -1,4 +1,4 @@
-# ADR 0014: Controlled action selection and execution authority
+# ADR 0018: Controlled action selection and execution authority
 
 Status: proposed for Issue #17 review, 2026-09-09.
 
@@ -140,5 +140,5 @@ revisions and queue subsequent review. Corrections preserve evidence and measure
 confidence while invalidating obsolete human authority. Material approval checks a
 separately signed current receipt; task responses never sign receipts or set completion
 status. This is an explicitly non-durable, single-process adapter, with no human HTTP
-routes, durable outbox or restart recovery. [ADR 0015](0015-local-human-task-transactions.md)
+routes, durable outbox or restart recovery. [ADR 0020](0020-local-human-task-transactions.md)
 records the detailed transaction and confirmation boundaries.

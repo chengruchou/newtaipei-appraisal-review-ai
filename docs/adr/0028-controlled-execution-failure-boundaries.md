@@ -1,4 +1,4 @@
-# ADR 0016: Controlled execution failure boundaries
+# ADR 0028: Controlled execution failure boundaries
 
 Status: Accepted for local implementation; production durability is out of scope.
 

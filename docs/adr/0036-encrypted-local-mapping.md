@@ -1,4 +1,4 @@
-# ADR 0025: Immutable encrypted local mapping and session keys
+# ADR 0036: Immutable encrypted local mapping and session keys
 
 Status: Accepted for the local implementation. Production key provisioning and
 Linux filesystem acceptance remain pending; secure persistent storage is not

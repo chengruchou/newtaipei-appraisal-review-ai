@@ -138,6 +138,6 @@ existing adjacent runtime environment:
 PYTHONPATH=$PWD/src ../runtime-deployment/.venv/bin/python -m pytest tests/unit/test_workflow_run_authority.py tests/unit/test_workflow_run_ledger.py tests/unit/test_sqlite_workflow_run_ledger.py
 ```
 
-See [ADR 0016](adr/0016-controlled-execution-failure-boundaries.md) for the governing
+See [ADR 0028](adr/0028-controlled-execution-failure-boundaries.md) for the governing
 failure-boundary decision. Canonical task/schema migration and live deployment
 acceptance remain outside this bounded change.

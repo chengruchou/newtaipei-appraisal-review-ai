@@ -1,4 +1,4 @@
-# ADR 0015: Local human-task transactions and revision re-entry
+# ADR 0020: Local human-task transactions and revision re-entry
 
 Status: proposed for Issue #17 Phase 6 review, 2026-09-09.
 

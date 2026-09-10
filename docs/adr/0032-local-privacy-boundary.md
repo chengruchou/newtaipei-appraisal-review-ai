@@ -1,4 +1,4 @@
-# ADR 0021: Local privacy contracts and a separate sanitized boundary
+# ADR 0032: Local privacy contracts and a separate sanitized boundary
 
 Status: proposed; Phase 1 local implementation, 2026-09-10.
 Baseline: `8591bddc76584ad630774f214c7452c397c937d5` on refreshed `origin/main`.
