@@ -15,7 +15,9 @@ import threading
 import warnings
 from collections.abc import Iterator
 from dataclasses import dataclass
+from types import SimpleNamespace
 from typing import Any
+from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import boto3
@@ -28,6 +30,7 @@ from moto import mock_aws
 
 from appraisal_review.adapters.aws.job_store import DynamoDBJobStore
 from appraisal_review.adapters.aws.result_store import S3ResultStore
+from appraisal_review.application import runtime_worker
 from appraisal_review.application.job_state import JobPolicy
 from appraisal_review.application.outbox import DispatchMessage
 from appraisal_review.application.review_jobs import ReviewJobService
@@ -44,7 +47,7 @@ from appraisal_review.domain.service_contracts import (
     ServiceVerification,
     VerificationDiagnostic,
 )
-from appraisal_review.ports.jobs import ClaimedAttempt, ConditionFailed, JobRecord
+from appraisal_review.ports.jobs import ClaimedAttempt, ConditionFailed, HeartbeatState, JobRecord
 from appraisal_review.testing.job_store_contract import NOW, principal, submission
 
 TABLE = "synthetic-worker-jobs"
@@ -506,6 +509,154 @@ def test_worker_timeout_closes_execution_and_schedules_durable_retry(world: Worl
         due = await world.jobs.pending_dispatches(now=NOW + 1, limit=5)
         assert len(due) == 1 and due[0].outbox_seq == 2
         assert objects(world) == []
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize("wait_overrun", [0.0, 0.5], ids=["at-deadline", "past-deadline"])
+def test_expired_final_wait_cannot_publish_completion_during_heartbeat(
+    world: World, monkeypatch: pytest.MonkeyPatch, wait_overrun: float
+) -> None:
+    async def scenario() -> None:
+        record, message = await admit(world)
+        execution = BlockingExecution()
+        clock = [0.0]
+        waiting: set[asyncio.Task[ExecutedReview]] = set()
+        wait_intervals = []
+        heartbeat_times = []
+        original_heartbeat = world.service.heartbeat
+
+        async def final_wait(
+            tasks: set[asyncio.Task[ExecutedReview]], *, timeout: float
+        ) -> tuple[set[asyncio.Task[ExecutedReview]], set[asyncio.Task[ExecutedReview]]]:
+            await execution.started.wait()
+            assert all(not task.done() for task in tasks)
+            waiting.update(tasks)
+            wait_intervals.append(timeout)
+            clock[0] += timeout + wait_overrun
+            return set(), tasks
+
+        async def completing_heartbeat(attempt: ClaimedAttempt) -> HeartbeatState:
+            heartbeat_times.append(clock[0])
+            # If renewal is incorrectly entered after expiry, complete execution
+            # during its I/O so the old loop exits directly into publication.
+            execution.release.set()
+            await asyncio.gather(*waiting)
+            assert execution.stopped.is_set() and execution.calls == 1
+            return await original_heartbeat(attempt)
+
+        monkeypatch.setattr(
+            runtime_worker,
+            "asyncio",
+            SimpleNamespace(
+                create_task=asyncio.create_task,
+                get_running_loop=lambda: SimpleNamespace(time=lambda: clock[0]),
+                wait=final_wait,
+                gather=asyncio.gather,
+            ),
+        )
+        monkeypatch.setattr(world.service, "heartbeat", completing_heartbeat)
+        outcome = await RuntimeWorker(world.service, execution, timeout_seconds=1).process(message)
+        assert outcome == "retry_scheduled"
+        assert wait_intervals == [1]
+        assert heartbeat_times == []
+        assert execution.stopped.is_set() and execution.calls == 0
+        state = await world.reconstructed().jobs.read_job(job_id=record.job_id)
+        assert state is not None and state.status == JobStatus.QUEUED
+        assert state.attempt_count == 1 and state.result_version == 0
+        due = await world.jobs.pending_dispatches(now=NOW + 1, limit=5)
+        assert len(due) == 1 and due[0].outbox_seq == 2
+        assert objects(world) == []
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize(
+    "heartbeat_end,renewal,expected",
+    [
+        (1.995, "renewed", "published"),
+        (2.0, "renewed", "retry_scheduled"),
+        (2.5, "renewed", "retry_scheduled"),
+        (2.5, "cancelled", "cancelled"),
+        (2.5, "lease-lost", "superseded"),
+    ],
+    ids=["before-deadline", "at-deadline", "past-deadline", "cancel-priority", "lease-priority"],
+)
+def test_heartbeat_completion_enforces_deadline_after_authority_checks(
+    world: World,
+    monkeypatch: pytest.MonkeyPatch,
+    heartbeat_end: float,
+    renewal: str,
+    expected: str,
+) -> None:
+    async def scenario() -> None:
+        record, message = await admit(world)
+        execution = BlockingExecution()
+        clock = [0.0]
+        waiting: set[asyncio.Task[ExecutedReview]] = set()
+        heartbeat_times = []
+        original_heartbeat = world.service.heartbeat
+        fail = AsyncMock(wraps=world.service.fail)
+
+        async def before_deadline_wait(
+            tasks: set[asyncio.Task[ExecutedReview]], *, timeout: float
+        ) -> tuple[set[asyncio.Task[ExecutedReview]], set[asyncio.Task[ExecutedReview]]]:
+            await execution.started.wait()
+            assert timeout == 1 and all(not task.done() for task in tasks)
+            waiting.update(tasks)
+            # The wait expires and returns just before the two-second deadline.
+            clock[0] = 1.99
+            return set(), tasks
+
+        async def completing_heartbeat(attempt: ClaimedAttempt) -> HeartbeatState:
+            heartbeat_times.append(clock[0])
+            clock[0] = heartbeat_end
+            execution.release.set()
+            await asyncio.gather(*waiting)
+            assert execution.stopped.is_set() and execution.calls == 1
+            if renewal == "cancelled":
+                await world.reconstructed().service.cancel(principal(), record.job_id)
+            elif renewal == "lease-lost":
+                world.clock[0] += world.service.policy.lease_seconds
+            return await original_heartbeat(attempt)
+
+        monkeypatch.setattr(
+            runtime_worker,
+            "asyncio",
+            SimpleNamespace(
+                create_task=asyncio.create_task,
+                get_running_loop=lambda: SimpleNamespace(time=lambda: clock[0]),
+                wait=before_deadline_wait,
+                gather=asyncio.gather,
+            ),
+        )
+        monkeypatch.setattr(world.service, "heartbeat", completing_heartbeat)
+        monkeypatch.setattr(world.service, "fail", fail)
+        outcome = await RuntimeWorker(world.service, execution, timeout_seconds=2).process(message)
+        assert outcome == expected
+        assert heartbeat_times == [1.99]
+        assert execution.stopped.is_set() and execution.calls == 1
+        state = await world.reconstructed().jobs.read_job(job_id=record.job_id)
+        assert state is not None
+        if expected == "published":
+            assert state.status == JobStatus.SUCCEEDED and state.result_version == 1
+            assert len(objects(world)) == 1
+        else:
+            assert state.result_version == 0 and objects(world) == []
+        if expected == "retry_scheduled":
+            fail.assert_awaited_once()
+            assert state.status == JobStatus.QUEUED and state.attempt_count == 1
+            due = await world.jobs.pending_dispatches(now=NOW + 1, limit=5)
+            assert len(due) == 1 and due[0].outbox_seq == 2
+        else:
+            fail.assert_not_awaited()
+            assert state.attempt_count == 0
+            assert await world.jobs.pending_dispatches(now=NOW + 100, limit=5) == ()
+            if expected == "cancelled":
+                assert state.status == JobStatus.CANCELLED
+            elif expected == "superseded":
+                assert state.status == JobStatus.RUNNING
+                assert len(await world.jobs.expired_leases(now=world.clock[0], limit=5)) == 1
 
     asyncio.run(scenario())
 
