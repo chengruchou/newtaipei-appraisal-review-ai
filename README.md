@@ -6,34 +6,30 @@ code calculates grades, correction rates and totals, verifies evidence, and gate
 PDF output. Reviewers inspect findings and explicitly authorize exact material.
 PDF filling is one output of case review.
 
-**Current delivery: local service integration in progress. AWS deployment, live
-model quality and formal business acceptance are not accepted.** Component repairs
-and local process tests do not establish an accepted end-to-end release. The
-[project progress](docs/project-progress.md) page is the current status authority;
-[traceability](docs/delivery-traceability.md) separates implemented behavior,
-component evidence and remaining acceptance.
+**Current delivery: the configured local core is integrated and its seven real
+Chromium scenarios passed. The complete privacy/restoration workflow is not yet
+accepted. AWS deployment, live model quality and formal business acceptance are
+not accepted.** [Project progress](docs/project-progress.md) is the current status
+authority; [repair evidence](docs/integration-repair-delivery.md) records exact
+component heads and [traceability](docs/delivery-traceability.md) separates scopes.
 
-## What is being integrated
+## Integrated boundaries
 
-| Boundary | Implemented components | Integration or acceptance still required |
+| Boundary | Implemented and integrated locally | Remaining acceptance |
 | --- | --- | --- |
-| Local privacy | Exact reviewed export, preserved source evidence, encrypted mapping for that exact payload, separate local restore | Browser/bridge through actual admission; current origin/session/source authorization |
-| Documents and extraction | Authorized document versions, immutable run snapshots, actual PDF parser, native and injected model adapters | Current-source checks across resumed revisions; live model accuracy |
-| Jobs and human tasks | Job state machine, outbox/leases/fences, authenticated task API, revision/receipt logic; new SQLite combined job/task/result adapter has process tests | Shared configured service and restart rehearsal; production identity and durable cloud transaction composition |
-| Controlled actions | Versioned allowed actions, trusted executor admission, failed-decision tracing and persistent run budget/reservation adapter | Bind workflow ledger, job authority and human handoff in the same run; resolve unknown external effects conservatively |
-| PDF and publication | Real multiple-context writer, approved byte-bound fonts, source protection, reopen verification and current-authority publication adapters | Complete service manifest coverage, actual authorized download/backfill; formal templates/fonts and independent publication approval |
-| Workbench and Runtime | Browser consumer, source/subject projections, configurable Runtime and deployment packaging | Regenerated compatible consumers, real loopback/browser success and recovery; AWS deployment and operational acceptance |
+| Local privacy | Restricted Origin/session bridge, exact reviewed export, encrypted mapping readback and sanitized C2 admission | Complete actual OCR restoration; production desktop distribution |
+| Documents and extraction | Authorized immutable snapshots, actual PDF parser, source checks for resumed runs, production SDK adapter with injected model responses in rehearsal | Measured model quality and real cloud authorization |
+| Jobs and human tasks | SQLite job/task/revision/outbox/receipt transactions, durable dispatch queue, actual authenticated API | Production identity and cloud transaction composition |
+| Controlled actions | Canonical response adapter, trusted allowed actions, persisted run reservations, failed/unknown-effect quarantine | Designated model and operator evaluation |
+| PDF and publication | Two-context/eight-field actual writer, immutable font bytes, reopen, exact fenced publication and reauthorized download | Complete OCR backfill; formal assets and business grants |
+| Workbench and Runtime | Regenerated canonical client, seven actual browser core scenarios, installed wheel and isolated container configured success | Final image/security gate and AWS operation |
 
-Current source combines the #36 service contracts and #38 task projections.
-`controlled-action-v1` remains explicitly versioned. The undeployed task
-extensions require all strict consumers to regenerate together. Legacy frozen
-commands and baseline success responses remain compatibility
-obligations; newly serialized nested task fields require the synchronized
-consumer upgrade. The selected artifact migration preserves legacy
-`ArtifactManifest` unchanged and adds `FencedArtifactManifest`
-(`artifact-manifest-v2`) through the service result union. Consumers must regenerate
-to read the new complete-context projection; its actual service acceptance is
-still required. See [contract ownership and migration](docs/service-contracts.md).
+There is one canonical #36/#38 service/task union and regenerated #39 consumer.
+The undeployed strict consumers migrate together; frozen commands and legacy
+HTTP/invocation success remain covered. `controlled-action-v1` remains separate.
+Legacy `ArtifactManifest` stays unchanged; `FencedArtifactManifest`
+(`artifact-manifest-v2`) carries every context and publication identity.
+See [contract ownership and migration](docs/service-contracts.md).
 
 ## Reliability and authority
 
@@ -56,6 +52,15 @@ still required. See [contract ownership and migration](docs/service-contracts.md
   attempt, fence, result version, source authorization and independent publication
   grant must still match. Every download reauthorizes; local revealed values
   cannot enter the publication writer.
+
+## Run the configured job and review workbench
+
+The [integrated local runbook](docs/integrated-local-runbook.md) provides the
+repository-local installation, core service, separate privacy bridge and actual
+Chromium commands. Use its fresh synthetic workspace and hash-pinned local OCR
+configuration; it makes no AWS or paid model calls. The exact acceptance status
+and unresolved restoration or deployment gates remain in
+[project progress](docs/project-progress.md).
 
 ## Run the existing local reference service
 
@@ -82,10 +87,9 @@ fails closed; it never selects synthetic material or grants approval implicitly.
 The fake-writer demo's `completed` scenario remains `verified/simulated` and
 creates no PDF.
 
-The new `create_integrated_service` composition and its rehearsal are being
-assembled separately. Its acceptance record must identify the actual startup
-command, configuration, dependencies and observed scenarios before it replaces
-this reference quick start. [Architecture](docs/architecture.md) separates the
+The configured `create_integrated_service` composition has a separate reproducible
+[runbook](docs/integrated-local-runbook.md). Its evidence distinguishes the accepted
+local core scenarios from unresolved full privacy and cloud acceptance. [Architecture](docs/architecture.md) separates the
 local composition from the AWS target.
 
 ## Verification and delivery

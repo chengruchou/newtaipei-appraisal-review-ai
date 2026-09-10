@@ -207,6 +207,14 @@ test("real local privacy review explicitly confirms, transfers and restores exac
       page.getByRole("button", { name: "Transfer confirmed payload once" }),
     ).toBeDisabled();
     expect(count(`/exports/${preview.preview_id}/transfer`)).toBe(1);
+    console.info(
+      JSON.stringify({
+        checkpoint: "source_transferred_once",
+        source_index: sourceIndex,
+        preview_id: preview.preview_id,
+        sanitized_sha256: preview.manifest.sanitized_digest,
+      }),
+    );
   }
 
   let handoff = fixture;
@@ -282,6 +290,14 @@ test("real local privacy review explicitly confirms, transfers and restores exac
   }
   expect(confirmedSides.size).toBe(4);
   expect(originalConfidences).toContain(0);
+  console.info(
+    JSON.stringify({
+      checkpoint: "four_current_sides_confirmed",
+      job_id: jobId,
+      count: confirmedSides.size,
+      zero_confidence_preserved: originalConfidences.includes(0),
+    }),
+  );
   await expect
     .poll(
       () => {
@@ -321,6 +337,18 @@ test("real local privacy review explicitly confirms, transfers and restores exac
       .update(readFileSync(await published.path()))
       .digest("hex"),
   ).toBe(artifact.content_hash);
+  await published.saveAs(test.info().outputPath("published-browser.pdf"));
+  console.info(
+    JSON.stringify({
+      checkpoint: "published_pdf_download_verified",
+      job_id: jobId,
+      artifact_id: artifact.artifact_id,
+      sha256: artifact.content_hash,
+      page_count: artifact.page_count,
+      context_count:
+        artifact.schema_version === "artifact-manifest-v2" ? artifact.contexts.length : 1,
+    }),
+  );
   await reviewer.close();
   await page
     .getByLabel("Authorized result identifier", { exact: true })
@@ -339,6 +367,14 @@ test("real local privacy review explicitly confirms, transfers and restores exac
       .update(readFileSync(await download.path()))
       .digest("hex"),
   ).toBe(restoration.manifest.final_digest);
+  await download.saveAs(test.info().outputPath("restored-browser.pdf"));
+  console.info(
+    JSON.stringify({
+      checkpoint: "restored_pdf_download_verified",
+      result_id: handoff.restore_result_id,
+      sha256: restoration.manifest.final_digest,
+    }),
+  );
   const unauthorized = await page.request.get(`${prefix}/sources`, {
     headers: { Origin: fixture.origin },
   });

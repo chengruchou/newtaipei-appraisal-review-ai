@@ -2,8 +2,8 @@
 
 ## Current integration boundary
 
-The current work joins reviewed components in a configured local service. **Local
-end-to-end/browser acceptance is still being completed; AWS deployment, live
+Reviewed components are joined in a configured local service. Seven real core
+browser scenarios passed. **Complete privacy restoration, AWS deployment, live
 model quality and formal human/business approval are not accepted.** This matrix
 supports the single status recorded in [project progress](project-progress.md).
 It does not turn component tests, source inspection or synthetic signatures into
@@ -54,8 +54,10 @@ The PDF evidence is in its original worktree's ignored `artifacts/pr34/`.
 SQLite logs and result digests are in the integration worktree's ignored
 `artifacts/sqlite-review/`. Other repair owners retain their exact failing/passing
 logs and source identities. No raw real case, PDF, mapping, key or private URI is
-included in this Markdown record. The documentation consolidation itself makes
-no new code, schema, CI, AWS or browser acceptance claim.
+included in this Markdown record. The current observation scope and unresolved
+gates are recorded in
+[project progress](project-progress.md); component counts are not summed into
+an integration total.
 
 ## Canonical consumer migration gate
 

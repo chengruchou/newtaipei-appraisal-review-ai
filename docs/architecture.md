@@ -2,9 +2,9 @@
 
 ## Current local integration
 
-The local composition is being assembled from implemented components. Component
-regressions and SQLite process/restart checks exist; combined browser/service
-acceptance is still pending. See [project progress](project-progress.md) for the
+The configured local composition is integrated. Seven actual core browser/API
+scenarios and SQLite process/restart checks passed. Complete privacy restoration
+and AWS acceptance remain open. See [project progress](project-progress.md) for the
 single current status and [traceability](delivery-traceability.md) for evidence.
 The earlier component diagrams and deployment snapshots are
 [archived](history/2026-09-11-pre-convergence/architecture.md).
@@ -19,17 +19,17 @@ flowchart LR
     P --> U
 ```
 
-The arrows describe the local path under integration, not a claim that every
+The arrows describe the implemented local path, not a claim that every
 scenario has passed. The actual implementations and their boundaries are:
 
 | Boundary | Implementation | Integration status |
 | --- | --- | --- |
-| User/local privacy | Local privacy review SDK, exact export mapping and restoration; restricted loopback bridge | Privacy component repair implemented; bridge/browser acceptance is separate |
-| API/jobs | `create_integrated_service`, trusted local session directory, C2 admission, job/outbox dispatcher and Runtime worker | Configured composition being integrated; no implicit synthetic fallback |
+| User/local privacy | Local privacy review SDK, exact export mapping and restoration; restricted loopback bridge | Exact export is integrated; complete actual OCR/browser restoration remains open |
+| API/jobs | `create_integrated_service`, trusted local session directory, C2 admission, job/outbox dispatcher and Runtime worker | Configured local API/worker executes actual cases; no implicit synthetic fallback |
 | Durable local state | `SQLiteReviewStore`, `SQLiteResultStore`, immutable revisions and receipt replay | Actual cross-process tests; production/cloud guarantees not implied |
-| Proposal/review | Actual PDF parser, authorized extraction snapshots, controlled selector/executor, run ledger, `CaseReviewer` and verifier | Reused implementation; complete pipeline and recovery being joined |
-| Human revision | #38 authenticated task API and exact subject projection, canonical task fields from #36 | Shared model migration and #39 consumer regeneration required |
-| PDF/result | Versioned template/map/font registry, multi-context writer, reopen, fenced publication and authorized bytes | Actual writer/adapter regressions; complete service manifest and grant composition under acceptance |
+| Proposal/review | Actual PDF parser, authorized extraction snapshots, controlled selector/executor, run ledger, `CaseReviewer` and verifier | Canonical workflow/human adapter and durable run ledger integrated |
+| Human revision | #38 authenticated task API and exact subject projection, canonical task fields from #36 | Shared model migration and generated consumer integrated; actual core browser passed |
+| PDF/result | Versioned template/map/font registry, multi-context writer, reopen, fenced publication and authorized bytes | Actual service produces complete two-context manifests and authorized bytes |
 
 The source is read again only through approved identities. An authorized
 immutable C2 snapshot binds case, document, version/hash and run. A later revision
@@ -50,7 +50,8 @@ export payload the user confirms. Rebuilding a second bundle can change
 occurrence IDs and is not equivalent. Key/store/confirmation failure blocks all
 transfer. Restore creates another local file; the pristine original and downloaded
 placeholder artifact remain unchanged. A revealing writer cannot be wrapped for
-publication. Synthetic CJK box-glyph fixtures test mapping, not legible formal fonts.
+publication. The integrated fixture uses a hash-pinned bundled CJK font; this is
+not formal asset approval.
 
 ## Transaction and authority boundaries
 
@@ -139,5 +140,6 @@ without changing their original approval status.
 The selected artifact migration retains legacy `ArtifactManifest` unchanged and
 adds `FencedArtifactManifest` (`artifact-manifest-v2`) to the service result union.
 The new projection binds primary and complete contexts, fenced publication and
-exact digest/font/writer identity. Actual service coverage and regenerated
-consumers are integration gates; a multi-context writer alone does not satisfy them.
+exact digest/font/writer identity. Actual service and regenerated consumers cover
+the new manifest; independent formal approval and complete restoration remain
+acceptance gates.

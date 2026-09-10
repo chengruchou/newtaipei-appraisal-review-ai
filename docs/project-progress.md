@@ -2,38 +2,37 @@
 
 ## Current status
 
-The local integration worktree is assembling reviewed component repairs into one
-configured service. **The combined local/browser release is not yet accepted;
-AWS deployment, live model quality and formal business approval are not
-accepted.** This page is the current status authority. Older branch/main/CI
-snapshots are preserved only in the [history index](history/2026-09-11-pre-convergence/README.md).
-No test total is used as a completion percentage.
+The configured local integration is implemented. Seven actual Chromium scenarios
+against the real API passed, including published download, empty jobs, explicit
+confirmation, unit-preserving correction, rejection, conflicts and exact-command
+recovery after an unknown response. **The complete local privacy/restoration flow,
+AWS deployment, real model quality and formal business approval are not accepted.**
+No test count is used as a completion percentage.
 
-Component code being present, an isolated test passing, a configured service
-being integrated, and an accepted user workflow are distinct claims. The
-[traceability matrix](delivery-traceability.md) records those distinctions and
-required evidence. The integration branch preserves original PR histories;
-local integration merges do not mean those PRs were approved or merged on GitHub.
+This is the current status authority. Earlier source/main/CI snapshots remain in
+[history](history/2026-09-11-pre-convergence/README.md). Original PRs remain open;
+normal Git integration merges do not approve or merge GitHub pull requests.
 
-## Work lines and next acceptance
+## Implemented and integrated work
 
-| Work line | Current component delivery | Required next evidence |
+| Work line | Current integrated behavior | Remaining acceptance |
 | --- | --- | --- |
-| #34 PDF | Downloaded artifact alias protection, immutable approved font bytes, literal-True capability and real multi-context registry/write/backfill regressions | Complete integrated manifest coverage and actual download/backfill; formal CJK/template/map approval |
-| #35 publication | Restored publication implementation and current job/attempt/source/grant conditions; local SQLite publication composition being joined | Same-database authority/grant revocation race and actual authorized download through the service |
-| #36 workflow | Controlled action/receipt failure repair and persistent run reservation/budget recovery | Canonical #38 handoff, source-bound resumed work and combined job/ledger recovery |
-| #37 privacy | No-op/group/category edits preserve raw evidence; mapping is persisted for the exact reviewed export | Actual local bridge/browser export and restoration; failure must cause zero transfer |
-| #38 human tasks | Applied-value receipts, owned empty-task reads, rejection projection and idempotent revision registration | Complete revision/task/job/outbox/receipt transaction through real API; exact source and approval rebinding |
-| Local SQLite mode | New combined job/task/result store with real file, transaction, process-race and crash/restart tests | Review and service composition; publication/source tables and workflow ledger remain explicit integration boundaries |
-| #39 workbench | Existing consumer requires the canonical union and authoritative subject/unit projection | Generate/verify without drift; immutable confirmation/retry command, body-timeout recovery and real browser API flow |
-| #42 extraction | Actual parser/snapshot/extraction/evaluation adapters and conservative budget controls | Report known partial usage without inventing unknown totals; run source authorization and live model evaluation separately |
-| #43 Runtime | Durable job/result adapters, worker/recovery and packaging; configured local composition being assembled | Deadline before late heartbeat/publication, restart and outbox recovery, actual packaged success; live deployment later |
-| #44 acceptance | Strict evidence validator and scoped collectors | Independently observed complete local/browser scenario matrix; live collectors stay unaccepted when not executed |
+| #34 PDF | Protected original/download paths and aliases; immutable approved font bytes; two contexts and eight fields through real writer/reopen/manifest | Complete actual OCR restoration; formal font/template/map approval |
+| #35 publication | Restored package; authoritative current attempt/lease/fence/grant and exact source versions; SQLite publication/download | Live DynamoDB/S3 deployment and operational recovery |
+| #36 workflow | Invalid receipts quarantined with trace; persistent run reservations; canonical committed human-response adapter | Designated model accuracy and operational evaluation |
+| #37 privacy | Raw evidence survives label-only edits; exact encrypted mapping readback before one-use C2 transfer; guarded local bridge | Full actual OCR restoration remains blocked, not bypassed |
+| #38 human tasks | Actual corrected values; raw zero confidence; empty owned jobs; atomic task/revision/job/outbox/receipt transitions | Production identity and cloud durable adapter composition |
+| Local persistence | Real SQLite cross-process transactions, durable dispatch, crash/restart and publication authority | Distributed/cloud recovery is a separate guarantee |
+| #39 workbench | Canonical generated client; located PDF/units; frozen confirmed commands and retries; exact all-page PDF preview | Complete privacy browser acceptance and production login |
+| #42 extraction | Real source/parser/SDK paths; known input/output usage counted independently | Real paid model was not called; unknown costs stay unknown |
+| #43 Runtime | Deadline guards; configured wheel/container executes completed two-context cases; UID 10001 resolves without login | Final image security and live deployment gates |
+| #44 acceptance | Read-only local evidence collector, real browser scenarios and strict existing attestation validators | Local observations are not live AWS acceptance or authenticated collector provenance |
 
-The deterministic review core, original-cell checks, confidence/source gates and
-full-case golden protocol remain required foundations. No owner is permitted to
-replace those checks with a success-shaped fixture, increased confidence or an
-implicit approval.
+See [reproducible local commands](integrated-local-runbook.md),
+[original repair heads and review replies](integration-repair-delivery.md) and
+[acceptance boundaries](delivery-traceability.md). Deterministic verification,
+raw confidence, exact side confirmation and independent material/publication
+authority remain separate. No real material is approved.
 
 ## Contract and composition ownership
 
@@ -61,43 +60,35 @@ owns current C2 document authorization and revision snapshots. The workflow
 budget ledger cannot be treated as the same transaction merely because both
 stores use SQLite.
 
-## Local evidence recorded in this repair round
+## Evidence and open gates
 
-| Scope | Observed result | What it does not establish |
-| --- | --- | --- |
-| PDF repair on original PR worktree | Initial 10 failing regressions; corrected full suite 686 passed, with actual PDF reopen, multi-context fields and unchanged sources | Full merged-service/browser acceptance or production CJK typography |
-| Combined SQLite store | 45 dedicated checks including 31 existing JobStore contract checks; broader job/human/API selection 410 passed | Entire evolving integration checkout, AWS transactions, source grants or browser acceptance |
-| #36 integration merge | Integration owner reports 78 focused checks passed before the workflow merge | Regenerated #39 consumer, whole-service acceptance or live model behavior |
+- The real core browser run passed seven scenarios in one clean run. A previous
+  transient failure and its rerun remain separate historical observations.
+- The actual installed wheel and network-isolated Linux container each executed
+  four explicit confirmations, produced a two-context/eight-field PDF, reopened
+  and hash-checked the authorized download, replayed receipts and survived restart.
+  Their exact source/build hashes are retained with local artifacts; later source
+  updates require a new package gate rather than reusing that evidence.
+- Actual combined HTTP privacy runs reached sanitized admission, four current
+  confirmations, completed publication and an authorized restoration plan.
+  Tesseract rejected low-confidence/token observations before restoration output.
+  [Legibility diagnostics](privacy-ocr-legibility.md) preserve the negative result;
+  scores, observations, placeholder gates and decimal assertions are unchanged.
+- A native PDF iframe failed to complete in actual Chromium. The workbench now
+  uses the existing PDF.js renderer and requires every page to finish before
+  enabling explicit approval. A failed page still blocks approval.
+- Local tests, exact-head remote CI, emulator checks, browser observations and
+  cloud/operator acceptance remain distinct. The repair record identifies each
+  component CI run; failed or unstarted runs are not green.
+- Image scanning reported unresolved findings. No scan was disabled and no
+  threshold reduced. Image security remains a deployment gate.
 
-Evidence counts are scoped observations from their own tested trees. Do not add
-them together or present them as an exact-head full integration gate. Logs and
-synthetic artifacts remain ignored under their worktrees' `artifacts/` directories.
-The integration owner must attach final exact commit/configuration/command
-records after its complete rehearsal. Remote CI is not refreshed by this
-Markdown consolidation; earlier CI links remain historical.
+A completed core flow does not establish a completed privacy flow. Actual
+restoration must produce another local PDF and prove both the original and the
+published placeholder PDF unchanged. The full browser assertion remains enabled;
+an OCR rejection is reported as an acceptance failure.
 
-## Required integrated rehearsal
-
-Use a small synthetic case, isolated stores and clearly designated test assets.
-Observe actual parser, HTTP, deterministic review, writer, reopen, publication,
-authorized download and local backfill. Model responses may be injected; that
-must remain visible in the evidence classification.
-
-1. Inspect the exact sanitized payload. Mapping persistence/key/confirmation
-   failure causes zero transfer, and original/map canaries do not reach cloud
-   request bodies, keys, metadata or logs.
-2. Read a legitimate job with no tasks, then complete a normal case. The PDF and
-   complete manifest must belong to this exact run and attempt.
-3. Run needs_review, explicit correction/confirmation and two revision rounds.
-   Scores do not increase and obsolete confirmation/approval cannot be reused.
-4. Retry identical commands and restart processes. Preserve idempotency,
-   reservations, trace failures, job fences and immutable result selection.
-5. Refuse other principals/cases, revoked sources, wrong versions/hashes, stale
-   approvals and timed-out/cancelled attempts. Blocked review calls no writer.
-6. Download and restore a multi-context artifact to a new local PDF while the
-   original template and downloaded placeholder bytes remain unchanged.
-
-Live AWS acceptance additionally needs explicit account/role/region/model and
-budget scope, actual IAM/storage/worker recovery, package/scan gates and operator
+Live AWS acceptance requires a scoped non-root account/role, region, designated
+model, budget/data-region authorization and real IAM/storage/recovery/alarm
 observations. Formal rules/fonts/templates and human approval are separate gates.
-None is cleared by documenting it or by accepting a synthetic signature.
+None is cleared by a synthetic signature or a local test.
