@@ -1,0 +1,11 @@
+**
+!src/
+!src/appraisal_review/
+!src/appraisal_review/**/
+!src/appraisal_review/**/*.py
+!infra/
+!infra/runtime/
+!infra/runtime/requirements.lock
+**/__pycache__/
+**/*.pyc
+**/.env*

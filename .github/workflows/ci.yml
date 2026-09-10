@@ -35,7 +35,11 @@ jobs:
         run: python scripts/generate_goldens.py
       - name: Local Runtime protocol and mocked cloud smoke
         run: python -m pytest cloud_tests
+      - name: Local HTTP and invocation contracts
+        run: |
+          python scripts/http_smoke.py
+          python scripts/local_service_smoke.py
       - name: CloudFormation smoke templates
         run: |
           python -m pip install -r cloud_tests/requirements-dev.txt
-          cfn-lint cloud_tests/image-stack.json cloud_tests/runtime-stack.json infra/documents/stack.json
+          cfn-lint cloud_tests/image-stack.json cloud_tests/runtime-stack.json infra/documents/stack.json infra/runtime/image-stack.yaml infra/runtime/runtime-stack.yaml

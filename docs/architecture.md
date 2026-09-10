@@ -7,24 +7,29 @@ flowchart LR
   subgraph Local
     P["Privacy UI · pending"]
   end
-  subgraph CloudTarget["Cloud target · live pending"]
-    D["C2 snapshots · merged"] --> R["A2 resolver · this PR"]
-    R --> M["Bounded extraction · this PR"]
-    M --> C["Candidates"]
-    C -.-> H["Human tasks · pending"]
-    H -.-> V["Review core · merged"]
+  subgraph Cloud["Cloud target · live pending"]
+    D["C2 snapshots · merged"] --> E["Extraction · PR 42"]
+    D --> J["Admission · this PR"]
+    J --> DB["DynamoDB · this PR"]
+    DB --> Q["Outbox / SQS · this PR"]
+    Q --> R["Runtime worker · this PR"]
+    R --> DB
+    R -.-> B["Execution bundle · pending"]
+    E -.-> B
+    B -.-> H["Human tasks · pending"]
+    B -.-> V["Review core · merged"]
     V -.-> W["Formal output · pending"]
     W -.-> A["Publication · pending"]
   end
   P -.->|Sanitized reference| D
-  C --> E["Evaluation · this PR"]
-  G["#23 goldens · merged"] --> E
+  R --> S["Versioned result · this PR"]
 ```
 
-Solid edges are implemented adapter/data paths; dotted edges still need integration.
-No edge asserts live deployment. [The delivery record](issue-21-delivery.md)
-pins dependencies and separates local, CI and live evidence. Diagrams below retain
-the earlier merged/local baseline, not completed cloud assembly.
+Solid edges are implemented adapters, not a deployed topology. Dotted edges
+require reviewed integration. The default Runtime has no execution bundle and
+returns 503; a durable result is not an authorized published PDF. [Issue 30](issue-30-delivery.md)
+records dependency heads, trust boundaries and separate local/container/live gates.
+The diagrams below retain earlier baseline detail and the larger target scope.
 
 Snapshot: main `463880af3a6dc6aad2bfa6fdfc3bc267afc4d4a5` inspected on 2026-09-10,
 including merged #15/#16/#19/#20/#33. M0 is merged and is not deployed.

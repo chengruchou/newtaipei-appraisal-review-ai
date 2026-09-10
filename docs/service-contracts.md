@@ -320,3 +320,16 @@ both configured, and capability_unavailable otherwise; separately `LocalReviewSe
 HTTP/invocation shape changed. Reserved groups for B/D: documents, review-jobs, human-tasks/responses,
 authorized artifact downloads. They return no fake production success because no
 routes exist. C can validate fixtures now. See the [local runbook](local-service-runbook.md).
+
+## Runtime persistence integration (#30)
+
+The unchanged JobStore and service-v1 models are consumed by DynamoDBJobStore,
+S3ResultStore, SnapshotJobService and RuntimeWorker. Durable status requires a
+committed database reference; an S3 object or transport acknowledgement alone
+cannot establish it. Result bodies are addressed by run/version/content digest
+and only the fenced committed reference selects one. The reference-only Runtime
+transport is internal and does not replace HTTP/invocation review contracts.
+See [ADR 0026](adr/0026-dynamodb-job-store.md),
+[ADR 0027](adr/0027-runtime-composition.md) and the
+[Runtime runbook](runtime-deployment.md). Human confirmation, precise material
+approval and original confidence (including zero) retain existing semantics.

@@ -1,5 +1,19 @@
 # Requirements to implementation and acceptance
 
+## Issue 30 durable Runtime integration, 2026-09-11
+
+| Requirement | Implementation / regression evidence | Remaining acceptance |
+| --- | --- | --- |
+| Process-independent authority | DynamoDBJobStore; shared contract, independent-client races and SDK errors | Live table/process replacement and IAM |
+| Immutable fenced result | S3ResultStore; stale-first-object and reconstruction tests | Live S3 and publication authority |
+| Recovery and bounded worker | runtime_jobs/runtime_worker; duplicate dispatch, lease/cancel/failure tests | Real dispatcher/Runtime/DLQ delivery |
+| Current authorized source | runtime_sources; real local C2 admission/revocation tests | Reviewed principal/revision repositories |
+| ARM64 and deployment | runtime Dockerfiles, build verifier, IaC tests/cfn-lint | Accepted execution bundle, scan review and create/update/rollback |
+
+[Issue 30 delivery](issue-30-delivery.md) records direct PR #42 dependency and
+separate local, emulated-service, container, CI and live scopes.
+
+
 ## Issue 21 integration, 2026-09-11
 
 | Requirement | Implementation and test | Acceptance boundary |

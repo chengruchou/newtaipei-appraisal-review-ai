@@ -1,5 +1,14 @@
 # Project progress, 2026-09-10
 
+Current wrap-up: #21 has [Draft PR #42](https://github.com/chengruchou/newtaipei-appraisal-review-ai/pull/42).
+The dependent #30 adds persistent job execution, C2 admission and ARM64/IaC
+packaging; [its delivery record](issue-30-delivery.md) identifies missing owner
+providers and live gates. #31 follows for browser/AWS evidence collection.
+PR #42 head fa36fb714c6628bef4f0fd66aae0278372f57fae did not execute CI tests:
+[run 34511311725](https://github.com/chengruchou/newtaipei-appraisal-review-ai/actions/runs/34511311725)
+reports an account payment/spending-limit startup block. Local passes are separate.
+
+
 ## Current work, 2026-09-11
 
 Main is `c132e4ee4b1797098bd22676245cdfc01a26ffdb`, including merged #32,
