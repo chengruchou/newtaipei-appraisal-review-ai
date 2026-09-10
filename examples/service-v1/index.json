@@ -25,6 +25,11 @@
   "result-needs-review.json": "ServiceResult",
   "result-source-binding-failed.json": "ServiceResult",
   "result-written.json": "ServiceResult",
+  "job-acceptance.json": "JobAcceptance",
+  "job-status-queued.json": "JobStatusView",
+  "job-status-waiting.json": "JobStatusView",
+  "job-status-cancelling.json": "JobStatusView",
+  "job-status-failed.json": "JobStatusView",
   "submission.json": "ReviewSubmission",
   "problem.json": "ServiceProblem",
   "value.json": "ValueRevision"

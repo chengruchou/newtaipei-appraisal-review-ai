@@ -270,6 +270,25 @@ further progress; both passed when rerun with approved local execution permissio
 This documentation-only phase does not report a new coverage measurement or live
 cloud/model acceptance. The submission gate and whitespace check passed; nothing
 was staged, committed or published, and `plan.md` remains untracked and unmodified.
+## Full-case goldens and reviewer acceptance (#23, 2026-09-10)
+
+The [golden acceptance protocol](golden-acceptance.md) and
+[ADR 0014](adr/0014-full-case-golden-contract.md) define one acceptance basis shared by the
+whole-case review, the independent claim checker, the completion gate and the writer
+boundary. Thirteen synthetic cases cover a complete case with cross-page evidence, a derivable
+blank, a blank that must stay empty, an incomplete page inventory, an unevidenced field,
+contradicting source cells, zero measured confidence, an unsupported criteria rule, two comparison contexts, unapproved
+material and a three-step revision chain.
+
+Expected values are authored from citations, rule bands, arithmetic and recorded
+adjudications, and CI re-derives each one from its fixture. Reviewed manifests under
+`tests/goldens/` are read-only for evaluation runs; `scripts/generate_goldens.py` writes them
+only under an explicit flag and reports drift otherwise. Human task expectations are declared
+against the frozen service contract; no task producer exists yet, and #24 and #17 own it.
+
+Local checks at this checkpoint: ruff, ruff format, mypy and 756 repository tests pass, and
+the golden check reports 14 manifests matching their fixtures. No remote write, commit, merge,
+AWS call or real rule approval was performed, and no rule is claimed as formally approved.
 
 ## PR #20 local P2 correction (2026-09-07)
 
