@@ -31,6 +31,8 @@ jobs:
         run: mypy src
       - name: Test
         run: pytest --cov=appraisal_review --cov-config=pyproject.toml --cov-report=term-missing
+      - name: Reviewed full-case goldens
+        run: python scripts/generate_goldens.py
       - name: Local Runtime protocol and mocked cloud smoke
         run: python -m pytest cloud_tests
       - name: CloudFormation smoke templates
