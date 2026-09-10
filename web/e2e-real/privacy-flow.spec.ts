@@ -90,6 +90,49 @@ test("real local privacy review explicitly confirms, transfers and restores exac
     );
     await page.getByRole("button", { name, exact: true }).click();
     const response = await pending;
+    if (!response.ok()) {
+      const diagnosticDeadline = new Error("diagnostic_deadline_exceeded");
+      let diagnosticTimer: ReturnType<typeof setTimeout> | undefined;
+      let responseBody: Buffer | undefined;
+      let bodyUnavailableReason: string | undefined;
+      try {
+        responseBody = await Promise.race([
+          response.body(),
+          new Promise<never>((_resolve, reject) => {
+            diagnosticTimer = setTimeout(() => reject(diagnosticDeadline), 2000);
+          }),
+        ]);
+      } catch (error) {
+        bodyUnavailableReason =
+          error === diagnosticDeadline ? "diagnostic_deadline_exceeded" : "body_read_failed";
+      } finally {
+        clearTimeout(diagnosticTimer);
+      }
+      const failure = {
+        status: response.status(),
+        path: new URL(response.url()).pathname,
+        body_sha256:
+          responseBody === undefined
+            ? undefined
+            : createHash("sha256").update(responseBody).digest("hex"),
+        body_text: responseBody?.toString("utf8"),
+        body_unavailable_reason: bodyUnavailableReason,
+      };
+      writeFileSync(
+        test.info().outputPath("privacy-response-error-private.json"),
+        JSON.stringify(failure, null, 2),
+        { mode: 0o600 },
+      );
+      console.info(
+        JSON.stringify({
+          checkpoint: "privacy_response_failed",
+          status: failure.status,
+          path: failure.path,
+          body: "[redacted]",
+          body_sha256: failure.body_sha256,
+        }),
+      );
+    }
     expect(response.ok()).toBe(true);
     return response;
   }
