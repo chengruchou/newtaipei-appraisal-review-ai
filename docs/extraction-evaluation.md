@@ -248,6 +248,14 @@ No taxes, discounts, image/storage charges or non-token fees are implied. Rate
 source text and private URLs are omitted from reports; their digest stays local
 in the manifest/evidence chain.
 
+The synthetic probe in `cloud_tests/extraction_smoke.py` also sums each known
+input and output cost component independently. For example, 100 known input
+tokens at USD 3 per million contribute USD 0.0003 even if output usage is
+unknown. A later page failure preserves earlier known components and original
+attempt records; any missing required usage leaves the total estimate null.
+This reporting rule does not change the conservative pre-call pricing ceiling
+or reservations for calls whose completion is uncertain.
+
 Each pair of repeats reports pages observed in both, missing on each side,
 changed-page counts and changes in field identity/state/type/value/evidence,
 handoffs, status, other proposals, usage and timing, plus metric deltas. Field
