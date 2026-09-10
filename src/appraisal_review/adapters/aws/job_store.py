@@ -680,6 +680,32 @@ class DynamoDBJobStore:
         )
         return current_job.record(current_run)
 
+    async def reject_human_task(
+        self, *, job_id: UUID, run_id: UUID, task_id: UUID, now: int
+    ) -> JobRecord:
+        job, run = await self._required(job_id)
+        if run.run_id != run_id or task_id not in job.open_task_ids:
+            raise ConditionFailed("The task no longer belongs to the current open run")
+        remaining = tuple(item for item in job.open_task_ids if item != task_id)
+        transition = next_state(
+            replace(_facts(job), has_open_tasks=bool(remaining)),
+            JobEvent.HUMAN_REJECTED,
+            policy=self.policy,
+        )
+        current_job = job.model_copy(
+            update={
+                "open_task_ids": remaining,
+                "status": transition.status,
+                "problem": ServiceProblem(code=ServiceErrorCode.CONFLICT)
+                if transition.status == JobStatus.FAILED
+                else None,
+                "updated_at": now,
+            }
+        )
+        current_run = run.model_copy(update={"status": transition.status})
+        await self._write([(current_job, job, None), (current_run, run, None)])
+        return current_job.record(current_run)
+
     async def resume_after_human(self, *, job_id: UUID, run: RunReference, now: int) -> JobRecord:
         job, previous = await self._required(job_id)
         try:

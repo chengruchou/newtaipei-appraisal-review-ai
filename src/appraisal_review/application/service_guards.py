@@ -120,6 +120,17 @@ def submission_digest(submission: ReviewSubmission) -> str:
     return content_digest(value)
 
 
+def response_digest(command: HumanResponse) -> str:
+    """Canonical payload identity of a response, excluding its idempotency key.
+
+    Same rule as submission_digest: the key names the attempt, so hashing it would make
+    every retry look like a different payload and defeat the check it feeds. A response
+    carries no unordered collection, so nothing needs sorting first.
+    """
+    value = command.model_copy(update={"idempotency_key": "canonical-payload"})
+    return content_digest(value)
+
+
 def check_idempotency(
     record: IdempotencyRecord, principal: Principal, submission: ReviewSubmission
 ) -> UUID:

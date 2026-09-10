@@ -34,7 +34,8 @@ live task responses, downloadable PDFs or observed execution evidence.
 | MaterialRevision, RevisionReference, ValueRevision; RevisionSnapshot | B | Trusted material assembly -> A/C/D/E | Detached immutable snapshots and new revisions; no database |
 | RunReference, ReviewSubmission; JobRepository | D | Submission/dispatch -> B/C/runtime | Separate run, attempt and session; pure idempotency checks; durable operations reserved |
 | JobReference, JobStatusView, JobAcceptance; JobStore, ResultStore | D | Durable job plane -> C/B/runtime | Mounted review-jobs routes over an injected store; in-memory reference adapter only, no cloud persistence |
-| HumanTask, HumanResponse, AcceptedResponse; PrincipalResolver, HumanTaskRepository | B | Server task/admission -> C and subsequent run | Strict commands and pure permission/version checks; no human API mounted |
+| HumanTask, HumanResponse, AcceptedResponse; PrincipalResolver, HumanTaskRepository | B | Server task/admission -> C and subsequent run | Strict commands and pure permission/version checks; mounted human-task routes over an injected store |
+| TaskListView, RevisionListView, ResponseReceipt; HumanTaskStore | B | Authenticated reviewer plane -> C/D | Authorized task and revision projections and one transactional response; in-memory reference adapter only, no cloud persistence |
 | AuthorizationRecord | B, E for publication scope | Trusted authorizer -> job/publisher | Reserved metadata record; existing signed local receipt remains actual local authority |
 | AllowedAction, ActionProposal, DecisionEvent, Budget | A | Trusted policy/executor -> C/D/evaluation | Pure admission and truthful event validation; no model selector, retry loop or event store |
 | ServiceResult, ServiceVerification, VerificationDiagnostic, ArtifactManifest | B assembly, E coverage, D publication | Local facade / future publisher -> C | Callable local envelope, sanitized verification and real PDF manifest; durable publication reserved |
@@ -311,15 +312,57 @@ A response produces a new revision and necessary approvals, then a subsequent ru
 it does not revive the old session or hold its lease. Job run ID, attempt UUID and
 Runtime session string are separate; a session requires an attempt.
 
+The human-task plane implements that response. `HumanTaskStore.commit_response` is one
+coarse transaction on purpose: marking the task answered, appending the revision,
+superseding the siblings bound to the old revision, consuming the response key and
+scheduling the follow-up run are inseparable. A store that applied some of them could
+leave a revision nothing is scheduled to review, or a scheduled run for a revision that
+was never stored. Everything the transaction rechecks is passed into it, because a
+decision made from an earlier read is exactly what a conditional write exists to
+invalidate; the service's own admission and replay checks are a fast path, never the
+decision. The in-memory adapter rolls its writes back when the job plane refuses, which
+is the local stand-in for a single TransactWriteItems, not a pattern to reimplement.
+
+Confirmation and correction take deliberately different paths. A confirmation is an
+assertion about material that did not change, so it captures a child revision and keeps
+the confirmation; routing it through `revise`, which clears every confirmation by design,
+would erase the very assertion being recorded. A correction changes an observed value, so
+it uses `revise` and every prior confirmation is cleared. A correction carries the
+reviewer's proposed value and raw text only: it keeps the stored evidence, must name the
+observation its task is about, must be normalized before entering the arithmetic path, and
+never raises a raw confidence. Refusing to confirm is a recorded answer that commits no
+revision and schedules no run. Rule, material and publication approval are not answered
+here; the existing exact-material authority still owns them, and such a task reports
+capability_unavailable rather than advertising an authorization the service never wrote.
+
+The task routes return `TaskView`, which is the task plus the `subject_id` its own
+correction must carry. That name is published rather than derived by the caller because
+deriving it means canonicalizing the comparison context, and two languages do not
+canonicalize alike: `ComparisonContext.key()` is `json.dumps`, which escapes non-ASCII by
+default, while a browser's `JSON.stringify` does not. A client that rebuilt the name would
+compute a different string for any case identified in Chinese, which is every real case
+here, and every correction would be refused. Do not substitute one canonicalizer for
+another; ask the server for the name.
+
+Reads and writes are separated by permission: `review` is enough to see a task, while
+answering additionally requires the task's own permission. A task belonging to another
+principal, and a case this principal cannot see, are both reported as not_found; replying
+forbidden would confirm the task exists.
+
 Actually callable: GET /health, POST /v1/validate, POST /v1/reviews and existing
 invocation, using the configured factory; plus POST /v1/review-jobs,
 GET /v1/review-jobs/{job_id}, GET /v1/review-jobs/{job_id}/result and
 POST /v1/review-jobs/{job_id}/cancel when a job store and a principal resolver are
-both configured, and capability_unavailable otherwise; separately `LocalReviewService.run` /
+both configured, and capability_unavailable otherwise; plus
+GET /v1/review-jobs/{job_id}/tasks, GET /v1/review-jobs/{job_id}/revisions,
+GET /v1/review-tasks/{task_id} and POST /v1/review-tasks/{task_id}/responses when a
+human-task store and a principal resolver are both configured, and
+capability_unavailable otherwise; separately `LocalReviewService.run` /
 `python -m appraisal_review.local_service run` returns ServiceResult. No legacy
-HTTP/invocation shape changed. Reserved groups for B/D: documents, review-jobs, human-tasks/responses,
-authorized artifact downloads. They return no fake production success because no
-routes exist. C can validate fixtures now. See the [local runbook](local-service-runbook.md).
+HTTP/invocation shape changed. The new task subject endpoint provides authoritative
+value/type/unit metadata without widening TaskView. Document gateway and authorized
+artifact download composition remain separate integration work. See the
+[local runbook](local-service-runbook.md).
 
 ## Runtime persistence integration (#30)
 

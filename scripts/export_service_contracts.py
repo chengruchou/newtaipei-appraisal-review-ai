@@ -10,8 +10,9 @@ from pydantic.json_schema import models_json_schema
 
 from appraisal_review.adapters.local.service import LocalServiceConfiguration
 from appraisal_review.adapters.local.synthetic import synthetic_material
+from appraisal_review.application.human_tasks import task_view
 from appraisal_review.application.revisions import RevisionSnapshot
-from appraisal_review.domain.confidence import confirmation_digest
+from appraisal_review.domain.confidence import confirm_side, confirmation_digest
 from appraisal_review.domain.factor_models import WorkflowStatus
 from appraisal_review.domain.job_contracts import (
     JobAcceptance,
@@ -53,6 +54,13 @@ from appraisal_review.domain.service_contracts import (
     ValueRevision,
     VerificationDiagnostic,
 )
+from appraisal_review.domain.task_contracts import (
+    ResponseReceipt,
+    RevisionListView,
+    TaskListView,
+    TaskSubjectView,
+    TaskView,
+)
 
 MODELS = (
     DocumentReference,
@@ -82,12 +90,22 @@ MODELS = (
     JobReference,
     JobStatusView,
     JobAcceptance,
+    TaskView,
+    TaskListView,
+    TaskSubjectView,
+    RevisionListView,
+    ResponseReceipt,
 )
 
 
 def fixtures() -> dict[str, ServiceModel]:
     material = synthetic_material()
     revision = RevisionSnapshot.capture(material, "fixture-r1").revision
+    # The revision a confirmation commits: same observations, one recorded human assertion.
+    answered = synthetic_material()
+    confirm_side(answered.facts.pairs[0], "target", reviewer="fixture-reviewer")
+    answered.policy.identity.version = answered.facts.identity.version = "fixture-r2"
+    confirmed = RevisionSnapshot.capture(answered, "fixture-r2", parent=revision.reference).revision
     run = RunReference(run_id=UUID(int=1), revision=revision.reference)
     finding = ReviewFinding(
         id="fixture-confirmation",
@@ -225,6 +243,33 @@ def fixtures() -> dict[str, ServiceModel]:
             revision=revision.reference,
             documents=revision.documents,
             idempotency_key="fixture-submit-1",
+        ),
+        "task-list": TaskListView(job=job, tasks=(task_view(task),)),
+        "task-subject": TaskSubjectView(
+            task_id=task.task_id,
+            revision=revision.reference,
+            subject_id=task_view(task).subject_id or "",
+            observation=PublicValue(
+                state="present",
+                value=material.facts.pairs[0].pair.target.value,
+                raw_text=material.facts.pairs[0].pair.target.raw_text or "",
+                unit="m",
+                confidence=material.facts.pairs[0].pair.target.confidence,
+                evidence=tuple(material.facts.pairs[0].target_sources),
+            ),
+            required_type="number",
+            required_unit="m",
+            unit_required=True,
+        ),
+        "revision-list": RevisionListView(job=job, revisions=(revision,)),
+        "response-receipt": ResponseReceipt(
+            task_id=task.task_id,
+            consumed_version=1,
+            action=ResponseAction.CONFIRM,
+            job=job,
+            job_status=JobStatus.QUEUED,
+            revision=confirmed.reference,
+            resumed_run=RunReference(run_id=UUID(int=7), revision=confirmed.reference),
         ),
         "problem": ServiceProblem(code=ServiceErrorCode.CONFLICT),
         "value": ValueRevision(

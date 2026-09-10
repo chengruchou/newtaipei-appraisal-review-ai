@@ -502,6 +502,30 @@ class InMemoryJobStore:
             self._enqueue(job, job.current_run_id, available_at=available_at)
             return self._record(job)
 
+    async def reject_human_task(
+        self, *, job_id: UUID, run_id: UUID, task_id: UUID, now: int
+    ) -> JobRecord:
+        async with self._lock:
+            job = self._jobs.get(job_id)
+            if job is None or job.current_run_id != run_id or task_id not in job.open_task_ids:
+                raise ConditionFailed("The task no longer belongs to the current open run")
+            remaining = tuple(item for item in job.open_task_ids if item != task_id)
+            transition = next_state(
+                replace(self._facts(job), has_open_tasks=bool(remaining)),
+                JobEvent.HUMAN_REJECTED,
+                policy=self.policy,
+            )
+            job.open_task_ids = remaining
+            job.status = transition.status
+            job.problem = (
+                ServiceProblem(code=ServiceErrorCode.CONFLICT)
+                if transition.status == JobStatus.FAILED
+                else None
+            )
+            job.updated_at = now
+            self._runs[(job_id, run_id)].run_status = transition.status
+            return self._record(job)
+
     async def resume_after_human(self, *, job_id: UUID, run: RunReference, now: int) -> JobRecord:
         async with self._lock:
             job = self._jobs.get(job_id)

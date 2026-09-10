@@ -44,6 +44,7 @@ BASELINE_TABLE: dict[tuple[JobStatus, JobEvent], JobStatus] = {
     (JobStatus.RUNNING, JobEvent.PERMANENT_ERROR): JobStatus.FAILED,
     (JobStatus.RUNNING, JobEvent.CANCEL): JobStatus.RUNNING,
     (JobStatus.WAITING_FOR_HUMAN, JobEvent.HUMAN_RESPONSE_COMMITTED): JobStatus.QUEUED,
+    (JobStatus.WAITING_FOR_HUMAN, JobEvent.HUMAN_REJECTED): JobStatus.FAILED,
     (JobStatus.WAITING_FOR_HUMAN, JobEvent.CANCEL): JobStatus.CANCELLED,
     (JobStatus.RETRYABLE_FAILED, JobEvent.CLAIM): JobStatus.RUNNING,
     (JobStatus.RETRYABLE_FAILED, JobEvent.SCHEDULE_RETRY): JobStatus.QUEUED,
@@ -54,7 +55,17 @@ MATRIX = [(status, event) for status in JobStatus for event in JobEvent]
 
 
 def test_matrix_covers_every_status_and_event() -> None:
-    assert len(MATRIX) == len(JobStatus) * len(JobEvent) == 8 * 14
+    assert len(MATRIX) == len(JobStatus) * len(JobEvent) == 8 * 15
+
+
+def test_rejection_with_remaining_open_tasks_keeps_waiting_without_resuming() -> None:
+    transition = next_state(
+        JobFacts(status=JobStatus.WAITING_FOR_HUMAN, has_open_tasks=True),
+        JobEvent.HUMAN_REJECTED,
+        policy=POLICY,
+    )
+    assert transition.status == JobStatus.WAITING_FOR_HUMAN
+    assert not transition.enqueue_outbox
 
 
 @pytest.mark.parametrize(("status", "event"), MATRIX)

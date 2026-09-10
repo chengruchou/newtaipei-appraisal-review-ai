@@ -25,6 +25,12 @@ job-status-queued, job-status-waiting and job-status-failed show the durable sta
 view in progress, awaiting a reviewer with an open task, and terminally failed with a
 sanitized problem. None of the four carries findings, a storage URI or a lease owner:
 the control plane keeps identifiers, versions, digests, statuses and counts only.
+task-list, revision-list and response-receipt show the human-task plane: the tasks of
+one job including answered and superseded ones, the parent-linked revision chain oldest
+first, and what one accepted answer actually committed. The receipt is the idempotent
+body, so an exact replay of the same principal, key and payload returns it unchanged. A
+receipt naming a revision always names the run scheduled to review that revision; a
+rejection names neither, because refusing to confirm changes no material.
 Consume the updated service-v1
 schema and result fixtures together; extra-forbid consumers of the earlier PR #20
 draft must adopt the added verification field. No fixture exposes a storage URI

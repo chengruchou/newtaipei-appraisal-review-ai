@@ -1155,6 +1155,83 @@
       "title": "ResponseAction",
       "type": "string"
     },
+    "ResponseReceipt": {
+      "additionalProperties": false,
+      "description": "What one accepted response actually committed. Never an approval or a review result.\n\nThe receipt is the idempotent body: an exact replay of the same principal, key and\npayload returns this same value, so a reviewer who retries a lost response can tell\nthat their answer landed once rather than twice.",
+      "properties": {
+        "schema_version": {
+          "const": "service-v1",
+          "default": "service-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "task_id": {
+          "format": "uuid",
+          "title": "Task Id",
+          "type": "string"
+        },
+        "consumed_version": {
+          "minimum": 1,
+          "title": "Consumed Version",
+          "type": "integer"
+        },
+        "task_state": {
+          "const": "answered",
+          "default": "answered",
+          "title": "Task State",
+          "type": "string"
+        },
+        "action": {
+          "$ref": "#/$defs/ResponseAction"
+        },
+        "job": {
+          "$ref": "#/$defs/JobReference"
+        },
+        "job_status": {
+          "$ref": "#/$defs/JobStatus"
+        },
+        "revision": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RevisionReference"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "resumed_run": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RunReference"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "superseded_task_ids": {
+          "default": [],
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "title": "Superseded Task Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "task_id",
+        "consumed_version",
+        "action",
+        "job",
+        "job_status"
+      ],
+      "title": "ResponseReceipt",
+      "type": "object"
+    },
     "ReviewFinding": {
       "additionalProperties": false,
       "properties": {
@@ -1300,6 +1377,34 @@
         "idempotency_key"
       ],
       "title": "ReviewSubmission",
+      "type": "object"
+    },
+    "RevisionListView": {
+      "additionalProperties": false,
+      "description": "The revision chain this job produced, oldest first and explicitly linked.\n\nThe order is part of the contract: a consumer reconstructing what a reviewer changed\nmust not have to re-sort by a timestamp the service does not publish.",
+      "properties": {
+        "schema_version": {
+          "const": "service-v1",
+          "default": "service-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "job": {
+          "$ref": "#/$defs/JobReference"
+        },
+        "revisions": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/MaterialRevision"
+          },
+          "title": "Revisions",
+          "type": "array"
+        }
+      },
+      "required": [
+        "job"
+      ],
+      "title": "RevisionListView",
       "type": "object"
     },
     "RevisionReference": {
@@ -1664,6 +1769,136 @@
       ],
       "title": "TaskKind",
       "type": "string"
+    },
+    "TaskListView": {
+      "additionalProperties": false,
+      "description": "The tasks of one job the caller may act on, ordered oldest first.\n\nSuperseded tasks stay listed: a reviewer who is holding a stale task page needs to be\nable to discover that it was superseded, rather than to see it silently disappear.",
+      "properties": {
+        "schema_version": {
+          "const": "service-v1",
+          "default": "service-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "job": {
+          "$ref": "#/$defs/JobReference"
+        },
+        "tasks": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/TaskView"
+          },
+          "title": "Tasks",
+          "type": "array"
+        }
+      },
+      "required": [
+        "job"
+      ],
+      "title": "TaskListView",
+      "type": "object"
+    },
+    "TaskSubjectView": {
+      "additionalProperties": false,
+      "description": "Exact stored value and input requirements; a separate opt-in projection.\n\nKeeping this out of TaskView preserves the frozen legacy response shape.\nA client must never infer a measurement unit from a factor name.",
+      "properties": {
+        "schema_version": {
+          "const": "service-v1",
+          "default": "service-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "task_id": {
+          "format": "uuid",
+          "title": "Task Id",
+          "type": "string"
+        },
+        "revision": {
+          "$ref": "#/$defs/RevisionReference"
+        },
+        "subject_id": {
+          "title": "Subject Id",
+          "type": "string"
+        },
+        "observation": {
+          "$ref": "#/$defs/PublicValue"
+        },
+        "required_type": {
+          "anyOf": [
+            {
+              "enum": [
+                "number",
+                "text",
+                "category",
+                "boolean"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Required Type"
+        },
+        "required_unit": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Required Unit"
+        },
+        "unit_required": {
+          "title": "Unit Required",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "task_id",
+        "revision",
+        "subject_id",
+        "observation",
+        "required_type",
+        "required_unit",
+        "unit_required"
+      ],
+      "title": "TaskSubjectView",
+      "type": "object"
+    },
+    "TaskView": {
+      "additionalProperties": false,
+      "description": "One task plus the names a client would otherwise have to re-derive to answer it.\n\n`subject_id` is the ledger name of the observation the task is about. It is published\nrather than left to the caller because deriving it means canonicalizing the comparison\ncontext, and two languages do not canonicalize alike: Python's json.dumps escapes\nnon-ASCII by default and JavaScript's JSON.stringify does not, so a browser would\ncompute a different name for any case whose identifiers are not ASCII. Every identifier\nin this project's real cases is Chinese.",
+      "properties": {
+        "schema_version": {
+          "const": "service-v1",
+          "default": "service-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "task": {
+          "$ref": "#/$defs/HumanTask"
+        },
+        "subject_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Subject Id"
+        }
+      },
+      "required": [
+        "task"
+      ],
+      "title": "TaskView",
+      "type": "object"
     },
     "ToolOutcome": {
       "additionalProperties": false,
