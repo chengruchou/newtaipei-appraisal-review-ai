@@ -71,6 +71,8 @@ async def execute(
             if not isinstance(response, dict):
                 return _Reply(None, "malformed_output", True)
             return _Reply(response, None, True)
+        except ExtractionBoundaryError as error:
+            return _Reply(None, error.code)
         except Exception as error:
             error_response = getattr(error, "response", None)
             return _Reply(

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from appraisal_review.application.extraction_handoffs import with_candidate_handoffs
 from appraisal_review.application.service_guards import Principal, ServiceFault
 from appraisal_review.domain.extraction_contracts import (
     ExecutionBudget,
@@ -74,7 +75,8 @@ class AuthorizedExtractionService:
             result = PageOutcome.model_validate(await self.backend.extract(request, snapshot))
             if result.request != request:
                 raise ValueError("Outcome request differs from invocation")
-            return snapshot.validate_outcome(result)
+            validated = snapshot.validate_outcome(result)
+            return snapshot.validate_outcome(with_candidate_handoffs(validated))
         except ExtractionBoundaryError:
             raise
         except Exception:

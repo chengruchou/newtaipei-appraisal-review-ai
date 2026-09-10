@@ -33,6 +33,7 @@ live task responses, downloadable PDFs or observed execution evidence.
 | DocumentReference; DocumentResolver | D | Authorized document API -> B/A/runtime | URI-free DTO; resolver protocol only |
 | MaterialRevision, RevisionReference, ValueRevision; RevisionSnapshot | B | Trusted material assembly -> A/C/D/E | Detached immutable snapshots and new revisions; no database |
 | RunReference, ReviewSubmission; JobRepository | D | Submission/dispatch -> B/C/runtime | Separate run, attempt and session; pure idempotency checks; durable operations reserved |
+| JobReference, JobStatusView, JobAcceptance; JobStore, ResultStore | D | Durable job plane -> C/B/runtime | Mounted review-jobs routes over an injected store; in-memory reference adapter only, no cloud persistence |
 | HumanTask, HumanResponse, AcceptedResponse; PrincipalResolver, HumanTaskRepository | B | Server task/admission -> C and subsequent run | Strict commands and pure permission/version checks; no human API mounted |
 | AuthorizationRecord | B, E for publication scope | Trusted authorizer -> job/publisher | Reserved metadata record; existing signed local receipt remains actual local authority |
 | AllowedAction, ActionProposal, DecisionEvent, Budget | A | Trusted policy/executor -> C/D/evaluation | Pure admission and truthful event validation; no model selector, retry loop or event store |
@@ -173,6 +174,46 @@ M0 fixtures are illustrative. No private chain-of-thought is required, and no
 retrospective explanation is treated as an execution log. Existing audit remains
 unchanged; A/D must connect events to its producer/store explicitly.
 
+## Durable job status
+
+JobStatus records eight control-plane states; ExecutionStatus keeps its four frozen wire
+values and is never widened, because every service-v1 model forbids extras. JobStatusView
+carries the exact status, so the projection below is a view, not a loss of record.
+
+| Job status | Execution status | Notes |
+| --- | --- | --- |
+| queued | queued | Job, run and outbox entry committed; nothing dispatched yet |
+| dispatched | queued | Handed to the queue; indistinguishable from queued to a caller |
+| running | running | One attempt holds a valid lease |
+| waiting_for_human | succeeded (needs_review) | The attempt ran and released its lease; the case did not pass |
+| retryable_failed | running | Still in progress; an exhausted retry becomes failed instead |
+| failed | failed | Terminal; carries a sanitized problem |
+| succeeded | succeeded | A result version is committed |
+| cancelled | failed | Lossy on the wire; the exact status stays in JobStatusView |
+
+An expired lease returns the job to queued with a new outbox entry rather than to
+dispatched, so recovery never depends on the queue redelivering a message a dead worker
+may have consumed; the duplicate delivery this can cause is absorbed by the conditional
+claim. A lease takeover has its own ceiling and never consumes a business attempt.
+
+Recovery stops at a recorded cancellation. Cancelling a running attempt sets
+`cancel_requested` and asks it to stop cooperatively, and every path that would otherwise
+carry the job forward from there — a reclaim, a retryable failure, a hand-off to a
+reviewer — resolves to cancelled rather than starting work the principal forbade. Only an
+attempt that had already finished its work may still publish. `cancel_requested` is part
+of JobStatusView so a job under notice is distinguishable from one that is merely running;
+it is observable while the job runs and afterwards only on a terminal job.
+
+POST /v1/review-jobs returns 202 with JobAcceptance, whose status is pinned to queued so
+the body can never advertise work that has not started. An exact replay returns 200 with
+JobStatusView instead, because reporting the pinned acceptance for a job that has already
+moved on would be fabricated. GET .../result returns 409 until a result version is
+committed and never synthesizes a ServiceResult that no run wrote; a terminal failure is
+reported through the status route. Cancel is offered because it binds one principal and
+one case; retry and dead-letter redrive stay operator actions in a runbook rather than a
+general-purpose administrative endpoint. See
+[ADR 0015](adr/0015-durable-review-jobs.md).
+
 ## Result and error meanings
 
 | Execution / business / artifact | Meaning |
@@ -243,14 +284,21 @@ invalid_request (validation), unauthorized, not_found, version_conflict,
 capability_unavailable, execution_failed. Pure guards raise ServiceFault.
 Reserved HTTP mapping is respectively 422/403/404/409/503/500; B/D must avoid
 cross-case existence leaks and test mapping in their transport implementation.
-No reserved routes are mounted. Legacy HTTP retains its actual EntryProblem
+The review-jobs routes implement this mapping and answer with the ServiceProblem
+envelope; an invalid submission returns invalid_request without loc/msg/input, because
+a rejected payload can quote document text. Another principal's job and an unknown job
+both answer 404: 403 would confirm that the job exists. Other reserved routes remain
+unmounted. Legacy HTTP retains its actual EntryProblem
 422/503/500 envelope; legacy validation retains sanitized detail/loc/type/msg.
 
 ## Durability and callable boundaries
 
-JobRepository must atomically persist principal/key/payload digest, fixed run input
+JobStore implements these duties and JobRepository's coarse boundary sits on top.
+Submission atomically persists principal/key/payload digest, fixed run input
 and outbox before dispatch. Same principal+key+canonical payload returns the same
-run; changed payload conflicts. Distinct principals have separate namespaces and
+run; changed payload conflicts. Uniqueness is a conditional write on the idempotency
+record's own primary key, never a secondary-index lookup, because an eventually
+consistent index lets concurrent submissions both observe an unused key. Distinct principals have separate namespaces and
 cannot retrieve each other's run. RevisionRepository uses compare-and-swap on the
 expected parent; None means create only if absent. HumanTaskRepository must recheck
 identity/permissions, versions and response key inside its transaction, then append
@@ -264,7 +312,10 @@ it does not revive the old session or hold its lease. Job run ID, attempt UUID a
 Runtime session string are separate; a session requires an attempt.
 
 Actually callable: GET /health, POST /v1/validate, POST /v1/reviews and existing
-invocation, using the configured factory; separately `LocalReviewService.run` /
+invocation, using the configured factory; plus POST /v1/review-jobs,
+GET /v1/review-jobs/{job_id}, GET /v1/review-jobs/{job_id}/result and
+POST /v1/review-jobs/{job_id}/cancel when a job store and a principal resolver are
+both configured, and capability_unavailable otherwise; separately `LocalReviewService.run` /
 `python -m appraisal_review.local_service run` returns ServiceResult. No legacy
 HTTP/invocation shape changed. Reserved groups for B/D: documents, review-jobs, human-tasks/responses,
 authorized artifact downloads. They return no fake production success because no

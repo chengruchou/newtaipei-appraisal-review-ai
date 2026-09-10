@@ -1,5 +1,13 @@
 # Data contracts
 
+Issue 21 now connects `DocumentTransferService` snapshots to the existing
+`SanitizedSourceReference`, `PageRequest` and `PageOutcome` contracts. The additive
+`evaluation-report-v1` schema records explicit denominators, nullable usage/cost
+and repeat differences. Handoffs remain requests rather than accepted human
+responses. Existing extraction/evaluation/service/PDF wire schemas are unchanged.
+See [ADR 0025](adr/0025-snapshot-extraction-integration.md) and
+[evaluation](extraction-evaluation.md).
+
 M0 adds [service-v1 contracts](service-contracts.md), a separate local result
 envelope and configured [local factory](local-service-runbook.md) on its working
 branch. Existing review schema 2.0 and public HTTP/invocation JSON remain unchanged.
@@ -224,3 +232,18 @@ confirmation are the only accepted paths; no second confidence threshold is adde
 Invalid historical receipts remain on disk but cannot be used. Serialization and
 public PDF schemas are unchanged in this round. The POSIX reviewer and local URI
 platform contract is documented in ADR 0009 and the runbook.
+
+## Full-case golden contract (#23)
+
+`domain/golden_contract.py` types one reviewed acceptance manifest per case, and
+`domain/golden_validator.py` both re-derives a manifest from its fixture and compares an
+actual run against it. Expected values are authored from citations, rule bands, arithmetic
+and recorded adjudications; they are never captured from a review result. Candidate rule
+extraction, exact-material authority and formal business approval are separate fields, and a
+disputed question stays unresolved instead of grounding a value.
+
+Reviewed manifests live under `tests/goldens/` and are read-only for every evaluation,
+including live AWS runs. `adapters/local/golden_cases.py` builds the synthetic fixtures and
+the authored expectations; `scripts/generate_goldens.py` writes or checks the manifests. The
+procedure, case matrix and reviewer checklist are in [golden acceptance](golden-acceptance.md),
+and the decision is recorded in [ADR 0014](adr/0014-full-case-golden-contract.md).

@@ -1,15 +1,42 @@
 # Architecture
 
-Snapshot: main `ea55043d90aa21e6f0a7e3fe05aa34ef8a3553d3` inspected on 2026-09-07,
-including merged #15/#16/#19, plus M0 review-branch work on
-`feat/shared-service-contracts`. M0 is not deployed or merged. Current and target
-views below are deliberately separate. [Service contracts](service-contracts.md)
-is the authority for all new shared DTOs and ports.
+## Integration view, 2026-09-11
+
+```mermaid
+flowchart LR
+  subgraph Local
+    P["Privacy UI · pending"]
+  end
+  subgraph CloudTarget["Cloud target · live pending"]
+    D["C2 snapshots · merged"] --> R["A2 resolver · this PR"]
+    R --> M["Bounded extraction · this PR"]
+    M --> C["Candidates"]
+    C -.-> H["Human tasks · pending"]
+    H -.-> V["Review core · merged"]
+    V -.-> W["Formal output · pending"]
+    W -.-> A["Publication · pending"]
+  end
+  P -.->|Sanitized reference| D
+  C --> E["Evaluation · this PR"]
+  G["#23 goldens · merged"] --> E
+```
+
+Solid edges are implemented adapter/data paths; dotted edges still need integration.
+No edge asserts live deployment. [The delivery record](issue-21-delivery.md)
+pins dependencies and separates local, CI and live evidence. Diagrams below retain
+the earlier merged/local baseline, not completed cloud assembly.
+
+Snapshot: main `463880af3a6dc6aad2bfa6fdfc3bc267afc4d4a5` inspected on 2026-09-10,
+including merged #15/#16/#19/#20/#33. M0 is merged and is not deployed.
+[Service contracts](service-contracts.md) define the shared service-v1 DTOs.
+[Document transfer](document-transfer.md) adds this branch's controlled C2 ingestion
+and immutable source snapshots without changing those DTOs or mounting new HTTP routes.
+[Project progress](project-progress.md) records the active work lines.
 
 ## Current program structure
 
-Solid lines are implemented calls/data flow. Orange nodes are this working-branch
-integration; other nodes are merged core. These are local components, not deployed
+Solid lines are implemented calls/data flow. Orange nodes highlight the merged M0
+integration. These are local components, not deployed
 AWS infrastructure. Prepared material may originate from real/native candidate
 adapters or the bounded injected Bedrock adapter; M0 tests make no model calls.
 

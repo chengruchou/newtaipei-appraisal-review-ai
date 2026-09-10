@@ -1,5 +1,39 @@
 # Requirements to implementation and acceptance
 
+## Issue 21 integration, 2026-09-11
+
+| Requirement | Implementation and test | Acceptance boundary |
+| --- | --- | --- |
+| Current authorized immutable source | DocumentSnapshotResolver; test_snapshot_extraction.py | Real local C2/parser; no AWS source access |
+| Located low-confidence/missing questions | extraction_handoffs.py; test_extraction_handoffs.py | Candidate requests; human-task persistence pending |
+| Bounded provider attempts and safe errors | Existing snapshot backend/preflight/ledger regression suite | SDK doubles; live access/routing pending |
+| Frozen independent evaluation | extraction_evaluation.py; 104 scorer/CLI tests | Synthetic #23 source fixtures; real accuracy unmeasured |
+| Tiny Chinese live probe | cloud_tests/extraction_smoke.py | Dry by default; explicit environment/budget gate |
+
+[Issue 21 delivery](issue-21-delivery.md) records branch/base and dependency heads.
+PR publication supplies the new head and its own CI URL. Historical sections below
+are retained as evidence of their original scope, not substituted for current CI.
+
+## Full-case goldens and reviewer acceptance (#23, 2026-09-10)
+
+The [golden acceptance protocol](golden-acceptance.md) and
+[ADR 0014](adr/0014-full-case-golden-contract.md) define one acceptance basis shared by the
+whole-case review, the independent claim checker, the completion gate and the writer
+boundary. Thirteen synthetic cases cover a complete case with cross-page evidence, a derivable
+blank, a blank that must stay empty, an incomplete page inventory, an unevidenced field,
+contradicting source cells, zero measured confidence, an unsupported criteria rule, two comparison contexts, unapproved
+material and a three-step revision chain.
+
+Expected values are authored from citations, rule bands, arithmetic and recorded
+adjudications, and CI re-derives each one from its fixture. Reviewed manifests under
+`tests/goldens/` are read-only for evaluation runs; `scripts/generate_goldens.py` writes them
+only under an explicit flag and reports drift otherwise. Human task expectations are declared
+against the frozen service contract; no task producer exists yet, and #24 and #17 own it.
+
+Local checks at this checkpoint: ruff, ruff format, mypy and 756 repository tests pass, and
+the golden check reports 14 manifests matching their fixtures. No remote write, commit, merge,
+AWS call or real rule approval was performed, and no rule is claimed as formally approved.
+
 ## PR #20 local P2 correction (2026-09-07)
 
 The [P2 correction record](m0-p2-review.md) supersedes the earlier review's limited
