@@ -98,9 +98,19 @@ facade. Actual statuses remain verified/not_requested, verified/unavailable,
 verified/simulated and completed/written. A successful execution may need human
 review and retain findings without a PDF.
 
+The durable review-jobs group is now mounted: POST /v1/review-jobs accepts a
+submission with 202 once the job and its outbox entry are persisted, and
+GET /v1/review-jobs/{job_id}, GET /v1/review-jobs/{job_id}/result and
+POST /v1/review-jobs/{job_id}/cancel serve the same principal. It runs over an
+injected store, and only an in-memory reference adapter exists: state does not
+survive the process, and there is no DynamoDB, queue, dead-letter queue or alarm
+yet. Without a configured store and authenticator the routes answer
+capability_unavailable rather than a fabricated acceptance. See
+[ADR 0015](docs/adr/0015-durable-review-jobs.md).
+
 The [shared service contract](docs/service-contracts.md),
 [schema](schemas/service-v1.json) and [fixtures](examples/service-v1/README.md)
-are the common handoff for A–E. Document/job/task/download API groups are reserved
+are the common handoff for A–E. Document/task/download API groups remain reserved
 contracts; no fake-success endpoints are mounted. The local OS reviewer is not
 an Internet authentication service.
 
