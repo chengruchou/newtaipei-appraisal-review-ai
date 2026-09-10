@@ -192,6 +192,22 @@ private directory and `final-local.pdf`, using exclusive/no-follow atomic output
 existing originals/downloads and aliases cannot be overwritten. Local IDs are
 session-scoped. Restored PDFs are never passed to the export sink.
 
+Each cached restored download retains its original opaque backend result ID and
+an independent copy of the exact restoration plan. On every download, the bridge
+calls the existing result resolver again and requires the same plan, current
+publisher and rehydration authority, an accessible exact session-owned mapping,
+and the bound published download. It repeats these checks after reading the
+cached final PDF and before returning any PDF bytes. Revocation, a changed run,
+expired or locked mapping access, and file substitution therefore fail closed
+even when the local browser session and download ID remain valid. Downloading
+does not rerun OCR/restoration, create approval, or repeat C2 ingestion.
+
+Focused HTTP regressions use the actual coordinator, signed C2 admission,
+encrypted maps and real PDF writes with an explicit OCR double. They revoke
+publication, replace its run, or lock mapping keys both before and during the
+cached read, and verify repeated unchanged downloads without further writes or
+ingestion. They do not claim measured OCR or browser acceptance.
+
 ## Synthetic construction and evidence
 
 `tests/unit/privacy_bridge_fixture.py` exports

@@ -165,3 +165,101 @@ def test_wrong_mapping_publication_or_caller_never_creates_download(bridge, faul
     with pytest.raises(ValueError):
         coordinator.resolve(actor, state.id)
     assert not list(bridge.path.glob("authorized-download-*"))
+
+
+def restored_download(bridge, monkeypatch):
+    """Real HTTP/C2/maps/PDF creation with the existing explicit OCR double."""
+    from test_privacy_refill import SyntheticRefillOCR
+
+    from appraisal_review.domain.privacy_refill import RefillTarget
+
+    coordinator, state, processor, _ = published(bridge)
+    occurrence = state.value.forms.attestation.claims.manifest.occurrences[0]
+    coordinator.ocr = SyntheticRefillOCR(
+        RefillTarget(
+            occurrence_id=occurrence.occurrence_id,
+            entity_id=occurrence.entity_id,
+            output_field_id=occurrence.occurrence_id,
+            region=occurrence.region,
+        )
+    )
+    writer = Mock(wraps=processor.write)
+    monkeypatch.setattr(processor, "write", writer)
+    bridge.owner.results = coordinator
+    response = bridge.client.post(f"/restore/{state.id}", json={})
+    assert response.status_code == 200, response.text
+    local_id = response.json()["local_id"]
+    return SimpleNamespace(
+        coordinator=coordinator,
+        state=state,
+        writer=writer,
+        route=f"/restored/{local_id}",
+        path=bridge.path / f"restored-{local_id}" / "final-local.pdf",
+        digest=response.json()["manifest"]["final_digest"],
+    )
+
+
+def change_download_authority(download, bridge, fault):
+    if fault == "revoked":
+        download.state.active = False
+    elif fault == "stale-run":
+        value = download.state.value
+        run = value.run.model_copy(update={"run_id": uuid4(), "attempt_id": uuid4()})
+        download.state.value = replace(
+            value,
+            run=run,
+            artifact=value.artifact.model_copy(
+                update={"key": ArtifactKey.for_run(run, value.artifact.artifact_id).key()}
+            ),
+        )
+    elif fault == "locked-map":
+        bridge.keys.lock()
+    else:
+        raise AssertionError("Unknown authority regression")
+
+
+@pytest.mark.parametrize("fault", ["revoked", "stale-run", "locked-map"])
+@pytest.mark.parametrize("moment", ["before", "during"])
+def test_cached_restored_download_rechecks_current_authority(bridge, monkeypatch, fault, moment):
+    from appraisal_review.adapters.local import privacy_bridge
+
+    download = restored_download(bridge, monkeypatch)
+    read = privacy_bridge._read_bound
+    reads = []
+
+    def guarded_read(path, workspace, digest):
+        data = read(path, workspace, digest)
+        if path == download.path:
+            reads.append(path)
+            if moment == "during":
+                change_download_authority(download, bridge, fault)
+        return data
+
+    monkeypatch.setattr(privacy_bridge, "_read_bound", guarded_read)
+    if moment == "before":
+        change_download_authority(download, bridge, fault)
+    response = bridge.client.get(download.route)
+    assert response.status_code == 409, response.text
+    assert response.headers["content-type"].startswith("application/json")
+    assert not response.content.startswith(b"%PDF")
+    assert len(reads) == (0 if moment == "before" else 1)
+    download.writer.assert_called_once()
+    assert download.coordinator.ocr.calls == 2
+    download.coordinator.documents.ingest.assert_called_once()
+
+
+def test_cached_restored_download_remains_available_without_new_restore(bridge, monkeypatch):
+    download = restored_download(bridge, monkeypatch)
+    original = bridge.config.sources[bridge.source_id].path.read_bytes()
+    previous_calls = download.state.calls
+    for _ in range(2):
+        response = bridge.client.get(download.route)
+        assert response.status_code == 200, response.text
+        assert digest_bytes(response.content) == download.digest
+        assert response.content == download.path.read_bytes()
+        assert download.state.calls >= previous_calls + 2
+        previous_calls = download.state.calls
+    assert bridge.config.sources[bridge.source_id].path.read_bytes() == original
+    download.writer.assert_called_once()
+    assert download.coordinator.ocr.calls == 2
+    download.coordinator.documents.ingest.assert_called_once()

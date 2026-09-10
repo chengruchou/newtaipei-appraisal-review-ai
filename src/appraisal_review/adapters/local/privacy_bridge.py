@@ -36,7 +36,7 @@ from appraisal_review.application.privacy_export import (
 )
 from appraisal_review.application.privacy_guards import PrivacyFault
 from appraisal_review.application.privacy_mapping import LocalMappingService
-from appraisal_review.application.privacy_refill import LocalPrivacyRefillExecutor
+from appraisal_review.application.privacy_refill import LocalPrivacyRefillExecutor, validate_refill
 from appraisal_review.application.privacy_review import LocalPrivacyReviewService
 from appraisal_review.domain.privacy_bundle import SanitizedBundle
 from appraisal_review.domain.privacy_export import PrivacyExportPayload
@@ -120,6 +120,14 @@ class PrivacyBridgeResultResolver(Protocol):
         ...
 
 
+@dataclass(frozen=True, repr=False)
+class _RestoredDownload:
+    result_id: UUID
+    plan: RehydrationPlan
+    path: Path
+    digest: str
+
+
 @dataclass(repr=False)
 class PrivacyBridgeSession:
     principal_id: str
@@ -138,7 +146,7 @@ class PrivacyBridgeSession:
     _approval: LocalPrivacyApproval | None = field(default=None, init=False)
     _preview: _Preview | None = field(default=None, init=False)
     _maps: dict[UUID, LocalMappingHandle] = field(default_factory=dict, init=False)
-    _restored: dict[UUID, tuple[Path, str]] = field(default_factory=dict, init=False)
+    _restored: dict[UUID, _RestoredDownload] = field(default_factory=dict, init=False)
 
 
 @dataclass(repr=False)
@@ -394,6 +402,28 @@ class _PinnedPublisher:
             )
             == artifact.pdf
         )
+
+
+def _read_restored(
+    session: PrivacyBridgeSession, entry: _RestoredDownload, workspace: Path
+) -> bytes:
+    def require_current() -> None:
+        result = session.results.resolve(session.principal_id, entry.result_id)
+        if result.plan != entry.plan or result.authority.permits(entry.plan) is not True:
+            raise _BridgeFault()
+        handle = session._maps.get(entry.plan.map_id)
+        if handle is None:
+            raise _BridgeFault()
+        mapping = session.mappings.read(handle)
+        artifact = result.publisher.current(entry.plan)
+        validate_refill(mapping, entry.plan, artifact)
+        if not _PinnedPublisher(result, workspace, artifact).permits(entry.plan, artifact):
+            raise _BridgeFault()
+
+    require_current()
+    data = _read_bound(entry.path, workspace, entry.digest)
+    require_current()
+    return data
 
 
 def _save_new(workspace: Path, data: bytes) -> tuple[UUID, Path]:
@@ -788,7 +818,12 @@ def create_privacy_bridge(
             if not publisher.permits(result.plan, artifact):
                 raise _BridgeFault()
             identifier, path = _save_new(config.workspace, final.pdf)
-            session._restored[identifier] = (path, final.manifest.final_digest)
+            session._restored[identifier] = _RestoredDownload(
+                result_id,
+                RehydrationPlan.model_validate_json(result.plan.model_dump_json()),
+                path,
+                final.manifest.final_digest,
+            )
             return {"local_id": str(identifier), "manifest": final.manifest}
 
     @app.get("/local-privacy/restored/{local_id}")
@@ -798,9 +833,9 @@ def create_privacy_bridge(
             entry = session._restored.get(local_id)
             if entry is None:
                 raise _BridgeFault(404)
-            path, digest = entry
             return Response(
-                _read_bound(path, config.workspace, digest), media_type="application/pdf"
+                await _run_sync(_read_restored, session, entry, config.workspace),
+                media_type="application/pdf",
             )
 
     return app
