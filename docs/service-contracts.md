@@ -69,9 +69,11 @@ not full browser or cloud acceptance. `TaskSubjectView` remains a separate
 projection; `TaskView` keeps only its task and subject ID fields.
 
 The historical controlled local `HumanResponseResult` is a distinct internal
-event/result contract. Its explicit adapter to the canonical API receipt is owned
-by the integration work, not an alias or a second task model. Preserve its actual
-committed effects and identity checks when mapping `next_run` to `resumed_run`.
+event/result contract. `CanonicalResponseReceiptAdapter` maps it only after
+loading the actual committed canonical receipt, matching the current job, task,
+command, exact revision, superseded tasks and resumed run. It does not write
+either store or infer authority from a renamed field; missing/stale effects fail.
+Both confirm/correct responses and forbidden mismatches have regression coverage.
 
 The established `/health`, `/v1/validate`, `/v1/reviews` and invocation contracts
 remain explicit compatibility obligations. Their AgentReviewRun/EntryProblem
@@ -93,8 +95,8 @@ Migration validation must cover all of these consumers, not only Python imports:
 5. Test legacy HTTP/invocation shapes against the selected compatibility policy.
    A schema export is not proof that a deployed old client remains compatible.
 
-These steps belong to the integration owner and consumers; this documentation
-consolidation does not run a schema generator or modify generated artifacts.
+The integration generation and transport tests exercise these consumers together.
+Exact final checkout validation remains distinct from deployed-client acceptance.
 
 ## Serialization and identity
 

@@ -68,4 +68,3 @@ contexts and fenced publication identity. Source authorization, actual human tas
 responses and deterministic verification retain separate authority. Raw confidence
 zero remains zero. Only clearly authored synthetic assets receive isolated test
 authorization; no real material is approved.
-
