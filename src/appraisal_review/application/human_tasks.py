@@ -32,6 +32,7 @@ from appraisal_review.domain.factor_models import (
     ReviewMaterial,
 )
 from appraisal_review.domain.job_contracts import JobReference
+from appraisal_review.domain.models import EvidenceRef
 from appraisal_review.domain.service_contracts import (
     AcceptedResponse,
     ActorReference,
@@ -61,7 +62,7 @@ RevisionIdFactory = Callable[[], str]
 # Rule, material and publication approval are recorded through the existing exact-material
 # authority, not through this API. Admitting such a task here and reporting "answered"
 # would advertise an authorization the service never wrote.
-MATERIAL_KINDS = frozenset({TaskKind.FACT, TaskKind.CORRECTION})
+MATERIAL_KINDS = frozenset({TaskKind.FACT, TaskKind.CORRECTION, TaskKind.EVIDENCE})
 
 
 def _now() -> int:
@@ -324,6 +325,31 @@ class HumanTaskService:
             observation.confidence,
             proposed.confidence if proposed.confidence is not None else observation.confidence,
         )
+        if accepted.command.action == ResponseAction.SUPPLY_EVIDENCE:
+            registry = material.policy.registry
+            if not proposed.evidence or any(
+                not registry.resolves(citation) for citation in proposed.evidence
+            ):
+                raise ServiceFault(ServiceErrorCode.VALIDATION)
+            # Evidence is selected from the pinned registry. It does not authorize
+            # a new source, raise confidence or replace the next confirmation.
+            sources = list(proposed.evidence)
+            setattr(pair, f"{side}_sources", sources)
+            observation.evidence = [
+                EvidenceRef(
+                    document_id=citation.document_id,
+                    source_file=next(
+                        doc.uri
+                        for doc in registry.documents
+                        if doc.document_id == citation.document_id
+                    ),
+                    page=citation.page,
+                    confidence=observation.confidence,
+                    bounding_box=citation.bbox,
+                    coordinate_system="pdf_bottom_left",
+                )
+                for citation in sources
+            ]
         change = ValueRevision(
             subject_id=subject_id,
             original=original,

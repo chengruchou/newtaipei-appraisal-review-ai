@@ -1050,6 +1050,40 @@ class ArtifactManifest(ServiceModel):
         return self
 
 
+class FencedArtifactManifest(ContractModel):
+    """Versioned public projection of a committed, possibly multi-context PDF.
+
+    The original service-v1 local-only artifact remains unchanged. A consumer
+    must explicitly support this version before accepting a fenced publication.
+    """
+
+    schema_version: Literal["artifact-manifest-v2"] = "artifact-manifest-v2"
+    artifact_id: UUID
+    content_hash: Digest
+    media_type: Literal["application/pdf"] = "application/pdf"
+    scope: Literal["review_contexts"] = "review_contexts"
+    context: ComparisonContext
+    contexts: tuple[ComparisonContext, ...] = Field(min_length=1)
+    field_ids: tuple[str, ...] = Field(min_length=1)
+    page_count: int = Field(ge=1, strict=True)
+    template_hash: Digest
+    field_map_hash: Digest
+    font_hash: Digest
+    writer_version: str = Field(min_length=1)
+    manifest_digest: Digest
+    verification: Literal["local_writer_reopened"] = "local_writer_reopened"
+    publication: Literal["fenced"] = "fenced"
+
+    @model_validator(mode="after")
+    def exact_coverage(self) -> FencedArtifactManifest:
+        keys = tuple(context.key() for context in self.contexts)
+        if self.context != self.contexts[0] or len(keys) != len(set(keys)):
+            raise ValueError("Primary context must lead the unique complete context list")
+        if len(self.field_ids) != len(set(self.field_ids)):
+            raise ValueError("Artifact fields must be unique")
+        return self
+
+
 class VerificationDiagnostic(ServiceModel):
     """Finite public reasons; never carry raw internal verification messages."""
 
@@ -1098,7 +1132,9 @@ class ServiceResult(ServiceModel):
     artifact_status: ArtifactStatus = "not_requested"
     findings: tuple[ReviewFinding, ...] = ()
     verification: ServiceVerification | None = None
-    artifacts: tuple[ArtifactManifest, ...] = Field(default=(), max_length=1)
+    artifacts: tuple[ArtifactManifest | FencedArtifactManifest, ...] = Field(
+        default=(), max_length=1
+    )
     problem: ServiceProblem | None = None
     durable: bool = Field(default=False, strict=True)
 

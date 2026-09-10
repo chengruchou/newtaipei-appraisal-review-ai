@@ -1495,6 +1495,116 @@
       "title": "FailureCategory",
       "type": "string"
     },
+    "FencedArtifactManifest": {
+      "additionalProperties": false,
+      "description": "Versioned public projection of a committed, possibly multi-context PDF.\n\nThe original service-v1 local-only artifact remains unchanged. A consumer\nmust explicitly support this version before accepting a fenced publication.",
+      "properties": {
+        "schema_version": {
+          "const": "artifact-manifest-v2",
+          "default": "artifact-manifest-v2",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "artifact_id": {
+          "format": "uuid",
+          "title": "Artifact Id",
+          "type": "string"
+        },
+        "content_hash": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Content Hash",
+          "type": "string"
+        },
+        "media_type": {
+          "const": "application/pdf",
+          "default": "application/pdf",
+          "title": "Media Type",
+          "type": "string"
+        },
+        "scope": {
+          "const": "review_contexts",
+          "default": "review_contexts",
+          "title": "Scope",
+          "type": "string"
+        },
+        "context": {
+          "$ref": "#/$defs/ComparisonContext"
+        },
+        "contexts": {
+          "items": {
+            "$ref": "#/$defs/ComparisonContext"
+          },
+          "minItems": 1,
+          "title": "Contexts",
+          "type": "array"
+        },
+        "field_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Field Ids",
+          "type": "array"
+        },
+        "page_count": {
+          "minimum": 1,
+          "title": "Page Count",
+          "type": "integer"
+        },
+        "template_hash": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Template Hash",
+          "type": "string"
+        },
+        "field_map_hash": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Field Map Hash",
+          "type": "string"
+        },
+        "font_hash": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Font Hash",
+          "type": "string"
+        },
+        "writer_version": {
+          "minLength": 1,
+          "title": "Writer Version",
+          "type": "string"
+        },
+        "manifest_digest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Manifest Digest",
+          "type": "string"
+        },
+        "verification": {
+          "const": "local_writer_reopened",
+          "default": "local_writer_reopened",
+          "title": "Verification",
+          "type": "string"
+        },
+        "publication": {
+          "const": "fenced",
+          "default": "fenced",
+          "title": "Publication",
+          "type": "string"
+        }
+      },
+      "required": [
+        "artifact_id",
+        "content_hash",
+        "context",
+        "contexts",
+        "field_ids",
+        "page_count",
+        "template_hash",
+        "field_map_hash",
+        "font_hash",
+        "writer_version",
+        "manifest_digest"
+      ],
+      "title": "FencedArtifactManifest",
+      "type": "object"
+    },
     "Grade": {
       "enum": [
         "excellent",
@@ -2973,7 +3083,14 @@
         "artifacts": {
           "default": [],
           "items": {
-            "$ref": "#/$defs/ArtifactManifest"
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ArtifactManifest"
+              },
+              {
+                "$ref": "#/$defs/FencedArtifactManifest"
+              }
+            ]
           },
           "maxItems": 1,
           "title": "Artifacts",
