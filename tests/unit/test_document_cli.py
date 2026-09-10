@@ -93,44 +93,13 @@ def test_parse_and_golden_commands_use_allowlisted_manifest(tmp_path, monkeypatc
     assert metrics["selection_exact_match"] == {"correct": 0, "total": 0}
 
 
-def test_extraction_capability_uses_explicit_identity_without_job_resources(monkeypatch):
+def test_legacy_client_factory_cannot_discover_credentials(monkeypatch):
     from argparse import Namespace
 
+    from appraisal_review.ports.document_extraction import ExtractionBoundaryError
+
     boto = Mock()
-    session = boto.Session.return_value
-    sts, control, runtime = Mock(), Mock(), Mock()
-    session.client.side_effect = lambda service, **kwargs: {
-        "sts": sts,
-        "bedrock": control,
-        "bedrock-runtime": runtime,
-    }[service]
-    sts.get_caller_identity.return_value = {
-        "Account": "123456789012",
-        "Arn": "arn:aws:sts::123456789012:assumed-role/ProjectReviewer/session",
-    }
-    control.get_foundation_model.return_value = {
-        "modelDetails": {"inputModalities": ["TEXT", "IMAGE"], "outputModalities": ["TEXT"]}
-    }
     monkeypatch.setitem(sys.modules, "boto3", boto)
-    # botocore is an optional runtime import and can be injected independently.
-    monkeypatch.setitem(sys.modules, "botocore.config", Mock(Config=lambda **kwargs: kwargs))
-    args = Namespace(
-        profile="explicit-project",
-        region="synthetic-region",
-        expected_account="123456789012",
-        expected_role="ProjectReviewer",
-        model_id="synthetic-model",
-        allow_cross_region=False,
-        timeout=1,
-    )
-    assert bedrock_client(args) is runtime
-    boto.Session.assert_called_once_with(
-        profile_name="explicit-project", region_name="synthetic-region"
-    )
-    args.expected_account = "000000000000"
-    with pytest.raises(PermissionError, match="account/role"):
-        bedrock_client(args)
-    args.expected_account = "123456789012"
-    args.model_id = "global.synthetic-model"
-    with pytest.raises(PermissionError, match="cross-region"):
-        bedrock_client(args)
+    with pytest.raises(ExtractionBoundaryError, match="privacy_unavailable"):
+        bedrock_client(Namespace())
+    boto.Session.assert_not_called()
