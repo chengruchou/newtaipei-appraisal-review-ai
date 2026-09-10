@@ -36,6 +36,39 @@ PLAYWRIGHT_BROWSERS_PATH=../artifacts/playwright-browsers npx playwright install
 cd ..
 ```
 
+## Pin existing local OCR assets
+
+For the privacy launcher, first select an existing trusted executable and language
+asset directory. Resolve symlinks to real files; startup rejects mutable aliases.
+The following creates the required JSON without installing tools or downloading
+assets. Replace the two example paths with your local selections and independently
+verify the reported asset hashes against the trusted source of those binaries.
+This configuration is local runtime input, not a material approval.
+
+```sh
+export REVIEW_OCR_EXECUTABLE="/absolute/path/to/tesseract"
+export REVIEW_OCR_TESSDATA="/absolute/path/to/tessdata"
+.venv/bin/python - <<'PYTHON'
+import hashlib, json, os
+from pathlib import Path
+exe = Path(os.environ["REVIEW_OCR_EXECUTABLE"]).resolve(strict=True)
+data = Path(os.environ["REVIEW_OCR_TESSDATA"]).resolve(strict=True)
+digest = lambda path: hashlib.sha256(path.read_bytes()).hexdigest()
+config = {"executable": str(exe), "executable_sha256": digest(exe),
+          "tessdata": str(data), "assets": [
+              {"language": language, "sha256": digest(data / (language + ".traineddata"))}
+              for language in ("chi_tra", "eng")]}
+Path("artifacts").mkdir(exist_ok=True)
+with os.fdopen(os.open("artifacts/local-ocr.json", os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), "w") as out:
+    json.dump(config, out, indent=2)
+print("Created private OCR configuration; verify its hashes before starting.")
+PYTHON
+```
+
+This writes a new file exclusively; it does not replace an existing configuration.
+The launcher performs the actual preflight and keeps restoration blocked if the
+engine is missing, changed, times out, or returns unacceptable observations.
+
 ## Start the core without local OCR
 
 This command needs no Tesseract assets. It prepares seven independent synthetic

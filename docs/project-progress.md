@@ -28,7 +28,8 @@ normal Git integration merges do not approve or merge GitHub pull requests.
 | #43 Runtime | Deadline guards; configured wheel/container executes completed two-context cases; UID 10001 resolves without login | Final image security and live deployment gates |
 | #44 acceptance | Read-only local evidence collector, real browser scenarios and strict existing attestation validators | Local observations are not live AWS acceptance or authenticated collector provenance |
 
-See [reproducible local commands](integrated-local-runbook.md),
+See [final local evidence and open gates](local-validation-record.md),
+[reproducible local commands](integrated-local-runbook.md),
 [original repair heads and review replies](integration-repair-delivery.md) and
 [acceptance boundaries](delivery-traceability.md). Deterministic verification,
 raw confidence, exact side confirmation and independent material/publication
@@ -62,16 +63,17 @@ stores use SQLite.
 
 ## Evidence and open gates
 
-- The real core browser run passed seven scenarios in one clean run. A previous
-  transient failure and its rerun remain separate historical observations.
+- The final real core browser run passed seven scenarios in one clean 11.2-second
+  run. Earlier failures and reruns remain separate historical observations.
 - The actual installed wheel and network-isolated Linux container each executed
   four explicit confirmations, produced a two-context/eight-field PDF, reopened
   and hash-checked the authorized download, replayed receipts and survived restart.
   Their exact source/build hashes are retained with local artifacts; later source
   updates require a new package gate rather than reusing that evidence.
-- Actual combined HTTP privacy runs reached sanitized admission, four current
-  confirmations, completed publication and an authorized restoration plan.
-  Tesseract rejected low-confidence/token observations before restoration output.
+- The final actual privacy browser run reached two exact transfers, four current
+  confirmations, completed two-context publication, hash-checked download and a
+  current restoration plan. Restoration returned 409; same-request Tesseract
+  page-one observations included four below 0.85, with no final restored output.
   [Legibility diagnostics](privacy-ocr-legibility.md) preserve the negative result;
   scores, observations, placeholder gates and decimal assertions are unchanged.
 - A native PDF iframe failed to complete in actual Chromium. The workbench now
