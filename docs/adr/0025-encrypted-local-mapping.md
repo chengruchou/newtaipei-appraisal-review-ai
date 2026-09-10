@@ -98,3 +98,14 @@ Encryption tests run the real library with newly generated test-only keys.
 Windows can test cryptography and service logic, but filesystem acceptance tests
 remain Linux-only. All production key provisioning and OS-keystore changes need
 a separate explicit decision/authorization. No such change is made here.
+
+## macOS adapter follow-up
+
+`MacOSEncryptedMappingStore` explicitly selects the same POSIX file confinement
+and atomic ciphertext implementation for macOS. `LinuxEncryptedMappingStore`
+keeps its Linux-only guard; unsupported hosts do not silently fall back. Tests
+exercise actual macOS write/read, cross-process authenticated readback with a
+test-provisioned key, and failure on changed permissions/links during export
+confirmation. This extends the local adapter selection only; production key
+recovery, source/session restart recovery and OS isolation remain separate.
+See the [coordination contract](../pr37-exact-export-coordination.md).

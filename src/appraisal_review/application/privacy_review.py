@@ -269,7 +269,7 @@ class LocalPrivacyReviewService:
 
     @_safe_input
     def edit(self, request: EditPrivacyRegion) -> PrivacyReviewView:
-        """Propose a manual region; original detector evidence remains in scan/events."""
+        """Preserve known evidence when only the category or entity assignment changes."""
         request = EditPrivacyRegion.model_validate(request)
         with self._lock:
             command = self._check(request)
@@ -280,14 +280,18 @@ class LocalPrivacyReviewService:
                 s.entity_id for s in command.selections if s.disposition == "redact"
             }:
                 raise PrivacyFault(PrivacyErrorCode.INVALID_INPUT)
-            candidate = SensitiveCandidate(
-                candidate_id=before.candidate.candidate_id,
-                region=request.region,
-                category=request.category,
-                crop_id=uuid4(),
-                detector_id="local-manual-region",
-                detector_version="1",
-            )
+            if request.region == before.candidate.region:
+                candidate = before.candidate.model_copy(update={"category": request.category})
+            else:
+                # Text from the old geometry cannot authenticate a newly selected crop.
+                candidate = SensitiveCandidate(
+                    candidate_id=before.candidate.candidate_id,
+                    region=request.region,
+                    category=request.category,
+                    crop_id=uuid4(),
+                    detector_id="local-manual-region",
+                    detector_version="1",
+                )
             after = ReviewSelection(candidate=candidate, disposition="redact", entity_id=entity)
             return self._replace(before, after, "edit")
 

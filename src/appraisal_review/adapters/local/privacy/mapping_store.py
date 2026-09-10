@@ -1,4 +1,4 @@
-"""Linux-only immutable encrypted files under an explicitly trusted repository root."""
+"""Immutable encrypted POSIX files under an explicitly trusted repository root."""
 
 from __future__ import annotations
 
@@ -26,7 +26,7 @@ def envelope_digest(envelope: EncryptedMappingEnvelope) -> str:
     return hashlib.sha256(envelope.model_dump_json().encode("utf-8")).hexdigest()
 
 
-class LinuxEncryptedMappingStore:
+class _PosixEncryptedMappingStore:
     """No updates, arbitrary paths, recursive deletion, plaintext staging or key files.
 
     The owning account and workspace ancestors are trusted. This does not defend
@@ -40,9 +40,10 @@ class LinuxEncryptedMappingStore:
     _nonblock: int
     _fcntl: ModuleType
     _root: Path
+    _platform: str
 
     def __init__(self, root: Path, *, workspace: Path) -> None:
-        if sys.platform != "linux":
+        if sys.platform != self._platform:
             raise MappingFault(MappingError.PLATFORM)
         self._thread = Lock()
         self._fd = -1
@@ -240,3 +241,19 @@ class LinuxEncryptedMappingStore:
             if self._fd >= 0:
                 os.close(self._fd)
                 self._fd = -1
+
+
+class LinuxEncryptedMappingStore(_PosixEncryptedMappingStore):
+    """Linux adapter; other platforms must select their explicit adapter."""
+
+    _platform = "linux"
+
+
+class MacOSEncryptedMappingStore(_PosixEncryptedMappingStore):
+    """macOS local adapter with the same owned-file and atomic publication checks.
+
+    This does not establish Linux network isolation, production key provisioning,
+    filesystem rollback protection or secure erasure.
+    """
+
+    _platform = "darwin"

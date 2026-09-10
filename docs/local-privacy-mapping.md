@@ -1,7 +1,10 @@
 # Local encrypted mapping lifecycle
 
 Phase 5 implements real AEAD encryption, an ephemeral key-provider adapter,
-immutable Linux ciphertext storage and create/read/delete application operations.
+immutable ciphertext storage and create/read/delete application operations.
+Linux retains its explicit adapter; macOS now has `MacOSEncryptedMappingStore`.
+See the [exact-export follow-up](pr37-exact-export-coordination.md) for current
+native-host tests and composition. The dated Phase 5 results below are historical.
 Production key provisioning and actual Linux filesystem acceptance are pending.
 Do not describe the current Windows environment as secure persistent storage.
 

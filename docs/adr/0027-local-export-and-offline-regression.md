@@ -55,3 +55,15 @@ test evidence, not export authority. Local SDK consumers #24/#25 can share text
 preparation and the gate; existing upload paths are not silently redirected or
 approved for sensitive cases. See the [runbook](../local-privacy-export.md) for
 current evidence, platform limits and integration handoffs.
+
+## Exact mapping follow-up
+
+The gate now requires the local mapping service and key reference at composition.
+It encrypts/persists and authenticates a readback of the same build's complete
+command and manifest before confirmation, then reads back again before final
+admission and transfer. Missing mapping dependencies cannot enable export.
+The local handle is retained for reconciliation when confirmation or the sink
+fails; no automatic transfer retry or map deletion is introduced. Public schemas
+and the manifest return type are unchanged. See the scoped
+[coordination contract](../pr37-exact-export-coordination.md) for the constructor
+migration, distinct original/sanitized identities and platform evidence.

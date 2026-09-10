@@ -11,6 +11,7 @@ from unittest.mock import Mock
 import pymupdf
 import pytest
 from privacy_export_support import CANARIES, canary_raster, inspect_pdf, report, scan
+from privacy_mapping_support import mapping_service
 from pypdf import PdfWriter
 from test_privacy_bundle import approval, output_ocr, setup
 
@@ -40,12 +41,15 @@ def gate_fixture(tmp_path):
     )
     confirmation, sink = Mock(), Mock()
     confirmation.confirm.return_value = True
+    mappings, key = mapping_service(authority, verifier)
     gate = LocalPrivacyExportGate(
         builder=builder,
         verifier=verifier,
         authority=authority,
         confirmation=confirmation,
         sink=sink,
+        mapping_service=mappings,
+        key_reference=key,
     )
     return gate, command, authority, confirmation, sink, verifier
 

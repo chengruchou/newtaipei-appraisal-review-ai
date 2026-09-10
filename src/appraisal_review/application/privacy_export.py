@@ -7,13 +7,16 @@ import re
 import unicodedata
 from datetime import UTC, datetime
 from threading import RLock
+from uuid import UUID
 
 from appraisal_review.application.privacy_bundle import (
     LocalSanitizedBundleBuilder,
     LocalSanitizedVerifier,
 )
 from appraisal_review.application.privacy_guards import PrivacyFault, check_export_admission
+from appraisal_review.application.privacy_mapping import LocalMappingService
 from appraisal_review.domain.privacy_export import LocalTextDraft, PrivacyExportPayload
+from appraisal_review.domain.privacy_mapping import LocalMappingHandle
 from appraisal_review.domain.privacy_models import (
     LocalPrivacyApproval,
     PrivacyErrorCode,
@@ -77,7 +80,11 @@ def sanitize_reviewer_text(text: str, command: PrivacyReviewCommand) -> LocalTex
 
 
 class LocalPrivacyExportGate:
-    """Build, verify, confirm and hand off one snapshot; no caller artifact/path API."""
+    """Persist, read back, confirm and transfer one build; trusted local composition only.
+
+    Use one instance per local session. A failed sink may have transferred bytes;
+    retain the mapping handle for reconciliation and never retry automatically.
+    """
 
     def __init__(
         self,
@@ -87,13 +94,24 @@ class LocalPrivacyExportGate:
         authority: PrivacyApprovalAuthority,
         confirmation: PrivacyExportConfirmation,
         sink: PrivacyExportSink,
+        mapping_service: LocalMappingService,
+        key_reference: UUID,
     ) -> None:
         self._builder = builder
         self._verifier = verifier
         self._authority = authority
         self._confirmation = confirmation
         self._sink = sink
+        self._mapping_service = mapping_service
+        self._key_reference = key_reference
+        self._mapping_handle: LocalMappingHandle | None = None
         self._lock = RLock()
+
+    @property
+    def mapping_handle(self) -> LocalMappingHandle | None:
+        """Local-only handle from the latest persistence; never an upload DTO or grant."""
+        with self._lock:
+            return self._mapping_handle
 
     def export(
         self,
@@ -103,6 +121,7 @@ class LocalPrivacyExportGate:
         reviewer_text: str | None = None,
     ) -> PrivacyManifest:
         with self._lock:
+            self._mapping_handle = None
             try:
                 command = PrivacyReviewCommand.model_validate(command)
                 approval = LocalPrivacyApproval.model_validate(approval)
@@ -137,8 +156,23 @@ class LocalPrivacyExportGate:
                     )
 
                 admit()
+                handle = self._mapping_service.create(
+                    command, approval, manifest, key_reference=self._key_reference
+                )
+                # Retain the exact handle even if confirmation/transfer fails. A remote
+                # outcome may be unknown; deleting this map would prevent reconciliation.
+                self._mapping_handle = handle
+
+                def read_mapping() -> None:
+                    record = self._mapping_service.read(handle)
+                    if record.command != command or record.manifest != manifest:
+                        raise PrivacyFault(PrivacyErrorCode.VERIFICATION_FAILED)
+
+                read_mapping()
                 if self._confirmation.confirm(payload) is not True:
                     raise PrivacyFault(PrivacyErrorCode.UNAUTHORIZED)
+                # Confirmation can outlive the key session, retention or local file.
+                read_mapping()
                 admit()
                 self._sink.accept(payload)
                 return manifest

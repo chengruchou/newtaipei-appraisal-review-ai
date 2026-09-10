@@ -10,8 +10,11 @@ Production human export confirmation, actual OCR, Linux namespace acceptance and
 
 Compose `LocalPrivacyExportGate` with the same `LocalSanitizedBundleBuilder`,
 `LocalSanitizedVerifier` and live `PrivacyApprovalAuthority` used for the reviewed
-source. Inject a trusted `PrivacyExportConfirmation` and `PrivacyExportSink`.
-Consumers cannot supply those adapters through request data.
+source. Inject a trusted `PrivacyExportConfirmation`, `PrivacyExportSink`,
+`LocalMappingService` and local `key_reference`. Consumers cannot supply these
+adapters through request data. The gate persists and authenticates the exact
+build's mapping before confirmation and again before transfer. See the
+[constructor migration and coordination contract](pr37-exact-export-coordination.md).
 
 ```python
 manifest = gate.export(view.command, approval, reviewer_text=local_response)
