@@ -462,6 +462,16 @@ def test_build_context_allowlist_and_container_entry(tmp_path: Path) -> None:
     assert '"--load"' in script and '"--push"' not in script
 
 
+def test_runtime_user_has_resolvable_nonlogin_identity() -> None:
+    recipe = (INFRA / "Dockerfile").read_text()
+    before_user, _, _ = recipe.partition("USER 10001:10001")
+    # The reviewer uses POSIX getpwuid; a numeric USER alone has no account.
+    assert "groupadd --gid 10001 appraisal" in before_user
+    assert "useradd --uid 10001 --gid 10001" in before_user
+    assert "--no-create-home --home-dir /nonexistent" in before_user
+    assert "--shell /usr/sbin/nologin appraisal" in before_user
+
+
 @pytest.mark.parametrize("filename,minimum", [("requirements.lock", 20), ("build-tooling.lock", 1)])
 def test_lock_is_complete_and_hash_pinned(filename: str, minimum: int) -> None:
     lines = [
