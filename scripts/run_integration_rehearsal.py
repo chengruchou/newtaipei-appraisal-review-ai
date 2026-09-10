@@ -222,7 +222,10 @@ class CombinedRehearsal:
     base_fixture: dict[str, Any]
 
     async def publish_status(self) -> None:
-        if self.case_id not in self.core.by_case:
+        name = next(
+            (name for name, case in self.core.case_ids.items() if case == self.case_id), None
+        )
+        if name is None or name not in self.core.state.get("job_ids", {}):
             return
         status = await self.core.case_status(self.case_id)
         manifest = self.base_fixture | status

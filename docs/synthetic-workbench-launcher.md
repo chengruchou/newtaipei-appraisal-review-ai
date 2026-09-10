@@ -141,3 +141,8 @@ failed records contain the exception class without its potentially private messa
 The recorder prints no document values. A failed HTTP restoration attempt does
 not produce evidence of a restored PDF. Browser checkpoints and response statuses
 must be collected from that actual run, with source hashes checked independently.
+
+Status polling waits until trusted registration has persisted the submitted job
+identity. A fixture may already be available to execution while admission is
+awaiting submission; that intermediate state does not publish a job ID. Errors
+after registration remain visible and are not swallowed by the poller.

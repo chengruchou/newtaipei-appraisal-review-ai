@@ -138,11 +138,11 @@ async def _seven_cases_publish_and_restart(tmp_path):
     assert consumed.manifest() == manifest
 
 
-def test_dynamic_case_admission_is_not_confirmation_and_survives_restart(tmp_path):
-    asyncio.run(_dynamic_case(tmp_path))
+def test_dynamic_case_admission_is_not_confirmation_and_survives_restart(tmp_path, monkeypatch):
+    asyncio.run(_dynamic_case(tmp_path, monkeypatch))
 
 
-async def _dynamic_case(tmp_path):
+async def _dynamic_case(tmp_path, monkeypatch):
 
     root = tmp_path / "dynamic"
     context = await prepare_workbench(root)
@@ -164,7 +164,36 @@ async def _dynamic_case(tmp_path):
     with pytest.raises(ValueError, match="Exact authored raster source and template pins"):
         await context.register_synthetic_case(fixture, raster_source_versions=native_versions)
     assert fixture.snapshot.revision.reference.case_id not in context.by_case
+    import importlib
+    from types import SimpleNamespace
+
+    monkeypatch.syspath_prepend(str(Path(__file__).resolve().parents[2] / "scripts"))
+    launcher = importlib.import_module("run_integration_rehearsal")
+    projection = SimpleNamespace(
+        core=context,
+        case_id=fixture.snapshot.revision.reference.case_id,
+        base_fixture={"synthetic_only": True},
+        private_fixture=root / "poll-fixture.json",
+    )
+    submit = context.jobs.submit
+    observed_pending_poll = False
+
+    async def submit_with_pending_poll(*args, **kwargs):
+        nonlocal observed_pending_poll
+        assert projection.case_id in context.by_case
+        await launcher.CombinedRehearsal.publish_status(projection)
+        assert not projection.private_fixture.exists()
+        observed_pending_poll = True
+        return await submit(*args, **kwargs)
+
+    monkeypatch.setattr(context.jobs, "submit", submit_with_pending_poll)
     admitted = await context.register_synthetic_case(fixture)
+    assert observed_pending_poll
+    await launcher.CombinedRehearsal.publish_status(projection)
+    assert (
+        json.loads(projection.private_fixture.read_bytes())["review_job_id"]
+        == admitted["review_job_id"]
+    )
     before = await context.case_status(admitted["case_id"])
     assert before["job_status"] == "queued"
     assert before["task_ids"] == []
