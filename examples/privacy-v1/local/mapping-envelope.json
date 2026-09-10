@@ -1,0 +1,11 @@
+{
+  "schema_version": "local-privacy-v1",
+  "algorithm": "AES-256-GCM",
+  "case_id": "00000000-0000-4000-8000-000000000001",
+  "map_id": "00000000-0000-4000-8000-000000000008",
+  "key_reference": "00000000-0000-4000-8000-000000000009",
+  "nonce_hex": "000000000000000000000000",
+  "ciphertext_hex": "00000000000000000000000000000000",
+  "context_version": "privacy-map-aad-v1",
+  "expires_at": "2026-09-11T00:00:00Z"
+}

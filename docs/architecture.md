@@ -41,6 +41,8 @@ including merged #15/#16/#19/#20/#33. M0 is merged and is not deployed.
 and immutable source snapshots without changing those DTOs or mounting new HTTP routes.
 [Project progress](project-progress.md) records the active work lines.
 
+Local privacy review, exact export mapping and restore adapters are integrated from PR #37; browser and combined service acceptance are tracked in the integration delivery record. See [privacy review repairs](privacy-review-repair.md).
+
 ## Current program structure
 
 Solid lines are implemented calls/data flow. Orange nodes highlight the merged M0
@@ -118,7 +120,8 @@ flowchart TD
     UI["C browser review workbench"] --> API["B/D authenticated API: case permissions and authorized IDs"]
     API --> TRANSFER["D controlled upload/download authorization"]
     TRANSFER --> S3IN["Private versioned S3 documents and templates"]
-    UI -->|Authorized transfer only| S3IN
+    UI --> LOCALPRIVACY["Trusted local scan, human review, sanitization and export confirmation"]
+    LOCALPRIVACY -->|Verified sanitized payload only| TRANSFER
     API --> DB["D DynamoDB: jobs, revisions, human tasks, outbox, manifests"]
     DB --> PUBLISHER["D outbox publisher"]
     PUBLISHER --> QUEUE["SQS work queue"]
@@ -150,7 +153,7 @@ flowchart TD
     RUNTIME --> AUDIT["Version-bound domain audit and decision event storage"]
     RUNTIME --> LOGS["CloudWatch operational health and alarms"]
     classDef planned fill:#f3f3f3,stroke:#666,stroke-dasharray:5 5
-    class UI,API,TRANSFER,S3IN,DB,PUBLISHER,QUEUE,DISPATCH,DLQ,RUNTIME,RESOLVER,POLICY,MODEL,CORE,TASKS,REVISE,PDF,S3OUT,COMMIT,QUERY,RECOVERY,AUDIT,LOGS planned
+    class UI,API,TRANSFER,LOCALPRIVACY,S3IN,DB,PUBLISHER,QUEUE,DISPATCH,DLQ,RUNTIME,RESOLVER,POLICY,MODEL,CORE,TASKS,REVISE,PDF,S3OUT,COMMIT,QUERY,RECOVERY,AUDIT,LOGS planned
 ```
 
 API Gateway/Lambda/FastAPI is the planned API hosting arrangement. D resolves
@@ -191,7 +194,54 @@ M0 requires no AWS calls. Later preflight uses designated profile/SSO, Region,
 expected account/role and model availability; never chat-delivered access keys.
 MCP, a vector database and another orchestration framework are not required here.
 
-## Module map
+## Local privacy boundary
+
+This flow describes callable local components and explicitly pending consumer
+connections. No remote adapter or UI is installed by the privacy work. Ordinary
+service-v1 review and its business completion gates remain unchanged.
+
+```mermaid
+flowchart LR
+    ORIGINAL["Owned local original"] --> SCAN["Isolated PDF scan and configured local OCR"]
+    SCAN --> REVIEW["Versioned review SDK and trusted human source approval"]
+    REVIEW --> BUILD["Raster rebuild and independent structure/pixel/OCR verification"]
+    BUILD --> CONFIRM["Exact immutable export payload and human confirmation port"]
+    CONFIRM --> GATE["Live source approval and verifier recheck"]
+    GATE --> SINK["Trusted sink port; tests use a local sink"]
+    SINK -.-> CLOUD["Pending cloud consumer and authenticated publisher"]
+    BUILD --> MAP["Local AEAD mapping service; Linux storage and key provisioning pending acceptance"]
+    CLOUD -.-> REFILL["Local refill with exact approved fields and publisher authority"]
+    MAP --> REFILL
+    ORIGINAL --> REFILL
+    REFILL --> FINAL["New local final PDF; no upload or business completion authority"]
+```
+
+The map must bind the manifest of the actual confirmed export. Rebuilding a bundle
+issues new occurrence IDs even when visible content is unchanged. A future
+application composition must persist the mapping for that exact payload before
+its network sink accepts responsibility. Independently building a mapping and
+then calling a gate that builds another bundle is not a valid composition.
+The current ports and stage tests do not provide a durable end-to-end coordinator.
+
+Originals, previews, source hashes, review commands, maps, key references and
+refilled PDFs remain local. The export payload contains only sanitized PDF bytes,
+public manifest JSON, a fixed filename and optional locally sanitized, explicitly
+reviewed text. Known text replacement is not a general detector of newly typed
+private facts. The trusted human adapter must review all outgoing text.
+
+Scan, sanitizer and refill workers use bounded local subprocesses and Python
+network denial before their target imports. Linux network namespace, real OCR,
+private storage and actual terminal tests remain acceptance requirements; Windows
+does not provide equivalent evidence. Synthetic SDK/telemetry probes are not live
+AWS isolation tests. Existing S3 upload paths remain outside the privacy gate and
+must not process sensitive cases until #27/#31 integration is accepted.
+
+Local contracts and ports are under `domain/privacy_*.py`, `ports/privacy*.py` and
+`application/privacy_*.py`; implementation adapters are under
+`adapters/local/privacy/`. [ADRs 0021-0027](privacy-contracts.md) and the
+[stage runbooks](issue-22-acceptance.md) describe their individual trust boundaries.
+
+## Business-core module map
 
 | Location | Authority |
 | --- | --- |

@@ -1,0 +1,60 @@
+{
+  "schema_version": "local-privacy-scan-v1",
+  "source": {
+    "schema_version": "local-privacy-v1",
+    "case_id": "00000000-0000-4000-8000-000000000001",
+    "document_id": "00000000-0000-4000-8000-000000000002",
+    "snapshot_id": "00000000-0000-4000-8000-000000000003",
+    "source_revision": 1,
+    "source_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "byte_size": 100,
+    "pages": [
+      {
+        "number": 1,
+        "width": 300.0,
+        "height": 400.0,
+        "coordinate_system": "pdf_bottom_left",
+        "page_space": "unrotated_crop_box",
+        "rotation": 0,
+        "crop_box": [
+          0.0,
+          0.0,
+          300.0,
+          400.0
+        ]
+      }
+    ]
+  },
+  "native_engine_version": "synthetic-fixture",
+  "status": "blocked",
+  "pages": [
+    {
+      "page": 1,
+      "mode": "scanned",
+      "status": "blocked",
+      "issues": [
+        "ocr_unavailable"
+      ],
+      "observations": [],
+      "ocr_engine_version": null,
+      "ocr_model_digests": [],
+      "manual_categories": [
+        "name",
+        "identity_number",
+        "business_number",
+        "birth_date",
+        "phone",
+        "email",
+        "address",
+        "account",
+        "signature",
+        "stamp",
+        "face",
+        "case_contact",
+        "parcel",
+        "ownership_financial"
+      ]
+    }
+  ],
+  "candidates": []
+}

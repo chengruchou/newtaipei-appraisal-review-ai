@@ -1,0 +1,5 @@
+{
+  "schema_version": "privacy-v1",
+  "code": "privacy_capability_unavailable",
+  "message": "Local privacy processing requires review."
+}

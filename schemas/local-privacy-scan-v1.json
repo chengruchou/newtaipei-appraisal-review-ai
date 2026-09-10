@@ -1,0 +1,554 @@
+{
+  "$defs": {
+    "LocalSourcePage": {
+      "additionalProperties": false,
+      "description": "Original page transform metadata, retained locally for coordinate mapping.",
+      "properties": {
+        "number": {
+          "minimum": 1,
+          "title": "Number",
+          "type": "integer"
+        },
+        "width": {
+          "exclusiveMinimum": 0,
+          "title": "Width",
+          "type": "number"
+        },
+        "height": {
+          "exclusiveMinimum": 0,
+          "title": "Height",
+          "type": "number"
+        },
+        "coordinate_system": {
+          "const": "pdf_bottom_left",
+          "default": "pdf_bottom_left",
+          "title": "Coordinate System",
+          "type": "string"
+        },
+        "page_space": {
+          "const": "unrotated_crop_box",
+          "default": "unrotated_crop_box",
+          "title": "Page Space",
+          "type": "string"
+        },
+        "rotation": {
+          "enum": [
+            0,
+            90,
+            180,
+            270
+          ],
+          "title": "Rotation",
+          "type": "integer"
+        },
+        "crop_box": {
+          "maxItems": 4,
+          "minItems": 4,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Crop Box",
+          "type": "array"
+        }
+      },
+      "required": [
+        "number",
+        "width",
+        "height",
+        "rotation",
+        "crop_box"
+      ],
+      "title": "LocalSourcePage",
+      "type": "object"
+    },
+    "LocalSourceSnapshot": {
+      "additionalProperties": false,
+      "description": "Identity of adapter-owned immutable bytes, not a caller-selected file URI.",
+      "properties": {
+        "schema_version": {
+          "const": "local-privacy-v1",
+          "default": "local-privacy-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "case_id": {
+          "format": "uuid4",
+          "title": "Case Id",
+          "type": "string"
+        },
+        "document_id": {
+          "format": "uuid4",
+          "title": "Document Id",
+          "type": "string"
+        },
+        "snapshot_id": {
+          "format": "uuid4",
+          "title": "Snapshot Id",
+          "type": "string"
+        },
+        "source_revision": {
+          "minimum": 1,
+          "title": "Source Revision",
+          "type": "integer"
+        },
+        "source_digest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Source Digest",
+          "type": "string"
+        },
+        "byte_size": {
+          "exclusiveMinimum": 0,
+          "title": "Byte Size",
+          "type": "integer"
+        },
+        "pages": {
+          "items": {
+            "$ref": "#/$defs/LocalSourcePage"
+          },
+          "minItems": 1,
+          "title": "Pages",
+          "type": "array"
+        }
+      },
+      "required": [
+        "case_id",
+        "document_id",
+        "snapshot_id",
+        "source_revision",
+        "source_digest",
+        "byte_size",
+        "pages"
+      ],
+      "title": "LocalSourceSnapshot",
+      "type": "object"
+    },
+    "PageScan": {
+      "additionalProperties": false,
+      "properties": {
+        "page": {
+          "minimum": 1,
+          "title": "Page",
+          "type": "integer"
+        },
+        "mode": {
+          "enum": [
+            "native",
+            "scanned",
+            "mixed"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "processed",
+            "blocked"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "issues": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ScanIssue"
+          },
+          "title": "Issues",
+          "type": "array"
+        },
+        "observations": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/TextObservation"
+          },
+          "title": "Observations",
+          "type": "array"
+        },
+        "ocr_engine_version": {
+          "anyOf": [
+            {
+              "maxLength": 4096,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ocr Engine Version"
+        },
+        "ocr_model_digests": {
+          "default": [],
+          "items": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "title": "Ocr Model Digests",
+          "type": "array"
+        },
+        "manual_categories": {
+          "default": [
+            "name",
+            "identity_number",
+            "business_number",
+            "birth_date",
+            "phone",
+            "email",
+            "address",
+            "account",
+            "signature",
+            "stamp",
+            "face",
+            "case_contact",
+            "parcel",
+            "ownership_financial"
+          ],
+          "items": {
+            "$ref": "#/$defs/SensitiveCategory"
+          },
+          "title": "Manual Categories",
+          "type": "array"
+        }
+      },
+      "required": [
+        "page",
+        "mode",
+        "status"
+      ],
+      "title": "PageScan",
+      "type": "object"
+    },
+    "PrivacyCapabilities": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "local-privacy-scan-v1",
+          "default": "local-privacy-scan-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "native_pdf": {
+          "title": "Native Pdf",
+          "type": "boolean"
+        },
+        "local_ocr": {
+          "title": "Local Ocr",
+          "type": "boolean"
+        },
+        "languages": {
+          "default": [],
+          "items": {
+            "enum": [
+              "eng",
+              "chi_tra"
+            ],
+            "type": "string"
+          },
+          "title": "Languages",
+          "type": "array"
+        },
+        "engine_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Engine Version"
+        },
+        "runtime_platform": {
+          "enum": [
+            "linux",
+            "development"
+          ],
+          "title": "Runtime Platform",
+          "type": "string"
+        },
+        "visual_detector": {
+          "const": "manual_review_required",
+          "default": "manual_review_required",
+          "title": "Visual Detector",
+          "type": "string"
+        },
+        "network_isolation": {
+          "const": "not_verified",
+          "default": "not_verified",
+          "title": "Network Isolation",
+          "type": "string"
+        }
+      },
+      "required": [
+        "native_pdf",
+        "local_ocr",
+        "runtime_platform"
+      ],
+      "title": "PrivacyCapabilities",
+      "type": "object"
+    },
+    "PrivacyRegion": {
+      "additionalProperties": false,
+      "properties": {
+        "page": {
+          "minimum": 1,
+          "title": "Page",
+          "type": "integer"
+        },
+        "bbox": {
+          "maxItems": 4,
+          "minItems": 4,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Bbox",
+          "type": "array"
+        }
+      },
+      "required": [
+        "page",
+        "bbox"
+      ],
+      "title": "PrivacyRegion",
+      "type": "object"
+    },
+    "PrivacyScanReport": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "local-privacy-scan-v1",
+          "default": "local-privacy-scan-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "source": {
+          "$ref": "#/$defs/LocalSourceSnapshot"
+        },
+        "native_engine_version": {
+          "maxLength": 4096,
+          "minLength": 1,
+          "title": "Native Engine Version",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "needs_review",
+            "blocked"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "pages": {
+          "items": {
+            "$ref": "#/$defs/PageScan"
+          },
+          "minItems": 1,
+          "title": "Pages",
+          "type": "array"
+        },
+        "candidates": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/SensitiveCandidate"
+          },
+          "title": "Candidates",
+          "type": "array"
+        }
+      },
+      "required": [
+        "source",
+        "native_engine_version",
+        "status",
+        "pages"
+      ],
+      "title": "PrivacyScanReport",
+      "type": "object"
+    },
+    "ScanIssue": {
+      "enum": [
+        "ocr_unavailable",
+        "ocr_empty",
+        "ocr_failed",
+        "low_confidence",
+        "processing_timeout",
+        "resource_limit",
+        "invalid_scan_input"
+      ],
+      "title": "ScanIssue",
+      "type": "string"
+    },
+    "SensitiveCandidate": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "local-privacy-v1",
+          "default": "local-privacy-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "candidate_id": {
+          "format": "uuid4",
+          "title": "Candidate Id",
+          "type": "string"
+        },
+        "category": {
+          "$ref": "#/$defs/SensitiveCategory"
+        },
+        "region": {
+          "$ref": "#/$defs/PrivacyRegion"
+        },
+        "raw_text": {
+          "anyOf": [
+            {
+              "maxLength": 4096,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Raw Text"
+        },
+        "crop_id": {
+          "anyOf": [
+            {
+              "format": "uuid4",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Crop Id"
+        },
+        "confidence": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Confidence"
+        },
+        "detector_id": {
+          "maxLength": 4096,
+          "minLength": 1,
+          "title": "Detector Id",
+          "type": "string"
+        },
+        "detector_version": {
+          "maxLength": 4096,
+          "minLength": 1,
+          "title": "Detector Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "candidate_id",
+        "category",
+        "region",
+        "detector_id",
+        "detector_version"
+      ],
+      "title": "SensitiveCandidate",
+      "type": "object"
+    },
+    "SensitiveCategory": {
+      "enum": [
+        "name",
+        "identity_number",
+        "business_number",
+        "birth_date",
+        "phone",
+        "email",
+        "address",
+        "account",
+        "signature",
+        "stamp",
+        "face",
+        "case_contact",
+        "parcel",
+        "ownership_financial"
+      ],
+      "title": "SensitiveCategory",
+      "type": "string"
+    },
+    "TextObservation": {
+      "additionalProperties": false,
+      "description": "Native block or OCR word; confidence is unmodified, or unknown for native text.",
+      "properties": {
+        "text": {
+          "maxLength": 4096,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "region": {
+          "$ref": "#/$defs/PrivacyRegion"
+        },
+        "origin": {
+          "enum": [
+            "native",
+            "ocr"
+          ],
+          "title": "Origin",
+          "type": "string"
+        },
+        "confidence": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Confidence"
+        }
+      },
+      "required": [
+        "text",
+        "region",
+        "origin"
+      ],
+      "title": "TextObservation",
+      "type": "object"
+    }
+  },
+  "title": "local-privacy-scan-v1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}

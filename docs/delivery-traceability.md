@@ -63,6 +63,10 @@ Local checks at this checkpoint: ruff, ruff format, mypy and 756 repository test
 the golden check reports 14 manifests matching their fixtures. No remote write, commit, merge,
 AWS call or real rule approval was performed, and no rule is claimed as formally approved.
 
+## Local privacy integration
+
+PR #37 supplies the reviewed local privacy SDK, encrypted exact-export mapping and local restoration boundary. Its isolated validation remains distinct from combined browser acceptance and real AWS acceptance. See [privacy acceptance](issue-22-acceptance.md).
+
 ## PR #20 local P2 correction (2026-09-07)
 
 The [P2 correction record](m0-p2-review.md) supersedes the earlier review's limited

@@ -1,0 +1,35 @@
+{
+  "schema_version": "privacy-v1",
+  "processor_version": "privacy-processor-v1",
+  "policy_version": "privacy-policy-v1",
+  "case_id": "00000000-0000-4000-8000-000000000001",
+  "document_id": "00000000-0000-4000-8000-000000000002",
+  "sanitized_digest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "byte_size": 101,
+  "filename": "sanitized.pdf",
+  "media_type": "application/pdf",
+  "pages": [
+    {
+      "number": 1,
+      "width": 600.0,
+      "height": 800.0,
+      "coordinate_system": "pdf_bottom_left",
+      "page_space": "unrotated_crop_box"
+    }
+  ],
+  "occurrences": [
+    {
+      "occurrence_id": "00000000-0000-4000-8000-000000000007",
+      "entity_id": "00000000-0000-4000-8000-000000000005",
+      "region": {
+        "page": 1,
+        "bbox": [
+          10.0,
+          20.0,
+          110.0,
+          40.0
+        ]
+      }
+    }
+  ]
+}

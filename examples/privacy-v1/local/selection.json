@@ -1,0 +1,25 @@
+{
+  "schema_version": "local-privacy-v1",
+  "candidate": {
+    "schema_version": "local-privacy-v1",
+    "candidate_id": "00000000-0000-4000-8000-000000000004",
+    "category": "name",
+    "region": {
+      "page": 1,
+      "bbox": [
+        10.0,
+        20.0,
+        110.0,
+        40.0
+      ]
+    },
+    "raw_text": "SYNTHETIC-LOCAL-ONLY-VALUE",
+    "crop_id": null,
+    "confidence": 0.8,
+    "detector_id": "synthetic-detector",
+    "detector_version": "fixture-v1"
+  },
+  "disposition": "redact",
+  "entity_id": "00000000-0000-4000-8000-000000000005",
+  "dismissal_reason": null
+}

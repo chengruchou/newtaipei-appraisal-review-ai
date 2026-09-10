@@ -1,0 +1,60 @@
+{
+  "schema_version": "local-privacy-v1",
+  "source": {
+    "schema_version": "local-privacy-v1",
+    "case_id": "00000000-0000-4000-8000-000000000001",
+    "document_id": "00000000-0000-4000-8000-000000000002",
+    "snapshot_id": "00000000-0000-4000-8000-000000000003",
+    "source_revision": 1,
+    "source_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "byte_size": 100,
+    "pages": [
+      {
+        "number": 1,
+        "width": 600.0,
+        "height": 800.0,
+        "coordinate_system": "pdf_bottom_left",
+        "page_space": "unrotated_crop_box",
+        "rotation": 0,
+        "crop_box": [
+          0.0,
+          0.0,
+          600.0,
+          800.0
+        ]
+      }
+    ]
+  },
+  "selection_revision": 1,
+  "policy_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "selections": [
+    {
+      "schema_version": "local-privacy-v1",
+      "candidate": {
+        "schema_version": "local-privacy-v1",
+        "candidate_id": "00000000-0000-4000-8000-000000000004",
+        "category": "name",
+        "region": {
+          "page": 1,
+          "bbox": [
+            10.0,
+            20.0,
+            110.0,
+            40.0
+          ]
+        },
+        "raw_text": "SYNTHETIC-LOCAL-ONLY-VALUE",
+        "crop_id": null,
+        "confidence": 0.8,
+        "detector_id": "synthetic-detector",
+        "detector_version": "fixture-v1"
+      },
+      "disposition": "redact",
+      "entity_id": "00000000-0000-4000-8000-000000000005",
+      "dismissal_reason": null
+    }
+  ],
+  "reviewed_pages": [
+    1
+  ]
+}

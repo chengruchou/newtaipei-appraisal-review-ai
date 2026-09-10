@@ -1,0 +1,67 @@
+{
+  "schema_version": "privacy-leak-report-v1",
+  "scope": "python_hooks",
+  "checks": [
+    {
+      "surface": "bundle_bytes",
+      "inspected": false,
+      "hits": []
+    },
+    {
+      "surface": "pdf_streams",
+      "inspected": false,
+      "hits": []
+    },
+    {
+      "surface": "pdf_text",
+      "inspected": false,
+      "hits": []
+    },
+    {
+      "surface": "pdf_images",
+      "inspected": false,
+      "hits": []
+    },
+    {
+      "surface": "stdout",
+      "inspected": false,
+      "hits": []
+    },
+    {
+      "surface": "stderr",
+      "inspected": false,
+      "hits": []
+    },
+    {
+      "surface": "log",
+      "inspected": false,
+      "hits": []
+    },
+    {
+      "surface": "exception",
+      "inspected": false,
+      "hits": []
+    },
+    {
+      "surface": "serializer",
+      "inspected": false,
+      "hits": []
+    },
+    {
+      "surface": "http",
+      "inspected": false,
+      "hits": []
+    },
+    {
+      "surface": "sdk",
+      "inspected": false,
+      "hits": []
+    },
+    {
+      "surface": "telemetry",
+      "inspected": false,
+      "hits": []
+    }
+  ],
+  "status": "blocked"
+}

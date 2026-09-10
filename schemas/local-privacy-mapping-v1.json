@@ -1,0 +1,621 @@
+{
+  "$defs": {
+    "LocalMappingHandle": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "local-privacy-v1",
+          "default": "local-privacy-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "case_id": {
+          "format": "uuid4",
+          "title": "Case Id",
+          "type": "string"
+        },
+        "map_id": {
+          "format": "uuid4",
+          "title": "Map Id",
+          "type": "string"
+        },
+        "key_reference": {
+          "format": "uuid4",
+          "title": "Key Reference",
+          "type": "string"
+        },
+        "expires_at": {
+          "format": "date-time",
+          "title": "Expires At",
+          "type": "string"
+        },
+        "envelope_digest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Envelope Digest",
+          "type": "string"
+        }
+      },
+      "required": [
+        "case_id",
+        "map_id",
+        "key_reference",
+        "expires_at",
+        "envelope_digest"
+      ],
+      "title": "LocalMappingHandle",
+      "type": "object"
+    },
+    "LocalMappingRecord": {
+      "additionalProperties": false,
+      "description": "Encrypted payload. Original crop references require the owned source at refill.",
+      "properties": {
+        "schema_version": {
+          "const": "local-privacy-v1",
+          "default": "local-privacy-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "mapping_version": {
+          "const": "privacy-mapping-v1",
+          "default": "privacy-mapping-v1",
+          "title": "Mapping Version",
+          "type": "string"
+        },
+        "map_id": {
+          "format": "uuid4",
+          "title": "Map Id",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "expires_at": {
+          "format": "date-time",
+          "title": "Expires At",
+          "type": "string"
+        },
+        "command": {
+          "$ref": "#/$defs/PrivacyReviewCommand"
+        },
+        "manifest": {
+          "$ref": "#/$defs/PrivacyManifest"
+        }
+      },
+      "required": [
+        "map_id",
+        "created_at",
+        "expires_at",
+        "command",
+        "manifest"
+      ],
+      "title": "LocalMappingRecord",
+      "type": "object"
+    },
+    "LocalSourcePage": {
+      "additionalProperties": false,
+      "description": "Original page transform metadata, retained locally for coordinate mapping.",
+      "properties": {
+        "number": {
+          "minimum": 1,
+          "title": "Number",
+          "type": "integer"
+        },
+        "width": {
+          "exclusiveMinimum": 0,
+          "title": "Width",
+          "type": "number"
+        },
+        "height": {
+          "exclusiveMinimum": 0,
+          "title": "Height",
+          "type": "number"
+        },
+        "coordinate_system": {
+          "const": "pdf_bottom_left",
+          "default": "pdf_bottom_left",
+          "title": "Coordinate System",
+          "type": "string"
+        },
+        "page_space": {
+          "const": "unrotated_crop_box",
+          "default": "unrotated_crop_box",
+          "title": "Page Space",
+          "type": "string"
+        },
+        "rotation": {
+          "enum": [
+            0,
+            90,
+            180,
+            270
+          ],
+          "title": "Rotation",
+          "type": "integer"
+        },
+        "crop_box": {
+          "maxItems": 4,
+          "minItems": 4,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Crop Box",
+          "type": "array"
+        }
+      },
+      "required": [
+        "number",
+        "width",
+        "height",
+        "rotation",
+        "crop_box"
+      ],
+      "title": "LocalSourcePage",
+      "type": "object"
+    },
+    "LocalSourceSnapshot": {
+      "additionalProperties": false,
+      "description": "Identity of adapter-owned immutable bytes, not a caller-selected file URI.",
+      "properties": {
+        "schema_version": {
+          "const": "local-privacy-v1",
+          "default": "local-privacy-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "case_id": {
+          "format": "uuid4",
+          "title": "Case Id",
+          "type": "string"
+        },
+        "document_id": {
+          "format": "uuid4",
+          "title": "Document Id",
+          "type": "string"
+        },
+        "snapshot_id": {
+          "format": "uuid4",
+          "title": "Snapshot Id",
+          "type": "string"
+        },
+        "source_revision": {
+          "minimum": 1,
+          "title": "Source Revision",
+          "type": "integer"
+        },
+        "source_digest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Source Digest",
+          "type": "string"
+        },
+        "byte_size": {
+          "exclusiveMinimum": 0,
+          "title": "Byte Size",
+          "type": "integer"
+        },
+        "pages": {
+          "items": {
+            "$ref": "#/$defs/LocalSourcePage"
+          },
+          "minItems": 1,
+          "title": "Pages",
+          "type": "array"
+        }
+      },
+      "required": [
+        "case_id",
+        "document_id",
+        "snapshot_id",
+        "source_revision",
+        "source_digest",
+        "byte_size",
+        "pages"
+      ],
+      "title": "LocalSourceSnapshot",
+      "type": "object"
+    },
+    "PlaceholderOccurrence": {
+      "additionalProperties": false,
+      "properties": {
+        "occurrence_id": {
+          "format": "uuid4",
+          "title": "Occurrence Id",
+          "type": "string"
+        },
+        "entity_id": {
+          "format": "uuid4",
+          "title": "Entity Id",
+          "type": "string"
+        },
+        "region": {
+          "$ref": "#/$defs/PrivacyRegion"
+        }
+      },
+      "required": [
+        "occurrence_id",
+        "entity_id",
+        "region"
+      ],
+      "title": "PlaceholderOccurrence",
+      "type": "object"
+    },
+    "PrivacyManifest": {
+      "additionalProperties": false,
+      "description": "Allowlisted sanitized identity only; DTO validity does not permit upload.\n\nIDs must be issued randomly by the future trusted adapter. UUID shape cannot\nprove randomness. Repeated entity IDs are legal; occurrence IDs are unique.",
+      "properties": {
+        "schema_version": {
+          "const": "privacy-v1",
+          "default": "privacy-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "processor_version": {
+          "const": "privacy-processor-v1",
+          "default": "privacy-processor-v1",
+          "title": "Processor Version",
+          "type": "string"
+        },
+        "policy_version": {
+          "const": "privacy-policy-v1",
+          "default": "privacy-policy-v1",
+          "title": "Policy Version",
+          "type": "string"
+        },
+        "case_id": {
+          "format": "uuid4",
+          "title": "Case Id",
+          "type": "string"
+        },
+        "document_id": {
+          "format": "uuid4",
+          "title": "Document Id",
+          "type": "string"
+        },
+        "sanitized_digest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Sanitized Digest",
+          "type": "string"
+        },
+        "byte_size": {
+          "exclusiveMinimum": 0,
+          "title": "Byte Size",
+          "type": "integer"
+        },
+        "filename": {
+          "const": "sanitized.pdf",
+          "default": "sanitized.pdf",
+          "title": "Filename",
+          "type": "string"
+        },
+        "media_type": {
+          "const": "application/pdf",
+          "default": "application/pdf",
+          "title": "Media Type",
+          "type": "string"
+        },
+        "pages": {
+          "items": {
+            "$ref": "#/$defs/PrivacyPage"
+          },
+          "minItems": 1,
+          "title": "Pages",
+          "type": "array"
+        },
+        "occurrences": {
+          "items": {
+            "$ref": "#/$defs/PlaceholderOccurrence"
+          },
+          "title": "Occurrences",
+          "type": "array"
+        }
+      },
+      "required": [
+        "case_id",
+        "document_id",
+        "sanitized_digest",
+        "byte_size",
+        "pages",
+        "occurrences"
+      ],
+      "title": "PrivacyManifest",
+      "type": "object"
+    },
+    "PrivacyPage": {
+      "additionalProperties": false,
+      "properties": {
+        "number": {
+          "minimum": 1,
+          "title": "Number",
+          "type": "integer"
+        },
+        "width": {
+          "exclusiveMinimum": 0,
+          "title": "Width",
+          "type": "number"
+        },
+        "height": {
+          "exclusiveMinimum": 0,
+          "title": "Height",
+          "type": "number"
+        },
+        "coordinate_system": {
+          "const": "pdf_bottom_left",
+          "default": "pdf_bottom_left",
+          "title": "Coordinate System",
+          "type": "string"
+        },
+        "page_space": {
+          "const": "unrotated_crop_box",
+          "default": "unrotated_crop_box",
+          "title": "Page Space",
+          "type": "string"
+        }
+      },
+      "required": [
+        "number",
+        "width",
+        "height"
+      ],
+      "title": "PrivacyPage",
+      "type": "object"
+    },
+    "PrivacyRegion": {
+      "additionalProperties": false,
+      "properties": {
+        "page": {
+          "minimum": 1,
+          "title": "Page",
+          "type": "integer"
+        },
+        "bbox": {
+          "maxItems": 4,
+          "minItems": 4,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Bbox",
+          "type": "array"
+        }
+      },
+      "required": [
+        "page",
+        "bbox"
+      ],
+      "title": "PrivacyRegion",
+      "type": "object"
+    },
+    "PrivacyReviewCommand": {
+      "additionalProperties": false,
+      "description": "Local consumer input; no actor, approval, verified flag or workflow state.",
+      "properties": {
+        "schema_version": {
+          "const": "local-privacy-v1",
+          "default": "local-privacy-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "source": {
+          "$ref": "#/$defs/LocalSourceSnapshot"
+        },
+        "selection_revision": {
+          "minimum": 1,
+          "title": "Selection Revision",
+          "type": "integer"
+        },
+        "policy_digest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Policy Digest",
+          "type": "string"
+        },
+        "selections": {
+          "items": {
+            "$ref": "#/$defs/ReviewSelection"
+          },
+          "title": "Selections",
+          "type": "array"
+        },
+        "reviewed_pages": {
+          "items": {
+            "type": "integer"
+          },
+          "title": "Reviewed Pages",
+          "type": "array"
+        }
+      },
+      "required": [
+        "source",
+        "selection_revision",
+        "policy_digest",
+        "selections",
+        "reviewed_pages"
+      ],
+      "title": "PrivacyReviewCommand",
+      "type": "object"
+    },
+    "ReviewSelection": {
+      "additionalProperties": false,
+      "description": "Complete local review set, including explicitly dismissed detections.",
+      "properties": {
+        "schema_version": {
+          "const": "local-privacy-v1",
+          "default": "local-privacy-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "candidate": {
+          "$ref": "#/$defs/SensitiveCandidate"
+        },
+        "disposition": {
+          "enum": [
+            "redact",
+            "dismiss"
+          ],
+          "title": "Disposition",
+          "type": "string"
+        },
+        "entity_id": {
+          "anyOf": [
+            {
+              "format": "uuid4",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Entity Id"
+        },
+        "dismissal_reason": {
+          "anyOf": [
+            {
+              "maxLength": 4096,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dismissal Reason"
+        }
+      },
+      "required": [
+        "candidate",
+        "disposition"
+      ],
+      "title": "ReviewSelection",
+      "type": "object"
+    },
+    "SensitiveCandidate": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "local-privacy-v1",
+          "default": "local-privacy-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "candidate_id": {
+          "format": "uuid4",
+          "title": "Candidate Id",
+          "type": "string"
+        },
+        "category": {
+          "$ref": "#/$defs/SensitiveCategory"
+        },
+        "region": {
+          "$ref": "#/$defs/PrivacyRegion"
+        },
+        "raw_text": {
+          "anyOf": [
+            {
+              "maxLength": 4096,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Raw Text"
+        },
+        "crop_id": {
+          "anyOf": [
+            {
+              "format": "uuid4",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Crop Id"
+        },
+        "confidence": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Confidence"
+        },
+        "detector_id": {
+          "maxLength": 4096,
+          "minLength": 1,
+          "title": "Detector Id",
+          "type": "string"
+        },
+        "detector_version": {
+          "maxLength": 4096,
+          "minLength": 1,
+          "title": "Detector Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "candidate_id",
+        "category",
+        "region",
+        "detector_id",
+        "detector_version"
+      ],
+      "title": "SensitiveCandidate",
+      "type": "object"
+    },
+    "SensitiveCategory": {
+      "enum": [
+        "name",
+        "identity_number",
+        "business_number",
+        "birth_date",
+        "phone",
+        "email",
+        "address",
+        "account",
+        "signature",
+        "stamp",
+        "face",
+        "case_contact",
+        "parcel",
+        "ownership_financial"
+      ],
+      "title": "SensitiveCategory",
+      "type": "string"
+    }
+  },
+  "title": "local-privacy-mapping-v1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}
