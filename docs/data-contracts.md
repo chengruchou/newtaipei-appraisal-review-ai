@@ -1,5 +1,13 @@
 # Data contracts
 
+Issue 21 now connects `DocumentTransferService` snapshots to the existing
+`SanitizedSourceReference`, `PageRequest` and `PageOutcome` contracts. The additive
+`evaluation-report-v1` schema records explicit denominators, nullable usage/cost
+and repeat differences. Handoffs remain requests rather than accepted human
+responses. Existing extraction/evaluation/service/PDF wire schemas are unchanged.
+See [ADR 0025](adr/0025-snapshot-extraction-integration.md) and
+[evaluation](extraction-evaluation.md).
+
 M0 adds [service-v1 contracts](service-contracts.md), a separate local result
 envelope and configured [local factory](local-service-runbook.md) on its working
 branch. Existing review schema 2.0 and public HTTP/invocation JSON remain unchanged.

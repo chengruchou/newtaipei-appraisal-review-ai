@@ -1,5 +1,9 @@
 # Service v1 contract authority
 
+Issue 21 adds separate [extraction/evaluation contracts](extraction-contracts.md)
+and reserved consumer ports. They reuse service references without changing
+service-v1 fields, authority or mounted endpoints.
+
 Status: M0 working-branch implementation based on main
 `ea55043d90aa21e6f0a7e3fe05aa34ef8a3553d3`; not a merged or deployed service.
 [ADR 0013](adr/0013-service-foundation.md) records the trust boundaries.

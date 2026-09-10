@@ -1,5 +1,14 @@
 # Project progress, 2026-09-10
 
+## Current work, 2026-09-11
+
+Main is `c132e4ee4b1797098bd22676245cdfc01a26ffdb`, including merged #32,
+#33, #40 and #41. The current sequence is #21 extraction/evaluation, #30 durable
+Runtime deployment preparation, then #31 cloud/browser rehearsal preparation.
+See [Issue 21 delivery](issue-21-delivery.md) for exact dependencies, implemented
+additions and remaining gates. The sections below retain the earlier C2 delivery
+history; their branch and CI statements are historical snapshots.
+
 ## Re-established baseline
 
 The competition requires valuation case review. PDF completion is an output of

@@ -1,0 +1,178 @@
+"""Explicit, lazy workstation clients and injected Runtime clients; no default session."""
+
+from __future__ import annotations
+
+import re
+from typing import Any, Literal, Protocol
+
+from pydantic import Field, model_validator
+
+from appraisal_review.adapters.aws.extraction_errors import provider_failure
+from appraisal_review.domain.document_models import Digest
+from appraisal_review.domain.extraction_contracts import ContractModel, PositiveCount
+from appraisal_review.ports.document_extraction import ExtractionBoundaryError
+
+
+class BedrockAccessPolicy(ContractModel):
+    """Operator-reviewed policy, never constructed from document/model content.
+
+    Metadata does not expose Converse compatibility. The exact foundation-model
+    allowlist must come from a reviewed capability record; invocation proves access.
+    """
+
+    schema_version: Literal["bedrock-access-v1"] = "bedrock-access-v1"
+    api: Literal["converse"] = "converse"
+    account: str = Field(pattern=r"^[0-9]{12}$")
+    role_name: str = Field(pattern=r"^[A-Za-z0-9+=,.@_-]{1,64}$")
+    region: str = Field(pattern=r"^[a-z]{2}-[a-z]+-[0-9]+$")
+    model_id: str = Field(min_length=1, max_length=2048)
+    model_kind: Literal["foundation", "system_profile", "application_profile"]
+    allowed_regions: tuple[str, ...] = Field(min_length=1)
+    allowed_foundation_models: tuple[str, ...] = Field(min_length=1)
+    converse_capability_digest: Digest
+    allow_cross_region: bool = Field(default=False, strict=True)
+    allow_global: bool = Field(default=False, strict=True)
+    timeout_seconds: float = Field(gt=0, le=600)
+    max_output_tokens: PositiveCount
+    max_image_bytes: int = Field(gt=0, le=3_750_000, strict=True)
+    max_image_width: int = Field(gt=0, le=8000, strict=True)
+    max_image_height: int = Field(gt=0, le=8000, strict=True)
+    max_image_pixels: int = Field(gt=0, le=16_000_000, strict=True)
+
+    @model_validator(mode="after")
+    def explicit_routing(self) -> BedrockAccessPolicy:
+        if len(set(self.allowed_regions)) != len(self.allowed_regions) or any(
+            not re.fullmatch(r"[a-z]{2}-[a-z]+-[0-9]+", region) for region in self.allowed_regions
+        ):
+            raise ValueError("Invalid or duplicate allowed region")
+        if len(set(self.allowed_foundation_models)) != len(self.allowed_foundation_models):
+            raise ValueError("Duplicate foundation model")
+        if any(not re.fullmatch(r"[a-zA-Z0-9.:-]+", m) for m in self.allowed_foundation_models):
+            raise ValueError("Foundation allowlist requires model IDs")
+        if any(r != self.region for r in self.allowed_regions) and not self.allow_cross_region:
+            raise ValueError("Cross-region routing requires explicit opt-in")
+        if not self.allow_global and self.model_id.split("/")[-1].startswith("global."):
+            raise ValueError("Global routing requires explicit opt-in")
+        return self
+
+
+class AWSClients(Protocol):
+    def client(self, service: str, region: str, timeout: float) -> Any:
+        """Trusted configuration supplies credentials/endpoints, never document input."""
+        ...
+
+
+class WorkstationClients:
+    """No SDK import until explicitly requested after source validation."""
+
+    def __init__(self, *, profile: str) -> None:
+        if not profile.strip() or profile != profile.strip() or profile == "default":
+            raise ExtractionBoundaryError("configuration_error")
+        self.profile = profile
+        self._session: Any = None
+
+    def client(self, service: str, region: str, timeout: float) -> Any:
+        import boto3
+        from botocore.config import Config
+
+        if self._session is None:
+            self._session = boto3.Session(profile_name=self.profile, region_name=region)
+        return self._session.client(
+            service,
+            region_name=region,
+            config=Config(
+                connect_timeout=min(10, timeout / 2),
+                read_timeout=timeout / 2,
+                retries={"total_max_attempts": 1},
+            ),
+        )
+
+
+def _foundation(arn: str) -> tuple[str, str]:
+    match = re.fullmatch(r"arn:aws:bedrock:([a-z0-9-]+)::foundation-model/([a-zA-Z0-9.:-]+)", arn)
+    if match is None:
+        raise ExtractionBoundaryError("unsupported_capability")
+    return match.group(1), match.group(2)
+
+
+def preflight(clients: AWSClients, policy: BedrockAccessPolicy) -> Any:
+    """Metadata-only preflight. Return runtime client without invoking a model.
+
+    Runtime supplies an AWSClients implementation bound to its designated role;
+    this function verifies STS identity identically and never creates a session.
+    """
+    try:
+        policy = BedrockAccessPolicy.model_validate(policy)
+
+        def client(service: str, region: str) -> Any:
+            result = clients.client(service, region, policy.timeout_seconds)
+            if result.meta.region_name != region:
+                raise ExtractionBoundaryError("configuration_error")
+            return result
+
+        caller = client("sts", policy.region).get_caller_identity()
+        prefix = f"arn:aws:sts::{policy.account}:assumed-role/{policy.role_name}/"
+        if caller["Account"] != policy.account or not re.fullmatch(
+            re.escape(prefix) + r"[^/]+", caller["Arn"]
+        ):
+            raise ExtractionBoundaryError("access_denied")
+        control = client("bedrock", policy.region)
+        if policy.model_kind == "foundation":
+            if policy.model_id.startswith("arn:"):
+                models = [_foundation(policy.model_id)]
+                if models[0][0] != policy.region:
+                    raise ExtractionBoundaryError("configuration_error")
+            else:
+                models = [(policy.region, policy.model_id)]
+        else:
+            profile = control.get_inference_profile(inferenceProfileIdentifier=policy.model_id)
+            kind = "SYSTEM_DEFINED" if policy.model_kind == "system_profile" else "APPLICATION"
+            resource = (
+                "inference-profile" if kind == "SYSTEM_DEFINED" else "application-inference-profile"
+            )
+            arn = profile["inferenceProfileArn"]
+            expected = f"arn:aws:bedrock:{policy.region}:{policy.account}:{resource}/"
+            if (
+                profile["status"] != "ACTIVE"
+                or profile["type"] != kind
+                or not arn.startswith(expected)
+                or arn[len(expected) :] != profile["inferenceProfileId"]
+                or policy.model_id not in {arn, profile["inferenceProfileId"]}
+            ):
+                raise ExtractionBoundaryError("configuration_error")
+            if profile["inferenceProfileId"].startswith("global.") and not policy.allow_global:
+                raise ExtractionBoundaryError("configuration_error")
+            if not 1 <= len(profile["models"]) <= 5:
+                raise ExtractionBoundaryError("unsupported_capability")
+            models = [_foundation(item["modelArn"]) for item in profile["models"]]
+        if not models or len(set(models)) != len(models):
+            raise ExtractionBoundaryError("unsupported_capability")
+        # Validate the entire destination set before fetching any model metadata.
+        if any(
+            region not in policy.allowed_regions
+            or model not in policy.allowed_foundation_models
+            or (region != policy.region and not policy.allow_cross_region)
+            for region, model in models
+        ):
+            raise ExtractionBoundaryError("unsupported_capability")
+        for region, model in models:
+            details = client("bedrock", region).get_foundation_model(modelIdentifier=model)[
+                "modelDetails"
+            ]
+            if (
+                details["modelId"] != model
+                or _foundation(details["modelArn"]) != (region, model)
+                or not {"TEXT", "IMAGE"} <= set(details["inputModalities"])
+                or "TEXT" not in details["outputModalities"]
+                or "ON_DEMAND" not in details["inferenceTypesSupported"]
+                or details["modelLifecycle"]["status"] != "ACTIVE"
+            ):
+                raise ExtractionBoundaryError("unsupported_capability")
+        return client("bedrock-runtime", policy.region)
+    except ExtractionBoundaryError:
+        raise
+    except Exception as error:
+        code = provider_failure(error)
+        raise ExtractionBoundaryError(
+            "configuration_error" if code == "provider_error" else code
+        ) from None

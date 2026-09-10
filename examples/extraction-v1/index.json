@@ -1,0 +1,22 @@
+{
+  "request.json": {
+    "schema": "../../schemas/extraction-v1.json",
+    "model": "PageRequest"
+  },
+  "candidate.json": {
+    "schema": "../../schemas/extraction-v1.json",
+    "model": "PageOutcome"
+  },
+  "failed-page.json": {
+    "schema": "../../schemas/extraction-v1.json",
+    "model": "PageOutcome"
+  },
+  "handoff.json": {
+    "schema": "../../schemas/extraction-v1.json",
+    "model": "HandoffRequest"
+  },
+  "evaluation.json": {
+    "schema": "../../schemas/evaluation-v1.json",
+    "model": "EvaluationManifest"
+  }
+}

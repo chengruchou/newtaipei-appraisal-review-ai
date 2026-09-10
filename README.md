@@ -1,5 +1,10 @@
 # Agentic AI Real Estate Valuation Reviewer
 
+Current integration: [#21 extraction/evaluation delivery](docs/issue-21-delivery.md)
+continues the published extraction branch on the #27 document-snapshot baseline.
+The #30 Runtime and #31 rehearsal work follow in dependent Draft PRs; live model,
+AWS and complete browser acceptance remain separate gates.
+
 An evidence-grounded system for reviewing real estate valuation cases for the
 2026 New Taipei City AI Smart City Hackathon. Document adapters propose facts and
 rules; deterministic code checks applicability, grades, correction matrices,

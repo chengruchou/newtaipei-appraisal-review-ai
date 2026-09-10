@@ -1,5 +1,19 @@
 # Requirements to implementation and acceptance
 
+## Issue 21 integration, 2026-09-11
+
+| Requirement | Implementation and test | Acceptance boundary |
+| --- | --- | --- |
+| Current authorized immutable source | DocumentSnapshotResolver; test_snapshot_extraction.py | Real local C2/parser; no AWS source access |
+| Located low-confidence/missing questions | extraction_handoffs.py; test_extraction_handoffs.py | Candidate requests; human-task persistence pending |
+| Bounded provider attempts and safe errors | Existing snapshot backend/preflight/ledger regression suite | SDK doubles; live access/routing pending |
+| Frozen independent evaluation | extraction_evaluation.py; 104 scorer/CLI tests | Synthetic #23 source fixtures; real accuracy unmeasured |
+| Tiny Chinese live probe | cloud_tests/extraction_smoke.py | Dry by default; explicit environment/budget gate |
+
+[Issue 21 delivery](issue-21-delivery.md) records branch/base and dependency heads.
+PR publication supplies the new head and its own CI URL. Historical sections below
+are retained as evidence of their original scope, not substituted for current CI.
+
 ## Full-case goldens and reviewer acceptance (#23, 2026-09-10)
 
 The [golden acceptance protocol](golden-acceptance.md) and
