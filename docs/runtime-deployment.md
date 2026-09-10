@@ -56,6 +56,19 @@ snapshots from durable records. The dispatch token is a 36-character Runtime
 session ID, not an authorization credential. The bridge limits response reads
 to 4097 bytes and validates the response identity and allowed outcome.
 
+After each executor wait, the worker checks the execution deadline before
+starting another lease heartbeat, then checks again after renewal and cancellation
+handling before accepting executor completion. Lease loss and cancellation retain
+priority over the post-renewal timeout. Expiry follows the existing failure and
+bounded retry path and cancels unfinished execution. Completion during heartbeat
+I/O that crosses the deadline cannot publish a result.
+Controlled-clock regressions cover exact expiry, delayed wait return, and a
+heartbeat that starts before but finishes at or after the deadline. Events force
+executor completion during renewal; separate cases preserve timely publication,
+cancellation and lease-loss priority without a timeout failure transition.
+They check reconstructed DynamoDB state and S3 results through Moto; this is
+offline evidence, not live AWS acceptance.
+
 ## Explicit workload configuration
 
 | Variable | Runtime | Dispatcher | Worker bridge |
