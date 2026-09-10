@@ -1,14 +1,15 @@
 {
   "adjudications": [
     {
+      "adjudicated_on": "2026-09-10",
       "decision": "fail_and_return_for_correction",
       "outcome": "agreed",
       "question": "Can the review accept either printed value when two form cells disagree?",
       "rationale": "Both reviewers agree that a contradiction between the computed total and the copied cell is a finding for a human to correct, not a value to choose.",
       "record_id": "copy-conflict-outcome",
       "reviewers": [
-        "golden-reviewer-1",
-        "golden-reviewer-2"
+        "ChinHan-0451",
+        "ivylingchiang"
       ]
     }
   ],

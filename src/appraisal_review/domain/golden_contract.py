@@ -7,6 +7,7 @@ disputed adjudication stays unresolved instead of being guessed into a passing v
 
 from __future__ import annotations
 
+from datetime import date
 from decimal import Decimal
 from enum import StrEnum
 from typing import Literal
@@ -298,6 +299,7 @@ class AdjudicationRecord(GoldenModel):
     record_id: str = Field(min_length=1)
     question: str = Field(min_length=1)
     reviewers: tuple[str, ...] = Field(min_length=2)
+    adjudicated_on: date
     outcome: Literal["agreed", "disputed"]
     decision: str | None = None
     rationale: str = Field(min_length=1)
