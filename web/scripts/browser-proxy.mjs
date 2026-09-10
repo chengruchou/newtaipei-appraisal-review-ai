@@ -9,11 +9,30 @@ if (upstream.protocol !== "http:" || !["localhost", "127.0.0.1"].includes(upstre
   throw new Error("Browser rehearsal requires a configured loopback API");
 }
 const root = resolve("dist");
+let publicPrivacyBase = null;
+if (process.env.PRIVACY_BROWSER_FIXTURE) {
+  const privateFixture = JSON.parse(await readFile(process.env.PRIVACY_BROWSER_FIXTURE, "utf8"));
+  const configured = new URL(privateFixture.bridge_url);
+  if (configured.protocol !== "http:" || !["127.0.0.1", "[::1]"].includes(configured.hostname) ||
+      configured.username || configured.password || configured.pathname !== "/" || configured.search || configured.hash) {
+    throw new Error("Privacy rehearsal requires a configured numeric loopback origin");
+  }
+  publicPrivacyBase = configured.origin;
+}
 let dropPath = null;
 const mime = { ".html": "text/html", ".js": "text/javascript", ".mjs": "text/javascript", ".css": "text/css" };
 createServer(async (request, response) => {
   try {
     const url = new URL(request.url, "http://127.0.0.1:4174");
+    if (url.pathname === "/local-config.json") {
+      if (request.method !== "GET" || url.search || !publicPrivacyBase) {
+        response.writeHead(404).end();
+      } else {
+        response.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" })
+          .end(JSON.stringify({ privacy_bridge_base: publicPrivacyBase }));
+      }
+      return;
+    }
     if (url.pathname === "/__test__/drop-next-response" && request.method === "POST" && request.headers["x-test-control"] === "local-rehearsal") {
       const chunks = [];
       for await (const chunk of request) chunks.push(chunk);

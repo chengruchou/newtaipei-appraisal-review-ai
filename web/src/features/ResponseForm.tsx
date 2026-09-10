@@ -6,6 +6,7 @@ import type {
   ReviewClient,
   TaskView,
   TaskSubjectView,
+  SourceCitation,
 } from "@/api/client";
 import { newIdempotencyKey } from "@/api/client";
 import { EXPLANATIONS, ServiceError, TransportError } from "@/api/problems";
@@ -23,6 +24,7 @@ type Phase =
 const ACTION_WORDS: Record<string, string> = {
   confirm: "Confirm this observation",
   correct: "Submit a correction",
+  supply_evidence: "Supply cited evidence",
   reject: "Refuse to confirm",
   approve: "Approve",
   authorize_publication: "Authorize publication",
@@ -50,6 +52,7 @@ export function ResponseForm({
   const [action, setAction] = useState<HumanResponse["action"]>(
     task.allowed_responses[0] ?? "reject",
   );
+  const [selectedCitations, setSelectedCitations] = useState<string[]>([]);
   const [correctedText, setCorrectedText] = useState("");
   const [phase, setPhase] = useState<Phase>({ name: "editing" });
   const inFlight = phase.name === "submitting";
@@ -60,9 +63,21 @@ export function ResponseForm({
   const requiredType = subjectValid ? subject.required_type : null;
   const unit = subjectValid ? subject.required_unit : null;
   const numeric = Number(correctedText);
+  const correctionAction = action === "correct" || action === "supply_evidence";
+  const evidenceChoices = [
+    ...new Map(
+      [...task.evidence, ...(subjectValid ? subject.observation.evidence : [])]
+        .filter(usableCitation)
+        .map((citation) => [citationKey(citation), citation] as const),
+    ).entries(),
+  ];
+  const suppliedEvidence = evidenceChoices
+    .filter(([key]) => selectedCitations.includes(key))
+    .map(([, citation]) => citation);
   const correctionInvalid =
-    action === "correct" &&
-    (!subjectValid ||
+    correctionAction &&
+    ((action === "supply_evidence" && suppliedEvidence.length === 0) ||
+      !subjectValid ||
       requiredType === null ||
       ((subject.unit_required || requiredType === "number") && !unit?.trim()) ||
       correctedText.trim() === "" ||
@@ -83,7 +98,7 @@ export function ResponseForm({
       action,
       correction: null,
     } satisfies HumanResponse;
-    if (action !== "correct") {
+    if (!correctionAction) {
       return base;
     }
     if (correctionInvalid || !subjectValid || requiredType === null) {
@@ -113,7 +128,8 @@ export function ResponseForm({
           raw_text: correctedText,
           unit,
           confidence: subject.observation.confidence ?? null,
-          evidence: subject.observation.evidence ?? [],
+          evidence:
+            action === "supply_evidence" ? suppliedEvidence : (subject.observation.evidence ?? []),
         },
         corrected: null,
         corrected_by: null,
@@ -199,7 +215,7 @@ export function ResponseForm({
           </label>
         ))}
 
-        {action === "correct" ? (
+        {correctionAction ? (
           <p style={{ marginTop: "0.75rem" }}>
             <label htmlFor="corrected-value" style={{ display: "block" }}>
               Corrected value
@@ -223,6 +239,38 @@ export function ResponseForm({
               every existing confirmation on this case.
             </span>
           </p>
+        ) : null}
+        {action === "supply_evidence" ? (
+          <section aria-label="Server-provided evidence choices">
+            <p>
+              Select the source regions supporting this value. Only citations supplied by the
+              service are available.
+            </p>
+            {evidenceChoices.length === 0 ? (
+              <p className="notice" data-tone="warn">
+                No usable server-provided citation is available. Source admission or evidence
+                resolution is required before this task can be answered.
+              </p>
+            ) : (
+              evidenceChoices.map(([key, citation]) => (
+                <label key={key} style={{ display: "block" }}>
+                  <input
+                    type="checkbox"
+                    checked={selectedCitations.includes(key)}
+                    onChange={(event) =>
+                      setSelectedCitations((previous) =>
+                        event.target.checked
+                          ? [...previous, key]
+                          : previous.filter((value) => value !== key),
+                      )
+                    }
+                  />
+                  Use {citation.document_id}, page {citation.page}, region {citation.region_id}:{" "}
+                  {citation.excerpt}
+                </label>
+              ))
+            )}
+          </section>
         ) : null}
       </fieldset>
 
@@ -261,6 +309,16 @@ export function ResponseForm({
               </span>
             ) : null}
           </p>
+          {phase.command.action === "supply_evidence" ? (
+            <ul aria-label="Evidence in the confirmed command">
+              {phase.command.correction?.proposed?.evidence.map((citation) => (
+                <li key={citationKey(citation)}>
+                  {citation.document_id}, page {citation.page}, region {citation.region_id}:{" "}
+                  {citation.excerpt}
+                </li>
+              ))}
+            </ul>
+          ) : null}
           <button
             type="button"
             data-variant="primary"
@@ -329,5 +387,33 @@ export function subjectMatches(view: TaskView, subject: TaskSubjectView): boolea
     subject.revision.case_id === expected.case_id &&
     subject.revision.revision_id === expected.revision_id &&
     subject.revision.material_digest === expected.material_digest
+  );
+}
+
+function citationKey(citation: SourceCitation): string {
+  return JSON.stringify([
+    citation.document_id,
+    citation.version,
+    citation.content_hash,
+    citation.page,
+    citation.region_id,
+    citation.bbox,
+    citation.excerpt,
+  ]);
+}
+function usableCitation(citation: SourceCitation): boolean {
+  const [x0, y0, x1, y1] = citation.bbox;
+  return (
+    citation.document_id.length > 0 &&
+    citation.version.length > 0 &&
+    citation.region_id.length > 0 &&
+    /^[a-f0-9]{64}$/.test(citation.content_hash) &&
+    Number.isInteger(citation.page) &&
+    citation.page >= 1 &&
+    [x0, y0, x1, y1].every(Number.isFinite) &&
+    x0 >= 0 &&
+    y0 >= 0 &&
+    x1 > x0 &&
+    y1 > y0
   );
 }

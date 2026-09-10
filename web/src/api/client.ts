@@ -14,7 +14,7 @@ export type ResponseReceipt = components["schemas"]["ResponseReceipt"];
 export type JobStatusView = components["schemas"]["JobStatusView"];
 export type ServiceResult = components["schemas"]["ServiceResult"];
 export type MaterialRevision = components["schemas"]["MaterialRevision"];
-export type ArtifactManifest = components["schemas"]["ArtifactManifest"];
+export type ArtifactManifest = ServiceResult["artifacts"][number];
 export type SourceCitation = components["schemas"]["SourceCitation"];
 
 export interface ClientOptions {

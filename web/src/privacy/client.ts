@@ -85,15 +85,17 @@ export class LocalPrivacyClient {
     body?: unknown,
   ): Promise<T> {
     const controller = new AbortController();
+    const duration = this.options.timeoutMs ?? 30_000;
+    const deadline = Date.now() + duration;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const timeout = new Promise<never>((_resolve, reject) => {
       timer = setTimeout(() => {
         controller.abort();
         reject(new BridgeError(true));
-      }, this.options.timeoutMs ?? 30_000);
+      }, duration);
     });
     try {
-      return await Promise.race([
+      const value = await Promise.race([
         (async () => {
           const response = await (this.options.fetch ?? globalThis.fetch)(
             `${this.baseUrl}/local-privacy${path}`,
@@ -115,6 +117,11 @@ export class LocalPrivacyClient {
         })(),
         timeout,
       ]);
+      if (Date.now() >= deadline) {
+        controller.abort();
+        throw new BridgeError(true);
+      }
+      return value;
     } catch (error) {
       throw error instanceof BridgeError ? error : new BridgeError(true);
     } finally {

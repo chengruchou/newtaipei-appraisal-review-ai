@@ -12,6 +12,7 @@ import {
 import { buildClient, readToken, writeToken } from "./config";
 import { JobPage } from "./features/JobPage";
 import { TaskPage } from "./features/TaskPage";
+import { PrivacyRoute } from "./features/PrivacyRoute";
 
 function SignIn({ onSignedIn }: { onSignedIn: () => void }) {
   const [value, setValue] = useState("");
@@ -98,6 +99,8 @@ export function App() {
       <main>
         <nav aria-label="Workbench">
           <Link to="/">Jobs</Link>
+          {" · "}
+          <Link to="/privacy">Local privacy review</Link>
           {signedIn ? (
             <>
               {" · "}
@@ -112,16 +115,24 @@ export function App() {
             </>
           ) : null}
         </nav>
-        {signedIn ? (
-          <Routes>
-            <Route path="/" element={<OpenJob />} />
-            <Route path="/jobs/:jobId" element={<JobRoute client={client} />} />
-            <Route path="/tasks/:taskId" element={<TaskRoute client={client} />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        ) : (
-          <SignIn onSignedIn={() => setSignedIn(true)} />
-        )}
+        <Routes>
+          <Route path="/privacy" element={<PrivacyRoute />} />
+          <Route
+            path="*"
+            element={
+              signedIn ? (
+                <Routes>
+                  <Route path="/" element={<OpenJob />} />
+                  <Route path="/jobs/:jobId" element={<JobRoute client={client} />} />
+                  <Route path="/tasks/:taskId" element={<TaskRoute client={client} />} />
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              ) : (
+                <SignIn onSignedIn={() => setSignedIn(true)} />
+              )
+            }
+          />
+        </Routes>
       </main>
     </BrowserRouter>
   );

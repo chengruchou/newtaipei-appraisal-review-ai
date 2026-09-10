@@ -582,6 +582,69 @@ export interface components {
       };
       summary: components["schemas"]["EvaluationSummary"];
     };
+    /**
+     * FencedArtifactManifest
+     * @description Versioned public projection of a committed, possibly multi-context PDF.
+     *
+     *     The original service-v1 local-only artifact remains unchanged. A consumer
+     *     must explicitly support this version before accepting a fenced publication.
+     */
+    FencedArtifactManifest: {
+      /**
+       * Artifact Id
+       * Format: uuid
+       */
+      artifact_id: string;
+      /** Content Hash */
+      content_hash: string;
+      context: components["schemas"]["ComparisonContext"];
+      /** Contexts */
+      contexts: components["schemas"]["ComparisonContext"][];
+      /** Field Ids */
+      field_ids: string[];
+      /** Field Map Hash */
+      field_map_hash: string;
+      /** Font Hash */
+      font_hash: string;
+      /** Manifest Digest */
+      manifest_digest: string;
+      /**
+       * Media Type
+       * @default application/pdf
+       * @constant
+       */
+      media_type: "application/pdf";
+      /** Page Count */
+      page_count: number;
+      /**
+       * Publication
+       * @default fenced
+       * @constant
+       */
+      publication: "fenced";
+      /**
+       * Schema Version
+       * @default artifact-manifest-v2
+       * @constant
+       */
+      schema_version: "artifact-manifest-v2";
+      /**
+       * Scope
+       * @default review_contexts
+       * @constant
+       */
+      scope: "review_contexts";
+      /** Template Hash */
+      template_hash: string;
+      /**
+       * Verification
+       * @default local_writer_reopened
+       * @constant
+       */
+      verification: "local_writer_reopened";
+      /** Writer Version */
+      writer_version: string;
+    };
     /** Finding */
     Finding: {
       /** Actual */
@@ -643,6 +706,11 @@ export interface components {
     };
     /** HumanTask */
     HumanTask: {
+      /**
+       * Affected Subject Ids
+       * @default []
+       */
+      affected_subject_ids: string[];
       /** Allowed Responses */
       allowed_responses: components["schemas"]["ResponseAction"][];
       /**
@@ -655,6 +723,8 @@ export interface components {
       kind: components["schemas"]["TaskKind"];
       /** Question */
       question: string;
+      /** Reason Code */
+      reason_code?: string | null;
       required_permission: components["schemas"]["Permission"];
       /** Result Digest */
       result_digest?: string | null;
@@ -777,9 +847,9 @@ export interface components {
       /**
        * Canonicalization
        * @default review-material-json-v1
-       * @constant
+       * @enum {string}
        */
-      canonicalization: "review-material-json-v1";
+      canonicalization: "review-material-json-v1" | "source-documents-json-v1";
       /**
        * Changes
        * @default []
@@ -789,7 +859,10 @@ export interface components {
       documents: components["schemas"]["DocumentReference"][];
       parent?: components["schemas"]["RevisionReference"] | null;
       reference: components["schemas"]["RevisionReference"];
-      /** Rules */
+      /**
+       * Rules
+       * @default []
+       */
       rules: components["schemas"]["RuleReference"][];
       /**
        * Schema Version
@@ -838,6 +911,8 @@ export interface components {
       operation: "fill_blank" | "annotate" | "correct";
       /** Page */
       page: number;
+      /** Placeholder Token */
+      placeholder_token?: string | null;
       value_ref?: components["schemas"]["PDFValueRef"] | null;
     };
     /** PDFFieldMap */
@@ -989,7 +1064,8 @@ export interface components {
      * ResponseAction
      * @enum {string}
      */
-    ResponseAction: "confirm" | "correct" | "reject" | "approve" | "authorize_publication";
+    ResponseAction:
+      "confirm" | "correct" | "reject" | "approve" | "authorize_publication" | "supply_evidence";
     /**
      * ResponseReceipt
      * @description What one accepted response actually committed. Never an approval or a review result.
@@ -1237,7 +1313,9 @@ export interface components {
        * Artifacts
        * @default []
        */
-      artifacts: components["schemas"]["ArtifactManifest"][];
+      artifacts: (
+        components["schemas"]["ArtifactManifest"] | components["schemas"]["FencedArtifactManifest"]
+      )[];
       business_status?: components["schemas"]["WorkflowStatus"] | null;
       /**
        * Durable
@@ -1311,7 +1389,8 @@ export interface components {
       | "material_correction"
       | "rule_approval"
       | "material_approval"
-      | "publication_authorization";
+      | "publication_authorization"
+      | "evidence_supply";
     /**
      * TaskListView
      * @description The tasks of one job the caller may act on, ordered oldest first.

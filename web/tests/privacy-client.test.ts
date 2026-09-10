@@ -5,6 +5,29 @@ import { HASH, SOURCE, snapshot, preview } from "./privacy-fixtures";
 
 afterEach(() => vi.unstubAllGlobals());
 
+it("rejects a response whose synchronous parsing finishes after the privacy deadline", async () => {
+  vi.useFakeTimers();
+  try {
+    const client = new LocalPrivacyClient({
+      baseUrl: "http://127.0.0.1:9000",
+      token: () => "local-session",
+      timeoutMs: 20,
+      fetch: vi.fn<typeof globalThis.fetch>(() =>
+        Promise.resolve({
+          ok: true,
+          json: () => {
+            vi.setSystemTime(Date.now() + 25);
+            return Promise.resolve({ sources: [{ source_id: SOURCE }] });
+          },
+        } as Response),
+      ),
+    });
+    await expect(client.sources()).rejects.toMatchObject({ unknownOutcome: true });
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
 it.each([
   "https://example.com",
   "http://127.0.0.1:9000/?path=private",

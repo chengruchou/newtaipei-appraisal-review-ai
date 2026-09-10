@@ -105,6 +105,27 @@ export function ResultPanel({ client, jobId }: { client: ReviewClient; jobId: st
                   <p>
                     {artifact.page_count} pages. Artifact {artifact.artifact_id}.
                   </p>
+                  <table aria-label="Artifact comparison contexts">
+                    <thead>
+                      <tr>
+                        <th>Scope</th>
+                        <th>Target</th>
+                        <th>Comparable</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(artifact.schema_version === "artifact-manifest-v2"
+                        ? artifact.contexts
+                        : [artifact.context]
+                      ).map((context) => (
+                        <tr key={JSON.stringify(context)}>
+                          <td>{context.scope}</td>
+                          <td>{context.target_id}</td>
+                          <td>{context.comparable_id}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </li>
               ))}
             </ul>
