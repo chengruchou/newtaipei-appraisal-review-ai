@@ -1,7 +1,12 @@
 import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
-import type { ServiceResult, TaskListView, TaskSubjectView } from "../src/api/client";
+import type {
+  ServiceResult,
+  TaskListView,
+  TaskSubjectView,
+  JobStatusView,
+} from "../src/api/client";
 
 interface PrivacyFixture {
   bridge_url: string;
@@ -236,27 +241,44 @@ test("real local privacy review explicitly confirms, transfers and restores exac
   const confirmedSides = new Set<string>();
   const originalConfidences: (number | null | undefined)[] = [];
   for (let index = 0; index < 4; index += 1) {
-    let listed: TaskListView | undefined;
+    let selected: TaskListView["tasks"][number]["task"] | undefined;
+    let selectionJob: JobStatusView | undefined;
     await expect
       .poll(
         async () => {
+          const jobResponse = await reviewer.request.get(`/v1/review-jobs/${jobId}`, {
+            headers: backendHeaders,
+          });
+          expect(jobResponse.ok()).toBe(true);
+          const job = (await jobResponse.json()) as JobStatusView;
+          const currentRun = job.current_run;
+          if (job.job_status !== "waiting_for_human" || !currentRun) return false;
           const response = await reviewer.request.get(`/v1/review-jobs/${jobId}/tasks`, {
             headers: backendHeaders,
           });
           expect(response.ok()).toBe(true);
-          listed = (await response.json()) as TaskListView;
-          return listed.tasks.some(
+          const listed = (await response.json()) as TaskListView;
+          selected = listed.tasks.find(
             ({ task }) =>
-              task.state === "open" && task.side && task.allowed_responses.includes("confirm"),
-          );
+              task.state === "open" &&
+              task.side &&
+              task.allowed_responses.includes("confirm") &&
+              job.open_task_ids.includes(task.task_id) &&
+              task.run.run_id === currentRun.run_id &&
+              task.run.revision.case_id === currentRun.revision.case_id &&
+              task.run.revision.revision_id === currentRun.revision.revision_id &&
+              task.run.revision.material_digest === currentRun.revision.material_digest,
+          )?.task;
+          if (selected) selectionJob = job;
+          return selected !== undefined;
         },
         { timeout: 30_000, intervals: [500, 1000] },
       )
       .toBe(true);
-    const task = listed!.tasks.find(
-      ({ task }) =>
-        task.state === "open" && task.side && task.allowed_responses.includes("confirm"),
-    )!.task;
+    const task = selected!;
+    expect(selectionJob!.job_status).toBe("waiting_for_human");
+    expect(task.run.run_id).toBe(selectionJob!.current_run!.run_id);
+    expect(task.run.revision).toEqual(selectionJob!.current_run!.revision);
     const side = task.side!;
     const sideKey = JSON.stringify([side.context, side.factor_id, side.side]);
     expect(confirmedSides.has(sideKey)).toBe(false);
@@ -276,6 +298,69 @@ test("real local privacy review explicitly confirms, transfers and restores exac
     );
     await reviewer.getByRole("button", { name: "Yes, submit", exact: true }).click();
     const response = await responsePromise;
+    if (!response.ok()) {
+      const text = await response.text();
+      let body: unknown = "[non-JSON body redacted]";
+      try {
+        const value: unknown = JSON.parse(text);
+        if (value && typeof value === "object" && !Array.isArray(value)) {
+          const fields = value as Record<string, unknown>;
+          body = {
+            schema_version:
+              fields.schema_version === "service-v1" ? fields.schema_version : "[redacted]",
+            code:
+              typeof fields.code === "string" &&
+              [
+                "invalid_request",
+                "unauthorized",
+                "not_found",
+                "version_conflict",
+                "capability_unavailable",
+                "execution_failed",
+              ].includes(fields.code)
+                ? fields.code
+                : "[redacted]",
+            message:
+              fields.message === "Service operation could not be completed."
+                ? fields.message
+                : "[redacted]",
+          };
+        }
+      } catch {
+        /* Retain only a digest for non-JSON error bodies. */
+      }
+      try {
+        await reviewer.getByRole("alert").first().waitFor({ timeout: 2000 });
+      } catch {
+        /* The response remains the failure even if no alert has rendered. */
+      }
+      const failure = {
+        status: response.status(),
+        path: new URL(response.url()).pathname,
+        body,
+        body_sha256: createHash("sha256").update(text).digest("hex"),
+        ui_alerts: await reviewer.getByRole("alert").allTextContents(),
+      };
+      writeFileSync(
+        test.info().outputPath("task-response-error-private.json"),
+        JSON.stringify(failure, null, 2),
+        { mode: 0o600 },
+      );
+      writeFileSync(
+        test.info().outputPath("review-tab-error-snapshot.txt"),
+        await reviewer.locator("main").ariaSnapshot(),
+        { mode: 0o600 },
+      );
+      console.info(
+        JSON.stringify({
+          checkpoint: "task_response_failed",
+          status: failure.status,
+          path: failure.path,
+          body: failure.body,
+          body_sha256: failure.body_sha256,
+        }),
+      );
+    }
     expect(response.ok()).toBe(true);
     expect(response.request().postDataJSON()).toMatchObject({
       task_id: task.task_id,
