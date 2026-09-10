@@ -38,4 +38,4 @@ jobs:
       - name: CloudFormation smoke templates
         run: |
           python -m pip install -r cloud_tests/requirements-dev.txt
-          cfn-lint cloud_tests/image-stack.json cloud_tests/runtime-stack.json
+          cfn-lint cloud_tests/image-stack.json cloud_tests/runtime-stack.json infra/documents/stack.json
