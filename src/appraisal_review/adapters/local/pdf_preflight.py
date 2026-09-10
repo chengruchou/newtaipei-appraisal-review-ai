@@ -53,6 +53,7 @@ class PDFPreflightPlan:
 
     page_count: int
     source_sha256: bytes
+    font_bytes: bytes
     fields: tuple[PreparedPDFField, ...]
 
 
@@ -76,7 +77,7 @@ class PDFPreflightValidator:
     def validate(self, request: PDFWriteRequest, source_path: Path) -> PDFPreflightPlan:
         reader, source_sha256 = self._read_source(source_path)
         self._validate_template(request, len(reader.pages), source_sha256)
-        font = self._load_font()
+        font, font_bytes = self._load_font()
         prepared: list[PreparedPDFField] = []
         seen_boxes: dict[int, list[BoundingBox]] = {}
 
@@ -130,6 +131,7 @@ class PDFPreflightValidator:
         return PDFPreflightPlan(
             page_count=len(reader.pages),
             source_sha256=source_sha256,
+            font_bytes=font_bytes,
             fields=tuple(prepared),
         )
 
@@ -177,15 +179,16 @@ class PDFPreflightValidator:
             raise PDFFieldPlacementError("PDF placeholder value is not locally configured")
         return value
 
-    def _load_font(self) -> TTFont:
+    def _load_font(self) -> tuple[TTFont, bytes]:
         path = self.render_config.font_path
         try:
             if not path.is_file():
                 raise PDFFontError("Configured PDF font is not a readable file")
+            font_bytes = path.read_bytes()
             approved = self.render_config.approved_font_sha256
-            if approved is not None and sha256(path.read_bytes()).hexdigest() != approved:
+            if approved is not None and sha256(font_bytes).hexdigest() != approved:
                 raise PDFFontError("Configured PDF font does not match the approved digest")
-            return TTFont(self.render_config.font_name, str(path), validate=1)
+            return TTFont(self.render_config.font_name, BytesIO(font_bytes), validate=1), font_bytes
         except PDFFontError:
             raise
         except Exception as error:

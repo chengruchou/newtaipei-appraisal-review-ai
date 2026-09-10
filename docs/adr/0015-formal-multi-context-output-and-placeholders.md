@@ -45,6 +45,12 @@ editing it, and only accepts local file destinations. Publication wrappers
 refuse any writer that reveals placeholders, so a re-identified PDF cannot be
 uploaded by the artifact publisher.
 
+The downloaded artifact participates in the existing protected-source identity
+checks through atomic publication, including explicit overwrite. Font approval,
+measurement and embedding use one immutable byte snapshot; a registration-cache
+substitution fails closed. See the scoped
+[review repair and composition notes](../formal-pdf-review-repair.md).
+
 ## Consequences
 
 - A verified multiple-context case can produce one complete formal PDF; the

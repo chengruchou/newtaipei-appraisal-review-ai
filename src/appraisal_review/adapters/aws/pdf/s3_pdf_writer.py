@@ -29,7 +29,7 @@ class S3PDFWriter:
 
     @property
     def supports_multiple_contexts(self) -> bool:
-        return bool(getattr(self.local_writer, "supports_multiple_contexts", False))
+        return getattr(self.local_writer, "supports_multiple_contexts", False) is True
 
     async def write_pdf(self, request: PDFWriteRequest) -> PDFWriteResult:
         source_location = self.object_store_location(request.source_uri)

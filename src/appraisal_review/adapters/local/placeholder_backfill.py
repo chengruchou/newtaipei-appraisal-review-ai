@@ -21,6 +21,7 @@ from appraisal_review.domain.pdf_models import (
     PDFReadError,
     PDFWriteRequest,
     PDFWriteResult,
+    SourceDestinationConflictError,
     UnsupportedDocumentURIError,
     document_identity,
 )
@@ -69,4 +70,20 @@ class LocalPlaceholderBackfill:
                 raise PDFReadError("Placeholder artifact is unreadable") from error
             if actual != expected_artifact_sha256.lower():
                 raise PDFReadError("Placeholder artifact differs from the verified write")
+            # Preserve caller protections and let the existing staged writer
+            # check path/inode aliases both before rendering and at publication.
+            artifact_uri = placeholder_artifact.resolve(strict=True).as_uri()
+            if document_identity(request.destination_uri) == document_identity(artifact_uri):
+                raise SourceDestinationConflictError(
+                    "PDF destination aliases the verified placeholder artifact"
+                )
+            request = PDFWriteRequest.model_validate(
+                {
+                    **request.model_dump(),
+                    "protected_source_uris": [
+                        *request.protected_source_uris,
+                        artifact_uri,
+                    ],
+                }
+            )
         return await self.writer.write_pdf(request)
