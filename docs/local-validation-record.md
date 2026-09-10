@@ -8,14 +8,15 @@ current status authority. Original repair heads and discussion links are in
 ## Source boundaries
 
 The complete integration code checkpoint is
-`30ae99ba8b80bc10c80bd55d12aea99ea9a83971`. Later evidence-only documentation or
-browser readiness assertions must be identified separately. The original three
+`71419453e36a6111dae267699a087051c934867d`. Later launcher and browser
+diagnostic changes have focused evidence below; they are not silently included
+in the complete-suite or actual-browser checkpoint. The original three
 protected verification/audit/test files and `scripts/check_submission.py` match
 `origin/main` byte for byte in this integration; the original user workspace is
 untouched.
 
 The final independent observer report has SHA-256
-`5bc89c0ea27bcdc0f37c44b4a1382ba64bdca60bc57bf1e79f74c39312d75dc6`.
+`5d540e5fef4c3aabc921a89329d858594772e62bff1839cc7fca2096d9ca2cf9`.
 It confirms five exact revisions with confirmation counts 0 through 4 and all
 four stored side confidences remaining 0.0. Original source hashes before and
 after the final browser execution are unchanged. Raw reports stay private.
@@ -24,27 +25,45 @@ The earlier clean `94abaaf3cb91def5c44b6a7537ba40943b1b418f` checkpoint passed
 2778 Python/cloud tests with 10 platform skips and 88% coverage. It is historical
 baseline evidence, not a substitute for the final code checkpoint.
 
-On a fresh isolated checkout of that exact code checkpoint, Ruff passed, format
-checked 477 files, mypy checked 190 source files, and the combined Python/cloud
-suite passed **2789 tests**, with **10 existing platform skips** and **88% combined
-coverage with branch measurement enabled** (654.25 seconds). Dependency warnings remain in the complete log:
-13932 warnings, mainly the repeated Starlette/httpx/AnyIO deprecations and
-PyMuPDF binding warnings; no warnings or assertions were suppressed.
+The previous `30ae99ba8b80bc10c80bd55d12aea99ea9a83971` clean checkpoint
+passed 2789 tests with 10 platform skips, but emitted 13925 SQLite connection
+ResourceWarnings plus seven dependency deprecations. These were not merely
+dependency deprecations. The resulting fix explicitly closes each local document
+connection after commit or rollback. Eight real-connection regressions fail on
+the archived code and pass on the fix, including rollback after an actual INSERT
+and release of its write lock. No warning filter or assertion was weakened.
 
-The clean frontend install, regeneration with no diff, type/lint/format checks,
-81 tests, production build and artifact check passed. The subsequent test-only
-commit `f41f7447ab065a49cdcc16fb1e09fcd0811a0246` adds browser readiness checks
-and private failure capture; its type/lint/format checks passed and the final real
-browser executions used it. Production frontend and Python code are unchanged. The clean npm install also
-reported seven dependency audit findings (five moderate, one high and one critical).
-Those install-time findings were not suppressed or treated as a passed security
-audit; dependency security remains separate from successful frontend checks.
+The new clean detached checkout of exact `71419453e36a6111dae267699a087051c934867d`
+passed **2797 Python/cloud tests**, with **10 existing platform skips**, in 646.60
+seconds. Coverage is **87.9193% combined (displayed 88%)**, with branch measurement
+enabled; pure branch coverage is 77.076%. Ruff passed, format checked 479 files,
+and mypy checked 190 source files. All complete-suite and accompanying gate exit
+codes are zero, and the validation checkout has no tracked changes.
+
+The final log still records **191 warnings: 184 unclosed SQLite connection
+ResourceWarnings and seven dependency deprecations**. They are retained without
+suppression. The lifecycle regression proves the repaired document-store methods
+close their own connections; it does not establish that every test/helper
+connection is closed. Remaining allocation sites are not inferred solely from
+the warning emission stack, which may be triggered during later garbage collection.
+
+The clean frontend install at `30ae99ba8b80bc10c80bd55d12aea99ea9a83971`,
+regeneration with no diff, type/lint/format checks, 81 tests, production build and
+artifact check passed. Production frontend sources and lock have not changed
+since that gate. The real resource-final browser run used the separate test
+snapshot SHA-256 `794f3648c11686d5321f3534c5035195560d8edf71abb4941b8e2121f2d948fd`:
+current job/run/revision readiness assertions and private failure diagnostics.
+Later bounded diagnostic changes have their own focused evidence below.
+
+The clean npm install reported seven dependency audit findings: five moderate,
+one high in Vite and one critical in Vitest. They were not suppressed or treated
+as a passed security audit. Dependency security remains a separate gate.
 
 Golden generation (14 fixtures), mounted OpenAPI equality, HTTP/invocation smoke,
 configured local reference smoke, the six CloudFormation templates and the
 non-network rehearsal plan passed. Complete clean logs and dependency inventories
 are under the repository's ignored
-`artifacts/verification/final-delta/final-gates-30ae99ba8b80/` and
+`artifacts/verification/final-delta/final-gates-71419453e36a/` and
 `frontend-gates-30ae99ba8b80/` directories. Exact commands include:
 
 ```sh
@@ -63,7 +82,7 @@ npm run generate
 npm run verify
 ```
 
-The final real core Chromium run passed seven scenarios in 11.2 seconds, with
+The final real core Chromium run passed seven scenarios in 14.4 seconds, with
 zero route mocks or retries. It covers legitimate empty jobs, located source PDF,
 confirmation, correction with a unit, rejection, conflicting writes and a body
 lost after real commit followed by the identical command/key. The separate full
@@ -72,16 +91,17 @@ separate: none of these local checks substitutes for a pushed-head workflow run.
 
 ## Installed package and Linux image
 
-The new noneditable wheel and ARM64 image were built from
-`319e945d4319fa775a5efcff797ffd5ba9efc589`. All 214 declared build-input files
-were compared with the final code checkpoint and are identical; the later poll
-repair changes the repository launcher, its test and documentation only. This
-comparison does not assert that unrelated repository files are identical.
+The new noneditable wheel and ARM64 image were built from the exact
+`71419453e36a6111dae267699a087051c934867d` checkpoint. All 214 declared build
+inputs, 196 image-context files and 190 package files in the wheel ZIP, installed
+wheel and running image were compared with that archive. The document-storage
+connection fix is included. Later launcher/test/docs changes are outside these
+inputs; no unrelated repository equivalence is inferred.
 
 | Artifact | SHA-256 |
 | --- | --- |
-| Noneditable wheel | `091914195a1a4ec221abc2f3253dbf28c73e4e8549a0a21dd4cc70a78102292e` |
-| Linux image ID | `7022a01ee4c66b94973d62846e4a1a9392aa4695f32138439a4dc0b083e93125` |
+| Noneditable wheel | `b483e1f3014f0c3a643a069efe20d8f2f2ab3216f79833b29d729f3ff9421837` |
+| Linux image ID | `7fa5e3f17007d0690ef7750d224e8761311a5041dba33542ba66c828f5ffbfa4` |
 | Actual published PDF, in both environments | `0527c33ec242a78e042c20db527d79fe2b4f81e75eb4163b34f6f32e66546862` |
 | Bundled CJK font | `ee38813ea00c3e32add4268fff7fff9e39417b4913cb13be2415164a47807cc2` |
 
@@ -95,11 +115,11 @@ as the non-login `appraisal` identity, UID 10001, with runtime networking disabl
 Unconfigured Runtime ping/invocation still returns 503. These observations do not
 establish a deployed AWS composition or production login.
 
-The first network-disabled image build failed before producing an image. The
-same source and dependency locks built with the established build network mode;
-no lock or assertion was relaxed. Both build logs remain under ignored
-`artifacts/final-package-validation-3pu3_hs6/`, together with exact commands,
-provenance, package inventory and acceptance observations.
+This new image built successfully on its first attempt with unchanged base and
+locks. Full build/smoke/provenance logs remain under ignored
+`artifacts/resource-final-validation-1xhnttvt/`. The older `319e945` build's
+network-disabled failure and subsequent success remain historical in
+`artifacts/final-package-validation-3pu3_hs6/`; they are not this build's results.
 
 ## Image security remains a deployment gate
 
@@ -126,14 +146,20 @@ confirmed and transferred once. Four distinct current sides were confirmed
 through the normal response form, preserving confidence zero. The service
 completed two contexts and published a two-page PDF. The actual browser download
 was retained and hash-checked:
-`79962dae2dfe6c523235749eab1d4f4d9f249392ab5ec5935a79a915f3c3b5be`.
+`dd399f25dbeceffd0682659e7e6fa5ef704db09a789f52b10c68b05159998621`.
 
 The same run then called the real local restoration endpoint, which returned
-HTTP 409. Its recorded first-page Tesseract output contains 50 observations,
-including four below 0.85; the minimum is 0.23203516000000002. The gate stopped
-before a final restored PDF existed. This is a failed complete privacy scenario,
-not an accepted backfill. No further page accuracy or restored-value correctness
-is inferred. The positive browser assertion remains enabled and failed.
+HTTP 409. The test's diagnostic response-body read did not complete before its
+original 240-second timeout. No error body, hash or error code was retained;
+that timeout is distinct from the observed HTTP status. There is no final
+restored PDF. This is a failed complete privacy scenario, not an accepted backfill.
+The positive success assertion remains enabled.
+
+Independent rendering of the exact published PDF at 144 DPI matches the recorded
+first-page OCR input bytes. Actual Tesseract output contains 50 observations,
+four below 0.85, minimum 0.41766273. Page two has no OCR record. This proves page
+content equality, not a unique request identity or the exact cause of HTTP 409.
+No further page accuracy or restored-value correctness is inferred.
 
 Earlier real attempts remain separate: native iframe loading blocked approval
 (fixed with all-page PDF.js), registration polling crashed before exposing the
@@ -150,7 +176,7 @@ it does not weaken the response, immutable-command or confidence assertions.
 Browser confirmations are explicit automated operations on synthetic material,
 not an assertion that a real operator approved real cases. Earlier clean core
 browser evidence passed seven scenarios; the final core rerun is recorded with
-the final code gates above. Private logs/captures and same-request OCR/plan evidence
+the final code gates above. Private logs/captures and page-content-linked OCR/plan evidence
 remain in ignored `artifacts/` namespaces, including the unsuccessful attempts.
 
 The synthetic fixture's initial placeholder OCR is an explicitly authored
@@ -162,7 +188,8 @@ its unchanged raw observations and the existing 0.85 gate.
 
 String scans of admitted local C2 objects, metadata/audit records, native PDF text
 and browser metadata logs are scoped to the privately derived synthetic canaries.
-They do not prove raster visual absence, capture unobserved request bodies, inspect
+The resource-final scan covers 12 C2 objects and 3367 audit events. These checks
+do not prove raster visual absence, capture unobserved request bodies, inspect
 all map/key traffic, or establish real cloud network behavior. Originals, maps,
 keys, generated PDFs, raw OCR and private diagnostic files are not committed.
 
@@ -170,3 +197,33 @@ The observation collector reports `observations_only` and `live_acceptance=false
 A report binds observed files/state but does not authenticate capture producers,
 prove full raw-trace coverage or grant business authority. Real AWS, designated
 model evaluation, formal assets and independent human approval remain open.
+
+## Subsequent focused changes
+
+Commit `94fcfb9f30dda82eeed78bd8bb42cb968e4dabc6` prevents the private launcher
+poller from terminating both services when an existing publication access grant
+expires or is revoked. Only `publication_unauthorized` is handled: the private
+fixture omits the restore handle, exposes a bounded unavailable code and retains
+job status. No authorization is extended or new approval/output/publication
+created; unexpected errors still propagate. Two real revoked/expired-publication
+counterexamples failed before the patch. Six launcher checks, Ruff/format and
+launcher mypy passed afterward. This path is separately tested, not part of the
+already completed resource-final browser run.
+
+Commit `f8bde95406a7ad4f87806d49fe33635771e28d91` bounds the browser test's private
+error-body diagnostic to two seconds. An actual isolated HTTP server and Chromium
+regression covers complete and stalled 409 bodies: the former was captured in
+56 ms and the latter became explicitly unavailable in 2004 ms. Both then reach
+the unchanged positive HTTP assertion and fail as required. Captures have mode
+0600 and no fabricated body/hash; raw bodies do not enter console logs. Type,
+lint and formatting checks pass. This verifies the diagnostic only; it does not
+reclassify or rerun the earlier full privacy test.
+
+`test_controller_final_verification_blocks_real_writer_for_unconfirmed_material`
+in `tests/integration/test_integrated_workflow.py` executes the configured real
+Controller/writer assembly with unconfirmed material. It persists human tasks,
+checks verification cannot complete, observes no write action or output file,
+and checks all input bytes unchanged. It is part of the complete Python suite.
+The separate controller boundary regressions directly assert zero writer calls
+for candidate rules, missing/low-confidence/unknown factors and missing evidence;
+their extraction/writer spies remain explicitly test doubles.

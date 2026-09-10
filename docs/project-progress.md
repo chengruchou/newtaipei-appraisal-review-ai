@@ -63,7 +63,7 @@ stores use SQLite.
 
 ## Evidence and open gates
 
-- The final real core browser run passed seven scenarios in one clean 11.2-second
+- The final real core browser run passed seven scenarios in one clean 14.4-second
   run. Earlier failures and reruns remain separate historical observations.
 - The actual installed wheel and network-isolated Linux container each executed
   four explicit confirmations, produced a two-context/eight-field PDF, reopened
@@ -72,8 +72,9 @@ stores use SQLite.
   updates require a new package gate rather than reusing that evidence.
 - The final actual privacy browser run reached two exact transfers, four current
   confirmations, completed two-context publication, hash-checked download and a
-  current restoration plan. Restoration returned 409; same-request Tesseract
-  page-one observations included four below 0.85, with no final restored output.
+  current restoration plan. Restoration returned 409; Tesseract observations
+  matching the published first-page raster included four below 0.85, with no final restored output.
+  The response-body diagnostic then timed out; no HTTP error code/body is claimed.
   [Legibility diagnostics](privacy-ocr-legibility.md) preserve the negative result;
   scores, observations, placeholder gates and decimal assertions are unchanged.
 - A native PDF iframe failed to complete in actual Chromium. The workbench now
