@@ -58,6 +58,7 @@ from appraisal_review.domain.task_contracts import (
     ResponseReceipt,
     RevisionListView,
     TaskListView,
+    TaskSubjectView,
     TaskView,
 )
 
@@ -91,6 +92,7 @@ MODELS = (
     JobAcceptance,
     TaskView,
     TaskListView,
+    TaskSubjectView,
     RevisionListView,
     ResponseReceipt,
 )
@@ -243,6 +245,22 @@ def fixtures() -> dict[str, ServiceModel]:
             idempotency_key="fixture-submit-1",
         ),
         "task-list": TaskListView(job=job, tasks=(task_view(task),)),
+        "task-subject": TaskSubjectView(
+            task_id=task.task_id,
+            revision=revision.reference,
+            subject_id=task_view(task).subject_id or "",
+            observation=PublicValue(
+                state="present",
+                value=material.facts.pairs[0].pair.target.value,
+                raw_text=material.facts.pairs[0].pair.target.raw_text or "",
+                unit="m",
+                confidence=material.facts.pairs[0].pair.target.confidence,
+                evidence=tuple(material.facts.pairs[0].target_sources),
+            ),
+            required_type="number",
+            required_unit="m",
+            unit_required=True,
+        ),
         "revision-list": RevisionListView(job=job, revisions=(revision,)),
         "response-receipt": ResponseReceipt(
             task_id=task.task_id,

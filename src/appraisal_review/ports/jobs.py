@@ -124,6 +124,16 @@ class ResultStore(Protocol):
 
 
 class JobStore(Protocol):
+    async def reject_human_task(
+        self, *, job_id: UUID, run_id: UUID, task_id: UUID, now: int
+    ) -> JobRecord:
+        """Remove one current open task; fail the job if no unresolved tasks remain.
+
+        A rejection never resumes a run or claims successful completion. The human
+        response adapter must enlist this projection in its atomic response boundary.
+        """
+        ...
+
     async def create_job(
         self,
         principal: Principal,

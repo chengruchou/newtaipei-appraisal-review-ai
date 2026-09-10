@@ -31,7 +31,7 @@ from appraisal_review.domain.service_contracts import (
 )
 from appraisal_review.domain.task_contracts import ResponseReceipt
 from appraisal_review.ports.human_tasks import StoredReceipt, TaskRecord
-from appraisal_review.ports.jobs import ConditionFailed, JobStore
+from appraisal_review.ports.jobs import ConditionFailed, JobRecord, JobStore
 
 
 @dataclass(frozen=True)
@@ -76,12 +76,38 @@ class LocalHumanTaskStore:
         """Install the state a finished attempt would have persisted alongside its tasks."""
         revision = snapshot.revision
         case_id = revision.reference.case_id
+        meta = self._job_meta.get(job_id)
+        if meta is not None and (
+            meta.head != revision.reference
+            or meta.principal_id != principal_id
+            or meta.case_id != case_id
+        ):
+            raise ConditionFailed("Task registration requires the unchanged current head")
+        old_snapshot = self._snapshots.get((case_id, revision.reference.revision_id))
+        if old_snapshot is not None and old_snapshot.revision != revision:
+            raise ConditionFailed("A revision identity cannot be replaced")
+        if len({task.task_id for task in tasks}) != len(tasks):
+            raise ConditionFailed("Duplicate task registration")
+        for task in tasks:
+            previous = self._tasks.get(task.task_id)
+            if task.run.revision != revision.reference or (
+                previous is not None
+                and (
+                    previous.task != task
+                    or previous.job_id != job_id
+                    or previous.principal_id != principal_id
+                )
+            ):
+                raise ConditionFailed("Task registration conflicts with stored identity")
         self._job_meta[job_id] = _Job(
             case_id=case_id, principal_id=principal_id, head=revision.reference
         )
-        self._chain.setdefault(job_id, []).append(revision.model_dump_json())
+        if meta is None:
+            self._chain[job_id] = [revision.model_dump_json()]
         self._snapshots[(case_id, revision.reference.revision_id)] = snapshot
         for task in tasks:
+            if task.task_id in self._tasks:
+                continue
             self._seq += 1
             self._tasks[task.task_id] = _Task(
                 task=task,
@@ -92,6 +118,9 @@ class LocalHumanTaskStore:
             )
 
     # -- reads ---------------------------------------------------------------
+
+    async def read_job(self, *, job_id: UUID) -> JobRecord | None:
+        return await self._jobs.read_job(job_id=job_id)
 
     def _record(self, entry: _Task) -> TaskRecord:
         return TaskRecord(
@@ -122,7 +151,8 @@ class LocalHumanTaskStore:
 
     async def read_snapshot(self, *, revision: RevisionReference) -> RevisionSnapshot | None:
         async with self._lock:
-            return self._snapshots.get((revision.case_id, revision.revision_id))
+            snapshot = self._snapshots.get((revision.case_id, revision.revision_id))
+            return snapshot if snapshot and snapshot.revision.reference == revision else None
 
     async def read_receipt(self, *, principal_id: str, key: str) -> StoredReceipt | None:
         async with self._lock:
@@ -172,7 +202,7 @@ class LocalHumanTaskStore:
             undo_snapshots = dict(self._snapshots)
             try:
                 return await self._apply(entry, accepted, next_revision, payload_digest, now, key)
-            except (ConditionFailed, ServiceFault):
+            except BaseException:
                 # The job plane refused, so nothing this answer implied may remain visible.
                 self._tasks = undo_tasks
                 self._job_meta = undo_meta
@@ -225,7 +255,12 @@ class LocalHumanTaskStore:
         record = (
             await self._jobs.resume_after_human(job_id=entry.job_id, run=resumed, now=now)
             if resumed is not None
-            else await self._jobs.read_job(job_id=entry.job_id)
+            else await self._jobs.reject_human_task(
+                job_id=entry.job_id,
+                run_id=entry.task.run.run_id,
+                task_id=entry.task.task_id,
+                now=now,
+            )
         )
         if record is None:
             raise ConditionFailed("The job this task belongs to is gone")

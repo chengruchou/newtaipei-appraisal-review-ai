@@ -109,6 +109,13 @@ the very question whose answer authorizes a change to the material.
 
 ## Consequences
 
+The review repair adds authoritative job-based collection reads, reconciles
+rejected task projections, retains applied evidence in the correction ledger,
+and rolls back cancelled local transitions. TaskSubjectView is an opt-in
+authoritative value/unit endpoint preserving the existing TaskView wire shape.
+See [human-task review repair](../human-task-review-repair.md) for reference
+adapter limits and the durable transaction requirement.
+
 The composition guard in `create_app` becomes an implication rather than a biconditional.
 Two authenticated planes now share one principal resolver, so requiring a job store
 alongside it would refuse both a human-task-only composition and the deliberately
