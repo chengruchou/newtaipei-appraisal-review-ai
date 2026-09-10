@@ -6,7 +6,7 @@
       "dimension": "normal",
       "expected_status": "verified",
       "human_tasks": [],
-      "material_digest": "92dfe36d550ea3084fe6f9a69147f8b10dfc492884ee71bc7b901df57998eef5",
+      "material_digest": "f6b906c38774260e6e7f7bdc65b11ded3e8aa06f45902cdd6d38e0ab82cf6ea2",
       "title": "Complete case with cross-page evidence",
       "unresolved": []
     },
@@ -16,8 +16,20 @@
       "dimension": "missing_data",
       "expected_status": "verified",
       "human_tasks": [],
-      "material_digest": "476c0252092019026836534e5968e815b9c2bea90e5ec52ba541e0dca220cb3e",
+      "material_digest": "b69bce85c1f47a54774208eb1df8cfe3c261a46ba720f7af7302ca41edf9511f",
       "title": "Approved blank filled from a grounded total",
+      "unresolved": []
+    },
+    {
+      "artifact_status": "not_requested",
+      "case_key": "blank-not-derivable",
+      "dimension": "missing_data",
+      "expected_status": "needs_review",
+      "human_tasks": [
+        "material_correction"
+      ],
+      "material_digest": "25b872cbc6142b1c207df1704b3330570c8aa2a8dba756c93b0b08bcd1fa8fb0",
+      "title": "A blank without fill authority stays blank",
       "unresolved": []
     },
     {
@@ -28,7 +40,7 @@
       "human_tasks": [
         "material_correction"
       ],
-      "material_digest": "5f5ef43bd35cbfcc8290071fdbb82e6d76bacca527687cd25eed7ec0d441f8a6",
+      "material_digest": "83723080ef9c8a0dd0f02bc6ceb1cb8574fdbcd4c090ba3fa8fccaf3c2496aba",
       "title": "Incomplete page inventory blocks completion",
       "unresolved": []
     },
@@ -40,7 +52,7 @@
       "human_tasks": [
         "material_correction"
       ],
-      "material_digest": "34e543d467cc85afd254308abbda618d58c893123feccda82625a79643c9a682",
+      "material_digest": "7faa26e0e026c3e1a15bf8091ebd2e2850d33f20223d6eca8524350f8b56526e",
       "title": "An unevidenced field withdraws case-wide fill authority",
       "unresolved": [
         "observed/regional-copied-total"
@@ -54,7 +66,7 @@
       "human_tasks": [
         "material_correction"
       ],
-      "material_digest": "eec22a8ae61882435caa84408e0e946a6712a87752c4d45a2a3621e44a8c19a3",
+      "material_digest": "f69fa3ed2682244eed2cf13de8bae52c0449e232b27160b50540b98cf7f0138d",
       "title": "Copied total contradicts the grounded total",
       "unresolved": []
     },
@@ -67,7 +79,7 @@
         "fact_confirmation",
         "fact_confirmation"
       ],
-      "material_digest": "9f58a1132f843858d45773ef7cde5a09ed407050df888e3d8432cbae34f7833b",
+      "material_digest": "52e095b4b80b5ea6d133e6cbf10d671a4052325f3f6923db30d1daa6e2a3bb9f",
       "title": "Located values with zero measured confidence",
       "unresolved": []
     },
@@ -79,7 +91,7 @@
       "human_tasks": [
         "rule_approval"
       ],
-      "material_digest": "a0db3e565d58056897a8bc2c51f2f7ed1585eabb767908398f68712ca0950b72",
+      "material_digest": "99bdb721b87c494256a5666c6de6371ae3635f9647f64d0d9b4e0f2c69d61235",
       "title": "An unsupported criteria rule fails explicitly",
       "unresolved": []
     },
@@ -89,7 +101,7 @@
       "dimension": "multiple_contexts",
       "expected_status": "verified",
       "human_tasks": [],
-      "material_digest": "cde5f51e162b969c4a0d78e942db02315fa3183f43722c92401323f275e7a7d4",
+      "material_digest": "3fdc9748f21b074e183f79fcbdfe7fecf7fc6abf55bf9b5016f4937ce4713ac9",
       "title": "Two verified comparison contexts, one writer boundary",
       "unresolved": []
     },
@@ -101,7 +113,7 @@
       "human_tasks": [
         "material_approval"
       ],
-      "material_digest": "92dfe36d550ea3084fe6f9a69147f8b10dfc492884ee71bc7b901df57998eef5",
+      "material_digest": "f6b906c38774260e6e7f7bdc65b11ded3e8aa06f45902cdd6d38e0ab82cf6ea2",
       "title": "Correct values without exact-material approval",
       "unresolved": []
     },
@@ -114,7 +126,7 @@
         "fact_confirmation",
         "fact_confirmation"
       ],
-      "material_digest": "9f58a1132f843858d45773ef7cde5a09ed407050df888e3d8432cbae34f7833b",
+      "material_digest": "52e095b4b80b5ea6d133e6cbf10d671a4052325f3f6923db30d1daa6e2a3bb9f",
       "title": "Revision 1: model proposals await confirmation",
       "unresolved": []
     },
@@ -124,7 +136,7 @@
       "dimension": "revision_chain",
       "expected_status": "verified",
       "human_tasks": [],
-      "material_digest": "05f3dc9f0f54c8b97c3bd3765ca3a21033f4addf3173964a3041f26a7a82ebfe",
+      "material_digest": "ac8bbe32738fa7195d23df7dd7c224c7f91de63fec7e2c21330f22c18eb68cad",
       "title": "Revision 2: confirmed sides verify the same readings",
       "unresolved": []
     },
@@ -137,7 +149,7 @@
         "fact_confirmation",
         "fact_confirmation"
       ],
-      "material_digest": "a9b76d7e29070790dcfdf75bfa54fe1c6b79e2aee845bd7965ad9a9c513a8fa9",
+      "material_digest": "f3f11733c5678083bc0c55288747dac8da6bb49497213ade99fb50bbb7ce51c1",
       "title": "Revision 3: relabelling cannot restore extraction authority",
       "unresolved": []
     }

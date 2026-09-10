@@ -59,7 +59,25 @@
       "status": "verified"
     },
     {
-      "id": "arithmetic/regional-subtotal-sum",
+      "id": "[\"regional\",\"golden-target\",\"golden-comparable-a\"]/factor/golden.frontage_depth",
+      "kind": "factor",
+      "rationale": "Located text and model confidence alone cannot prove a reading.",
+      "status": "verified"
+    },
+    {
+      "id": "[\"regional\",\"golden-target\",\"golden-comparable-a\"]/factor/golden.lane_width",
+      "kind": "factor",
+      "rationale": "Located text and model confidence alone cannot prove a reading.",
+      "status": "verified"
+    },
+    {
+      "id": "arithmetic/regional-site-subtotal-sum",
+      "kind": "arithmetic",
+      "rationale": "Each declared arithmetic constraint is checked on one candidate.",
+      "status": "verified"
+    },
+    {
+      "id": "arithmetic/regional-access-subtotal-sum",
       "kind": "arithmetic",
       "rationale": "Each declared arithmetic constraint is checked on one candidate.",
       "status": "verified"
@@ -77,33 +95,75 @@
       "status": "verified"
     },
     {
-      "id": "observed/regional-target-grade",
+      "id": "observed/regional-road-target-grade",
       "kind": "observed_comparison",
-      "rationale": "The printed target grade must equal the band the measurement falls in.",
+      "rationale": "The printed target road width grade must equal the band the measurement falls in.",
       "status": "verified"
     },
     {
-      "id": "observed/regional-comparable-grade",
+      "id": "observed/regional-road-comparable-grade",
       "kind": "observed_comparison",
-      "rationale": "The printed comparable grade must equal the band the measurement falls in.",
+      "rationale": "The printed comparable road width grade must equal the band the measurement falls in.",
       "status": "verified"
     },
     {
-      "id": "observed/regional-rate",
+      "id": "observed/regional-road-rate",
       "kind": "observed_comparison",
-      "rationale": "The printed rate must equal the correction matrix cell for the two grades.",
+      "rationale": "The printed road width rate must equal the matrix cell for its two grades.",
       "status": "verified"
     },
     {
-      "id": "observed/regional-subtotal",
+      "id": "observed/regional-frontage-target-grade",
       "kind": "observed_comparison",
-      "rationale": "The subtotal must equal the sum of this context's factor rates.",
+      "rationale": "The printed target frontage depth grade must equal the band the measurement falls in.",
+      "status": "verified"
+    },
+    {
+      "id": "observed/regional-frontage-comparable-grade",
+      "kind": "observed_comparison",
+      "rationale": "The printed comparable frontage depth grade must equal the band the measurement falls in.",
+      "status": "verified"
+    },
+    {
+      "id": "observed/regional-frontage-rate",
+      "kind": "observed_comparison",
+      "rationale": "The printed frontage depth rate must equal the matrix cell for its two grades.",
+      "status": "verified"
+    },
+    {
+      "id": "observed/regional-lane-target-grade",
+      "kind": "observed_comparison",
+      "rationale": "The printed target lane width grade must equal the band the measurement falls in.",
+      "status": "verified"
+    },
+    {
+      "id": "observed/regional-lane-comparable-grade",
+      "kind": "observed_comparison",
+      "rationale": "The printed comparable lane width grade must equal the band the measurement falls in.",
+      "status": "verified"
+    },
+    {
+      "id": "observed/regional-lane-rate",
+      "kind": "observed_comparison",
+      "rationale": "The printed lane width rate must equal the matrix cell for its two grades.",
+      "status": "verified"
+    },
+    {
+      "id": "observed/regional-site-subtotal",
+      "kind": "observed_comparison",
+      "rationale": "The site subtotal must equal the sum of its own factor rates.",
+      "status": "verified"
+    },
+    {
+      "id": "observed/regional-access-subtotal",
+      "kind": "observed_comparison",
+      "rationale": "The access subtotal must equal the sum of its own factor rates.",
       "status": "verified"
     },
     {
       "id": "observed/regional-total",
       "kind": "observed_comparison",
-      "rationale": "The total must equal the corrections of this context's inventoried factors.",
+      "rationale": "The total must equal the corrections of this context's factors.",
       "status": "verified"
     },
     {
@@ -119,7 +179,7 @@
       "business_approval": "pending",
       "material_authority": "exact_material_approved",
       "rationale": "The rule set is a candidate extracted from the synthetic criteria. Exact-material authority is a test grant and is not a formal business approval of the bands.",
-      "rule_set_id": "golden-road-v1",
+      "rule_set_id": "golden-site-v1",
       "version": "1.0.0"
     }
   ],
@@ -140,14 +200,14 @@
         "basis": "rule_classification",
         "classification": {
           "grade": "excellent",
-          "measurement": "12",
+          "measurement": "10",
           "rule_id": "golden-road.v1",
-          "rule_set_id": "golden-road-v1",
+          "rule_set_id": "golden-site-v1",
           "side": "target",
           "unit": "m"
         },
         "correction": null,
-        "rationale": "The criteria band the target width of 12 m falls into is excellent.",
+        "rationale": "A road width of 10 m exactly on the band threshold falls in the excellent band of golden-road.v1.",
         "summary": null,
         "value": "excellent"
       },
@@ -155,24 +215,24 @@
         "citation": {
           "bbox": [
             20.0,
-            135.0,
+            535.0,
             440.0,
-            160.0
+            560.0
           ],
-          "content_hash": "3107794420e4107e404340ad2ff8acc0de0eca5ea9f2edd92ff8f905ec63c4d3",
+          "content_hash": "7bf8d50e4f9227c40347c06808814e1c4e1991f13ef825f7f616e65580c90fe1",
           "document_id": "golden-forms",
-          "excerpt": "regional target grade excellent",
+          "excerpt": "regional road width target grade excellent",
           "page": 1,
-          "region_id": "regional-target-grade",
+          "region_id": "regional-road-target-grade",
           "version": "1"
         },
-        "raw_text": "regional target grade excellent",
+        "raw_text": "regional road width target grade excellent",
         "state": "present",
         "unit": "grade",
         "value": "excellent"
       },
-      "rationale": "The printed target grade must equal the band the measurement falls in.",
-      "slot_id": "regional-target-grade",
+      "rationale": "The printed target road width grade must equal the band the measurement falls in.",
+      "slot_id": "regional-road-target-grade",
       "slot_value": "target_grade"
     },
     {
@@ -193,12 +253,12 @@
           "grade": "inferior",
           "measurement": "8",
           "rule_id": "golden-road.v1",
-          "rule_set_id": "golden-road-v1",
+          "rule_set_id": "golden-site-v1",
           "side": "comparable",
           "unit": "m"
         },
         "correction": null,
-        "rationale": "The criteria band the comparable width of 8 m falls into is inferior.",
+        "rationale": "A road width of 8 m falls in the inferior band of golden-road.v1.",
         "summary": null,
         "value": "inferior"
       },
@@ -206,24 +266,24 @@
         "citation": {
           "bbox": [
             20.0,
-            95.0,
+            495.0,
             440.0,
-            120.0
+            520.0
           ],
-          "content_hash": "3107794420e4107e404340ad2ff8acc0de0eca5ea9f2edd92ff8f905ec63c4d3",
+          "content_hash": "7bf8d50e4f9227c40347c06808814e1c4e1991f13ef825f7f616e65580c90fe1",
           "document_id": "golden-forms",
-          "excerpt": "regional comparable grade inferior",
+          "excerpt": "regional road width comparable grade inferior",
           "page": 1,
-          "region_id": "regional-comparable-grade",
+          "region_id": "regional-road-comparable-grade",
           "version": "1"
         },
-        "raw_text": "regional comparable grade inferior",
+        "raw_text": "regional road width comparable grade inferior",
         "state": "present",
         "unit": "grade",
         "value": "inferior"
       },
-      "rationale": "The printed comparable grade must equal the band the measurement falls in.",
-      "slot_id": "regional-comparable-grade",
+      "rationale": "The printed comparable road width grade must equal the band the measurement falls in.",
+      "slot_id": "regional-road-comparable-grade",
       "slot_value": "comparable_grade"
     },
     {
@@ -244,12 +304,314 @@
         "correction": {
           "comparable_grade": "inferior",
           "rule_id": "golden-road.v1",
-          "rule_set_id": "golden-road-v1",
+          "rule_set_id": "golden-site-v1",
           "target_grade": "excellent"
         },
-        "rationale": "The excellent/inferior cell of the correction matrix is 5.",
+        "rationale": "The excellent/inferior cell of the road width matrix is 5.",
         "summary": null,
         "value": "5"
+      },
+      "observed": {
+        "citation": {
+          "bbox": [
+            20.0,
+            455.0,
+            440.0,
+            480.0
+          ],
+          "content_hash": "7bf8d50e4f9227c40347c06808814e1c4e1991f13ef825f7f616e65580c90fe1",
+          "document_id": "golden-forms",
+          "excerpt": "regional road width rate 5",
+          "page": 1,
+          "region_id": "regional-road-rate",
+          "version": "1"
+        },
+        "raw_text": "regional road width rate 5",
+        "state": "present",
+        "unit": "percent_points",
+        "value": "5"
+      },
+      "rationale": "The printed road width rate must equal the matrix cell for its two grades.",
+      "slot_id": "regional-road-rate",
+      "slot_value": "adjustment_percent"
+    },
+    {
+      "context": {
+        "comparable_id": "golden-comparable-a",
+        "scope": "regional",
+        "target_id": "golden-target"
+      },
+      "derivable_blank": false,
+      "expected_kind": "observed_comparison",
+      "expected_status": "verified",
+      "factor_id": "golden.frontage_depth",
+      "independent": {
+        "adjudication_id": null,
+        "arithmetic": null,
+        "basis": "rule_classification",
+        "classification": {
+          "grade": "inferior",
+          "measurement": "6",
+          "rule_id": "golden-frontage.v1",
+          "rule_set_id": "golden-site-v1",
+          "side": "target",
+          "unit": "m"
+        },
+        "correction": null,
+        "rationale": "A frontage depth of 6 m falls in the inferior band of golden-frontage.v1.",
+        "summary": null,
+        "value": "inferior"
+      },
+      "observed": {
+        "citation": {
+          "bbox": [
+            20.0,
+            335.0,
+            440.0,
+            360.0
+          ],
+          "content_hash": "7bf8d50e4f9227c40347c06808814e1c4e1991f13ef825f7f616e65580c90fe1",
+          "document_id": "golden-forms",
+          "excerpt": "regional frontage depth target grade inferior",
+          "page": 1,
+          "region_id": "regional-frontage-target-grade",
+          "version": "1"
+        },
+        "raw_text": "regional frontage depth target grade inferior",
+        "state": "present",
+        "unit": "grade",
+        "value": "inferior"
+      },
+      "rationale": "The printed target frontage depth grade must equal the band the measurement falls in.",
+      "slot_id": "regional-frontage-target-grade",
+      "slot_value": "target_grade"
+    },
+    {
+      "context": {
+        "comparable_id": "golden-comparable-a",
+        "scope": "regional",
+        "target_id": "golden-target"
+      },
+      "derivable_blank": false,
+      "expected_kind": "observed_comparison",
+      "expected_status": "verified",
+      "factor_id": "golden.frontage_depth",
+      "independent": {
+        "adjudication_id": null,
+        "arithmetic": null,
+        "basis": "rule_classification",
+        "classification": {
+          "grade": "excellent",
+          "measurement": "14",
+          "rule_id": "golden-frontage.v1",
+          "rule_set_id": "golden-site-v1",
+          "side": "comparable",
+          "unit": "m"
+        },
+        "correction": null,
+        "rationale": "A frontage depth of 14 m falls in the excellent band of golden-frontage.v1.",
+        "summary": null,
+        "value": "excellent"
+      },
+      "observed": {
+        "citation": {
+          "bbox": [
+            20.0,
+            295.0,
+            440.0,
+            320.0
+          ],
+          "content_hash": "7bf8d50e4f9227c40347c06808814e1c4e1991f13ef825f7f616e65580c90fe1",
+          "document_id": "golden-forms",
+          "excerpt": "regional frontage depth comparable grade excellent",
+          "page": 1,
+          "region_id": "regional-frontage-comparable-grade",
+          "version": "1"
+        },
+        "raw_text": "regional frontage depth comparable grade excellent",
+        "state": "present",
+        "unit": "grade",
+        "value": "excellent"
+      },
+      "rationale": "The printed comparable frontage depth grade must equal the band the measurement falls in.",
+      "slot_id": "regional-frontage-comparable-grade",
+      "slot_value": "comparable_grade"
+    },
+    {
+      "context": {
+        "comparable_id": "golden-comparable-a",
+        "scope": "regional",
+        "target_id": "golden-target"
+      },
+      "derivable_blank": false,
+      "expected_kind": "observed_comparison",
+      "expected_status": "verified",
+      "factor_id": "golden.frontage_depth",
+      "independent": {
+        "adjudication_id": null,
+        "arithmetic": null,
+        "basis": "rule_correction",
+        "classification": null,
+        "correction": {
+          "comparable_grade": "excellent",
+          "rule_id": "golden-frontage.v1",
+          "rule_set_id": "golden-site-v1",
+          "target_grade": "inferior"
+        },
+        "rationale": "The inferior/excellent cell of the frontage depth matrix is -3.",
+        "summary": null,
+        "value": "-3"
+      },
+      "observed": {
+        "citation": {
+          "bbox": [
+            20.0,
+            255.0,
+            440.0,
+            280.0
+          ],
+          "content_hash": "7bf8d50e4f9227c40347c06808814e1c4e1991f13ef825f7f616e65580c90fe1",
+          "document_id": "golden-forms",
+          "excerpt": "regional frontage depth rate -3",
+          "page": 1,
+          "region_id": "regional-frontage-rate",
+          "version": "1"
+        },
+        "raw_text": "regional frontage depth rate -3",
+        "state": "present",
+        "unit": "percent_points",
+        "value": "-3"
+      },
+      "rationale": "The printed frontage depth rate must equal the matrix cell for its two grades.",
+      "slot_id": "regional-frontage-rate",
+      "slot_value": "adjustment_percent"
+    },
+    {
+      "context": {
+        "comparable_id": "golden-comparable-a",
+        "scope": "regional",
+        "target_id": "golden-target"
+      },
+      "derivable_blank": false,
+      "expected_kind": "observed_comparison",
+      "expected_status": "verified",
+      "factor_id": "golden.lane_width",
+      "independent": {
+        "adjudication_id": null,
+        "arithmetic": null,
+        "basis": "rule_classification",
+        "classification": {
+          "grade": "excellent",
+          "measurement": "9",
+          "rule_id": "golden-lane.v1",
+          "rule_set_id": "golden-site-v1",
+          "side": "target",
+          "unit": "m"
+        },
+        "correction": null,
+        "rationale": "A lane width of 9 m falls in the excellent band of golden-lane.v1.",
+        "summary": null,
+        "value": "excellent"
+      },
+      "observed": {
+        "citation": {
+          "bbox": [
+            20.0,
+            135.0,
+            440.0,
+            160.0
+          ],
+          "content_hash": "7bf8d50e4f9227c40347c06808814e1c4e1991f13ef825f7f616e65580c90fe1",
+          "document_id": "golden-forms",
+          "excerpt": "regional lane width target grade excellent",
+          "page": 1,
+          "region_id": "regional-lane-target-grade",
+          "version": "1"
+        },
+        "raw_text": "regional lane width target grade excellent",
+        "state": "present",
+        "unit": "grade",
+        "value": "excellent"
+      },
+      "rationale": "The printed target lane width grade must equal the band the measurement falls in.",
+      "slot_id": "regional-lane-target-grade",
+      "slot_value": "target_grade"
+    },
+    {
+      "context": {
+        "comparable_id": "golden-comparable-a",
+        "scope": "regional",
+        "target_id": "golden-target"
+      },
+      "derivable_blank": false,
+      "expected_kind": "observed_comparison",
+      "expected_status": "verified",
+      "factor_id": "golden.lane_width",
+      "independent": {
+        "adjudication_id": null,
+        "arithmetic": null,
+        "basis": "rule_classification",
+        "classification": {
+          "grade": "inferior",
+          "measurement": "2",
+          "rule_id": "golden-lane.v1",
+          "rule_set_id": "golden-site-v1",
+          "side": "comparable",
+          "unit": "m"
+        },
+        "correction": null,
+        "rationale": "A lane width of 2 m falls in the inferior band of golden-lane.v1.",
+        "summary": null,
+        "value": "inferior"
+      },
+      "observed": {
+        "citation": {
+          "bbox": [
+            20.0,
+            95.0,
+            440.0,
+            120.0
+          ],
+          "content_hash": "7bf8d50e4f9227c40347c06808814e1c4e1991f13ef825f7f616e65580c90fe1",
+          "document_id": "golden-forms",
+          "excerpt": "regional lane width comparable grade inferior",
+          "page": 1,
+          "region_id": "regional-lane-comparable-grade",
+          "version": "1"
+        },
+        "raw_text": "regional lane width comparable grade inferior",
+        "state": "present",
+        "unit": "grade",
+        "value": "inferior"
+      },
+      "rationale": "The printed comparable lane width grade must equal the band the measurement falls in.",
+      "slot_id": "regional-lane-comparable-grade",
+      "slot_value": "comparable_grade"
+    },
+    {
+      "context": {
+        "comparable_id": "golden-comparable-a",
+        "scope": "regional",
+        "target_id": "golden-target"
+      },
+      "derivable_blank": false,
+      "expected_kind": "observed_comparison",
+      "expected_status": "verified",
+      "factor_id": "golden.lane_width",
+      "independent": {
+        "adjudication_id": null,
+        "arithmetic": null,
+        "basis": "rule_correction",
+        "classification": null,
+        "correction": {
+          "comparable_grade": "inferior",
+          "rule_id": "golden-lane.v1",
+          "rule_set_id": "golden-site-v1",
+          "target_grade": "excellent"
+        },
+        "rationale": "The excellent/inferior cell of the lane width matrix is 7.",
+        "summary": null,
+        "value": "7"
       },
       "observed": {
         "citation": {
@@ -259,20 +621,20 @@
             440.0,
             80.0
           ],
-          "content_hash": "3107794420e4107e404340ad2ff8acc0de0eca5ea9f2edd92ff8f905ec63c4d3",
+          "content_hash": "7bf8d50e4f9227c40347c06808814e1c4e1991f13ef825f7f616e65580c90fe1",
           "document_id": "golden-forms",
-          "excerpt": "regional road rate 5",
+          "excerpt": "regional lane width rate 7",
           "page": 1,
-          "region_id": "regional-rate",
+          "region_id": "regional-lane-rate",
           "version": "1"
         },
-        "raw_text": "regional road rate 5",
+        "raw_text": "regional lane width rate 7",
         "state": "present",
         "unit": "percent_points",
-        "value": "5"
+        "value": "7"
       },
-      "rationale": "The printed rate must equal the correction matrix cell for the two grades.",
-      "slot_id": "regional-rate",
+      "rationale": "The printed lane width rate must equal the matrix cell for its two grades.",
+      "slot_id": "regional-lane-rate",
       "slot_value": "adjustment_percent"
     },
     {
@@ -289,7 +651,8 @@
         "adjudication_id": null,
         "arithmetic": {
           "input_slot_ids": [
-            "regional-rate"
+            "regional-road-rate",
+            "regional-frontage-rate"
           ],
           "operation": "sum",
           "quantum": "0.01"
@@ -297,32 +660,82 @@
         "basis": "arithmetic_derivation",
         "classification": null,
         "correction": null,
-        "rationale": "The criteria procedure sums the factor rates into the subtotal.",
+        "rationale": "The criteria procedure sums the site factor rates (road, frontage) into that group's subtotal.",
         "summary": null,
-        "value": "5"
+        "value": "2"
       },
       "observed": {
         "citation": {
           "bbox": [
             20.0,
-            215.0,
+            615.0,
             440.0,
-            240.0
+            640.0
           ],
-          "content_hash": "3107794420e4107e404340ad2ff8acc0de0eca5ea9f2edd92ff8f905ec63c4d3",
+          "content_hash": "7bf8d50e4f9227c40347c06808814e1c4e1991f13ef825f7f616e65580c90fe1",
           "document_id": "golden-forms",
-          "excerpt": "regional subtotal 5",
+          "excerpt": "regional site subtotal 2",
           "page": 2,
-          "region_id": "regional-subtotal",
+          "region_id": "regional-site-subtotal",
           "version": "1"
         },
-        "raw_text": "regional subtotal 5",
+        "raw_text": "regional site subtotal 2",
         "state": "present",
         "unit": "percent_points",
-        "value": "5"
+        "value": "2"
       },
-      "rationale": "The subtotal must equal the sum of this context's factor rates.",
-      "slot_id": "regional-subtotal",
+      "rationale": "The site subtotal must equal the sum of its own factor rates.",
+      "slot_id": "regional-site-subtotal",
+      "slot_value": "subtotal"
+    },
+    {
+      "context": {
+        "comparable_id": "golden-comparable-a",
+        "scope": "regional",
+        "target_id": "golden-target"
+      },
+      "derivable_blank": false,
+      "expected_kind": "observed_comparison",
+      "expected_status": "verified",
+      "factor_id": null,
+      "independent": {
+        "adjudication_id": null,
+        "arithmetic": {
+          "input_slot_ids": [
+            "regional-lane-rate"
+          ],
+          "operation": "sum",
+          "quantum": "0.01"
+        },
+        "basis": "arithmetic_derivation",
+        "classification": null,
+        "correction": null,
+        "rationale": "The criteria procedure sums the access factor rates (lane) into that group's subtotal.",
+        "summary": null,
+        "value": "7"
+      },
+      "observed": {
+        "citation": {
+          "bbox": [
+            20.0,
+            575.0,
+            440.0,
+            600.0
+          ],
+          "content_hash": "7bf8d50e4f9227c40347c06808814e1c4e1991f13ef825f7f616e65580c90fe1",
+          "document_id": "golden-forms",
+          "excerpt": "regional access subtotal 7",
+          "page": 2,
+          "region_id": "regional-access-subtotal",
+          "version": "1"
+        },
+        "raw_text": "regional access subtotal 7",
+        "state": "present",
+        "unit": "percent_points",
+        "value": "7"
+      },
+      "rationale": "The access subtotal must equal the sum of its own factor rates.",
+      "slot_id": "regional-access-subtotal",
       "slot_value": "subtotal"
     },
     {
@@ -341,33 +754,33 @@
         "basis": "rule_summary",
         "classification": null,
         "correction": null,
-        "rationale": "The context total is the sum of the correction rates of every inventoried factor, re-classified from the fixture measurements.",
+        "rationale": "The context total is the sum of the corrections of every inventoried factor, each re-classified from the fixture measurements.",
         "summary": {
-          "rule_set_id": "golden-road-v1"
+          "rule_set_id": "golden-site-v1"
         },
-        "value": "5"
+        "value": "9"
       },
       "observed": {
         "citation": {
           "bbox": [
             20.0,
-            175.0,
+            535.0,
             440.0,
-            200.0
+            560.0
           ],
-          "content_hash": "3107794420e4107e404340ad2ff8acc0de0eca5ea9f2edd92ff8f905ec63c4d3",
+          "content_hash": "7bf8d50e4f9227c40347c06808814e1c4e1991f13ef825f7f616e65580c90fe1",
           "document_id": "golden-forms",
-          "excerpt": "regional total 5",
+          "excerpt": "regional total 9",
           "page": 2,
           "region_id": "regional-total",
           "version": "1"
         },
-        "raw_text": "regional total 5",
+        "raw_text": "regional total 9",
         "state": "present",
         "unit": "percent_points",
-        "value": "5"
+        "value": "9"
       },
-      "rationale": "The total must equal the corrections of this context's inventoried factors.",
+      "rationale": "The total must equal the corrections of this context's factors.",
       "slot_id": "regional-total",
       "slot_value": "total"
     },
@@ -395,27 +808,27 @@
         "correction": null,
         "rationale": "The copied field repeats the total of the same context.",
         "summary": null,
-        "value": "5"
+        "value": "9"
       },
       "observed": {
         "citation": {
           "bbox": [
             20.0,
-            135.0,
+            495.0,
             440.0,
-            160.0
+            520.0
           ],
-          "content_hash": "3107794420e4107e404340ad2ff8acc0de0eca5ea9f2edd92ff8f905ec63c4d3",
+          "content_hash": "7bf8d50e4f9227c40347c06808814e1c4e1991f13ef825f7f616e65580c90fe1",
           "document_id": "golden-forms",
-          "excerpt": "regional copied total 5",
+          "excerpt": "regional copied total 9",
           "page": 2,
           "region_id": "regional-copied-total",
           "version": "1"
         },
-        "raw_text": "regional copied total 5",
+        "raw_text": "regional copied total 9",
         "state": "present",
         "unit": "percent_points",
-        "value": "5"
+        "value": "9"
       },
       "rationale": "A value copied across pages must equal the total it was copied from.",
       "slot_id": "regional-copied-total",
@@ -440,7 +853,7 @@
         "version": "1"
       },
       {
-        "content_hash": "3107794420e4107e404340ad2ff8acc0de0eca5ea9f2edd92ff8f905ec63c4d3",
+        "content_hash": "7bf8d50e4f9227c40347c06808814e1c4e1991f13ef825f7f616e65580c90fe1",
         "document_id": "golden-forms",
         "page_count": 2,
         "role": "forms",
@@ -448,7 +861,7 @@
       }
     ],
     "generator_version": "golden-cases-v1",
-    "material_digest": "92dfe36d550ea3084fe6f9a69147f8b10dfc492884ee71bc7b901df57998eef5"
+    "material_digest": "f6b906c38774260e6e7f7bdc65b11ded3e8aa06f45902cdd6d38e0ab82cf6ea2"
   },
   "identity": {
     "case_id": "golden-case",

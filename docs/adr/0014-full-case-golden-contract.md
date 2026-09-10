@@ -32,7 +32,9 @@ resolve in the fixture registry, so a manifest cannot expect a number the docume
 does not show.
 
 Expected findings are complete rather than a subset: an unexpected finding fails the
-case. Human task expectations are built through the frozen `HumanTask` contract, so
+case. Findings, coverage and verification are authored and cross-checked rather than
+re-derived from the material; the re-derivation applies to the reviewed fields, and the
+authored parts are held to the engine by the run comparison. Human task expectations are built through the frozen `HumanTask` contract, so
 a golden cannot describe a task the service could not legally issue. Candidate rule
 extraction, exact-material authority and formal business approval are three separate
 recorded facts. Where a case cannot ground a field, the manifest records no expected
@@ -51,7 +53,7 @@ committed manifests and the fixture generator disagree.
   which makes "fix the test" visible in review as a manifest diff.
 - Fixtures and manifests are coupled by material digest, so a fixture edit without a
   manifest review fails rather than silently passing.
-- The matrix is deliberately explicit: adding a finding kind updates twelve manifests.
+- The matrix is deliberately explicit: adding a finding kind updates thirteen manifests.
   That cost is the point of a complete acceptance contract.
 - Human task expectations run ahead of their producer. They are declared and shape
   checked now, and #24 and #17 are held to them when the producer lands.

@@ -6,18 +6,25 @@ rather than as a silently updated expected value.
 """
 
 import asyncio
+import uuid
+from functools import lru_cache
 from pathlib import Path
 
 import pytest
 
 from appraisal_review.adapters.local.fake_pdf import FakePDFWriter
 from appraisal_review.adapters.local.golden_cases import (
+    FACTORS,
+    MEASUREMENTS,
+    REGIONAL,
     GoldenAuthorization,
     golden_adapters,
     golden_fixtures,
     load_golden_manifests,
     manifest_documents,
+    prefix,
 )
+from appraisal_review.adapters.local.service import public_verification
 from appraisal_review.application.bootstrap import build_controller
 from appraisal_review.config import Settings
 from appraisal_review.domain.case_review import CaseReviewer
@@ -40,9 +47,14 @@ GOLDENS = Path(__file__).resolve().parents[1] / "goldens"
 FIXTURES = golden_fixtures()
 
 
+@lru_cache(maxsize=1)
+def _reviewed_suite() -> GoldenSuite:
+    """Read the committed manifests once; the acceptance suite reads them many times."""
+    return load_golden_manifests(GOLDENS)
+
+
 def reviewed(case_key: str):
-    suite = load_golden_manifests(GOLDENS)
-    return next(case for case in suite.cases if case.case_key == case_key)
+    return next(case for case in _reviewed_suite().cases if case.case_key == case_key)
 
 
 def controller_run(fixture, *, writer=None):
@@ -63,7 +75,7 @@ def test_committed_manifests_match_the_fixture_generator():
 
 
 def test_reviewed_suite_loads_and_covers_every_case():
-    suite = load_golden_manifests(GOLDENS)
+    suite = _reviewed_suite()
     assert {case.case_key for case in suite.cases} == {f.case_key for f in FIXTURES}
 
 
@@ -115,13 +127,11 @@ def test_independent_verifier_rejects_a_forged_comparison(fixture):
 
 def test_published_service_envelope_matches_the_reviewed_case():
     """The sanitized envelope B2 and B3 publish is held to the same golden."""
-    from appraisal_review.adapters.local.service import public_verification
-
     fixture = next(f for f in FIXTURES if f.case_key == "normal-complete")
     run = controller_run(fixture)
     result = ServiceResult(
         run=RunReference(
-            run_id=__import__("uuid").uuid4(),
+            run_id=uuid.uuid4(),
             revision=RevisionReference(
                 case_id=fixture.case.identity.case_id,
                 revision_id=fixture.case.identity.version,
@@ -140,14 +150,15 @@ def test_published_service_envelope_matches_the_reviewed_case():
 
 
 def test_open_cases_publish_one_public_diagnostic_for_each_blocking_finding():
-    from appraisal_review.adapters.local.service import public_verification
-
     for fixture in FIXTURES:
         case = reviewed(fixture.case_key)
         published = public_verification(controller_run(fixture).verification)
         assert published is not None
         assert published.status is case.expected_verification.status
         assert published.critical_errors == case.expected_verification.critical
+        # The name of this test is a claim about the relationship, so assert it directly.
+        blocking = [f for f in case.expected_findings if f.status != "verified"]
+        assert len(published.critical_errors) == len(blocking)
 
 
 def test_a_wrong_deterministic_result_fails_its_case():
@@ -168,7 +179,7 @@ def test_a_wrong_deterministic_result_fails_its_case():
     assert not compare_case_review(reviewed("normal-complete"), regraded).ok
     misreported = result.model_copy(deep=True)
     finding = next(f for f in misreported.findings if f.id == "observed/regional-total")
-    finding.observed = "9"
+    finding.observed = "99"
     assert not compare_case_review(reviewed("normal-complete"), misreported).ok
 
 
@@ -184,3 +195,86 @@ def test_a_duplicated_engine_finding_fails_the_case():
     report = compare_case_review(reviewed("normal-complete"), doubled)
     assert not report.ok
     assert any(m.check == "findings" for m in report.mismatches)
+
+
+def test_every_level_of_the_form_carries_a_different_number():
+    """Without distinct values, rate/subtotal/total confusion would pass every case."""
+    case = reviewed("normal-complete")
+    numbers = {
+        slot.slot_id: slot.independent.value
+        for slot in case.expected_slots
+        if slot.observed.unit == "percent_points" and slot.independent is not None
+    }
+    rates = {v for k, v in numbers.items() if k.endswith("-rate")}
+    subtotals = {v for k, v in numbers.items() if k.endswith("-subtotal")}
+    total = numbers[f"{prefix(REGIONAL)}-total"]
+    assert len(rates) == len(FACTORS) > 1
+    assert total not in rates
+    # A multi-factor group's subtotal is its own number, distinct from every rate it sums.
+    assert numbers[f"{prefix(REGIONAL)}-site-subtotal"] not in rates
+    assert total not in subtotals
+
+
+def test_the_two_comparison_contexts_are_distinguishable():
+    case = reviewed("multi-context")
+
+    def numbers(scope: str) -> list[str]:
+        return [
+            s.independent.value
+            for s in case.expected_slots
+            if s.slot_id.startswith(scope) and s.observed.unit == "percent_points"
+        ]
+
+    assert numbers("regional") and numbers("regional") != numbers("individual")
+
+
+def test_a_swapped_total_and_subtotal_fails_the_case():
+    fixture = next(f for f in FIXTURES if f.case_key == "normal-complete")
+    material = fixture.material
+    result = CaseReviewer(GoldenAuthorization(material)).review(
+        material.policy, material.facts, material.policy.registry
+    )
+    assert compare_case_review(reviewed("normal-complete"), result).ok
+    swapped = result.model_copy(deep=True)
+    name = prefix(REGIONAL)
+    finding = next(f for f in swapped.findings if f.id == f"observed/{name}-total")
+    finding.observed = finding.expected = str(
+        next(
+            s.independent.value
+            for s in reviewed("normal-complete").expected_slots
+            if s.slot_id == f"{name}-site-subtotal"
+        )
+    )
+    assert not compare_case_review(reviewed("normal-complete"), swapped).ok
+
+
+def test_the_flagship_case_sits_on_an_interval_boundary():
+    """AGENTS.md lists interval boundaries first; the fixture must actually reach one."""
+    boundary = [f for f in FACTORS if MEASUREMENTS["regional"][f.key][0] == f.threshold]
+    assert boundary, "no regional measurement sits on a band threshold"
+    factor = boundary[0]
+    case = reviewed("normal-complete")
+    slot = next(
+        s
+        for s in case.expected_slots
+        if s.slot_id == f"{prefix(REGIONAL)}-{factor.key}-target-grade"
+    )
+    assert slot.independent is not None
+    assert slot.independent.classification is not None
+    assert slot.independent.classification.measurement == factor.threshold
+    # The lower bound is inclusive, so the threshold itself is the better grade.
+    assert slot.independent.value == "excellent"
+
+
+def test_an_exclusive_lower_bound_would_fail_the_boundary_case():
+    """Flip the rule's inclusivity and the reviewed grade no longer follows from the band."""
+    fixture = next(f for f in FIXTURES if f.case_key == "normal-complete")
+    material = fixture.material.model_copy(deep=True)
+    for scoped in material.policy.rule_sets:
+        for rule in scoped.rules.rules:
+            for band in rule.intervals:
+                if band.minimum is not None:
+                    band.minimum_inclusive = False
+    report = verify_manifest(reviewed("normal-complete"), material)
+    assert not report.ok
+    assert any(m.check == "classification" for m in report.mismatches)

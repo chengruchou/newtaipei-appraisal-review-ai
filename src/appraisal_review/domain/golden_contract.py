@@ -197,8 +197,16 @@ class ExpectedSlot(GoldenModel):
             raise ValueError("Factor-bound slot values require a factor binding")
         if self.expected_status == "verified" and self.independent is None:
             raise ValueError("A verified field needs an independent expected value")
-        if self.observed.state == "blank" and not self.derivable_blank:
-            raise ValueError("A blank field can only be filled when derivation is approved")
+        # A blank the system must leave alone is the important case for a form writer, so
+        # derivation authority is what needs a blank, not the other way round.
+        if self.derivable_blank and self.observed.state != "blank":
+            raise ValueError("Only a blank field can carry derivation authority")
+        if (
+            self.observed.state == "blank"
+            and not self.derivable_blank
+            and self.expected_status == "verified"
+        ):
+            raise ValueError("An unapproved blank cannot be filled, so it cannot verify")
         return self
 
 

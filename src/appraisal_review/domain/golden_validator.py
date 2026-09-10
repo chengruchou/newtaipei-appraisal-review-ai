@@ -7,6 +7,7 @@ against those expectations. Nothing here writes an expected value back.
 
 from __future__ import annotations
 
+import re
 from collections import Counter
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
@@ -18,7 +19,6 @@ from appraisal_review.domain.document_models import SourceCitation
 from appraisal_review.domain.factor_models import (
     AgentReviewRun,
     CaseReviewResult,
-    EvaluationStatus,
     EvidencedPair,
     FactorRule,
     FactorRuleSet,
@@ -86,6 +86,9 @@ class _Collector:
         return GoldenReport(case_key=self.case_key, mismatches=tuple(self.mismatches))
 
 
+_SEPARATED = re.compile(r"-?\d{1,3}(?:,\d{3})+(?:\.\d+)?")
+
+
 def _decimal(value: str | None) -> Decimal | None:
     if value is None:
         return None
@@ -103,13 +106,24 @@ def _same_value(left: str | None, right: str | None) -> bool:
     return None not in numbers and numbers[0] == numbers[1]
 
 
+def _numeric_token(token: str) -> Decimal | None:
+    """Read one printed token as a number: 1,234 is one value, and 5% or 5 m is five."""
+    cleaned = token.strip().rstrip("%")
+    cleaned = cleaned.replace(",", "") if _SEPARATED.fullmatch(cleaned) else cleaned
+    return _decimal(cleaned)
+
+
 def _printed(value: str, text: str) -> bool:
-    """A golden may only expect a value the synthetic document actually prints."""
-    tokens = text.replace(",", " ").split()
-    if value in tokens:
+    """A golden may only expect a value the synthetic document actually prints.
+
+    Separators are normalised inside a token rather than split on, so a fragment of a
+    larger printed number is not accepted as the number itself.
+    """
+    tokens = text.split()
+    if value.strip() in tokens:
         return True
-    number = _decimal(value)
-    return number is not None and any(_decimal(token) == number for token in tokens)
+    number = _decimal(value.strip().rstrip("%").replace(",", ""))
+    return number is not None and any(_numeric_token(token) == number for token in tokens)
 
 
 def _band_contains(band: IntervalBand, value: Decimal) -> bool:
@@ -160,7 +174,7 @@ def expected_task_contract(
             input_digest=confirmation_digest(pair, task.side.side),
         )
     return HumanTask(
-        task_id=uuid5(NAMESPACE_URL, f"golden:{case.case_key}:{task.task_ref}"),
+        task_id=golden_task_id(case, task),
         run=run,
         version=1,
         kind=task.kind,
@@ -689,11 +703,8 @@ def compare_service_result(case: GoldenCase, result: ServiceResult) -> GoldenRep
     return collector.report()
 
 
-def verification_status(case: GoldenCase) -> EvaluationStatus:
-    return case.expected_verification.status
-
-
 def golden_task_id(case: GoldenCase, task: ExpectedHumanTask) -> UUID:
+    """One stable id per reviewed task, derived from the case rather than generated."""
     return uuid5(NAMESPACE_URL, f"golden:{case.case_key}:{task.task_ref}")
 
 

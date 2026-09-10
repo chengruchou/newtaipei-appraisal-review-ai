@@ -111,17 +111,74 @@ CATEGORY = "golden-commercial"
 EFFECTIVE_DATE = date(2026, 9, 1)
 GOLDEN_REVIEWER = "golden-reviewer-1"
 
-FACTOR_ID = "golden.road_width"
 UNSUPPORTED_FACTOR_ID = "golden.frontage_shape"
-RULE_SET_ID = "golden-road-v1"
-RULE_ID = "golden-road.v1"
-UNSUPPORTED_RULE_ID = "golden-frontage.v1"
+RULE_SET_ID = "golden-site-v1"
+UNSUPPORTED_RULE_ID = "golden-shape.v1"
 RULE_VERSION = "1.0.0"
 
-TARGET_WIDTH = Decimal("12")
-COMPARABLE_WIDTH = Decimal("8")
-BAND_THRESHOLD = 10.0
-CORRECTION_RATE = "5"
+
+@dataclass(frozen=True)
+class Factor:
+    """One reviewed factor: its rule, the group whose subtotal it feeds, and its band."""
+
+    key: str
+    factor_id: str
+    rule_id: str
+    group: str
+    label: str
+    threshold: Decimal
+    rate: Decimal
+
+
+# Distinct thresholds and distinct correction magnitudes, so confusing one factor, one
+# level of the form, or one comparison context with another cannot pass unnoticed.
+FACTORS = (
+    Factor(
+        "road",
+        "golden.road_width",
+        "golden-road.v1",
+        "site",
+        "road width",
+        Decimal("10"),
+        Decimal("5"),
+    ),
+    Factor(
+        "frontage",
+        "golden.frontage_depth",
+        "golden-frontage.v1",
+        "site",
+        "frontage depth",
+        Decimal("12"),
+        Decimal("3"),
+    ),
+    Factor(
+        "lane",
+        "golden.lane_width",
+        "golden-lane.v1",
+        "access",
+        "lane width",
+        Decimal("4"),
+        Decimal("7"),
+    ),
+)
+GROUPS = ("site", "access")
+FACTOR_ID = FACTORS[0].factor_id
+RULE_ID = FACTORS[0].rule_id
+
+# Measurements per context. The regional road target sits exactly on its threshold, so the
+# inclusive lower bound is exercised by every case built on this fixture.
+MEASUREMENTS: dict[str, dict[str, tuple[Decimal, Decimal]]] = {
+    "regional": {
+        "road": (Decimal("10"), Decimal("8")),
+        "frontage": (Decimal("6"), Decimal("14")),
+        "lane": (Decimal("9"), Decimal("2")),
+    },
+    "individual": {
+        "road": (Decimal("8"), Decimal("14")),
+        "frontage": (Decimal("20"), Decimal("4")),
+        "lane": (Decimal("1"), Decimal("6")),
+    },
+}
 
 REGIONAL = ComparisonContext(
     scope="regional", target_id="golden-target", comparable_id="golden-comparable-a"
@@ -153,8 +210,9 @@ class FixtureSpec:
 
     contexts: tuple[ComparisonContext, ...] = (REGIONAL,)
     identity_version: str = "r1"
-    copied_total: str = CORRECTION_RATE
+    copied_total: str = ""
     copied_state: Literal["present", "blank", "missing"] = "present"
+    blank_derivable: bool = True
     inspect_second_page: bool = True
     measured: bool = True
     unsupported: tuple[str, ...] = ()
@@ -184,34 +242,69 @@ def prefix(context: ComparisonContext) -> str:
     return context.scope
 
 
-def _factor_regions(name: str) -> tuple[_Region, ...]:
-    return (
-        _Region(f"{name}-target-width", f"{name} target road width 12 m", "cell", "factor-table"),
-        _Region(
-            f"{name}-comparable-width", f"{name} comparable road width 8 m", "cell", "factor-table"
-        ),
-        _Region(f"{name}-target-grade", f"{name} target grade excellent", "cell", "factor-table"),
-        _Region(
-            f"{name}-comparable-grade",
-            f"{name} comparable grade inferior",
-            "cell",
-            "factor-table",
-        ),
-        _Region(f"{name}-rate", f"{name} road rate 5", "cell", "factor-table"),
+def grade_of(factor: Factor, measurement: Decimal) -> Grade:
+    """The band a measurement falls in. The lower bound is inclusive."""
+    return Grade.EXCELLENT if measurement >= factor.threshold else Grade.INFERIOR
+
+
+def correction_for(context: ComparisonContext, factor: Factor) -> Decimal:
+    """Antisymmetric matrix: an excellent target against an inferior comparable is positive."""
+    target, comparable = MEASUREMENTS[prefix(context)][factor.key]
+    grades = (grade_of(factor, target), grade_of(factor, comparable))
+    if grades[0] is grades[1]:
+        return Decimal("0")
+    return factor.rate if grades[0] is Grade.EXCELLENT else -factor.rate
+
+
+def group_subtotal(context: ComparisonContext, group: str) -> Decimal:
+    return sum(
+        (correction_for(context, f) for f in FACTORS if f.group == group), start=Decimal("0")
     )
+
+
+def context_total(context: ComparisonContext) -> Decimal:
+    return sum((correction_for(context, f) for f in FACTORS), start=Decimal("0"))
+
+
+def _factor_regions(name: str) -> tuple[_Region, ...]:
+    regions: list[_Region] = []
+    context = REGIONAL if name == "regional" else INDIVIDUAL
+    for factor in FACTORS:
+        target, comparable = MEASUREMENTS[name][factor.key]
+        rate = correction_for(context, factor)
+        for suffix, text in (
+            ("target-value", f"{name} {factor.label} target {target} m"),
+            ("comparable-value", f"{name} {factor.label} comparable {comparable} m"),
+            ("target-grade", f"{name} {factor.label} target grade {grade_of(factor, target)}"),
+            (
+                "comparable-grade",
+                f"{name} {factor.label} comparable grade {grade_of(factor, comparable)}",
+            ),
+            ("rate", f"{name} {factor.label} rate {rate}"),
+        ):
+            regions.append(_Region(f"{name}-{factor.key}-{suffix}", text, "cell", "factor-table"))
+    return tuple(regions)
 
 
 def _summary_regions(name: str, spec: FixtureSpec) -> tuple[_Region, ...]:
+    context = REGIONAL if name == "regional" else INDIVIDUAL
     blank = spec.copied_state == "blank"
-    return (
-        _Region(f"{name}-subtotal", f"{name} subtotal 5"),
-        _Region(f"{name}-total", f"{name} total 5"),
+    total = context_total(context)
+    regions = [
+        _Region(
+            f"{name}-{group}-subtotal", f"{name} {group} subtotal {group_subtotal(context, group)}"
+        )
+        for group in GROUPS
+    ]
+    regions.append(_Region(f"{name}-total", f"{name} total {total}"))
+    regions.append(
         _Region(
             f"{name}-copied-total",
-            "" if blank else f"{name} copied total {spec.copied_total}",
+            "" if blank else f"{name} copied total {spec.copied_total or total}",
             "cell" if blank else "text",
-        ),
+        )
     )
+    return tuple(regions)
 
 
 def _pages(pages: list[tuple[_Region, ...]], *, width: float = 460.0) -> list[SourcePage]:
@@ -282,27 +375,32 @@ def cite(document: SourceDocument, page: int, region_id: str) -> SourceCitation:
     )
 
 
-def _road_rule() -> FactorRule:
+def _factor_rule(factor: Factor) -> FactorRule:
+    rate = float(factor.rate)
     return FactorRule(
-        id=RULE_ID,
-        factor_id=FACTOR_ID,
+        id=factor.rule_id,
+        factor_id=factor.factor_id,
         kind="numeric_interval",
         unit="m",
         intervals=[
-            IntervalBand(grade=Grade.INFERIOR, maximum=BAND_THRESHOLD, maximum_inclusive=False),
-            IntervalBand(grade=Grade.EXCELLENT, minimum=BAND_THRESHOLD, minimum_inclusive=True),
+            IntervalBand(
+                grade=Grade.INFERIOR, maximum=float(factor.threshold), maximum_inclusive=False
+            ),
+            IntervalBand(
+                grade=Grade.EXCELLENT, minimum=float(factor.threshold), minimum_inclusive=True
+            ),
         ],
         correction_matrix=CorrectionMatrix(
             values={
-                "inferior": {"inferior": 0.0, "excellent": -5.0},
-                "excellent": {"inferior": 5.0, "excellent": 0.0},
+                "inferior": {"inferior": 0.0, "excellent": -rate},
+                "excellent": {"inferior": rate, "excellent": 0.0},
             }
         ),
     )
 
 
 def _unsupported_rule() -> FactorRule:
-    """A second critical factor the reviewed inventory cannot evaluate deterministically."""
+    """A critical factor the reviewed inventory cannot evaluate deterministically."""
     return FactorRule(
         id=UNSUPPORTED_RULE_ID,
         factor_id=UNSUPPORTED_FACTOR_ID,
@@ -313,15 +411,15 @@ def _unsupported_rule() -> FactorRule:
         ],
         correction_matrix=CorrectionMatrix(
             values={
-                "excellent": {"excellent": 0.0, "inferior": 3.0},
-                "inferior": {"excellent": -3.0, "inferior": 0.0},
+                "excellent": {"excellent": 0.0, "inferior": 9.0},
+                "inferior": {"excellent": -9.0, "inferior": 0.0},
             }
         ),
     )
 
 
 def _rule_set(criteria: SourceDocument, spec: FixtureSpec) -> FactorRuleSet:
-    rules = [_road_rule()]
+    rules = [_factor_rule(factor) for factor in FACTORS]
     if spec.unsupported_rule:
         rules.append(_unsupported_rule())
     return FactorRuleSet(
@@ -426,8 +524,8 @@ def build_material(spec: FixtureSpec) -> ReviewMaterial:
     contexts = [
         InventoryContext(
             context=context,
-            factor_ids=[FACTOR_ID],
-            evidence=[cite(forms, 1, f"{prefix(context)}-rate")],
+            factor_ids=[factor.factor_id for factor in FACTORS],
+            evidence=[cite(forms, 1, f"{prefix(context)}-{FACTORS[0].key}-rate")],
         )
         for context in spec.contexts
     ]
@@ -437,80 +535,132 @@ def build_material(spec: FixtureSpec) -> ReviewMaterial:
     pairs: list[EvidencedPair] = []
     for context in spec.contexts:
         name = prefix(context)
-        for region_id, value, factor in (
-            (f"{name}-target-grade", "target_grade", FACTOR_ID),
-            (f"{name}-comparable-grade", "comparable_grade", FACTOR_ID),
-            (f"{name}-rate", "adjustment_percent", FACTOR_ID),
-        ):
+        for factor in FACTORS:
+            target, comparable = MEASUREMENTS[name][factor.key]
+            rate = correction_for(context, factor)
+            for suffix, value in (
+                ("target-grade", "target_grade"),
+                ("comparable-grade", "comparable_grade"),
+                ("rate", "adjustment_percent"),
+            ):
+                slot_id = f"{name}-{factor.key}-{suffix}"
+                slots.append(
+                    ReviewSlot.model_validate(
+                        {
+                            "id": slot_id,
+                            "context": context,
+                            "factor_id": factor.factor_id,
+                            "value": value,
+                            "evidence": [cite(forms, 1, slot_id)],
+                        }
+                    )
+                )
+            for side, measurement in (("target", target), ("comparable", comparable)):
+                observed.append(
+                    _observed_value(
+                        forms,
+                        1,
+                        f"{name}-{factor.key}-{side}-grade",
+                        grade_of(factor, measurement).value,
+                        "grade",
+                    )
+                )
+            observed.append(
+                _observed_value(forms, 1, f"{name}-{factor.key}-rate", str(rate), "percent_points")
+            )
+            pairs.append(
+                EvidencedPair(
+                    context=context,
+                    pair=FactorPair(
+                        factor_id=factor.factor_id,
+                        target=_observation(
+                            forms,
+                            f"{name}-{factor.key}-target-value",
+                            target,
+                            measured=spec.measured,
+                        ),
+                        comparable=_observation(
+                            forms,
+                            f"{name}-{factor.key}-comparable-value",
+                            comparable,
+                            measured=spec.measured,
+                        ),
+                    ),
+                    target_sources=[cite(forms, 1, f"{name}-{factor.key}-target-value")],
+                    comparable_sources=[cite(forms, 1, f"{name}-{factor.key}-comparable-value")],
+                    target_reliability=_reliability(measured=spec.measured),
+                    comparable_reliability=_reliability(measured=spec.measured),
+                )
+            )
+        for group in GROUPS:
+            slot_id = f"{name}-{group}-subtotal"
             slots.append(
                 ReviewSlot.model_validate(
                     {
-                        "id": region_id,
+                        "id": slot_id,
                         "context": context,
-                        "factor_id": factor,
-                        "value": value,
-                        "evidence": [cite(forms, 1, region_id)],
+                        "value": "subtotal",
+                        "evidence": [cite(forms, 2, slot_id)],
                     }
                 )
             )
-        grades = {"target": "excellent", "comparable": "inferior"}
-        for side, grade in grades.items():
-            observed.append(_observed_value(forms, 1, f"{name}-{side}-grade", grade, "grade"))
+            observed.append(
+                _observed_value(
+                    forms, 2, slot_id, str(group_subtotal(context, group)), "percent_points"
+                )
+            )
+            checks.append(
+                ArithmeticCheck.model_validate(
+                    {
+                        "id": f"{name}-{group}-subtotal-sum",
+                        "kind": "sum",
+                        "inputs": [f"{name}-{f.key}-rate" for f in FACTORS if f.group == group],
+                        "target": slot_id,
+                        "evidence": [cite(criteria, 1, "procedure")],
+                    }
+                )
+            )
+        for suffix in ("total", "copied-total"):
+            slot_id = f"{name}-{suffix}"
+            slots.append(
+                ReviewSlot.model_validate(
+                    {
+                        "id": slot_id,
+                        "context": context,
+                        "value": "total",
+                        "derivable_blank": suffix == "copied-total"
+                        and spec.copied_state == "blank"
+                        and spec.blank_derivable,
+                        "evidence": [cite(forms, 2, slot_id)],
+                    }
+                )
+            )
         observed.append(
-            _observed_value(forms, 1, f"{name}-rate", CORRECTION_RATE, "percent_points")
-        )
-        for region_id, value in (
-            (f"{name}-subtotal", "subtotal"),
-            (f"{name}-total", "total"),
-            (f"{name}-copied-total", "total"),
-        ):
-            slots.append(
-                ReviewSlot.model_validate(
-                    {
-                        "id": region_id,
-                        "context": context,
-                        "value": value,
-                        "derivable_blank": region_id.endswith("copied-total")
-                        and spec.copied_state == "blank",
-                        "evidence": [cite(forms, 2, region_id)],
-                    }
-                )
+            _observed_value(
+                forms, 2, f"{name}-total", str(context_total(context)), "percent_points"
             )
-        observed.append(_observed_value(forms, 2, f"{name}-subtotal", "5", "percent_points"))
-        observed.append(_observed_value(forms, 2, f"{name}-total", "5", "percent_points"))
+        )
         observed.append(_copied_observation(forms, name, spec))
-        checks.extend(
+        checks.append(
             ArithmeticCheck.model_validate(
                 {
-                    "id": check_id,
-                    "kind": kind,
-                    "inputs": inputs,
-                    "target": target,
+                    "id": f"{name}-total-sum",
+                    "kind": "sum",
+                    "inputs": [f"{name}-{group}-subtotal" for group in GROUPS],
+                    "target": f"{name}-total",
                     "evidence": [cite(criteria, 1, "procedure")],
                 }
             )
-            for check_id, kind, inputs, target in (
-                (f"{name}-subtotal-sum", "sum", [f"{name}-rate"], f"{name}-subtotal"),
-                (f"{name}-total-sum", "sum", [f"{name}-subtotal"], f"{name}-total"),
-                (f"{name}-copy", "equals", [f"{name}-total"], f"{name}-copied-total"),
-            )
         )
-        pairs.append(
-            EvidencedPair(
-                context=context,
-                pair=FactorPair(
-                    factor_id=FACTOR_ID,
-                    target=_observation(
-                        forms, f"{name}-target-width", TARGET_WIDTH, measured=spec.measured
-                    ),
-                    comparable=_observation(
-                        forms, f"{name}-comparable-width", COMPARABLE_WIDTH, measured=spec.measured
-                    ),
-                ),
-                target_sources=[cite(forms, 1, f"{name}-target-width")],
-                comparable_sources=[cite(forms, 1, f"{name}-comparable-width")],
-                target_reliability=_reliability(measured=spec.measured),
-                comparable_reliability=_reliability(measured=spec.measured),
+        checks.append(
+            ArithmeticCheck.model_validate(
+                {
+                    "id": f"{name}-copy",
+                    "kind": "equals",
+                    "inputs": [f"{name}-total"],
+                    "target": f"{name}-copied-total",
+                    "evidence": [cite(criteria, 1, "procedure")],
+                }
             )
         )
     inventory = ReviewInventory(
@@ -543,11 +693,12 @@ def _copied_observation(forms: SourceDocument, name: str, spec: FixtureSpec) -> 
         return ObservedValue.model_validate(
             {"slot_id": slot_id, "state": "blank", "raw_text": "", "evidence": [citation]}
         )
+    context = REGIONAL if name == "regional" else INDIVIDUAL
     return ObservedValue.model_validate(
         {
             "slot_id": slot_id,
             "state": "present",
-            "value": spec.copied_total,
+            "value": spec.copied_total or str(context_total(context)),
             "unit": "percent_points",
             "raw_text": citation.excerpt,
             "evidence": [citation],
@@ -566,72 +717,29 @@ def forms_document(material: ReviewMaterial) -> SourceDocument:
     return next(d for d in material.policy.registry.documents if d.role == "forms")
 
 
-def _grade_slot(
-    material: ReviewMaterial,
-    context: ComparisonContext,
-    side: Literal["target", "comparable"],
-    grade: Grade,
-    measurement: Decimal,
-) -> ExpectedSlot:
-    forms = forms_document(material)
-    slot_id = f"{prefix(context)}-{side}-grade"
-    citation = cite(forms, 1, slot_id)
-    value: SlotValue = "target_grade" if side == "target" else "comparable_grade"
-    return ExpectedSlot(
-        slot_id=slot_id,
-        slot_value=value,
-        context=context,
-        factor_id=FACTOR_ID,
-        observed=ObservedExpectation(
-            state="present",
-            value=grade.value,
-            unit="grade",
-            raw_text=citation.excerpt,
-            citation=citation,
-        ),
-        independent=IndependentExpectation(
-            basis=ExpectationBasis.CLASSIFICATION,
-            value=grade.value,
-            classification=GradeDerivation(
-                rule_set_id=RULE_SET_ID,
-                rule_id=RULE_ID,
-                side=side,
-                measurement=measurement,
-                unit="m",
-                grade=grade,
-            ),
-            rationale=(
-                f"The criteria band the {side} width of {measurement} m falls into is "
-                f"{grade.value}."
-            ),
-        ),
-        expected_status="verified",
-        expected_kind="observed_comparison",
-        rationale=f"The printed {side} grade must equal the band the measurement falls in.",
-    )
-
-
-def _numeric_slot(
-    material: ReviewMaterial,
-    context: ComparisonContext,
-    suffix: str,
+def _slot(
+    *,
+    slot_id: str,
     slot_value: SlotValue,
+    context: ComparisonContext,
+    factor_id: str | None,
     page: int,
+    value: str,
+    unit: Literal["percent_points", "grade"],
+    material: ReviewMaterial,
     independent: IndependentExpectation,
     rationale: str,
 ) -> ExpectedSlot:
-    forms = forms_document(material)
-    slot_id = f"{prefix(context)}-{suffix}"
-    citation = cite(forms, page, slot_id)
+    citation = cite(forms_document(material), page, slot_id)
     return ExpectedSlot(
         slot_id=slot_id,
         slot_value=slot_value,
         context=context,
-        factor_id=FACTOR_ID if slot_value == "adjustment_percent" else None,
+        factor_id=factor_id,
         observed=ObservedExpectation(
             state="present",
-            value=CORRECTION_RATE,
-            unit="percent_points",
+            value=value,
+            unit=unit,
             raw_text=citation.excerpt,
             citation=citation,
         ),
@@ -643,82 +751,150 @@ def _numeric_slot(
 
 
 def _baseline_slots(spec: FixtureSpec, material: ReviewMaterial) -> dict[str, ExpectedSlot]:
+    """Every field verified, each grounded in the fixture rather than in a result."""
     slots: dict[str, ExpectedSlot] = {}
     for context in spec.contexts:
         name = prefix(context)
-        for slot in (
-            _grade_slot(material, context, "target", Grade.EXCELLENT, TARGET_WIDTH),
-            _grade_slot(material, context, "comparable", Grade.INFERIOR, COMPARABLE_WIDTH),
-            _numeric_slot(
-                material,
-                context,
-                "rate",
-                "adjustment_percent",
-                1,
-                IndependentExpectation(
+        for factor in FACTORS:
+            target, comparable = MEASUREMENTS[name][factor.key]
+            sides: tuple[tuple[Literal["target", "comparable"], Decimal], ...] = (
+                ("target", target),
+                ("comparable", comparable),
+            )
+            for side, measurement in sides:
+                grade = grade_of(factor, measurement)
+                boundary = (
+                    " exactly on the band threshold" if measurement == factor.threshold else ""
+                )
+                slot_id = f"{name}-{factor.key}-{side}-grade"
+                value: SlotValue = "target_grade" if side == "target" else "comparable_grade"
+                slots[slot_id] = _slot(
+                    slot_id=slot_id,
+                    slot_value=value,
+                    context=context,
+                    factor_id=factor.factor_id,
+                    page=1,
+                    value=grade.value,
+                    unit="grade",
+                    material=material,
+                    independent=IndependentExpectation(
+                        basis=ExpectationBasis.CLASSIFICATION,
+                        value=grade.value,
+                        classification=GradeDerivation(
+                            rule_set_id=RULE_SET_ID,
+                            rule_id=factor.rule_id,
+                            side=side,
+                            measurement=measurement,
+                            unit="m",
+                            grade=grade,
+                        ),
+                        rationale=(
+                            f"A {factor.label} of {measurement} m{boundary} falls in the "
+                            f"{grade.value} band of {factor.rule_id}."
+                        ),
+                    ),
+                    rationale=(
+                        f"The printed {side} {factor.label} grade must equal the band the "
+                        "measurement falls in."
+                    ),
+                )
+            rate = correction_for(context, factor)
+            slot_id = f"{name}-{factor.key}-rate"
+            slots[slot_id] = _slot(
+                slot_id=slot_id,
+                slot_value="adjustment_percent",
+                context=context,
+                factor_id=factor.factor_id,
+                page=1,
+                value=str(rate),
+                unit="percent_points",
+                material=material,
+                independent=IndependentExpectation(
                     basis=ExpectationBasis.CORRECTION,
-                    value=CORRECTION_RATE,
+                    value=str(rate),
                     correction=CorrectionDerivation(
                         rule_set_id=RULE_SET_ID,
-                        rule_id=RULE_ID,
-                        target_grade=Grade.EXCELLENT,
-                        comparable_grade=Grade.INFERIOR,
+                        rule_id=factor.rule_id,
+                        target_grade=grade_of(factor, target),
+                        comparable_grade=grade_of(factor, comparable),
                     ),
-                    rationale="The excellent/inferior cell of the correction matrix is 5.",
-                ),
-                "The printed rate must equal the correction matrix cell for the two grades.",
-            ),
-            _numeric_slot(
-                material,
-                context,
-                "subtotal",
-                "subtotal",
-                2,
-                IndependentExpectation(
-                    basis=ExpectationBasis.ARITHMETIC,
-                    value=CORRECTION_RATE,
-                    arithmetic=ArithmeticDerivation(
-                        operation="sum", input_slot_ids=(f"{name}-rate",)
-                    ),
-                    rationale="The criteria procedure sums the factor rates into the subtotal.",
-                ),
-                "The subtotal must equal the sum of this context's factor rates.",
-            ),
-            _numeric_slot(
-                material,
-                context,
-                "total",
-                "total",
-                2,
-                IndependentExpectation(
-                    basis=ExpectationBasis.SUMMARY,
-                    value=CORRECTION_RATE,
-                    summary=SummaryDerivation(rule_set_id=RULE_SET_ID),
                     rationale=(
-                        "The context total is the sum of the correction rates of every "
-                        "inventoried factor, re-classified from the fixture measurements."
+                        f"The {grade_of(factor, target).value}/"
+                        f"{grade_of(factor, comparable).value} cell of the {factor.label} "
+                        f"matrix is {rate}."
                     ),
                 ),
-                "The total must equal the corrections of this context's inventoried factors.",
-            ),
-            _numeric_slot(
-                material,
-                context,
-                "copied-total",
-                "total",
-                2,
-                IndependentExpectation(
+                rationale=(
+                    f"The printed {factor.label} rate must equal the matrix cell for its "
+                    "two grades."
+                ),
+            )
+        for group in GROUPS:
+            slot_id = f"{name}-{group}-subtotal"
+            members = [f.key for f in FACTORS if f.group == group]
+            slots[slot_id] = _slot(
+                slot_id=slot_id,
+                slot_value="subtotal",
+                context=context,
+                factor_id=None,
+                page=2,
+                value=str(group_subtotal(context, group)),
+                unit="percent_points",
+                material=material,
+                independent=IndependentExpectation(
                     basis=ExpectationBasis.ARITHMETIC,
-                    value=CORRECTION_RATE,
+                    value=str(group_subtotal(context, group)),
                     arithmetic=ArithmeticDerivation(
-                        operation="equals", input_slot_ids=(f"{name}-total",)
+                        operation="sum",
+                        input_slot_ids=tuple(f"{name}-{key}-rate" for key in members),
                     ),
-                    rationale="The copied field repeats the total of the same context.",
+                    rationale=(
+                        f"The criteria procedure sums the {group} factor rates "
+                        f"({', '.join(members)}) into that group's subtotal."
+                    ),
                 ),
-                "A value copied across pages must equal the total it was copied from.",
+                rationale=f"The {group} subtotal must equal the sum of its own factor rates.",
+            )
+        total = context_total(context)
+        slots[f"{name}-total"] = _slot(
+            slot_id=f"{name}-total",
+            slot_value="total",
+            context=context,
+            factor_id=None,
+            page=2,
+            value=str(total),
+            unit="percent_points",
+            material=material,
+            independent=IndependentExpectation(
+                basis=ExpectationBasis.SUMMARY,
+                value=str(total),
+                summary=SummaryDerivation(rule_set_id=RULE_SET_ID),
+                rationale=(
+                    "The context total is the sum of the corrections of every inventoried "
+                    "factor, each re-classified from the fixture measurements."
+                ),
             ),
-        ):
-            slots[slot.slot_id] = slot
+            rationale="The total must equal the corrections of this context's factors.",
+        )
+        slots[f"{name}-copied-total"] = _slot(
+            slot_id=f"{name}-copied-total",
+            slot_value="total",
+            context=context,
+            factor_id=None,
+            page=2,
+            value=str(total),
+            unit="percent_points",
+            material=material,
+            independent=IndependentExpectation(
+                basis=ExpectationBasis.ARITHMETIC,
+                value=str(total),
+                arithmetic=ArithmeticDerivation(
+                    operation="equals", input_slot_ids=(f"{name}-total",)
+                ),
+                rationale="The copied field repeats the total of the same context.",
+            ),
+            rationale="A value copied across pages must equal the total it was copied from.",
+        )
     return slots
 
 
@@ -793,15 +969,17 @@ def _structural(
                 rationale="Every comparison is recalculated from facts and the rule matrix.",
             )
         )
-        findings.append(
-            ExpectedFinding(
-                id=f"{key}/factor/{FACTOR_ID}",
-                kind=factor_kind,
-                status=factor_status,
-                rationale="Located text and model confidence alone cannot prove a reading.",
+        for factor in FACTORS:
+            findings.append(
+                ExpectedFinding(
+                    id=f"{key}/factor/{factor.factor_id}",
+                    kind=factor_kind,
+                    status=factor_status,
+                    rationale="Located text and model confidence alone cannot prove a reading.",
+                )
             )
-        )
-        for check in ("subtotal-sum", "total-sum", "copy"):
+        checks = [f"{group}-subtotal-sum" for group in GROUPS] + ["total-sum", "copy"]
+        for check in checks:
             check_id = f"{prefix(context)}-{check}"
             kind, status = overrides.get(check_id, (arithmetic_kind, arithmetic_status))
             findings.append(
@@ -1168,8 +1346,7 @@ def _missing_observation_case() -> GoldenFixture:
     material = build_material(spec)
     slots = _baseline_slots(spec, material)
     name = prefix(REGIONAL)
-    for suffix in ("target-grade", "comparable-grade", "rate"):
-        slot_id = f"{name}-{suffix}"
+    for slot_id in _factor_slot_ids(name):
         slots[slot_id] = _restate(
             slots[slot_id],
             status="needs_review",
@@ -1179,17 +1356,18 @@ def _missing_observation_case() -> GoldenFixture:
                 "case removes the current-source authority every fill depends on."
             ),
         )
-    subtotal_id = f"{name}-subtotal"
-    slots[subtotal_id] = _restate(
-        slots[subtotal_id],
-        status="needs_review",
-        kind="arithmetic_dependency",
-        keep_independent=False,
-        rationale=(
-            "No expected subtotal can be grounded here: its only input is an untrusted rate, "
-            "so the review must publish no expectation instead of guessing one."
-        ),
-    )
+    for group in GROUPS:
+        subtotal_id = f"{name}-{group}-subtotal"
+        slots[subtotal_id] = _restate(
+            slots[subtotal_id],
+            status="needs_review",
+            kind="arithmetic_dependency",
+            keep_independent=False,
+            rationale=(
+                "No expected subtotal can be grounded here: its inputs are untrusted rates, "
+                "so the review must publish no expectation instead of guessing one."
+            ),
+        )
     total_id = f"{name}-total"
     slots[total_id] = _restate(
         slots[total_id],
@@ -1362,17 +1540,17 @@ def _unreliable_slots(
     """No side is reliable, so no field keeps an independently grounded expectation."""
     slots = _baseline_slots(spec, material)
     name = prefix(spec.contexts[0])
-    for suffix in ("target-grade", "comparable-grade", "rate"):
-        slot_id = f"{name}-{suffix}"
-        slots[slot_id] = _restate(
-            slots[slot_id],
-            status="needs_review",
-            kind="observed_missing",
-            keep_independent=False,
-            rationale=rationale,
-        )
-    for suffix in ("subtotal", "total", "copied-total"):
-        slot_id = f"{name}-{suffix}"
+    for factor in FACTORS:
+        for suffix in ("target-grade", "comparable-grade", "rate"):
+            slot_id = f"{name}-{factor.key}-{suffix}"
+            slots[slot_id] = _restate(
+                slots[slot_id],
+                status="needs_review",
+                kind="observed_missing",
+                keep_independent=False,
+                rationale=rationale,
+            )
+    for slot_id in _derived_slot_ids(name):
         slots[slot_id] = _restate(
             slots[slot_id],
             status="needs_review",
@@ -1384,6 +1562,22 @@ def _unreliable_slots(
             ),
         )
     return slots
+
+
+def _derived_slot_ids(name: str) -> tuple[str, ...]:
+    return (
+        *(f"{name}-{group}-subtotal" for group in GROUPS),
+        f"{name}-total",
+        f"{name}-copied-total",
+    )
+
+
+def _factor_slot_ids(name: str) -> tuple[str, ...]:
+    return tuple(
+        f"{name}-{factor.key}-{suffix}"
+        for factor in FACTORS
+        for suffix in ("target-grade", "comparable-grade", "rate")
+    )
 
 
 def _zero_confidence_case() -> GoldenFixture:
@@ -1545,8 +1739,7 @@ def _unapproved_case() -> GoldenFixture:
     material = build_material(spec)
     slots = _baseline_slots(spec, material)
     name = prefix(REGIONAL)
-    for suffix in ("target-grade", "comparable-grade", "rate"):
-        slot_id = f"{name}-{suffix}"
+    for slot_id in _factor_slot_ids(name):
         slots[slot_id] = _restate(
             slots[slot_id],
             status="needs_review",
@@ -1556,13 +1749,12 @@ def _unapproved_case() -> GoldenFixture:
                 "requires approval of this exact material."
             ),
         )
-    for suffix in ("subtotal", "total", "copied-total"):
-        slot_id = f"{name}-{suffix}"
+    for slot_id in _derived_slot_ids(name):
         slots[slot_id] = _restate(
             slots[slot_id],
             status="needs_review",
             kind="arithmetic_dependency",
-            keep_independent=suffix != "subtotal",
+            keep_independent=not slot_id.endswith("-subtotal"),
             rationale=(
                 "Without exact-material authority no field becomes a trusted derivation input, "
                 "so the arithmetic chain never resolves."
@@ -1615,13 +1807,71 @@ def _unapproved_case() -> GoldenFixture:
     )
 
 
+def _blank_not_derivable_case() -> GoldenFixture:
+    spec = FixtureSpec(copied_state="blank", blank_derivable=False)
+    material = build_material(spec)
+    slots = _baseline_slots(spec, material)
+    name = prefix(REGIONAL)
+    forms = forms_document(material)
+    slot_id = f"{name}-copied-total"
+    slots[slot_id] = _restate(
+        slots[slot_id],
+        status="needs_review",
+        kind="observed_unresolved",
+        derivable_blank=False,
+        observed=ObservedExpectation(state="blank", raw_text="", citation=cite(forms, 2, slot_id)),
+        rationale=(
+            "The review still derives the right value and still publishes it as the expected "
+            "total, and the field must stay empty anyway. Knowing the correct number is not "
+            "authority to write it into a form."
+        ),
+    )
+    structural = _structural(
+        spec, arithmetic_overrides={f"{name}-copy": ("arithmetic", "needs_review")}
+    )
+    return GoldenFixture(
+        case=_assemble(
+            case_key="blank-not-derivable",
+            dimension=GoldenDimension.MISSING_DATA,
+            title="A blank without fill authority stays blank",
+            summary=(
+                "The same empty copy cell as the derivable case, with derivation not approved. "
+                "The total is still grounded, and the field must still be left alone: having a "
+                "correct value is not authority to write it into a form."
+            ),
+            spec=spec,
+            material=material,
+            authorized=True,
+            slots=slots,
+            structural=structural,
+            tasks=(
+                _correction_task(
+                    "authorize-blank-fill",
+                    (f"observed/{slot_id}", f"arithmetic/{name}-copy"),
+                    "Record the copied total, or approve this blank for derivation.",
+                    "Only a human can grant a blank field derivation authority.",
+                ),
+            ),
+            artifact=ExpectedArtifact(
+                artifact_status="not_requested",
+                rationale="An unauthorised blank must never reach a written form field.",
+            ),
+            verification_rationale="An unapproved blank keeps the gate from passing.",
+        ),
+        material=material,
+        request=golden_request(write_pdf=False),
+        authorized=True,
+    )
+
+
 def build_revision_chain() -> tuple[ReviewMaterial, ReviewMaterial, ReviewMaterial]:
     """r1 proposes, r2 confirms both sides, r3 relabels a side and loses every confirmation."""
     first = build_material(FixtureSpec(measured=False, identity_version="r1"))
     parent = RevisionSnapshot.capture(first, "r1")
     second = parent.revise(parent.material, "r2").material
-    for side in ("target", "comparable"):
-        confirm_side(second.facts.pairs[0], side, reviewer=GOLDEN_REVIEWER)
+    for pair in second.facts.pairs:
+        for side in ("target", "comparable"):
+            confirm_side(pair, side, reviewer=GOLDEN_REVIEWER)
     relabeled = RevisionSnapshot.capture(second, "r2").material
     relabeled.facts.pairs[0].target_reliability.method = "native_numeric"
     third = RevisionSnapshot.capture(second, "r2").revise(relabeled, "r3").material
@@ -1730,6 +1980,7 @@ def golden_fixtures() -> tuple[GoldenFixture, ...]:
     return (
         _normal_case(),
         _blank_derived_case(),
+        _blank_not_derivable_case(),
         _missing_page_case(),
         _missing_observation_case(),
         _conflicting_case(),

@@ -1,6 +1,6 @@
 {
   "adjudications": [],
-  "case_key": "blank-derived",
+  "case_key": "blank-not-derivable",
   "data_use": {
     "contains_real_case_data": false,
     "generator": "golden-cases-v1",
@@ -12,10 +12,13 @@
     "artifact_status": "not_requested",
     "context": null,
     "field_ids": [],
-    "rationale": "This case exercises derivation, not the writer boundary."
+    "rationale": "An unauthorised blank must never reach a written form field."
   },
   "expected_coverage": {
-    "missing": [],
+    "missing": [
+      "arithmetic/regional-copy",
+      "observed/regional-copied-total"
+    ],
     "unsupported": []
   },
   "expected_findings": [
@@ -83,7 +86,7 @@
       "id": "arithmetic/regional-copy",
       "kind": "arithmetic",
       "rationale": "Each declared arithmetic constraint is checked on one candidate.",
-      "status": "verified"
+      "status": "needs_review"
     },
     {
       "id": "observed/regional-road-target-grade",
@@ -159,9 +162,9 @@
     },
     {
       "id": "observed/regional-copied-total",
-      "kind": "derivable_blank",
-      "rationale": "The copy cell is empty and approved for derivation, so the grounded total may fill it. An unapproved blank would stay unresolved.",
-      "status": "verified"
+      "kind": "observed_unresolved",
+      "rationale": "The review still derives the right value and still publishes it as the expected total, and the field must stay empty anyway. Knowing the correct number is not authority to write it into a form.",
+      "status": "needs_review"
     }
   ],
   "expected_rules": [
@@ -781,9 +784,9 @@
         "scope": "regional",
         "target_id": "golden-target"
       },
-      "derivable_blank": true,
-      "expected_kind": "derivable_blank",
-      "expected_status": "verified",
+      "derivable_blank": false,
+      "expected_kind": "observed_unresolved",
+      "expected_status": "needs_review",
       "factor_id": null,
       "independent": {
         "adjudication_id": null,
@@ -821,17 +824,46 @@
         "unit": null,
         "value": null
       },
-      "rationale": "The copy cell is empty and approved for derivation, so the grounded total may fill it. An unapproved blank would stay unresolved.",
+      "rationale": "The review still derives the right value and still publishes it as the expected total, and the field must stay empty anyway. Knowing the correct number is not authority to write it into a form.",
       "slot_id": "regional-copied-total",
       "slot_value": "total"
     }
   ],
-  "expected_status": "verified",
-  "expected_tasks": [],
+  "expected_status": "needs_review",
+  "expected_tasks": [
+    {
+      "allowed_responses": [
+        "correct",
+        "reject"
+      ],
+      "finding_ids": [
+        "observed/regional-copied-total",
+        "arithmetic/regional-copy"
+      ],
+      "kind": "material_correction",
+      "question": "Record the copied total, or approve this blank for derivation.",
+      "rationale": "Only a human can grant a blank field derivation authority.",
+      "required_permission": "correct_material",
+      "result_digest": null,
+      "side": null,
+      "task_ref": "authorize-blank-fill"
+    }
+  ],
   "expected_verification": {
-    "critical": [],
-    "rationale": "A derived blank is grounded, so the gate can still pass.",
-    "status": "verified",
+    "critical": [
+      {
+        "code": "verification_blocker",
+        "message": "Verification could not pass; inspect review findings or request human review.",
+        "schema_version": "service-v1"
+      },
+      {
+        "code": "verification_blocker",
+        "message": "Verification could not pass; inspect review findings or request human review.",
+        "schema_version": "service-v1"
+      }
+    ],
+    "rationale": "An unapproved blank keeps the gate from passing.",
+    "status": "needs_review",
     "warnings": []
   },
   "fixture": {
@@ -852,7 +884,7 @@
       }
     ],
     "generator_version": "golden-cases-v1",
-    "material_digest": "b69bce85c1f47a54774208eb1df8cfe3c261a46ba720f7af7302ca41edf9511f"
+    "material_digest": "25b872cbc6142b1c207df1704b3330570c8aa2a8dba756c93b0b08bcd1fa8fb0"
   },
   "identity": {
     "case_id": "golden-case",
@@ -865,7 +897,7 @@
   "material_authority": "exact_material_approved",
   "parent_case_key": null,
   "schema_version": "golden-1",
-  "summary": "The copied total is blank on the form. Because the inventory approves that blank for derivation, the independently grounded total fills it.",
-  "title": "Approved blank filled from a grounded total",
+  "summary": "The same empty copy cell as the derivable case, with derivation not approved. The total is still grounded, and the field must still be left alone: having a correct value is not authority to write it into a form.",
+  "title": "A blank without fill authority stays blank",
   "unresolved": []
 }

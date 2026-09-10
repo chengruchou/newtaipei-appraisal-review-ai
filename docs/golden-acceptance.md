@@ -40,6 +40,7 @@ One manifest per case under `tests/goldens/`, typed by `domain/golden_contract.p
 | --- | --- | --- | --- | --- | --- |
 | `normal-complete` | normal | verified | simulated | none | 0 |
 | `blank-derived` | missing data | verified | not requested | none | 0 |
+| `blank-not-derivable` | missing data | needs review | not requested | material correction | 0 |
 | `missing-page` | missing page | needs review | not requested | material correction | 0 |
 | `missing-observation` | missing data | needs review | not requested | material correction | 1 |
 | `conflicting-sources` | conflicting sources | failed | not requested | material correction | 0 |
@@ -56,7 +57,19 @@ human decision. `normal-complete` covers the required value kinds in one case: t
 comparable grade, correction rate, subtotal, total and a total copied across pages, with the
 factor rows evidenced on page 1 and the summary rows on page 2.
 
-Two acceptance facts worth reading directly out of the matrix:
+Every level of the form carries a different number, and each factor a different correction
+magnitude, so an engine that reported a rate where a total belongs, summed the wrong group,
+or reported one comparison context's results under the other does not pass. In
+`normal-complete` the rates are `5`, `-3` and `7`, the two group subtotals are `2` and `7`,
+and the total is `9`; in `multi-context` the individual context mirrors every one of those
+values with the opposite sign. One residual collision remains by construction: a group with a
+single factor has a subtotal equal to that factor's rate.
+
+The regional road measurement sits exactly on its band threshold (`10 m`, lower bound
+inclusive), so every case built on the base fixture exercises the interval boundary where the
+reviewer-side band reading and the engine's are most likely to disagree.
+
+Three acceptance facts worth reading directly out of the matrix:
 
 - `missing-observation` shows that a single field with no citation withdraws the
   current-source authority every other grounded fill depends on. Correct values elsewhere in
@@ -64,11 +77,23 @@ Two acceptance facts worth reading directly out of the matrix:
 - `revision-r3` shows that approving the exact material does not restore a cleared
   confirmation. A revision that only relabels a side as native extraction is demoted back to
   a proposal, and the earlier confirmations in that revision are cleared.
+- `blank-not-derivable` shows that knowing the right value is not authority to write it. The
+  review derives and publishes the correct total, and the unapproved blank stays empty.
 
 ## How an expected value is grounded
 
 An expected value is authored, never captured. `expected_slots[].independent.basis` names the
-authority, and `golden_validator.verify_manifest` re-derives it from the fixture:
+authority, and `golden_validator.verify_manifest` re-derives it from the fixture.
+
+**What is re-derived, and what is not.** `verify_manifest` re-derives the reviewed fields:
+every observation, citation, classification, correction, summary, arithmetic derivation and
+adjudication in `expected_slots`, plus the fixture provenance; it shape-checks
+`expected_tasks` against the frozen `HumanTask` contract and `expected_rules` against the
+material. It does **not** re-derive `expected_findings`, `expected_coverage` or
+`expected_verification` from the fixture: those are authored, cross-checked against each
+other and against the slots by the contract validators, and then compared to the engine's
+actual output by `compare_case_review` and `compare_review_run`. Case status is derived from
+the authored findings, not from the material.
 
 | Basis | Re-derivation performed by CI |
 | --- | --- |
@@ -162,9 +187,9 @@ tests (`tests/unit/test_golden_contract.py`), and the workflow additionally runs
 `scripts/generate_goldens.py` in check mode. Together they assert that:
 
 - the committed manifests match the fixture generator;
-- every manifest still follows from its fixture;
+- every reviewed field in a manifest still follows from its fixture;
 - the whole-case review, the independent claim checker, the completion gate and the writer
-  boundary all match the reviewed expectations for all twelve cases;
+  boundary all match the reviewed expectations for all thirteen cases;
 - the sanitized service envelope publishes one public diagnostic per blocking finding.
 
 ## Consumers

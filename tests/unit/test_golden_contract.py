@@ -103,7 +103,9 @@ def test_expected_value_must_be_printed_in_the_cited_excerpt():
 def test_a_rewritten_correction_rate_fails_the_matrix_rederivation():
     fixture = case_named("normal-complete")
     payload = fixture.case.model_dump(mode="json")
-    payload["expected_slots"][slot_index(payload, "regional-rate")]["independent"]["value"] = "9"
+    payload["expected_slots"][slot_index(payload, "regional-road-rate")]["independent"]["value"] = (
+        "9"
+    )
     report = verify_manifest(GoldenCase.model_validate(payload), fixture.material)
     assert not report.ok
     assert any(m.check == "correction" for m in report.mismatches)
@@ -112,7 +114,7 @@ def test_a_rewritten_correction_rate_fails_the_matrix_rederivation():
 def test_a_rewritten_subtotal_fails_the_arithmetic_rederivation():
     fixture = case_named("normal-complete")
     payload = fixture.case.model_dump(mode="json")
-    index = slot_index(payload, "regional-subtotal")
+    index = slot_index(payload, "regional-site-subtotal")
     payload["expected_slots"][index]["independent"]["value"] = "9"
     report = verify_manifest(GoldenCase.model_validate(payload), fixture.material)
     assert not report.ok
@@ -122,7 +124,7 @@ def test_a_rewritten_subtotal_fails_the_arithmetic_rederivation():
 def test_a_grade_outside_its_band_fails_the_classification_rederivation():
     fixture = case_named("normal-complete")
     payload = fixture.case.model_dump(mode="json")
-    slot = payload["expected_slots"][slot_index(payload, "regional-target-grade")]
+    slot = payload["expected_slots"][slot_index(payload, "regional-road-target-grade")]
     slot["independent"]["value"] = "inferior"
     slot["independent"]["classification"]["grade"] = "inferior"
     report = verify_manifest(GoldenCase.model_validate(payload), fixture.material)
@@ -133,7 +135,7 @@ def test_a_grade_outside_its_band_fails_the_classification_rederivation():
 def test_an_unresolvable_citation_fails_verification():
     fixture = case_named("normal-complete")
     payload = fixture.case.model_dump(mode="json")
-    index = slot_index(payload, "regional-rate")
+    index = slot_index(payload, "regional-road-rate")
     payload["expected_slots"][index]["observed"]["citation"]["region_id"] = "not-a-region"
     report = verify_manifest(GoldenCase.model_validate(payload), fixture.material)
     assert not report.ok
@@ -184,7 +186,7 @@ def test_declared_status_must_agree_with_the_expected_findings():
 def test_a_verified_field_needs_an_independent_expectation():
     fixture = case_named("normal-complete")
     payload = fixture.case.model_dump(mode="json")
-    payload["expected_slots"][slot_index(payload, "regional-rate")]["independent"] = None
+    payload["expected_slots"][slot_index(payload, "regional-road-rate")]["independent"] = None
     with pytest.raises(ValidationError, match="independent expected value"):
         GoldenCase.model_validate(payload)
 
@@ -247,11 +249,16 @@ def test_a_consistently_inverted_chain_cannot_re_derive():
     fixture = case_named("normal-complete")
     payload = fixture.case.model_dump(mode="json")
     for slot in payload["expected_slots"]:
-        if slot["slot_id"] == "regional-rate":
+        if slot["slot_id"] == "regional-road-rate":
             slot["independent"]["value"] = "-5"
             slot["independent"]["correction"]["target_grade"] = "inferior"
             slot["independent"]["correction"]["comparable_grade"] = "excellent"
-        elif slot["slot_id"] in {"regional-subtotal", "regional-total", "regional-copied-total"}:
+        elif slot["slot_id"] in {
+            "regional-site-subtotal",
+            "regional-access-subtotal",
+            "regional-total",
+            "regional-copied-total",
+        }:
             slot["independent"]["value"] = "-5"
     report = verify_manifest(GoldenCase.model_validate(payload), fixture.material)
     assert not report.ok
@@ -261,7 +268,7 @@ def test_a_consistently_inverted_chain_cannot_re_derive():
 def test_a_grade_cannot_be_grounded_on_the_other_side():
     fixture = case_named("normal-complete")
     payload = fixture.case.model_dump(mode="json")
-    slot = payload["expected_slots"][slot_index(payload, "regional-target-grade")]
+    slot = payload["expected_slots"][slot_index(payload, "regional-road-target-grade")]
     slot["independent"]["classification"]["side"] = "comparable"
     slot["independent"]["classification"]["measurement"] = "8"
     slot["independent"]["classification"]["grade"] = "inferior"
@@ -275,8 +282,8 @@ def test_a_circular_derivation_grounds_nothing():
     fixture = case_named("normal-complete")
     payload = fixture.case.model_dump(mode="json")
     circular = {
-        "regional-subtotal": "regional-total",
-        "regional-total": "regional-subtotal",
+        "regional-site-subtotal": "regional-total",
+        "regional-total": "regional-site-subtotal",
     }
     for slot in payload["expected_slots"]:
         source = circular.get(slot["slot_id"])
@@ -305,7 +312,7 @@ def test_a_citation_must_be_the_slots_own_source_cell():
     fixture = case_named("normal-complete")
     payload = fixture.case.model_dump(mode="json")
     total = payload["expected_slots"][slot_index(payload, "regional-total")]
-    subtotal = payload["expected_slots"][slot_index(payload, "regional-subtotal")]
+    subtotal = payload["expected_slots"][slot_index(payload, "regional-site-subtotal")]
     subtotal["observed"]["citation"] = total["observed"]["citation"]
     report = verify_manifest(GoldenCase.model_validate(payload), fixture.material)
     assert not report.ok
