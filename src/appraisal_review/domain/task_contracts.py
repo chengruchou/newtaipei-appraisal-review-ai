@@ -27,6 +27,27 @@ from appraisal_review.domain.service_contracts import (
 )
 
 
+class TaskView(ServiceModel):
+    """One task plus the names a client would otherwise have to re-derive to answer it.
+
+    `subject_id` is the ledger name of the observation the task is about. It is published
+    rather than left to the caller because deriving it means canonicalizing the comparison
+    context, and two languages do not canonicalize alike: Python's json.dumps escapes
+    non-ASCII by default and JavaScript's JSON.stringify does not, so a browser would
+    compute a different name for any case whose identifiers are not ASCII. Every identifier
+    in this project's real cases is Chinese.
+    """
+
+    task: HumanTask
+    subject_id: str | None = None
+
+    @model_validator(mode="after")
+    def named_side(self) -> TaskView:
+        if (self.task.side is None) != (self.subject_id is None):
+            raise ValueError("A task about an exact side carries that side's subject name")
+        return self
+
+
 class TaskListView(ServiceModel):
     """The tasks of one job the caller may act on, ordered oldest first.
 
@@ -35,13 +56,13 @@ class TaskListView(ServiceModel):
     """
 
     job: JobReference
-    tasks: tuple[HumanTask, ...] = ()
+    tasks: tuple[TaskView, ...] = ()
 
     @model_validator(mode="after")
     def one_case(self) -> TaskListView:
-        if any(task.run.revision.case_id != self.job.case_id for task in self.tasks):
+        if any(view.task.run.revision.case_id != self.job.case_id for view in self.tasks):
             raise ValueError("Every listed task must belong to the job's case")
-        if len({task.task_id for task in self.tasks}) != len(self.tasks):
+        if len({view.task.task_id for view in self.tasks}) != len(self.tasks):
             raise ValueError("Duplicate listed task")
         return self
 

@@ -331,6 +331,15 @@ revision and schedules no run. Rule, material and publication approval are not a
 here; the existing exact-material authority still owns them, and such a task reports
 capability_unavailable rather than advertising an authorization the service never wrote.
 
+The task routes return `TaskView`, which is the task plus the `subject_id` its own
+correction must carry. That name is published rather than derived by the caller because
+deriving it means canonicalizing the comparison context, and two languages do not
+canonicalize alike: `ComparisonContext.key()` is `json.dumps`, which escapes non-ASCII by
+default, while a browser's `JSON.stringify` does not. A client that rebuilt the name would
+compute a different string for any case identified in Chinese, which is every real case
+here, and every correction would be refused. Do not substitute one canonicalizer for
+another; ask the server for the name.
+
 Reads and writes are separated by permission: `review` is enough to see a task, while
 answering additionally requires the task's own permission. A task belonging to another
 principal, and a case this principal cannot see, are both reported as not_found; replying

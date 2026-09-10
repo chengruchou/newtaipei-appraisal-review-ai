@@ -18,11 +18,12 @@ from fastapi import APIRouter, Depends
 from appraisal_review.api.dependencies import get_human_task_service, get_principal
 from appraisal_review.application.human_tasks import HumanTaskService
 from appraisal_review.application.service_guards import Principal
-from appraisal_review.domain.service_contracts import HumanResponse, HumanTask, ServiceProblem
+from appraisal_review.domain.service_contracts import HumanResponse, ServiceProblem
 from appraisal_review.domain.task_contracts import (
     ResponseReceipt,
     RevisionListView,
     TaskListView,
+    TaskView,
 )
 
 router = APIRouter(tags=["human-tasks"])
@@ -60,10 +61,11 @@ async def list_job_revisions(
     return await service.list_revisions(principal, job_id)
 
 
-@router.get("/v1/review-tasks/{task_id}", response_model=HumanTask, responses=PROBLEM_RESPONSES)
+@router.get("/v1/review-tasks/{task_id}", response_model=TaskView, responses=PROBLEM_RESPONSES)
 async def read_task(
     task_id: UUID, service: ServiceDependency, principal: PrincipalDependency
-) -> HumanTask:
+) -> TaskView:
+    """Carries the subject name of its own side, so no client re-derives a canonical key."""
     return await service.read_task(principal, task_id)
 
 

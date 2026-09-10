@@ -22,6 +22,7 @@ from appraisal_review.application.revisions import RevisionSnapshot
 from appraisal_review.application.service_guards import Principal, ServiceFault
 from appraisal_review.domain.confidence import confirm_side, confirmation_digest
 from appraisal_review.domain.job_contracts import JobStatus
+from appraisal_review.domain.review_contracts import ComparisonContext
 from appraisal_review.domain.service_contracts import (
     ActorReference,
     FactSideReference,
@@ -371,7 +372,10 @@ def test_reading_is_allowed_without_the_permission_that_answering_needs() -> Non
         task = fact_task(harness.snapshot, harness.run_id)
         await harness.setup((task,), principal=reader)
 
-        assert (await harness.service.read_task(reader, task.task_id)).task_id == task.task_id
+        view = await harness.service.read_task(reader, task.task_id)
+        assert view.task.task_id == task.task_id
+        # The server names the subject, so a browser never re-derives a canonical key.
+        assert view.subject_id == side_subject_id(task.side)
         with pytest.raises(ServiceFault) as refused:
             await harness.service.respond(reader, task.task_id, confirming(harness, task))
 
@@ -438,3 +442,24 @@ def test_the_revision_list_is_a_linked_chain_in_order() -> None:
         assert view.revisions[1].parent == view.revisions[0].reference
 
     asyncio.run(scenario())
+
+
+def test_the_published_subject_name_uses_the_servers_own_canonical_form() -> None:
+    """A browser must not re-derive this name, and this pins why.
+
+    `ComparisonContext.key()` is `json.dumps(...)`, which escapes non-ASCII by default.
+    JavaScript's `JSON.stringify` does not, so a client deriving the same name for a case
+    identified in Chinese would compute a different string and have every correction
+    rejected. Every real case in this project is identified in Chinese.
+    """
+    side = FactSideReference(
+        context=ComparisonContext(scope="regional", target_id="板橋-A", comparable_id="三重-B"),
+        factor_id="golden.road_width",
+        side="target",
+        input_digest="a" * 64,
+    )
+
+    name = side_subject_id(side)
+
+    assert name == '["regional","\\u677f\\u6a4b-A","\\u4e09\\u91cd-B"]:golden.road_width:target'
+    assert "板橋" not in name

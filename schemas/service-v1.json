@@ -1786,7 +1786,7 @@
         "tasks": {
           "default": [],
           "items": {
-            "$ref": "#/$defs/HumanTask"
+            "$ref": "#/$defs/TaskView"
           },
           "title": "Tasks",
           "type": "array"
@@ -1796,6 +1796,38 @@
         "job"
       ],
       "title": "TaskListView",
+      "type": "object"
+    },
+    "TaskView": {
+      "additionalProperties": false,
+      "description": "One task plus the names a client would otherwise have to re-derive to answer it.\n\n`subject_id` is the ledger name of the observation the task is about. It is published\nrather than left to the caller because deriving it means canonicalizing the comparison\ncontext, and two languages do not canonicalize alike: Python's json.dumps escapes\nnon-ASCII by default and JavaScript's JSON.stringify does not, so a browser would\ncompute a different name for any case whose identifiers are not ASCII. Every identifier\nin this project's real cases is Chinese.",
+      "properties": {
+        "schema_version": {
+          "const": "service-v1",
+          "default": "service-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "task": {
+          "$ref": "#/$defs/HumanTask"
+        },
+        "subject_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Subject Id"
+        }
+      },
+      "required": [
+        "task"
+      ],
+      "title": "TaskView",
       "type": "object"
     },
     "ToolOutcome": {

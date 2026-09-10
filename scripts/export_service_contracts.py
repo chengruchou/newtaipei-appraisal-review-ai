@@ -10,6 +10,7 @@ from pydantic.json_schema import models_json_schema
 
 from appraisal_review.adapters.local.service import LocalServiceConfiguration
 from appraisal_review.adapters.local.synthetic import synthetic_material
+from appraisal_review.application.human_tasks import task_view
 from appraisal_review.application.revisions import RevisionSnapshot
 from appraisal_review.domain.confidence import confirm_side, confirmation_digest
 from appraisal_review.domain.factor_models import WorkflowStatus
@@ -57,6 +58,7 @@ from appraisal_review.domain.task_contracts import (
     ResponseReceipt,
     RevisionListView,
     TaskListView,
+    TaskView,
 )
 
 MODELS = (
@@ -87,6 +89,7 @@ MODELS = (
     JobReference,
     JobStatusView,
     JobAcceptance,
+    TaskView,
     TaskListView,
     RevisionListView,
     ResponseReceipt,
@@ -239,7 +242,7 @@ def fixtures() -> dict[str, ServiceModel]:
             documents=revision.documents,
             idempotency_key="fixture-submit-1",
         ),
-        "task-list": TaskListView(job=job, tasks=(task,)),
+        "task-list": TaskListView(job=job, tasks=(task_view(task),)),
         "revision-list": RevisionListView(job=job, revisions=(revision,)),
         "response-receipt": ResponseReceipt(
             task_id=task.task_id,

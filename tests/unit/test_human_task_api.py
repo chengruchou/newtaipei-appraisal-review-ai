@@ -75,8 +75,9 @@ def test_a_task_is_readable_by_its_owner() -> None:
             response = await env.client.get(f"/v1/review-tasks/{env.task.task_id}")
 
             assert response.status_code == 200
-            assert response.json()["task_id"] == str(env.task.task_id)
-            assert response.json()["state"] == "open"
+            assert response.json()["task"]["task_id"] == str(env.task.task_id)
+            assert response.json()["task"]["state"] == "open"
+            assert response.json()["subject_id"] is not None
 
     asyncio.run(scenario())
 
@@ -166,6 +167,7 @@ def test_the_job_task_and_revision_lists_are_mounted() -> None:
             revisions = await env.client.get(f"/v1/review-jobs/{job_id}/revisions")
 
             assert tasks.status_code == 200 and len(tasks.json()["tasks"]) == 1
+            assert tasks.json()["tasks"][0]["subject_id"] is not None
             assert revisions.status_code == 200
             listed = [r["reference"]["revision_id"] for r in revisions.json()["revisions"]]
             assert listed == ["r1"]

@@ -8,59 +8,63 @@
   "tasks": [
     {
       "schema_version": "service-v1",
-      "task_id": "00000000-0000-0000-0000-000000000002",
-      "run": {
+      "task": {
         "schema_version": "service-v1",
-        "run_id": "00000000-0000-0000-0000-000000000001",
-        "revision": {
+        "task_id": "00000000-0000-0000-0000-000000000002",
+        "run": {
           "schema_version": "service-v1",
-          "case_id": "synthetic-case",
-          "revision_id": "fixture-r1",
-          "material_digest": "0445917fd60f720359309b58c8edff03c93c929c7270f4ebfde304545595c124"
+          "run_id": "00000000-0000-0000-0000-000000000001",
+          "revision": {
+            "schema_version": "service-v1",
+            "case_id": "synthetic-case",
+            "revision_id": "fixture-r1",
+            "material_digest": "0445917fd60f720359309b58c8edff03c93c929c7270f4ebfde304545595c124"
+          },
+          "attempt_id": null,
+          "runtime_session_id": null
         },
-        "attempt_id": null,
-        "runtime_session_id": null
-      },
-      "version": 1,
-      "kind": "fact_confirmation",
-      "required_permission": "confirm_observation",
-      "state": "open",
-      "side": {
-        "schema_version": "service-v1",
-        "context": {
-          "scope": "regional",
-          "target_id": "synthetic-target",
-          "comparable_id": "synthetic-comparable"
+        "version": 1,
+        "kind": "fact_confirmation",
+        "required_permission": "confirm_observation",
+        "state": "open",
+        "side": {
+          "schema_version": "service-v1",
+          "context": {
+            "scope": "regional",
+            "target_id": "synthetic-target",
+            "comparable_id": "synthetic-comparable"
+          },
+          "factor_id": "synthetic.road_width",
+          "side": "target",
+          "input_digest": "cf1f887efd3871b180e33a9dd52725a0b056b75ccdb7bb84b13c55256579595b"
         },
-        "factor_id": "synthetic.road_width",
-        "side": "target",
-        "input_digest": "cf1f887efd3871b180e33a9dd52725a0b056b75ccdb7bb84b13c55256579595b"
+        "result_digest": null,
+        "question": "Confirm this synthetic observation.",
+        "evidence": [
+          {
+            "document_id": "synthetic-forms",
+            "content_hash": "37f1b0a1872d76a68cd0a482eb4aeb0ce4f3dae564f5e23340b470cef41835ab",
+            "version": "1",
+            "page": 1,
+            "region_id": "body",
+            "bbox": [
+              1.0,
+              2.0,
+              90.0,
+              40.0
+            ],
+            "excerpt": "Synthetic target 10 m; comparable 9 m; rate 5"
+          }
+        ],
+        "finding_ids": [
+          "fixture-confirmation"
+        ],
+        "allowed_responses": [
+          "confirm",
+          "reject"
+        ]
       },
-      "result_digest": null,
-      "question": "Confirm this synthetic observation.",
-      "evidence": [
-        {
-          "document_id": "synthetic-forms",
-          "content_hash": "37f1b0a1872d76a68cd0a482eb4aeb0ce4f3dae564f5e23340b470cef41835ab",
-          "version": "1",
-          "page": 1,
-          "region_id": "body",
-          "bbox": [
-            1.0,
-            2.0,
-            90.0,
-            40.0
-          ],
-          "excerpt": "Synthetic target 10 m; comparable 9 m; rate 5"
-        }
-      ],
-      "finding_ids": [
-        "fixture-confirmation"
-      ],
-      "allowed_responses": [
-        "confirm",
-        "reject"
-      ]
+      "subject_id": "[\"regional\",\"synthetic-target\",\"synthetic-comparable\"]:synthetic.road_width:target"
     }
   ]
 }

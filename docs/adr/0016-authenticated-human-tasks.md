@@ -86,6 +86,16 @@ Rule, material and publication approval are admitted by the frozen contract but 
 answered here: the existing exact-material authority owns them. Such a task reports
 capability_unavailable rather than advertising an authorization the service never wrote.
 
+### The server names the subject; the client never re-derives it
+
+A correction names the observation it changes, and that name canonicalizes the comparison
+context through `json.dumps`, which escapes non-ASCII by default. A browser's
+`JSON.stringify` does not, so a client computing the same name would produce a different
+string for any case identified in Chinese — which is every real case in this project — and
+every correction would be rejected as invalid. The task routes therefore return `TaskView`,
+carrying the server's own `subject_id`. This is the repository's existing rule about not
+substituting one canonicalizer for another, applied across a language boundary.
+
 ### Reading and answering are separate permissions
 
 `review` is enough to see a task; answering additionally requires the task's own permission.

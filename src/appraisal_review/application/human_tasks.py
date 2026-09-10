@@ -49,6 +49,7 @@ from appraisal_review.domain.task_contracts import (
     ResponseReceipt,
     RevisionListView,
     TaskListView,
+    TaskView,
 )
 from appraisal_review.ports.human_tasks import HumanTaskStore, TaskRecord
 from appraisal_review.ports.jobs import ConditionFailed
@@ -73,6 +74,12 @@ def _new_revision_id() -> str:
 def side_subject_id(side: FactSideReference) -> str:
     """Stable name for the one observation a task is about, used in the changes ledger."""
     return f"{side.context.key()}:{side.factor_id}:{side.side}"
+
+
+def task_view(task: HumanTask) -> TaskView:
+    """Publish a task together with the subject name its own correction must carry."""
+    subject = None if task.side is None else side_subject_id(task.side)
+    return TaskView(task=task, subject_id=subject)
 
 
 def _locate(material: ReviewMaterial, side: FactSideReference) -> EvidencedPair:
@@ -129,11 +136,11 @@ class HumanTaskService:
         principal.require(records[0].case_id, Permission.REVIEW)
         return TaskListView(
             job=JobReference(case_id=records[0].case_id, job_id=job_id),
-            tasks=tuple(record.task for record in records),
+            tasks=tuple(task_view(record.task) for record in records),
         )
 
-    async def read_task(self, principal: Principal, task_id: UUID) -> HumanTask:
-        return (await self._authorized(principal, task_id)).task
+    async def read_task(self, principal: Principal, task_id: UUID) -> TaskView:
+        return task_view((await self._authorized(principal, task_id)).task)
 
     async def list_revisions(self, principal: Principal, job_id: UUID) -> RevisionListView:
         records = await self.store.list_tasks(job_id=job_id)
