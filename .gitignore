@@ -7,6 +7,7 @@ __pycache__/
 .ruff_cache/
 .mypy_cache/
 .coverage
+.coverage.*
 htmlcov/
 dist/
 build/
@@ -43,3 +44,9 @@ tmp-images/
 node_modules/
 .next/
 coverage/
+
+# Frontend workspace
+web/node_modules/
+web/dist/
+web/playwright-report/
+web/test-results/
