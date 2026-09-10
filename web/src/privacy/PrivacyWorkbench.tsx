@@ -8,6 +8,7 @@ import {
 } from "./client";
 import { PageReview } from "./PageReview";
 import { RegionEditor } from "./RegionEditor";
+import { PdfPreview } from "./PdfPreview";
 
 /** Mount separately from cloud review routes; the bridge session remains in component memory. */
 export function PrivacyWorkbench({ bridgeBase }: { bridgeBase: string }) {
@@ -306,12 +307,7 @@ export function PrivacyReviewPanel({ client }: { client: LocalPrivacyClient }) {
           {preview && pdfUrl ? (
             <section aria-label="Exact sanitized preview">
               <h2>Inspect exactly what will be transferred</h2>
-              <iframe
-                title="Sanitized PDF preview"
-                src={pdfUrl}
-                onLoad={() => setPdfViewed(true)}
-                style={{ width: "100%", height: "32rem", border: "1px solid" }}
-              />
+              <PdfPreview key={pdfUrl} url={pdfUrl} onReady={setPdfViewed} />
               <h3>Sanitized reviewer text</h3>
               <pre>{preview.reviewer_text ?? "No reviewer text"}</pre>
               <h3>Sanitized manifest</h3>

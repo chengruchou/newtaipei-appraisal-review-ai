@@ -13,6 +13,12 @@ and validation, including a final wall-clock check if synchronous processing
 delays the timer callback. A response completed after that deadline remains an
 unknown outcome. Transfers are not retried automatically.
 
+Sanitized previews use the bundled PDF.js renderer rather than the browser's
+native PDF plugin. Every page must finish rendering before the explicit approval
+checkbox becomes available; a failed page keeps approval blocked. The exact PDF
+is hash-checked before its local blob URL is given to the renderer. This addresses
+the real Chromium failure where a native PDF iframe never finished loading.
+
 For the isolated rehearsal, `scripts/browser-proxy.mjs` reads `bridge_url` from
 the private file named by `PRIVACY_BROWSER_FIXTURE` and publishes only the
 validated `privacy_bridge_base`. The private manifest and its token are never
