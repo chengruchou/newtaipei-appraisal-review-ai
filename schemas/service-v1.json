@@ -792,6 +792,146 @@
       "title": "HumanTask",
       "type": "object"
     },
+    "JobAcceptance": {
+      "additionalProperties": false,
+      "description": "202 body: acceptance of durable responsibility, never a result or a claim of work.\n\njob_status is pinned so this body can never advertise progress that has not happened.\nAn idempotent replay of an already-known submission returns JobStatusView instead.",
+      "properties": {
+        "schema_version": {
+          "const": "service-v1",
+          "default": "service-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "job": {
+          "$ref": "#/$defs/JobReference"
+        },
+        "run": {
+          "$ref": "#/$defs/RunReference"
+        },
+        "job_status": {
+          "const": "queued",
+          "default": "queued",
+          "title": "Job Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "job",
+        "run"
+      ],
+      "title": "JobAcceptance",
+      "type": "object"
+    },
+    "JobReference": {
+      "additionalProperties": false,
+      "description": "External job identity. Never carries a queue name, table name or worker identity.",
+      "properties": {
+        "schema_version": {
+          "const": "service-v1",
+          "default": "service-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "case_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+          "title": "Case Id",
+          "type": "string"
+        },
+        "job_id": {
+          "format": "uuid",
+          "title": "Job Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "case_id",
+        "job_id"
+      ],
+      "title": "JobReference",
+      "type": "object"
+    },
+    "JobStatus": {
+      "description": "Durable control-plane status; never interchangeable with wire ExecutionStatus.",
+      "enum": [
+        "queued",
+        "dispatched",
+        "running",
+        "waiting_for_human",
+        "retryable_failed",
+        "failed",
+        "succeeded",
+        "cancelled"
+      ],
+      "title": "JobStatus",
+      "type": "string"
+    },
+    "JobStatusView": {
+      "additionalProperties": false,
+      "description": "Authorized status projection: no storage URI, lease owner or dispatch token.",
+      "properties": {
+        "schema_version": {
+          "const": "service-v1",
+          "default": "service-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "job": {
+          "$ref": "#/$defs/JobReference"
+        },
+        "job_status": {
+          "$ref": "#/$defs/JobStatus"
+        },
+        "current_run": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RunReference"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "attempt_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Attempt Count",
+          "type": "integer"
+        },
+        "result_version": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Result Version",
+          "type": "integer"
+        },
+        "open_task_ids": {
+          "default": [],
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "title": "Open Task Ids",
+          "type": "array"
+        },
+        "problem": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ServiceProblem"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "job",
+        "job_status"
+      ],
+      "title": "JobStatusView",
+      "type": "object"
+    },
     "MaterialRevision": {
       "additionalProperties": false,
       "properties": {

@@ -13,6 +13,12 @@ from appraisal_review.adapters.local.synthetic import synthetic_material
 from appraisal_review.application.revisions import RevisionSnapshot
 from appraisal_review.domain.confidence import confirmation_digest
 from appraisal_review.domain.factor_models import WorkflowStatus
+from appraisal_review.domain.job_contracts import (
+    JobAcceptance,
+    JobReference,
+    JobStatus,
+    JobStatusView,
+)
 from appraisal_review.domain.review_contracts import ReviewFinding
 from appraisal_review.domain.service_contracts import (
     AcceptedResponse,
@@ -73,6 +79,9 @@ MODELS = (
     ServiceVerification,
     VerificationDiagnostic,
     ReviewSubmission,
+    JobReference,
+    JobStatusView,
+    JobAcceptance,
 )
 
 
@@ -138,6 +147,7 @@ def fixtures() -> dict[str, ServiceModel]:
             ),
         ),
     )
+    job = JobReference(case_id=revision.reference.case_id, job_id=UUID(int=6))
     artifact = ArtifactManifest(
         artifact_id=UUID(int=4),
         content_hash="a" * 64,
@@ -185,6 +195,21 @@ def fixtures() -> dict[str, ServiceModel]:
             artifact_status="written",
             artifacts=(artifact,),
             verification=ServiceVerification(status="verified"),
+        ),
+        "job-acceptance": JobAcceptance(job=job, run=run),
+        "job-status-queued": JobStatusView(job=job, job_status=JobStatus.QUEUED, current_run=run),
+        "job-status-waiting": JobStatusView(
+            job=job,
+            job_status=JobStatus.WAITING_FOR_HUMAN,
+            current_run=run,
+            open_task_ids=(task.task_id,),
+        ),
+        "job-status-failed": JobStatusView(
+            job=job,
+            job_status=JobStatus.FAILED,
+            current_run=run,
+            attempt_count=5,
+            problem=ServiceProblem(code=ServiceErrorCode.EXECUTION),
         ),
         "submission": ReviewSubmission(
             revision=revision.reference,
