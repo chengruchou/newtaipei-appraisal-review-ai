@@ -1,0 +1,465 @@
+{
+  "adjudications": [],
+  "case_key": "normal-complete",
+  "data_use": {
+    "contains_real_case_data": false,
+    "generator": "golden-cases-v1",
+    "origin": "synthetic",
+    "statement": "Fully synthetic acceptance fixture. Documents, districts, measurements and rules are invented for testing and are not derived from any real appraisal case."
+  },
+  "dimension": "normal",
+  "expected_artifact": {
+    "artifact_status": "simulated",
+    "context": {
+      "comparable_id": "golden-comparable-a",
+      "scope": "regional",
+      "target_id": "golden-target"
+    },
+    "field_ids": [
+      "form-target-grade",
+      "form-comparable-grade",
+      "form-rate",
+      "form-total"
+    ],
+    "rationale": "The contract test double reports the mapped fields without creating a file, so the artifact is simulated rather than written."
+  },
+  "expected_coverage": {
+    "missing": [],
+    "unsupported": []
+  },
+  "expected_findings": [
+    {
+      "id": "trust",
+      "kind": "approval",
+      "rationale": "Reviewing the exact material requires separately injected authority.",
+      "status": "verified"
+    },
+    {
+      "id": "sources",
+      "kind": "source_identity",
+      "rationale": "The reviewed registry is the current parser registry.",
+      "status": "verified"
+    },
+    {
+      "id": "inventory",
+      "kind": "inventory",
+      "rationale": "The inventory was examined independently of any result.",
+      "status": "verified"
+    },
+    {
+      "id": "[\"regional\",\"golden-target\",\"golden-comparable-a\"]",
+      "kind": "calculation",
+      "rationale": "Every comparison is recalculated from facts and the rule matrix.",
+      "status": "verified"
+    },
+    {
+      "id": "[\"regional\",\"golden-target\",\"golden-comparable-a\"]/factor/golden.road_width",
+      "kind": "factor",
+      "rationale": "Located text and model confidence alone cannot prove a reading.",
+      "status": "verified"
+    },
+    {
+      "id": "arithmetic/regional-subtotal-sum",
+      "kind": "arithmetic",
+      "rationale": "Each declared arithmetic constraint is checked on one candidate.",
+      "status": "verified"
+    },
+    {
+      "id": "arithmetic/regional-total-sum",
+      "kind": "arithmetic",
+      "rationale": "Each declared arithmetic constraint is checked on one candidate.",
+      "status": "verified"
+    },
+    {
+      "id": "arithmetic/regional-copy",
+      "kind": "arithmetic",
+      "rationale": "Each declared arithmetic constraint is checked on one candidate.",
+      "status": "verified"
+    },
+    {
+      "id": "observed/regional-target-grade",
+      "kind": "observed_comparison",
+      "rationale": "The printed target grade must equal the band the measurement falls in.",
+      "status": "verified"
+    },
+    {
+      "id": "observed/regional-comparable-grade",
+      "kind": "observed_comparison",
+      "rationale": "The printed comparable grade must equal the band the measurement falls in.",
+      "status": "verified"
+    },
+    {
+      "id": "observed/regional-rate",
+      "kind": "observed_comparison",
+      "rationale": "The printed rate must equal the correction matrix cell for the two grades.",
+      "status": "verified"
+    },
+    {
+      "id": "observed/regional-subtotal",
+      "kind": "observed_comparison",
+      "rationale": "The subtotal must equal the sum of this context's factor rates.",
+      "status": "verified"
+    },
+    {
+      "id": "observed/regional-total",
+      "kind": "observed_comparison",
+      "rationale": "The total must equal the sum of this context's subtotals.",
+      "status": "verified"
+    },
+    {
+      "id": "observed/regional-copied-total",
+      "kind": "observed_comparison",
+      "rationale": "A value copied across pages must equal the total it was copied from.",
+      "status": "verified"
+    }
+  ],
+  "expected_rules": [
+    {
+      "authored_status": "candidate",
+      "business_approval": "pending",
+      "material_authority": "exact_material_approved",
+      "rationale": "The rule set is a candidate extracted from the synthetic criteria. Exact-material authority is a test grant and is not a formal business approval of the bands.",
+      "rule_set_id": "golden-road-v1",
+      "version": "1.0.0"
+    }
+  ],
+  "expected_slots": [
+    {
+      "context": {
+        "comparable_id": "golden-comparable-a",
+        "scope": "regional",
+        "target_id": "golden-target"
+      },
+      "derivable_blank": false,
+      "expected_kind": "observed_comparison",
+      "expected_status": "verified",
+      "factor_id": "golden.road_width",
+      "independent": {
+        "adjudication_id": null,
+        "arithmetic": null,
+        "basis": "rule_classification",
+        "classification": {
+          "grade": "excellent",
+          "measurement": "12",
+          "rule_id": "golden-road.v1",
+          "rule_set_id": "golden-road-v1",
+          "side": "target",
+          "unit": "m"
+        },
+        "correction": null,
+        "rationale": "The criteria band the target width of 12 m falls into is excellent.",
+        "value": "excellent"
+      },
+      "observed": {
+        "citation": {
+          "bbox": [
+            20.0,
+            135.0,
+            440.0,
+            160.0
+          ],
+          "content_hash": "57cdaf9e97474e83bfac9a5c92c3739499cdbb596698b5e06458e1492d6ee1a6",
+          "document_id": "golden-forms",
+          "excerpt": "regional target grade excellent",
+          "page": 1,
+          "region_id": "regional-target-grade",
+          "version": "1"
+        },
+        "raw_text": "regional target grade excellent",
+        "state": "present",
+        "unit": "grade",
+        "value": "excellent"
+      },
+      "rationale": "The printed target grade must equal the band the measurement falls in.",
+      "slot_id": "regional-target-grade",
+      "slot_value": "target_grade"
+    },
+    {
+      "context": {
+        "comparable_id": "golden-comparable-a",
+        "scope": "regional",
+        "target_id": "golden-target"
+      },
+      "derivable_blank": false,
+      "expected_kind": "observed_comparison",
+      "expected_status": "verified",
+      "factor_id": "golden.road_width",
+      "independent": {
+        "adjudication_id": null,
+        "arithmetic": null,
+        "basis": "rule_classification",
+        "classification": {
+          "grade": "inferior",
+          "measurement": "8",
+          "rule_id": "golden-road.v1",
+          "rule_set_id": "golden-road-v1",
+          "side": "comparable",
+          "unit": "m"
+        },
+        "correction": null,
+        "rationale": "The criteria band the comparable width of 8 m falls into is inferior.",
+        "value": "inferior"
+      },
+      "observed": {
+        "citation": {
+          "bbox": [
+            20.0,
+            95.0,
+            440.0,
+            120.0
+          ],
+          "content_hash": "57cdaf9e97474e83bfac9a5c92c3739499cdbb596698b5e06458e1492d6ee1a6",
+          "document_id": "golden-forms",
+          "excerpt": "regional comparable grade inferior",
+          "page": 1,
+          "region_id": "regional-comparable-grade",
+          "version": "1"
+        },
+        "raw_text": "regional comparable grade inferior",
+        "state": "present",
+        "unit": "grade",
+        "value": "inferior"
+      },
+      "rationale": "The printed comparable grade must equal the band the measurement falls in.",
+      "slot_id": "regional-comparable-grade",
+      "slot_value": "comparable_grade"
+    },
+    {
+      "context": {
+        "comparable_id": "golden-comparable-a",
+        "scope": "regional",
+        "target_id": "golden-target"
+      },
+      "derivable_blank": false,
+      "expected_kind": "observed_comparison",
+      "expected_status": "verified",
+      "factor_id": "golden.road_width",
+      "independent": {
+        "adjudication_id": null,
+        "arithmetic": null,
+        "basis": "rule_correction",
+        "classification": null,
+        "correction": {
+          "comparable_grade": "inferior",
+          "rule_id": "golden-road.v1",
+          "rule_set_id": "golden-road-v1",
+          "target_grade": "excellent"
+        },
+        "rationale": "The excellent/inferior cell of the correction matrix is 5.",
+        "value": "5"
+      },
+      "observed": {
+        "citation": {
+          "bbox": [
+            20.0,
+            55.0,
+            440.0,
+            80.0
+          ],
+          "content_hash": "57cdaf9e97474e83bfac9a5c92c3739499cdbb596698b5e06458e1492d6ee1a6",
+          "document_id": "golden-forms",
+          "excerpt": "regional road rate 5",
+          "page": 1,
+          "region_id": "regional-rate",
+          "version": "1"
+        },
+        "raw_text": "regional road rate 5",
+        "state": "present",
+        "unit": "percent_points",
+        "value": "5"
+      },
+      "rationale": "The printed rate must equal the correction matrix cell for the two grades.",
+      "slot_id": "regional-rate",
+      "slot_value": "adjustment_percent"
+    },
+    {
+      "context": {
+        "comparable_id": "golden-comparable-a",
+        "scope": "regional",
+        "target_id": "golden-target"
+      },
+      "derivable_blank": false,
+      "expected_kind": "observed_comparison",
+      "expected_status": "verified",
+      "factor_id": null,
+      "independent": {
+        "adjudication_id": null,
+        "arithmetic": {
+          "input_slot_ids": [
+            "regional-rate"
+          ],
+          "operation": "sum",
+          "quantum": "0.01"
+        },
+        "basis": "arithmetic_derivation",
+        "classification": null,
+        "correction": null,
+        "rationale": "The criteria procedure sums the factor rates into the subtotal.",
+        "value": "5"
+      },
+      "observed": {
+        "citation": {
+          "bbox": [
+            20.0,
+            215.0,
+            440.0,
+            240.0
+          ],
+          "content_hash": "57cdaf9e97474e83bfac9a5c92c3739499cdbb596698b5e06458e1492d6ee1a6",
+          "document_id": "golden-forms",
+          "excerpt": "regional subtotal 5",
+          "page": 2,
+          "region_id": "regional-subtotal",
+          "version": "1"
+        },
+        "raw_text": "regional subtotal 5",
+        "state": "present",
+        "unit": "percent_points",
+        "value": "5"
+      },
+      "rationale": "The subtotal must equal the sum of this context's factor rates.",
+      "slot_id": "regional-subtotal",
+      "slot_value": "subtotal"
+    },
+    {
+      "context": {
+        "comparable_id": "golden-comparable-a",
+        "scope": "regional",
+        "target_id": "golden-target"
+      },
+      "derivable_blank": false,
+      "expected_kind": "observed_comparison",
+      "expected_status": "verified",
+      "factor_id": null,
+      "independent": {
+        "adjudication_id": null,
+        "arithmetic": {
+          "input_slot_ids": [
+            "regional-subtotal"
+          ],
+          "operation": "sum",
+          "quantum": "0.01"
+        },
+        "basis": "arithmetic_derivation",
+        "classification": null,
+        "correction": null,
+        "rationale": "The criteria procedure sums the subtotals into the total.",
+        "value": "5"
+      },
+      "observed": {
+        "citation": {
+          "bbox": [
+            20.0,
+            175.0,
+            440.0,
+            200.0
+          ],
+          "content_hash": "57cdaf9e97474e83bfac9a5c92c3739499cdbb596698b5e06458e1492d6ee1a6",
+          "document_id": "golden-forms",
+          "excerpt": "regional total 5",
+          "page": 2,
+          "region_id": "regional-total",
+          "version": "1"
+        },
+        "raw_text": "regional total 5",
+        "state": "present",
+        "unit": "percent_points",
+        "value": "5"
+      },
+      "rationale": "The total must equal the sum of this context's subtotals.",
+      "slot_id": "regional-total",
+      "slot_value": "total"
+    },
+    {
+      "context": {
+        "comparable_id": "golden-comparable-a",
+        "scope": "regional",
+        "target_id": "golden-target"
+      },
+      "derivable_blank": false,
+      "expected_kind": "observed_comparison",
+      "expected_status": "verified",
+      "factor_id": null,
+      "independent": {
+        "adjudication_id": null,
+        "arithmetic": {
+          "input_slot_ids": [
+            "regional-total"
+          ],
+          "operation": "equals",
+          "quantum": "0.01"
+        },
+        "basis": "arithmetic_derivation",
+        "classification": null,
+        "correction": null,
+        "rationale": "The copied field repeats the total of the same context.",
+        "value": "5"
+      },
+      "observed": {
+        "citation": {
+          "bbox": [
+            20.0,
+            135.0,
+            440.0,
+            160.0
+          ],
+          "content_hash": "57cdaf9e97474e83bfac9a5c92c3739499cdbb596698b5e06458e1492d6ee1a6",
+          "document_id": "golden-forms",
+          "excerpt": "regional copied total 5",
+          "page": 2,
+          "region_id": "regional-copied-total",
+          "version": "1"
+        },
+        "raw_text": "regional copied total 5",
+        "state": "present",
+        "unit": "percent_points",
+        "value": "5"
+      },
+      "rationale": "A value copied across pages must equal the total it was copied from.",
+      "slot_id": "regional-copied-total",
+      "slot_value": "total"
+    }
+  ],
+  "expected_status": "verified",
+  "expected_tasks": [],
+  "expected_verification": {
+    "critical": [],
+    "rationale": "Every required identity is verified, so the gate can pass.",
+    "status": "verified",
+    "warnings": []
+  },
+  "fixture": {
+    "documents": [
+      {
+        "content_hash": "d0eba710d31faf32429e0d231392dfe17f1969f3126edf4c3cea5f218cbeae08",
+        "document_id": "golden-criteria",
+        "page_count": 1,
+        "role": "criteria",
+        "version": "1"
+      },
+      {
+        "content_hash": "57cdaf9e97474e83bfac9a5c92c3739499cdbb596698b5e06458e1492d6ee1a6",
+        "document_id": "golden-forms",
+        "page_count": 2,
+        "role": "forms",
+        "version": "1"
+      }
+    ],
+    "generator_version": "golden-cases-v1",
+    "material_digest": "1503a8a59a4e7fa25db6758f6b5abdb12be7a88b786648b49629003ebee1a49f"
+  },
+  "identity": {
+    "case_id": "golden-case",
+    "district": "golden-district",
+    "effective_date": "2026-09-01",
+    "land_use_category": "golden-commercial",
+    "version": "r1",
+    "zone": "golden-zone"
+  },
+  "material_authority": "exact_material_approved",
+  "parent_case_key": null,
+  "schema_version": "golden-1",
+  "summary": "Grades, rate, subtotal, total and the copied total are all printed, evidenced and consistent. The case is completable without a human decision.",
+  "title": "Complete case with cross-page evidence",
+  "unresolved": []
+}

@@ -1,0 +1,147 @@
+{
+  "cases": [
+    {
+      "artifact_status": "simulated",
+      "case_key": "normal-complete",
+      "dimension": "normal",
+      "expected_status": "verified",
+      "human_tasks": [],
+      "material_digest": "1503a8a59a4e7fa25db6758f6b5abdb12be7a88b786648b49629003ebee1a49f",
+      "title": "Complete case with cross-page evidence",
+      "unresolved": []
+    },
+    {
+      "artifact_status": "not_requested",
+      "case_key": "blank-derived",
+      "dimension": "missing_data",
+      "expected_status": "verified",
+      "human_tasks": [],
+      "material_digest": "8e23a10f7e73f5a63b8e38e17ed219fd6820239e8a06cda376e5ef19c884c768",
+      "title": "Approved blank filled from a grounded total",
+      "unresolved": []
+    },
+    {
+      "artifact_status": "not_requested",
+      "case_key": "missing-page",
+      "dimension": "missing_page",
+      "expected_status": "needs_review",
+      "human_tasks": [
+        "material_correction"
+      ],
+      "material_digest": "cdf011c73026c22dc6e8c94ec77c5a6c45d6ba70de92591728ee7c34be47019f",
+      "title": "Incomplete page inventory blocks completion",
+      "unresolved": []
+    },
+    {
+      "artifact_status": "not_requested",
+      "case_key": "missing-observation",
+      "dimension": "missing_data",
+      "expected_status": "needs_review",
+      "human_tasks": [
+        "material_correction"
+      ],
+      "material_digest": "061ad96a0f2859afb5611cef1ea6215b175aee58c6e66e8d58891bbb4b4e5fcc",
+      "title": "An unevidenced field withdraws case-wide fill authority",
+      "unresolved": [
+        "observed/regional-copied-total"
+      ]
+    },
+    {
+      "artifact_status": "not_requested",
+      "case_key": "conflicting-sources",
+      "dimension": "conflicting_sources",
+      "expected_status": "failed",
+      "human_tasks": [
+        "material_correction"
+      ],
+      "material_digest": "eb580aaa35444629be8fe9b08ab91006565aa454b45d4e1e3c0cbe36fd5e48f3",
+      "title": "Copied total contradicts the grounded total",
+      "unresolved": []
+    },
+    {
+      "artifact_status": "not_requested",
+      "case_key": "zero-confidence",
+      "dimension": "zero_confidence",
+      "expected_status": "needs_review",
+      "human_tasks": [
+        "fact_confirmation",
+        "fact_confirmation"
+      ],
+      "material_digest": "2467486b0a7b7661aa8b08392605762ab7d773cd28b7a5b28a5ea6d8999691e9",
+      "title": "Located values with zero measured confidence",
+      "unresolved": []
+    },
+    {
+      "artifact_status": "not_requested",
+      "case_key": "unsupported-rule",
+      "dimension": "unsupported_rule",
+      "expected_status": "needs_review",
+      "human_tasks": [
+        "rule_approval"
+      ],
+      "material_digest": "d1129677d4d54a99b2b36b49e545d5e7ac051a6fc3450b93e5381e432338479a",
+      "title": "An unsupported criteria rule fails explicitly",
+      "unresolved": []
+    },
+    {
+      "artifact_status": "unsupported_contexts",
+      "case_key": "multi-context",
+      "dimension": "multiple_contexts",
+      "expected_status": "verified",
+      "human_tasks": [],
+      "material_digest": "918c9248a98ff0b16d8722f36b988d8071b2a558a4b4bf3c0c465e165ecd1f57",
+      "title": "Two verified comparison contexts, one writer boundary",
+      "unresolved": []
+    },
+    {
+      "artifact_status": "not_requested",
+      "case_key": "unapproved-material",
+      "dimension": "unapproved_material",
+      "expected_status": "needs_review",
+      "human_tasks": [
+        "material_approval"
+      ],
+      "material_digest": "1503a8a59a4e7fa25db6758f6b5abdb12be7a88b786648b49629003ebee1a49f",
+      "title": "Correct values without exact-material approval",
+      "unresolved": []
+    },
+    {
+      "artifact_status": "not_requested",
+      "case_key": "revision-r1",
+      "dimension": "revision_chain",
+      "expected_status": "needs_review",
+      "human_tasks": [
+        "fact_confirmation",
+        "fact_confirmation"
+      ],
+      "material_digest": "2467486b0a7b7661aa8b08392605762ab7d773cd28b7a5b28a5ea6d8999691e9",
+      "title": "Revision 1: model proposals await confirmation",
+      "unresolved": []
+    },
+    {
+      "artifact_status": "not_requested",
+      "case_key": "revision-r2",
+      "dimension": "revision_chain",
+      "expected_status": "verified",
+      "human_tasks": [],
+      "material_digest": "c7285e85e88ae0cd994e8bebb982477526362e3146a1be294060cee893526f6d",
+      "title": "Revision 2: confirmed sides verify the same readings",
+      "unresolved": []
+    },
+    {
+      "artifact_status": "not_requested",
+      "case_key": "revision-r3",
+      "dimension": "revision_chain",
+      "expected_status": "needs_review",
+      "human_tasks": [
+        "fact_confirmation",
+        "fact_confirmation"
+      ],
+      "material_digest": "a326f6ee7c76b5f2075daf29a762019aba3e628e82c9ba903b28f797cb6a7a6c",
+      "title": "Revision 3: relabelling cannot restore extraction authority",
+      "unresolved": []
+    }
+  ],
+  "generator_version": "golden-cases-v1",
+  "schema_version": "golden-1"
+}

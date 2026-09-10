@@ -1,0 +1,517 @@
+{
+  "adjudications": [
+    {
+      "decision": null,
+      "outcome": "disputed",
+      "question": "Should an unobserved copy field be treated as an approved blank and derived, or stay missing until the page is re-read?",
+      "rationale": "One reviewer reads the empty cell as an approved blank; the other holds that a field with no evidence at all was never observed. The fixture records the disagreement instead of choosing the reading that would make the case pass.",
+      "record_id": "copied-total-treatment",
+      "reviewers": [
+        "golden-reviewer-1",
+        "golden-reviewer-2"
+      ]
+    }
+  ],
+  "case_key": "missing-observation",
+  "data_use": {
+    "contains_real_case_data": false,
+    "generator": "golden-cases-v1",
+    "origin": "synthetic",
+    "statement": "Fully synthetic acceptance fixture. Documents, districts, measurements and rules are invented for testing and are not derived from any real appraisal case."
+  },
+  "dimension": "missing_data",
+  "expected_artifact": {
+    "artifact_status": "not_requested",
+    "context": null,
+    "field_ids": [],
+    "rationale": "No artifact may be produced while a reviewed field is unobserved."
+  },
+  "expected_coverage": {
+    "missing": [
+      "arithmetic/regional-copy",
+      "arithmetic/regional-subtotal-sum",
+      "arithmetic/regional-total-sum",
+      "observed/regional-comparable-grade",
+      "observed/regional-copied-total",
+      "observed/regional-rate",
+      "observed/regional-subtotal",
+      "observed/regional-target-grade",
+      "observed/regional-total"
+    ],
+    "unsupported": []
+  },
+  "expected_findings": [
+    {
+      "id": "trust",
+      "kind": "approval",
+      "rationale": "Reviewing the exact material requires separately injected authority.",
+      "status": "verified"
+    },
+    {
+      "id": "sources",
+      "kind": "source_identity",
+      "rationale": "The reviewed registry is the current parser registry.",
+      "status": "verified"
+    },
+    {
+      "id": "inventory",
+      "kind": "inventory",
+      "rationale": "The inventory was examined independently of any result.",
+      "status": "verified"
+    },
+    {
+      "id": "[\"regional\",\"golden-target\",\"golden-comparable-a\"]",
+      "kind": "calculation",
+      "rationale": "Every comparison is recalculated from facts and the rule matrix.",
+      "status": "verified"
+    },
+    {
+      "id": "[\"regional\",\"golden-target\",\"golden-comparable-a\"]/factor/golden.road_width",
+      "kind": "factor",
+      "rationale": "Located text and model confidence alone cannot prove a reading.",
+      "status": "verified"
+    },
+    {
+      "id": "arithmetic/regional-subtotal-sum",
+      "kind": "arithmetic_dependency",
+      "rationale": "Each declared arithmetic constraint is checked on one candidate.",
+      "status": "needs_review"
+    },
+    {
+      "id": "arithmetic/regional-total-sum",
+      "kind": "arithmetic_dependency",
+      "rationale": "Each declared arithmetic constraint is checked on one candidate.",
+      "status": "needs_review"
+    },
+    {
+      "id": "arithmetic/regional-copy",
+      "kind": "arithmetic_dependency",
+      "rationale": "Each declared arithmetic constraint is checked on one candidate.",
+      "status": "needs_review"
+    },
+    {
+      "id": "observed/regional-copied-total",
+      "kind": "source_purpose",
+      "rationale": "An observation with no citation cannot be shown to come from the case form.",
+      "status": "needs_review"
+    },
+    {
+      "id": "observed/regional-target-grade",
+      "kind": "observed_unresolved",
+      "rationale": "The value and its derivation still agree, but one unevidenced field in the case removes the current-source authority every fill depends on.",
+      "status": "needs_review"
+    },
+    {
+      "id": "observed/regional-comparable-grade",
+      "kind": "observed_unresolved",
+      "rationale": "The value and its derivation still agree, but one unevidenced field in the case removes the current-source authority every fill depends on.",
+      "status": "needs_review"
+    },
+    {
+      "id": "observed/regional-rate",
+      "kind": "observed_unresolved",
+      "rationale": "The value and its derivation still agree, but one unevidenced field in the case removes the current-source authority every fill depends on.",
+      "status": "needs_review"
+    },
+    {
+      "id": "observed/regional-subtotal",
+      "kind": "arithmetic_dependency",
+      "rationale": "No expected subtotal can be grounded here: its only input is an untrusted rate, so the review must publish no expectation instead of guessing one.",
+      "status": "needs_review"
+    },
+    {
+      "id": "observed/regional-total",
+      "kind": "arithmetic_dependency",
+      "rationale": "The total still has an independent expectation from the recalculated comparison, but it cannot be accepted while the copy chain is unresolved.",
+      "status": "needs_review"
+    },
+    {
+      "id": "observed/regional-copied-total",
+      "kind": "observed_source_binding",
+      "rationale": "The field was never observed and carries no evidence, so it cannot be bound to the slot's source cell and must not be filled from the total.",
+      "status": "needs_review"
+    }
+  ],
+  "expected_rules": [
+    {
+      "authored_status": "candidate",
+      "business_approval": "pending",
+      "material_authority": "exact_material_approved",
+      "rationale": "The rule set is a candidate extracted from the synthetic criteria. Exact-material authority is a test grant and is not a formal business approval of the bands.",
+      "rule_set_id": "golden-road-v1",
+      "version": "1.0.0"
+    }
+  ],
+  "expected_slots": [
+    {
+      "context": {
+        "comparable_id": "golden-comparable-a",
+        "scope": "regional",
+        "target_id": "golden-target"
+      },
+      "derivable_blank": false,
+      "expected_kind": "observed_unresolved",
+      "expected_status": "needs_review",
+      "factor_id": "golden.road_width",
+      "independent": {
+        "adjudication_id": null,
+        "arithmetic": null,
+        "basis": "rule_classification",
+        "classification": {
+          "grade": "excellent",
+          "measurement": "12",
+          "rule_id": "golden-road.v1",
+          "rule_set_id": "golden-road-v1",
+          "side": "target",
+          "unit": "m"
+        },
+        "correction": null,
+        "rationale": "The criteria band the target width of 12 m falls into is excellent.",
+        "value": "excellent"
+      },
+      "observed": {
+        "citation": {
+          "bbox": [
+            20.0,
+            135.0,
+            440.0,
+            160.0
+          ],
+          "content_hash": "57cdaf9e97474e83bfac9a5c92c3739499cdbb596698b5e06458e1492d6ee1a6",
+          "document_id": "golden-forms",
+          "excerpt": "regional target grade excellent",
+          "page": 1,
+          "region_id": "regional-target-grade",
+          "version": "1"
+        },
+        "raw_text": "regional target grade excellent",
+        "state": "present",
+        "unit": "grade",
+        "value": "excellent"
+      },
+      "rationale": "The value and its derivation still agree, but one unevidenced field in the case removes the current-source authority every fill depends on.",
+      "slot_id": "regional-target-grade",
+      "slot_value": "target_grade"
+    },
+    {
+      "context": {
+        "comparable_id": "golden-comparable-a",
+        "scope": "regional",
+        "target_id": "golden-target"
+      },
+      "derivable_blank": false,
+      "expected_kind": "observed_unresolved",
+      "expected_status": "needs_review",
+      "factor_id": "golden.road_width",
+      "independent": {
+        "adjudication_id": null,
+        "arithmetic": null,
+        "basis": "rule_classification",
+        "classification": {
+          "grade": "inferior",
+          "measurement": "8",
+          "rule_id": "golden-road.v1",
+          "rule_set_id": "golden-road-v1",
+          "side": "comparable",
+          "unit": "m"
+        },
+        "correction": null,
+        "rationale": "The criteria band the comparable width of 8 m falls into is inferior.",
+        "value": "inferior"
+      },
+      "observed": {
+        "citation": {
+          "bbox": [
+            20.0,
+            95.0,
+            440.0,
+            120.0
+          ],
+          "content_hash": "57cdaf9e97474e83bfac9a5c92c3739499cdbb596698b5e06458e1492d6ee1a6",
+          "document_id": "golden-forms",
+          "excerpt": "regional comparable grade inferior",
+          "page": 1,
+          "region_id": "regional-comparable-grade",
+          "version": "1"
+        },
+        "raw_text": "regional comparable grade inferior",
+        "state": "present",
+        "unit": "grade",
+        "value": "inferior"
+      },
+      "rationale": "The value and its derivation still agree, but one unevidenced field in the case removes the current-source authority every fill depends on.",
+      "slot_id": "regional-comparable-grade",
+      "slot_value": "comparable_grade"
+    },
+    {
+      "context": {
+        "comparable_id": "golden-comparable-a",
+        "scope": "regional",
+        "target_id": "golden-target"
+      },
+      "derivable_blank": false,
+      "expected_kind": "observed_unresolved",
+      "expected_status": "needs_review",
+      "factor_id": "golden.road_width",
+      "independent": {
+        "adjudication_id": null,
+        "arithmetic": null,
+        "basis": "rule_correction",
+        "classification": null,
+        "correction": {
+          "comparable_grade": "inferior",
+          "rule_id": "golden-road.v1",
+          "rule_set_id": "golden-road-v1",
+          "target_grade": "excellent"
+        },
+        "rationale": "The excellent/inferior cell of the correction matrix is 5.",
+        "value": "5"
+      },
+      "observed": {
+        "citation": {
+          "bbox": [
+            20.0,
+            55.0,
+            440.0,
+            80.0
+          ],
+          "content_hash": "57cdaf9e97474e83bfac9a5c92c3739499cdbb596698b5e06458e1492d6ee1a6",
+          "document_id": "golden-forms",
+          "excerpt": "regional road rate 5",
+          "page": 1,
+          "region_id": "regional-rate",
+          "version": "1"
+        },
+        "raw_text": "regional road rate 5",
+        "state": "present",
+        "unit": "percent_points",
+        "value": "5"
+      },
+      "rationale": "The value and its derivation still agree, but one unevidenced field in the case removes the current-source authority every fill depends on.",
+      "slot_id": "regional-rate",
+      "slot_value": "adjustment_percent"
+    },
+    {
+      "context": {
+        "comparable_id": "golden-comparable-a",
+        "scope": "regional",
+        "target_id": "golden-target"
+      },
+      "derivable_blank": false,
+      "expected_kind": "arithmetic_dependency",
+      "expected_status": "needs_review",
+      "factor_id": null,
+      "independent": null,
+      "observed": {
+        "citation": {
+          "bbox": [
+            20.0,
+            215.0,
+            440.0,
+            240.0
+          ],
+          "content_hash": "57cdaf9e97474e83bfac9a5c92c3739499cdbb596698b5e06458e1492d6ee1a6",
+          "document_id": "golden-forms",
+          "excerpt": "regional subtotal 5",
+          "page": 2,
+          "region_id": "regional-subtotal",
+          "version": "1"
+        },
+        "raw_text": "regional subtotal 5",
+        "state": "present",
+        "unit": "percent_points",
+        "value": "5"
+      },
+      "rationale": "No expected subtotal can be grounded here: its only input is an untrusted rate, so the review must publish no expectation instead of guessing one.",
+      "slot_id": "regional-subtotal",
+      "slot_value": "subtotal"
+    },
+    {
+      "context": {
+        "comparable_id": "golden-comparable-a",
+        "scope": "regional",
+        "target_id": "golden-target"
+      },
+      "derivable_blank": false,
+      "expected_kind": "arithmetic_dependency",
+      "expected_status": "needs_review",
+      "factor_id": null,
+      "independent": {
+        "adjudication_id": null,
+        "arithmetic": {
+          "input_slot_ids": [
+            "regional-subtotal"
+          ],
+          "operation": "sum",
+          "quantum": "0.01"
+        },
+        "basis": "arithmetic_derivation",
+        "classification": null,
+        "correction": null,
+        "rationale": "The criteria procedure sums the subtotals into the total.",
+        "value": "5"
+      },
+      "observed": {
+        "citation": {
+          "bbox": [
+            20.0,
+            175.0,
+            440.0,
+            200.0
+          ],
+          "content_hash": "57cdaf9e97474e83bfac9a5c92c3739499cdbb596698b5e06458e1492d6ee1a6",
+          "document_id": "golden-forms",
+          "excerpt": "regional total 5",
+          "page": 2,
+          "region_id": "regional-total",
+          "version": "1"
+        },
+        "raw_text": "regional total 5",
+        "state": "present",
+        "unit": "percent_points",
+        "value": "5"
+      },
+      "rationale": "The total still has an independent expectation from the recalculated comparison, but it cannot be accepted while the copy chain is unresolved.",
+      "slot_id": "regional-total",
+      "slot_value": "total"
+    },
+    {
+      "context": {
+        "comparable_id": "golden-comparable-a",
+        "scope": "regional",
+        "target_id": "golden-target"
+      },
+      "derivable_blank": false,
+      "expected_kind": "observed_source_binding",
+      "expected_status": "needs_review",
+      "factor_id": null,
+      "independent": null,
+      "observed": {
+        "citation": null,
+        "raw_text": "",
+        "state": "missing",
+        "unit": null,
+        "value": null
+      },
+      "rationale": "The field was never observed and carries no evidence, so it cannot be bound to the slot's source cell and must not be filled from the total.",
+      "slot_id": "regional-copied-total",
+      "slot_value": "total"
+    }
+  ],
+  "expected_status": "needs_review",
+  "expected_tasks": [
+    {
+      "allowed_responses": [
+        "correct",
+        "reject"
+      ],
+      "finding_ids": [
+        "observed/regional-copied-total"
+      ],
+      "kind": "material_correction",
+      "question": "Re-read the copy field and record the observed value with its evidence.",
+      "rationale": "Only a human can supply an observation the extraction never produced.",
+      "required_permission": "correct_material",
+      "result_digest": null,
+      "side": null,
+      "task_ref": "observe-copied-total"
+    }
+  ],
+  "expected_verification": {
+    "critical": [
+      {
+        "code": "verification_blocker",
+        "message": "Verification could not pass; inspect review findings or request human review.",
+        "schema_version": "service-v1"
+      },
+      {
+        "code": "verification_blocker",
+        "message": "Verification could not pass; inspect review findings or request human review.",
+        "schema_version": "service-v1"
+      },
+      {
+        "code": "verification_blocker",
+        "message": "Verification could not pass; inspect review findings or request human review.",
+        "schema_version": "service-v1"
+      },
+      {
+        "code": "verification_blocker",
+        "message": "Verification could not pass; inspect review findings or request human review.",
+        "schema_version": "service-v1"
+      },
+      {
+        "code": "verification_blocker",
+        "message": "Verification could not pass; inspect review findings or request human review.",
+        "schema_version": "service-v1"
+      },
+      {
+        "code": "verification_blocker",
+        "message": "Verification could not pass; inspect review findings or request human review.",
+        "schema_version": "service-v1"
+      },
+      {
+        "code": "verification_blocker",
+        "message": "Verification could not pass; inspect review findings or request human review.",
+        "schema_version": "service-v1"
+      },
+      {
+        "code": "verification_blocker",
+        "message": "Verification could not pass; inspect review findings or request human review.",
+        "schema_version": "service-v1"
+      },
+      {
+        "code": "verification_blocker",
+        "message": "Verification could not pass; inspect review findings or request human review.",
+        "schema_version": "service-v1"
+      },
+      {
+        "code": "verification_blocker",
+        "message": "Verification could not pass; inspect review findings or request human review.",
+        "schema_version": "service-v1"
+      }
+    ],
+    "rationale": "Unobserved evidence keeps the gate from passing.",
+    "status": "needs_review",
+    "warnings": []
+  },
+  "fixture": {
+    "documents": [
+      {
+        "content_hash": "d0eba710d31faf32429e0d231392dfe17f1969f3126edf4c3cea5f218cbeae08",
+        "document_id": "golden-criteria",
+        "page_count": 1,
+        "role": "criteria",
+        "version": "1"
+      },
+      {
+        "content_hash": "57cdaf9e97474e83bfac9a5c92c3739499cdbb596698b5e06458e1492d6ee1a6",
+        "document_id": "golden-forms",
+        "page_count": 2,
+        "role": "forms",
+        "version": "1"
+      }
+    ],
+    "generator_version": "golden-cases-v1",
+    "material_digest": "061ad96a0f2859afb5611cef1ea6215b175aee58c6e66e8d58891bbb4b4e5fcc"
+  },
+  "identity": {
+    "case_id": "golden-case",
+    "district": "golden-district",
+    "effective_date": "2026-09-01",
+    "land_use_category": "golden-commercial",
+    "version": "r1",
+    "zone": "golden-zone"
+  },
+  "material_authority": "exact_material_approved",
+  "parent_case_key": null,
+  "schema_version": "golden-1",
+  "summary": "The copied total was never observed and cites nothing. Beyond blocking its own field, the missing citation withdraws the source authority that every other grounded fill in the case depends on.",
+  "title": "An unevidenced field withdraws case-wide fill authority",
+  "unresolved": [
+    {
+      "adjudication_id": "copied-total-treatment",
+      "id": "observed/regional-copied-total",
+      "reason": "The two reviewers disagree on how to read the unobserved copy field."
+    }
+  ]
+}
