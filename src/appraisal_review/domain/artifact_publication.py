@@ -90,6 +90,9 @@ class PublishedArtifact(ServiceModel):
     artifact_id: UUID
     key: str
     content_hash: Digest
+    # Optional for legacy decoding; publishing requires an immutable S3 version.
+    object_version: str | None = Field(default=None, min_length=1)
+    font_hash: Digest | None = None
     size_bytes: int = Field(ge=1, strict=True)
     content_type: Literal["application/pdf"] = "application/pdf"
     writer_version: str = Field(min_length=1)

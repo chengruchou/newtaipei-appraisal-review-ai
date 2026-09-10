@@ -1,71 +1,61 @@
-# ADR 0016: Attempt-scoped artifacts, fenced manifests and authorized downloads
+# ADR 0016: Authoritative artifact publication and immutable downloads
 
 - Status: Proposed for human review
-- Date: 2026-09-10
-- Delivery: output-boundary follow-up to #5/#9; consumes the JobRepository
-  fencing-token contract and ADR 0015 placeholder output
+- Date: 2026-09-11
+- Scope: PR #35 publication adapter and provider-neutral integration ports
 
 ## Context
 
-The target architecture requires that a worker's output become the run result
-only through a fenced, conditional manifest commit: SQS acknowledgement, worker
-success logs and object existence must never be treated as job success, stale
-attempts must not overwrite newer results, and consumers must not trust
-worker-reported storage paths. Cloud artifacts additionally carry only opaque
-placeholder tokens; a locally re-identified copy must never be publishable.
+The original PR head omitted its adapter because an unanchored `artifacts/`
+ignore rule matched the source package. Its proposed manifest-only fencing rule
+also cannot establish a worker's current authority: an expired worker may have
+no previous manifest to compete with. Local service integration needs the same
+validation with SQLite authority and object storage, without an AWS dependency.
 
 ## Decision
 
-Artifacts live under attempt-scoped keys,
-`cases/{case}/runs/{run}/attempts/{attempt}/artifacts/{artifact}.pdf`, with
-segment validation that makes cross-case or cross-attempt writes unexpressable.
-`ManifestCandidate`/`CommittedManifest` (domain models) record, per artifact,
-the byte digest, size, content type, writer version, template identity/version
-and digests, field IDs, page count, pinned source versions and reopen
-verification status; the committed manifest binds a canonical candidate digest
-and the fencing token.
+Restore the source package and anchor the ignore rule at the repository root.
+Keep shared byte/PDF/manifest validation in a local adapter with injected
+`ArtifactObjectStore` and `ManifestRepository` ports. AWS is one composition of
+those ports. The immutable object version and approved font digest join the
+candidate content; legacy DTOs remain parseable but cannot publish without those
+fields, and any old digest requires explicit migration/reapproval.
 
-`AttemptArtifactPublisher` uploads only locally validated writer output to the
-run's own attempt keys (refusing writers that reveal placeholders), then at
-publish time independently re-downloads and re-verifies every object against
-the candidate before committing. `DynamoDBManifestStore` commits with one
-conditional write per run record: absent, lower token, or identical
-token+candidate digest may write; anything else fails as stale publication or
-manifest conflict, so re-running publish after a crash between upload and
-commit is idempotent and expired attempts stay unpublished.
-`CommittedResultResolver` reads committed manifests only, requires an
-authorized principal per read, issues short-lived (≤900s) presigned downloads
-whose bucket/key come from the manifest — never from callers — without logging
-the URL, and verifies fetched bytes against the manifest with one bounded
-retry for transient reads.
+Require a current job attempt, owner, lease, fencing token, expected result
+version and publication permission. The DynamoDB adapter checks the actual
+job-store-v1 job/run/attempt rows, current access and independently approved exact
+manifest digest in the same transaction as the manifest put. It never replaces
+these conditions with an in-process boolean or a previous-manifest comparison.
+Its source list and revision are bound in the final transaction. Worker IAM must
+not allow writing authorization/approval rows. Approval follows actual source,
+asset and privacy verification; DTO validity creates no authority.
 
-The result bucket gains lifecycle hygiene (abort incomplete multipart uploads,
-expire noncurrent versions); current unpublished attempt output is retained
-for explicit reconciliation decisions rather than blanket deletion.
+Object staging uses immutable versions. The publisher reads one local byte
+snapshot, creates the object conditionally and verifies the exact returned
+version; commit verifies it again. The core rejects revealing writers and
+requires exact source/font evidence plus independently issued approval. PDF
+metadata alone does not prove de-identification or authorized font selection.
 
-## Consequences
+The resolver reauthorizes each request and after object I/O, reopens and verifies
+the pinned PDF, and issues no more than 900 seconds of download authority, bounded
+further by current access expiry. The local HTTP route can return verified bytes
+directly without a public signed URL. Existing local files are never overwritten.
 
-- Two competing attempts cannot both publish; the newer fencing token wins and
-  replay of the loser is a stable, typed failure.
-- Tampering with digest, size, content type or the stored manifest record is
-  detected at publish or read time.
-- Only manifest-referenced artifacts are exposed; publication of revealed
-  placeholder values is structurally refused at staging, and cloud manifests
-  declare placeholder-only content.
-- The baseline Cases table hosts one conditional record per run under a
-  namespaced record ID; D's full job/task/outbox schema can migrate these
-  records without changing the store contract.
-- Durable leases, dispatch, outbox recovery and the surrounding job pipeline
-  remain #9 work; this delivery is the output boundary only, with injected
-  clients and no live AWS calls.
+## Consequences and integration ownership
 
-## Rejected alternatives
-
-- Trusting worker-computed digests at publish time, because the publisher must
-  verify what is actually stored, not what was claimed.
-- Last-writer-wins manifest records, because a delayed stale attempt would
-  silently replace a newer result.
-- Long-lived or logged download URLs, because presigned URLs are bearer
-  authority.
-- Blanket lifecycle deletion of attempt prefixes, because published artifacts
-  live under attempt keys and must outlive the attempt.
+- A stale or superseded worker cannot commit, including before any manifest exists.
+- Same-token changed content conflicts; exact retries recheck current authority.
+- An uncertain SDK response is not converted into success. New adapter instances
+  reconcile from stored state; expired attempts cannot bypass fencing for recovery.
+- This adapter writes only manifests. The shared runtime still owns atomic job
+  completion/result/attempt transitions and reconciliation across that boundary.
+  A manifest alone is never job-success evidence.
+- Local SQLite implementations must enforce these conditions inside their durable
+  transaction. The core does not claim that a process lock provides persistence.
+- C2 source revocation must reach current publication and download authority through
+  the shared composition. The publication adapter does not create a parallel source
+  catalog or infer current source access from old hashes.
+- Version-pinned artifacts require retention of referenced versions; generic
+  noncurrent-version expiration cannot establish safe artifact retention.
+- No live account/model calls, deployment or formal business approval are covered
+  by offline Moto/Stubber and real local PDF tests.

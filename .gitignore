@@ -34,7 +34,7 @@ cdk.out/
 datasets/raw/
 datasets/interim/
 datasets/processed/
-artifacts/
+/artifacts/
 outputs/
 ocr-output/
 tmp-images/
