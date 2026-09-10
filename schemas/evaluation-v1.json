@@ -1,0 +1,602 @@
+{
+  "$defs": {
+    "CostPolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "extraction-v1",
+          "default": "extraction-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "currency": {
+          "pattern": "^[A-Z]{3}$",
+          "title": "Currency",
+          "type": "string"
+        },
+        "rates_date": {
+          "format": "date",
+          "title": "Rates Date",
+          "type": "string"
+        },
+        "rates_source": {
+          "maxLength": 1024,
+          "minLength": 1,
+          "title": "Rates Source",
+          "type": "string"
+        },
+        "rates_digest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Rates Digest",
+          "type": "string"
+        },
+        "input_per_million": {
+          "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+          "title": "Input Per Million",
+          "type": "string"
+        },
+        "output_per_million": {
+          "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+          "title": "Output Per Million",
+          "type": "string"
+        },
+        "estimated_cost_ceiling": {
+          "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+          "title": "Estimated Cost Ceiling",
+          "type": "string"
+        }
+      },
+      "required": [
+        "currency",
+        "rates_date",
+        "rates_source",
+        "rates_digest",
+        "input_per_million",
+        "output_per_million",
+        "estimated_cost_ceiling"
+      ],
+      "title": "CostPolicy",
+      "type": "object"
+    },
+    "DocumentReference": {
+      "additionalProperties": false,
+      "description": "External identity: no caller-selected storage URI or asserted authority.",
+      "properties": {
+        "schema_version": {
+          "const": "service-v1",
+          "default": "service-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "case_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+          "title": "Case Id",
+          "type": "string"
+        },
+        "document_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+          "title": "Document Id",
+          "type": "string"
+        },
+        "version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+          "title": "Version",
+          "type": "string"
+        },
+        "content_hash": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Content Hash",
+          "type": "string"
+        },
+        "purpose": {
+          "enum": [
+            "criteria",
+            "forms",
+            "reference",
+            "brief",
+            "template"
+          ],
+          "title": "Purpose",
+          "type": "string"
+        }
+      },
+      "required": [
+        "case_id",
+        "document_id",
+        "version",
+        "content_hash",
+        "purpose"
+      ],
+      "title": "DocumentReference",
+      "type": "object"
+    },
+    "EvaluationInput": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "extraction-v1",
+          "default": "extraction-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "source": {
+          "$ref": "#/$defs/SanitizedSourceReference"
+        },
+        "pages": {
+          "items": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "minItems": 1,
+          "title": "Pages",
+          "type": "array"
+        }
+      },
+      "required": [
+        "source",
+        "pages"
+      ],
+      "title": "EvaluationInput",
+      "type": "object"
+    },
+    "EvaluationManifest": {
+      "additionalProperties": false,
+      "description": "Ordered input schedule; validation does not certify independent adjudication.",
+      "properties": {
+        "schema_version": {
+          "const": "evaluation-v1",
+          "default": "evaluation-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "dataset_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+          "title": "Dataset Id",
+          "type": "string"
+        },
+        "dataset_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+          "title": "Dataset Version",
+          "type": "string"
+        },
+        "dataset_digest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Dataset Digest",
+          "type": "string"
+        },
+        "dataset_kind": {
+          "enum": [
+            "synthetic",
+            "sanitized"
+          ],
+          "title": "Dataset Kind",
+          "type": "string"
+        },
+        "execution_kind": {
+          "enum": [
+            "replay",
+            "mocked",
+            "live"
+          ],
+          "title": "Execution Kind",
+          "type": "string"
+        },
+        "split": {
+          "enum": [
+            "development",
+            "held_out"
+          ],
+          "title": "Split",
+          "type": "string"
+        },
+        "split_digest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Split Digest",
+          "type": "string"
+        },
+        "golden_digest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Golden Digest",
+          "type": "string"
+        },
+        "golden_schema_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+          "title": "Golden Schema Version",
+          "type": "string"
+        },
+        "adjudication": {
+          "enum": [
+            "synthetic_expectations",
+            "independent_reviewers"
+          ],
+          "title": "Adjudication",
+          "type": "string"
+        },
+        "inputs": {
+          "items": {
+            "$ref": "#/$defs/EvaluationInput"
+          },
+          "minItems": 1,
+          "title": "Inputs",
+          "type": "array"
+        },
+        "pipeline_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+          "title": "Pipeline Version",
+          "type": "string"
+        },
+        "prompt_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+          "title": "Prompt Version",
+          "type": "string"
+        },
+        "prompt_digest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Prompt Digest",
+          "type": "string"
+        },
+        "proposal_schema_digest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Proposal Schema Digest",
+          "type": "string"
+        },
+        "rendering_configuration_digest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Rendering Configuration Digest",
+          "type": "string"
+        },
+        "configuration": {
+          "$ref": "#/$defs/ProviderConfiguration"
+        },
+        "budget": {
+          "$ref": "#/$defs/ExecutionBudget"
+        },
+        "scoring": {
+          "$ref": "#/$defs/ScoringPolicy"
+        },
+        "repeats": {
+          "minimum": 1,
+          "title": "Repeats",
+          "type": "integer"
+        },
+        "timing_scope": {
+          "enum": [
+            "provider_only",
+            "parse_render_provider"
+          ],
+          "title": "Timing Scope",
+          "type": "string"
+        },
+        "cost_policy": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CostPolicy"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "dataset_id",
+        "dataset_version",
+        "dataset_digest",
+        "dataset_kind",
+        "execution_kind",
+        "split",
+        "split_digest",
+        "golden_digest",
+        "golden_schema_version",
+        "adjudication",
+        "inputs",
+        "pipeline_version",
+        "prompt_version",
+        "prompt_digest",
+        "proposal_schema_digest",
+        "rendering_configuration_digest",
+        "configuration",
+        "budget",
+        "scoring",
+        "repeats",
+        "timing_scope",
+        "cost_policy"
+      ],
+      "title": "EvaluationManifest",
+      "type": "object"
+    },
+    "ExecutionBudget": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "extraction-v1",
+          "default": "extraction-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "max_pages": {
+          "minimum": 1,
+          "title": "Max Pages",
+          "type": "integer"
+        },
+        "max_calls": {
+          "minimum": 1,
+          "title": "Max Calls",
+          "type": "integer"
+        },
+        "max_attempts_per_page": {
+          "minimum": 1,
+          "title": "Max Attempts Per Page",
+          "type": "integer"
+        },
+        "max_concurrency": {
+          "minimum": 1,
+          "title": "Max Concurrency",
+          "type": "integer"
+        },
+        "max_input_bytes": {
+          "minimum": 1,
+          "title": "Max Input Bytes",
+          "type": "integer"
+        },
+        "max_context_characters": {
+          "minimum": 1,
+          "title": "Max Context Characters",
+          "type": "integer"
+        },
+        "max_output_tokens": {
+          "minimum": 1,
+          "title": "Max Output Tokens",
+          "type": "integer"
+        },
+        "max_elapsed_seconds": {
+          "exclusiveMinimum": 0,
+          "title": "Max Elapsed Seconds",
+          "type": "number"
+        }
+      },
+      "required": [
+        "max_pages",
+        "max_calls",
+        "max_attempts_per_page",
+        "max_concurrency",
+        "max_input_bytes",
+        "max_context_characters",
+        "max_output_tokens",
+        "max_elapsed_seconds"
+      ],
+      "title": "ExecutionBudget",
+      "type": "object"
+    },
+    "ProviderConfiguration": {
+      "additionalProperties": false,
+      "description": "Pinned configuration metadata, not credentials or provider access proof.",
+      "properties": {
+        "schema_version": {
+          "const": "extraction-v1",
+          "default": "extraction-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "provider": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+          "title": "Provider",
+          "type": "string"
+        },
+        "model_id": {
+          "maxLength": 512,
+          "minLength": 1,
+          "title": "Model Id",
+          "type": "string"
+        },
+        "region": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+          "title": "Region",
+          "type": "string"
+        },
+        "api": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+          "title": "Api",
+          "type": "string"
+        },
+        "routing_regions": {
+          "items": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Routing Regions",
+          "type": "array"
+        },
+        "temperature": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Temperature",
+          "type": "number"
+        },
+        "max_output_tokens": {
+          "minimum": 1,
+          "title": "Max Output Tokens",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "provider",
+        "model_id",
+        "region",
+        "api",
+        "routing_regions",
+        "temperature",
+        "max_output_tokens"
+      ],
+      "title": "ProviderConfiguration",
+      "type": "object"
+    },
+    "SanitizedSourceReference": {
+      "additionalProperties": false,
+      "description": "Reference to #22 evidence, not a duplicate PrivacyManifest or access token.",
+      "properties": {
+        "schema_version": {
+          "const": "extraction-v1",
+          "default": "extraction-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "document": {
+          "$ref": "#/$defs/DocumentReference"
+        },
+        "privacy_contract_version": {
+          "const": "privacy-v1",
+          "title": "Privacy Contract Version",
+          "type": "string"
+        },
+        "privacy_manifest_digest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Privacy Manifest Digest",
+          "type": "string"
+        },
+        "page_count": {
+          "minimum": 1,
+          "title": "Page Count",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "document",
+        "privacy_contract_version",
+        "privacy_manifest_digest",
+        "page_count"
+      ],
+      "title": "SanitizedSourceReference",
+      "type": "object"
+    },
+    "ScoringPolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "extraction-v1",
+          "default": "extraction-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "policy_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+          "title": "Policy Version",
+          "type": "string"
+        },
+        "policy_digest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Policy Digest",
+          "type": "string"
+        },
+        "matching": {
+          "const": "one_to_one_identity",
+          "default": "one_to_one_identity",
+          "title": "Matching",
+          "type": "string"
+        },
+        "denominator": {
+          "const": "all_scheduled_eligible_cases",
+          "default": "all_scheduled_eligible_cases",
+          "title": "Denominator",
+          "type": "string"
+        },
+        "zero_denominator": {
+          "const": "null",
+          "default": "null",
+          "title": "Zero Denominator",
+          "type": "string"
+        },
+        "strings": {
+          "const": "exact",
+          "default": "exact",
+          "title": "Strings",
+          "type": "string"
+        },
+        "numeric_absolute_tolerance": {
+          "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+          "title": "Numeric Absolute Tolerance",
+          "type": "string"
+        },
+        "numeric_relative_tolerance": {
+          "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+          "title": "Numeric Relative Tolerance",
+          "type": "string"
+        },
+        "unit_policy": {
+          "enum": [
+            "exact",
+            "versioned_conversion"
+          ],
+          "title": "Unit Policy",
+          "type": "string"
+        },
+        "unit_policy_digest": {
+          "anyOf": [
+            {
+              "pattern": "^[a-f0-9]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Unit Policy Digest"
+        },
+        "missing_states": {
+          "const": "distinct",
+          "default": "distinct",
+          "title": "Missing States",
+          "type": "string"
+        },
+        "localization": {
+          "enum": [
+            "not_measured",
+            "region_iou"
+          ],
+          "title": "Localization",
+          "type": "string"
+        },
+        "minimum_iou": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Minimum Iou"
+        },
+        "acceptance_thresholds_digest": {
+          "anyOf": [
+            {
+              "pattern": "^[a-f0-9]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Acceptance Thresholds Digest"
+        }
+      },
+      "required": [
+        "policy_version",
+        "policy_digest",
+        "numeric_absolute_tolerance",
+        "numeric_relative_tolerance",
+        "unit_policy",
+        "unit_policy_digest",
+        "localization",
+        "minimum_iou",
+        "acceptance_thresholds_digest"
+      ],
+      "title": "ScoringPolicy",
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}
