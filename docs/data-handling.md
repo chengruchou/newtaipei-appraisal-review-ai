@@ -42,7 +42,7 @@ Existing upload paths are not approved for
 sensitive cases by this work. Existing evidence-bearing service-v1 DTOs, reviewer
 free text, filenames, metadata and errors still need integration with this boundary.
 See [privacy contracts](privacy-contracts.md) and
-[ADR 0014](adr/0014-local-privacy-boundary.md). Linux is the privacy runtime
+[ADR 0021](adr/0021-local-privacy-boundary.md). Linux is the privacy runtime
 acceptance target; Windows development does not establish secure local storage.
 The [acceptance matrix](issue-22-acceptance.md) records remaining OCR, key,
 Linux, consumer and cloud requirements. Existing transfer paths remain unsuitable

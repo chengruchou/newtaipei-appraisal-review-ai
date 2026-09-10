@@ -1,7 +1,7 @@
-# ADR 0015: Bounded local acquisition and explicit scan coverage
+# ADR 0022: Bounded local acquisition and explicit scan coverage
 
 Status: proposed, Phase 2 local working implementation, 2026-09-10.
-Builds on [ADR 0014](0014-local-privacy-boundary.md); Linux remains the runtime
+Builds on [ADR 0021](0021-local-privacy-boundary.md); Linux remains the runtime
 acceptance target. Windows observations do not certify Linux execution.
 
 ## Context

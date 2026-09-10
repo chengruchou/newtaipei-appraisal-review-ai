@@ -1,4 +1,4 @@
-# ADR 0016: Local privacy review and ephemeral human authority
+# ADR 0023: Local privacy review and ephemeral human authority
 
 Status: Accepted for the local SDK. Linux interactive acceptance remains pending.
 

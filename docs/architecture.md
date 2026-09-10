@@ -208,7 +208,7 @@ must not process sensitive cases until #27/#31 integration is accepted.
 
 Local contracts and ports are under `domain/privacy_*.py`, `ports/privacy*.py` and
 `application/privacy_*.py`; implementation adapters are under
-`adapters/local/privacy/`. [ADRs 0014-0020](privacy-contracts.md) and the
+`adapters/local/privacy/`. [ADRs 0021-0027](privacy-contracts.md) and the
 [stage runbooks](issue-22-acceptance.md) describe their individual trust boundaries.
 
 ## Business-core module map

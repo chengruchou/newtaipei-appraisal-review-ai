@@ -17,9 +17,9 @@ The [local sanitizer](local-privacy-sanitization.md) is implemented; actual OCR
 acceptance remains pending. No export endpoint or uploader is implemented. See the
 [#25 SDK handoff](local-privacy-review.md); actual Linux interactive acceptance
 remains pending.
-[ADR 0014](adr/0014-local-privacy-boundary.md) defines the boundary and lifecycle.
+[ADR 0021](adr/0021-local-privacy-boundary.md) defines the boundary and lifecycle.
 The separate local scan schema and execution limits are documented in
-[ADR 0015](adr/0015-local-privacy-scan-isolation.md) and the
+[ADR 0022](adr/0022-local-privacy-scan-isolation.md) and the
 [local runbook](local-privacy-runbook.md).
 
 ## Contract ownership

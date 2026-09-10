@@ -1,4 +1,4 @@
-# ADR 0017: Raster rebuild with independent privacy verification
+# ADR 0024: Raster rebuild with independent privacy verification
 
 Status: Accepted for the local Phase 4 implementation. Actual OCR and Linux
 runtime acceptance remain pending.

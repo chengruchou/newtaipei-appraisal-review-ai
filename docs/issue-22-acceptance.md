@@ -31,13 +31,13 @@ establish the corresponding production service or recognition accuracy.
 
 | Stage | Implemented local behavior | Contract and operational documentation |
 | --- | --- | --- |
-| 1 | Separate private/public models, strict validation and pure admission guards | [Contracts](privacy-contracts.md), ADR 0014 |
-| 2 | Confined immutable acquisition, isolated parser/rendering, configured OCR port, conservative candidates and explicit blocked pages | [Scan runbook](local-privacy-runbook.md), ADR 0015 |
-| 3 | Versioned list/add/edit/remove/preview/page-review/confirm SDK and ephemeral human authority | [Review handoff](local-privacy-review.md), ADR 0016 |
-| 4 | Canonical raster PDF rebuild, independent structure/pixel checks and mandatory output OCR verification | [Sanitization](local-privacy-sanitization.md), ADR 0017 |
-| 5 | AES-GCM/HKDF mapping encryption, session key lifecycle and immutable Linux storage adapter | [Mapping](local-privacy-mapping.md), ADR 0018 |
-| 6 | Published artifact/plan validation, CJK or approved-crop refill, independent output checks and fresh local file publication | [Refill](local-privacy-refill.md), ADR 0019 |
-| 7 | Exact-payload export gate, shared local text preparation, Python network denial, Linux namespace runner and value-free leak report schema | [Export](local-privacy-export.md), ADR 0020 |
+| 1 | Separate private/public models, strict validation and pure admission guards | [Contracts](privacy-contracts.md), ADR 0021 |
+| 2 | Confined immutable acquisition, isolated parser/rendering, configured OCR port, conservative candidates and explicit blocked pages | [Scan runbook](local-privacy-runbook.md), ADR 0022 |
+| 3 | Versioned list/add/edit/remove/preview/page-review/confirm SDK and ephemeral human authority | [Review handoff](local-privacy-review.md), ADR 0023 |
+| 4 | Canonical raster PDF rebuild, independent structure/pixel checks and mandatory output OCR verification | [Sanitization](local-privacy-sanitization.md), ADR 0024 |
+| 5 | AES-GCM/HKDF mapping encryption, session key lifecycle and immutable Linux storage adapter | [Mapping](local-privacy-mapping.md), ADR 0025 |
+| 6 | Published artifact/plan validation, CJK or approved-crop refill, independent output checks and fresh local file publication | [Refill](local-privacy-refill.md), ADR 0026 |
+| 7 | Exact-payload export gate, shared local text preparation, Python network denial, Linux namespace runner and value-free leak report schema | [Export](local-privacy-export.md), ADR 0027 |
 | 8 | Current regression results, requirement matrix, risk/owner handoff, architecture/traceability updates and unpublished review draft | This document |
 
 Schemas and synthetic JSON examples are versioned together. Existing public

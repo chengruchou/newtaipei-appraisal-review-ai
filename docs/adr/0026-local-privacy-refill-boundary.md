@@ -1,4 +1,4 @@
-# ADR 0019: Local refill and publisher authority
+# ADR 0026: Local refill and publisher authority
 
 Status: Accepted for the local Phase 6 implementation; production integration
 and Linux runtime acceptance remain pending.
