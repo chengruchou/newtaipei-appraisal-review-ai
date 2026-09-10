@@ -22,6 +22,24 @@ local PDF writer #19, M0 service foundation #20 and full-case goldens #33 are
 merged. [Project progress](docs/project-progress.md) distinguishes this baseline,
 other active work lines, merged #27 and this branch's #30 implementation and remaining acceptance.
 Local test results, historical CI and a future published head's CI are separate evidence.
+Rechecked main on 2026-09-09:
+`c3687e0cfe16cee0d38fcb4c1780a6092565aaeb`. Review #15, extraction #16,
+[local PDF writer #19](https://github.com/chengruchou/newtaipei-appraisal-review-ai/pull/19)
+and service foundation #20 are merged. Issue #17 now has local controlled-action
+contracts, trusted policy derivation, selector adapters, a single-decision controlled
+coordinator, a bounded local runner and a human-task/correction service separate from
+that accepted baseline. They use explicit composition. The local trace and transactional
+task adapters are process-local and non-durable; legacy endpoints do not invoke them.
+
+The [Phase 7 handoff](docs/issue17-service-handoff.md) maps authenticated task APIs
+to #24, durable waiting/resume to #29 and browser integration to #25. This branch
+does not mount their routes or claim their deployment acceptance.
+
+Local preparation also includes the pause/continuation seam, connected
+[workbench consumer fixtures](docs/workbench-consumer-handoff.md), and a reproducible
+[offline evaluation harness](docs/offline-evaluation.md). Phase 8 production
+persistence/Runtime recovery, Phase 9 real browser/API integration and Phase 10
+designated-model/full-case human acceptance remain deferred to their owners.
 
 | Capability | Implemented behavior | Remaining acceptance |
 | --- | --- | --- |
@@ -32,6 +50,8 @@ Local test results, historical CI and a future published head's CI are separate 
 | M0 shared contracts (#20) | Versioned DTOs, immutable material helper, pure admission/idempotency guards, schema/fixtures | Transactional adapters, model selector and real event persistence |
 | Full-case goldens (#33) | Independently derived expectations, 13 case/revision manifests plus an index | Business rule approval and independent reviewer acceptance |
 | Sanitized document transfer (#27, merged) | Authorized ingestion, exact privacy attestation, local/S3 immutable storage and run snapshots | A3 production export composition, authenticated gateway/D1 wiring and live S3 acceptance |
+| M0 shared contracts (#20) | Versioned DTOs, immutable material helper, pure admission/idempotency guards, schema/fixtures | Local extensions are in #17 below; durable event/job/task persistence remains |
+| Controlled actions (#17 phases 1–6) | Exact contracts, policy/selectors, execution-time re-admission, bounded retry/no-progress handling, non-durable trace and local human task/correction/re-entry | Durable trace/task coordination, authenticated task API and end-to-end assembly |
 | Runtime smoke (#14) | Synthetic HTTP/container/template preparation, durable=false | D durable jobs, identity, outbox/recovery and deployment |
 | Browser human review | Consumer fixtures only | B task APIs; C workbench |
 
@@ -43,8 +63,12 @@ and live acceptance. Passing synthetic tests does not establish real-case accura
 
 AI understands documents; deterministic code owns intervals, matrices, arithmetic,
 verification and PDF writing. The existing Controller is a gated workflow; the
-model-selected action policy is future A work. Model prose is neither a calculation
-trace nor approval. Rules are versioned case data, not universal policy inferred
+controlled-action policy, selectors, explicit single-decision execution and bounded local
+coordination are implemented. The local human-task service applies trusted responses,
+creates new revisions and reruns the existing reviewer through a process-local transaction.
+Durable storage and browser/API assembly remain future work.
+Model prose is neither a calculation trace nor approval. Rules are versioned case data,
+not universal policy inferred
 from one sample district, land-use category or date.
 
 Preserve original text, confidence, observed values, source version/hash, one-based
@@ -123,6 +147,11 @@ The [shared service contract](docs/service-contracts.md),
 are the common handoff for A–E. Document/task/download API groups remain reserved
 contracts; no fake-success endpoints are mounted. The local OS reviewer is not
 an Internet authentication service.
+
+The [local human-review guide](docs/local-human-review.md) describes explicit task
+composition, purpose-specific responses and deterministic re-entry. Material approval
+checks a separately signed receipt for the exact current material. Correction does not
+implicitly confirm an observation, approve material or authorize artifact publication.
 
 ## Verification
 

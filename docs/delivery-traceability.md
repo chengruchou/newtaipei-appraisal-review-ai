@@ -66,6 +66,276 @@ AWS call or real rule approval was performed, and no rule is claimed as formally
 ## Local privacy integration
 
 PR #37 supplies the reviewed local privacy SDK, encrypted exact-export mapping and local restoration boundary. Its isolated validation remains distinct from combined browser acceptance and real AWS acceptance. See [privacy acceptance](issue-22-acceptance.md).
+## Local commit preflight (2026-09-09)
+
+The user authorized categorized local commits after non-cloud verification, with
+no push or PR creation. On `feat/controlled_model_selection`, the local suite
+reported 926 passing tests, 89% coverage and two existing dependency deprecation
+warnings. Ruff, format check, mypy, schema/fixture regeneration checks, 8 mocked
+cloud tests, CloudFormation lint and both loopback HTTP/PDF smokes passed.
+Live AWS services, browser integration and designated-model/human acceptance were
+not exercised; their recorded deferrals remain unchanged. Real source documents,
+generated artifacts, credentials and the local planning guide are not commit inputs.
+
+## Phase 10 offline preparation only
+
+`scripts/evaluate_controlled_workflow.py` compares the deterministic baseline and
+an injected structured-response simulator using identical synthetic materials,
+source/rule versions and budgets. It executes actual local task/correction/reentry
+services, reports trace-backed calls, retained blockers and citation resolution,
+and probes malformed/out-of-set output with zero tool effects. Costs, live latency,
+semantic/full-case accuracy and human acceptance are explicitly unmeasured.
+
+The [offline evaluation guide](offline-evaluation.md) defines metrics and limits;
+the [future acceptance template](templates/designated-model-acceptance.md) reserves
+the user-designated environment, corpus, independent reviewers and live evidence.
+No live model or AWS calls are enabled. Phase 10 and full Issue 17 remain incomplete.
+
+Validation: 9 new offline evaluation cases; full suite 926 passed, 89% coverage,
+two existing dependency deprecation warnings. Ruff, formatting, mypy (88 source
+files), fixture regeneration, 8 mocked cloud tests, CloudFormation lint and both
+existing loopback HTTP/PDF smokes passed. The local comparison produced four
+passing paired runs and two rejected pre-tool adversarial probes; those counts
+are not designated-model or independent human acceptance.
+
+## Phase 9 local consumer preparation only
+
+`scripts/workbench_fixture.py` produces connected synthetic task, original value,
+command, pause trace, accepted response, continuation, superseded task and before/
+after review records through actual local services. The consumer tests check
+identity joins, original/proposed/corrected/expected distinctions, evidence binding,
+unresolved findings and command authority. Exported records retain existing model
+versions; no competing frontend, API or DTO is added.
+
+The [workbench handoff](workbench-consumer-handoff.md) supplies field mappings,
+coordinate/privacy rules, full-review rerun disclosure and conflict/replay scenarios.
+Browser/component tests and real authenticated API/evidence/correction integration
+remain deferred to #24/#25. Phase 9 and full Issue 17 acceptance remain incomplete.
+
+Validation: 19 new consumer cases; full suite 917 passed with 89% coverage and two
+existing dependency deprecation warnings. Ruff, format check, mypy (88 source
+files), fixture/schema regeneration, 8 mocked cloud tests, CloudFormation lint and
+both existing loopback HTTP/PDF smokes passed. No browser acceptance, live model
+calls, AWS resources or remote mutations were performed.
+
+## Phase 8 local pause/resume preparation only
+
+The local `PauseResumeService` / `PauseResumeRepository` seam reuses existing task,
+revision, response and bounded-result contracts. Actual waiting results are bound
+to stored task batches and their complete acyclic trace. The existing in-memory
+response transaction records a continuation to a fresh pending run; it does not
+dispatch, hold a waiting invocation or revive an old attempt. Local tests cover
+real correction/recomputation, replay, stale replies, denied access, invalid trace
+and task receipt, schema roundtrip and injected response-event failure.
+
+Production persistence (#24/#29), outbox/leases/fencing/Runtime/cloud recovery
+(#29), and fenced artifact/manifest publication (#28) are **deferred**, not passed.
+Phase 8 and full Issue #17 cloud acceptance remain incomplete. See the
+[ownership handoff](issue17-service-handoff.md) and [ADR 0017](adr/0017-local-pause-continuation-seam.md).
+
+Local validation: 10 new pause/continuation cases; full suite 898 passed, 89%
+coverage, two existing dependency deprecation warnings. Ruff, format check, mypy
+(88 source files), exported-schema roundtrip, 8 mocked cloud tests, CloudFormation
+lint and both existing loopback HTTP/PDF smokes passed. No live AWS calls, resource
+creation, production recovery test or deployment was performed.
+
+## Issue #17 local audit repairs (2026-09-09)
+
+The audit regressions now cover invalid receipts with terminal snapshots, shared
+selection/execution deadlines, in-flight provider exclusion, permanent tool denial,
+review-to-human continuation, sanitized failed-selection trace, invented source
+regions and genuine source-only preparation. Additional tests cover mixed causal
+trace streams, preparation-to-review revision lineage and timeout run quarantine.
+
+`test_controlled_case_integration.py` executes injected model and deterministic
+selectors against the same real reviewer and human-task tools. The correction test
+preserves original material, replays responses idempotently, creates fresh runs,
+performs explicit fact confirmation and separate material signing, then recomputes
+the actual verified correction rate. No live provider is contacted. Exported review
+receipts now hash real deterministic results instead of a fixed placeholder digest;
+their exact-material authority is explicitly synthetic, not a signed approval.
+
+These repairs do not complete raw-document composition or the downstream durable
+HTTP/job/browser work. Read [ADR 0016](adr/0016-controlled-execution-failure-boundaries.md)
+alongside the earlier phase records; those records are not production acceptance.
+
+Validation after local repair: 888 tests passed, 89% total coverage, with the two
+existing Starlette/httpx and AnyIO deprecation warnings. The 19 new cases comprise
+14 regression/boundary cases and 5 real-core integration cases. Ruff, format check,
+mypy (87 source files), 8 mocked cloud tests, CloudFormation lint, existing HTTP
+smoke and configured local-service smoke passed. No live provider or deployment
+was used; no commit, push or remote mutation was performed.
+
+## Issue #17 controlled-action phases 1–6 (2026-09-09)
+
+Baseline main is `c3687e0cfe16cee0d38fcb4c1780a6092565aaeb`, the merge of PR #20.
+Issue #17 and dependency Issue #9 remain open and unassigned; no open pull request
+existed at re-baseline. Main CI run 34121829886 passed for that exact baseline.
+The working branch preserves its pre-existing documentation-deletion commit, and
+the local `plan.md` remains an untracked implementation guide.
+
+Phase 1 adds ADR 0014 and exact `WorkflowSnapshot`, `AllowedActionSet`, typed action
+arguments and causal `DecisionEvent` contracts. Admission now compares trusted
+proposer/executor context with exact policy, snapshot, revision, rules, state,
+prerequisites, source purpose and budget. Schema and synthetic consumer fixtures are
+regenerated together under the explicit `controlled-action-v1` record version. Other
+service-v1 records and the legacy synchronous HTTP, invocation, deterministic review,
+audit and PDF contracts are unchanged.
+
+Focused tests cover all four valid action argument forms, cross-action confusion,
+unknown authority fields, stale state/revision/source bindings, duplicate registries,
+actor separation and event state/causality/budget contradictions. These are contract
+and pure-guard checks.
+
+Phase 2 adds `application/action_policy.py`. Its trusted, provider-neutral policy derives
+actions only from a detached `WorkflowSnapshot`, binds the exact policy/snapshot/revision/
+documents/rules, filters source purposes to current versioned documents and accounts for
+system versus model selection cost. An explicit state table returns no action for
+terminal/waiting states or when a prerequisite, required blocker or step/model/retry/time
+budget is missing. The verified outcome deliberately leaves eligible output to the
+existing deterministic PDF gate. Focused tests cover every workflow state, deterministic and detached
+derivation, wrong-purpose sources, exhausted budgets, duplicate/ambiguous policy rules
+and execution-time rejection after the state digest changes. This is not evidence of
+model selection, production tool execution, event persistence, human task transactions
+or pause/resume.
+
+Local Phase 1 verification used Python 3.13.12: 55 focused service-contract/revision
+tests and 662 full repository tests passed with 87% combined coverage; the separate
+cloud suite passed 8 tests. Ruff lint/format, strict mypy over 74 source files,
+CloudFormation lint, actual localhost HTTP smoke, configured local service smoke and
+the submission gate passed. The full suite reported two existing dependency
+deprecation warnings from Starlette/httpx and AnyIO. Tests required only synthetic
+material; no model, AWS service, deployment, real approval or remote mutation occurred.
+
+After Phase 2, 38 focused policy tests and 700 full repository tests pass with 87%
+combined coverage; the policy module has complete line/branch coverage. The separate
+cloud suite still passes 8 tests. Ruff lint/format, strict mypy over 75 source files,
+schema export checking, CloudFormation lint and both local service smokes pass. The same
+two dependency deprecation warnings remain; no model, AWS service, deployment, real
+approval or remote mutation was used.
+
+Phase 3 adds the `ActionSelector` port, exact `SelectorInput`, deterministic local
+baseline, injected Bedrock Converse selector and versioned selector prompt. Model output
+contains only action identity, typed arguments and untrusted rationale; adapter-owned
+identity, policy/snapshot binding, latency, attempts and valid paired token usage are
+recorded on the proposal. Both selectors perform side-effect-free admission preflight.
+Injected-client tests cover two state-dependent admitted branches, deterministic
+baseline parity, no-action short circuit, unknown/cross-action output, invented pages,
+prose/malformed/extra authority fields, refusal, truncation, timeout, throttling and
+sanitized provider failure. No live model or tool executor is used.
+
+Final Phase 3 verification used Python 3.13.12: 35 focused selector tests and 736
+full repository tests passed with 88% combined coverage; the new selector modules have
+97% combined coverage. The separate cloud suite passed 8 tests. Ruff lint/format,
+strict mypy over 78 source files, schema export checking, CloudFormation lint, actual
+localhost HTTP smoke, configured local service smoke and the submission gate passed.
+The full suite reported the same two existing Starlette/httpx and AnyIO deprecation
+warnings. No live model, AWS service, deployment, real approval or remote mutation ran.
+
+Phase 4 adds provider-neutral snapshot/executor/trace ports, an exactly-one-action router,
+`ControlledWorkflowCoordinator.decide_once` and the explicitly non-durable
+`NonDurableInMemoryDecisionTrace`. The coordinator captures state before selection,
+re-captures and re-admits immediately before execution, sanitizes executor/receipt
+failures, captures resulting state/blockers, charges actual model attempts and appends an
+event at decision time. Causal parents come from the current trace frontier. The executed
+fixture is generated by running this coordinator with deterministic synthetic adapters.
+Focused tests cover zero-call rejection across parser/extractor/reviewer/approval/writer
+spies, exactly-once success, result digest, sanitized failure, invalid evidence receipt,
+human waiting/task linkage, actual model-call metadata, causal order and trace integrity.
+The legacy controller/audit/HTTP paths remain unchanged and no durable guarantee is made.
+
+Final Phase 4 verification used Python 3.13.12: 11 focused coordinator/trace tests and
+749 full repository tests passed with 88% combined coverage; the new coordinator, trace
+adapter and execution ports have complete line/branch coverage. The separate cloud suite
+passed 8 tests. Ruff lint/format, strict mypy over 81 source files, schema export checking,
+CloudFormation lint, actual localhost HTTP smoke, configured local service smoke and the
+submission gate passed. The same two dependency deprecation warnings remain. No live
+model, AWS service, deployment, real approval, durable write or remote mutation ran.
+
+Phase 5 adds `BoundedWorkflowRunner`, executable budget carry-forward, stable failure
+categories, deterministic injected exponential backoff, canonical no-progress
+fingerprinting and a concrete non-persisted `HumanReviewHandoff`. Model provider attempts
+consume model-call and retry budgets; outer tool/selector retries and backoff are bounded;
+snapshot providers cannot increase the current ledger. Permanent failures execute once,
+repeated identical tool failures stop as no progress, and exhaustion retains the current
+blockers, affected subjects, located evidence and last actual sanitized tool outcome.
+Business `needs_review` creates the existing controlled human action and terminates in
+`waiting_for_human`; it is not retried as infrastructure failure. Task creation,
+response transactions and correction/re-entry follow in the scoped local Phase 6
+delivery; durable persistence remains owned by Issue #9.
+
+Final Phase 5 verification used Python 3.13.12: 10 focused bounded-runner tests and
+761 full repository tests passed with 88% combined coverage; the bounded runner has
+91% line/branch coverage and the complete Phase 1–5 focused set passes 145 tests. The
+separate cloud suite passed 8 tests. Ruff lint/format, strict mypy over 82 source files,
+schema/fixture export checking, CloudFormation lint, actual localhost HTTP smoke,
+configured local-service smoke and the submission gate passed. The full suite reported
+the same two existing Starlette/httpx and AnyIO deprecation warnings. No live model, AWS
+service, deployment, real approval, durable task/write or remote mutation ran.
+
+Phase 6 adds the purpose-specific `HumanTaskService`, trusted `MaterialSubjectMap`,
+POSIX principal resolver and `NonDurableInMemoryHumanTaskRepository`. Local response
+transactions recheck permission, task/run/revision/side/result bindings and actor-scoped
+replay before atomically consuming a task, recording the accepted response, appending a
+revision and queuing full review. Exact replay returns the original event; changed
+payloads under the same key and competing stale responses cannot apply another correction. Historical
+snapshots and original/proposed/corrected ledgers remain available through authorized reads.
+
+Correction and explicit missing-evidence supply preserve scores, resolve the selected
+forms and keep existing source anchors and units. They require subsequent confirmation
+and exact-material approval. Sequential confirmation preserves only unchanged assertions
+proven by accepted fact-response events for the same actor; imported confirmation labels
+are insufficient. Rule changes clear those assertions. Separate material approval verifies
+an existing local signed receipt, and publication authorization binds an actual verified
+result without writing an artifact. Full local re-entry uses the existing `CaseReviewer`.
+The acceptance test changes a proposed value from 9 m to 10 m, preserves the parent,
+rejects obsolete authority, confirms, separately signs eligible synthetic material and
+recomputes a verified 5 percent-point adjustment through the real deterministic core.
+
+`create_from_handoff` resolves every supplied blocker through trusted finding/purpose/subject
+bindings and stores the full task batch atomically. An unsupported or incomplete mapping
+fails explicitly. Infrastructure-only handoffs without deterministic finding bindings
+remain with the caller; this delivery does not fabricate findings or mount new endpoints.
+Tasks, response events and queued work are process-local and lost on exit. Phase 6 uses
+the plan's explicitly scoped local transactional-adapter deliverable; Issue #9 durability,
+Phase 7 endpoint ownership, browser integration and live-model acceptance remain separate.
+The new task/response/revision fixtures are generated by actual synthetic service execution.
+
+Final Phase 6 verification used Python 3.13.12: 108 focused human-task/correction/repository
+tests and 869 full repository tests passed with 89% combined coverage. The four new
+application/adapter modules have 95% combined coverage. The separate cloud suite passed
+8 tests. Ruff lint/format (182 formatted Python files), strict mypy over 86 source files,
+schema/fixture export checking, CloudFormation lint, actual localhost HTTP smoke,
+configured local-service smoke and the submission gate passed. The same two existing
+Starlette/httpx and AnyIO dependency deprecation warnings remain. Synthetic material
+and isolated local test signing exercise the existing approval boundary; no live model,
+AWS service, deployment, real-case approval, durable write or remote mutation occurred.
+
+## Issue #17 Phase 7 ownership handoff (2026-09-09)
+
+Read-only reinspection of #9/#17 bodies and all comments found the new downstream
+coordination: #24 owns authenticated persistent task/revision APIs, #29 owns
+durable jobs and waiting/resume integration, and #25 owns the browser workflow.
+All three follow-up bodies were inspected; all remain open, and no open PR was
+returned at this checkpoint. Their issue numbers replace the historical M0
+assumption that no backend/frontend follow-ups existed.
+
+The [service handoff](issue17-service-handoff.md) records exact source links,
+component/fixture reuse, migration requirements and unresolved endpoint, collection,
+authentication, audit/resume-event and privacy boundaries. Phase 7 follows its
+ownership-gated application/schema/fixture delivery path; it adds no runtime code,
+new models, HTTP routes, remote OpenAPI or durable-success claims. Existing local
+contracts and executable synthetic examples remain the handoff, not a substitute
+for #24/#29/#25 integration tests, review, CI or merge.
+
+Phase 7 verification reran all 869 repository tests, including schema/fixture
+roundtrips, with the same two dependency warnings. Ruff lint/format, mypy and
+actual localhost HTTP smoke passed. The restricted HTTP smoke could not create
+a socket, and the restricted full-suite run was interrupted after making no
+further progress; both passed when rerun with approved local execution permissions.
+This documentation-only phase does not report a new coverage measurement or live
+cloud/model acceptance. The submission gate and whitespace check passed; nothing
+was staged, committed or published, and `plan.md` remains untracked and unmodified.
 
 ## PR #20 local P2 correction (2026-09-07)
 
@@ -259,8 +529,8 @@ The #8/#7 implementation and correction evidence is recorded below as history.
 | Full coverage and evidence gate | Independent source/page/table inventory and recalculation | #8 | Forged-result regression fixed; source omissions block completion |
 | Async jobs and durable Runtime delivery | Cloud API/persistence/dispatcher/reconciler | #9 | Architecture design; no live test |
 | Runtime packaging/health smoke | cloud_tests/, merged PR #14 | #9 | Local/mocked preparation; live invocation and durable production jobs pending |
-| Model-selected allowed actions and decision records | M0 service contracts and pure action guard | #17 | DTO/admission validation implemented locally; actual model selector/executor remains A work |
-| Version-bound human tasks and re-entry | M0 task/revision DTOs, snapshot helper and pure response guard | #17/#9 | Contract and local checks implemented; B API/D persistence remain future work; local receipt is Linux/macOS only |
+| Model-selected allowed actions and decision records | Exact contracts, policy/selectors, single-decision coordinator/router, bounded no-progress runner and non-durable causal trace | #17 | Phases 1–6 local components implemented; endpoint/workbench assembly and durable Issue #9 storage remain |
+| Version-bound human tasks and re-entry | Purpose-specific task service, explicit subject correction, POSIX principal, atomic local repository and existing deterministic reviewer | #17/#9 | Correction/confirmation/approval/replay/re-entry exercised locally; B API/D persistence remain future work; local receipt is Linux/macOS only |
 | Browser review workbench | Future source/evidence/task UI | New work item required | Planned; full UI implementation is separate from #17 contracts |
 | Attribution and branch naming | AGENTS.md and scripts/check_submission.py | #4, PR #13 | 49 subprocess CLI tests; full snapshots/index/metadata/publication/branch checks |
 

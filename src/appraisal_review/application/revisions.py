@@ -2,6 +2,8 @@
 
 from dataclasses import dataclass
 
+from pydantic import RootModel
+
 from appraisal_review.domain.confidence import confirmation_digest
 from appraisal_review.domain.factor_models import ReviewMaterial
 from appraisal_review.domain.review_contracts import content_digest
@@ -12,6 +14,29 @@ from appraisal_review.domain.service_contracts import (
     RuleReference,
     ValueRevision,
 )
+
+
+def source_preparation_revision(
+    documents: tuple[DocumentReference, ...], revision_id: str
+) -> MaterialRevision:
+    """Capture authorized source identities before semantic rule/fact extraction.
+
+    This is not review material or an approval. Assembly later captures a real
+    ReviewMaterial child through RevisionSnapshot, preserving the source parent.
+    """
+    if not documents:
+        raise ValueError("Preparation requires source documents")
+    ordered = tuple(sorted(documents, key=lambda item: item.document_id))
+    return MaterialRevision(
+        reference=RevisionReference(
+            case_id=ordered[0].case_id,
+            revision_id=revision_id,
+            material_digest=content_digest(RootModel[tuple[DocumentReference, ...]](ordered)),
+        ),
+        documents=ordered,
+        rules=(),
+        canonicalization="source-documents-json-v1",
+    )
 
 
 @dataclass(frozen=True)

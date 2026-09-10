@@ -1,0 +1,162 @@
+{
+  "schema_version": "2.0",
+  "identity": {
+    "case_id": "synthetic-case",
+    "version": "1",
+    "district": "synthetic",
+    "zone": "synthetic",
+    "land_use_category": "synthetic",
+    "effective_date": "2026-09-05"
+  },
+  "comparisons": [
+    {
+      "case_id": "synthetic-case",
+      "rule_set_id": "synthetic-road-v1",
+      "rule_version": "1.0.0",
+      "context": {
+        "scope": "regional",
+        "target_id": "synthetic-target",
+        "comparable_id": "synthetic-comparable"
+      },
+      "case_version": "1",
+      "source_hashes": {
+        "synthetic-criteria": "7ec36bdcac8d2485eb08b8e61be6ca85970993171ba77047805987d39034520a",
+        "synthetic-forms": "37f1b0a1872d76a68cd0a482eb4aeb0ce4f3dae564f5e23340b470cef41835ab"
+      },
+      "results": [],
+      "summary": {
+        "total_adjustment_percent": 0.0,
+        "status": "verified"
+      }
+    }
+  ],
+  "findings": [
+    {
+      "id": "trust",
+      "kind": "approval",
+      "status": "needs_review",
+      "context": null,
+      "factor_id": null,
+      "rule_id": null,
+      "rule_version": null,
+      "observed": null,
+      "expected": null,
+      "evidence": [],
+      "trace": "Exact material requires trusted approval"
+    },
+    {
+      "id": "sources",
+      "kind": "source_identity",
+      "status": "verified",
+      "context": null,
+      "factor_id": null,
+      "rule_id": null,
+      "rule_version": null,
+      "observed": null,
+      "expected": null,
+      "evidence": [],
+      "trace": "Current source versions and hashes match"
+    },
+    {
+      "id": "inventory",
+      "kind": "inventory",
+      "status": "verified",
+      "context": null,
+      "factor_id": null,
+      "rule_id": null,
+      "rule_version": null,
+      "observed": null,
+      "expected": null,
+      "evidence": [],
+      "trace": "Explicit inventory examined independently of results"
+    },
+    {
+      "id": "[\"regional\",\"synthetic-target\",\"synthetic-comparable\"]/factor/synthetic.road_width",
+      "kind": "evidence_reliability",
+      "status": "needs_review",
+      "context": {
+        "scope": "regional",
+        "target_id": "synthetic-target",
+        "comparable_id": "synthetic-comparable"
+      },
+      "factor_id": "synthetic.road_width",
+      "rule_id": null,
+      "rule_version": null,
+      "observed": null,
+      "expected": null,
+      "evidence": [],
+      "trace": "Located text or model confidence alone does not prove interpretation"
+    },
+    {
+      "id": "[\"regional\",\"synthetic-target\",\"synthetic-comparable\"]",
+      "kind": "calculation",
+      "status": "needs_review",
+      "context": {
+        "scope": "regional",
+        "target_id": "synthetic-target",
+        "comparable_id": "synthetic-comparable"
+      },
+      "factor_id": null,
+      "rule_id": null,
+      "rule_version": "1.0.0",
+      "observed": null,
+      "expected": null,
+      "evidence": [],
+      "trace": "Missing critical factor result: synthetic.road_width"
+    },
+    {
+      "id": "observed/road-rate",
+      "kind": "observed_unresolved",
+      "status": "needs_review",
+      "context": {
+        "scope": "regional",
+        "target_id": "synthetic-target",
+        "comparable_id": "synthetic-comparable"
+      },
+      "factor_id": "synthetic.road_width",
+      "rule_id": null,
+      "rule_version": null,
+      "observed": "5",
+      "expected": null,
+      "evidence": [
+        {
+          "document_id": "synthetic-forms",
+          "content_hash": "37f1b0a1872d76a68cd0a482eb4aeb0ce4f3dae564f5e23340b470cef41835ab",
+          "version": "1",
+          "page": 1,
+          "region_id": "body",
+          "bbox": [
+            1.0,
+            2.0,
+            90.0,
+            40.0
+          ],
+          "excerpt": "Synthetic target 10 m; comparable 9 m; rate 5"
+        }
+      ],
+      "trace": "Current source and exact-material authority required"
+    }
+  ],
+  "coverage": {
+    "required": [
+      "trust",
+      "sources",
+      "inventory",
+      "observed/road-rate",
+      "[\"regional\",\"synthetic-target\",\"synthetic-comparable\"]",
+      "[\"regional\",\"synthetic-target\",\"synthetic-comparable\"]/factor/synthetic.road_width"
+    ],
+    "verified": [
+      "inventory",
+      "sources"
+    ],
+    "missing": [
+      "[\"regional\",\"synthetic-target\",\"synthetic-comparable\"]",
+      "[\"regional\",\"synthetic-target\",\"synthetic-comparable\"]/factor/synthetic.road_width",
+      "observed/road-rate",
+      "trust"
+    ],
+    "unsupported": []
+  },
+  "status": "needs_review"
+}
