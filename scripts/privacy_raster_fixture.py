@@ -141,7 +141,7 @@ def write_privacy_sources(directory: Path) -> tuple[PrivacySyntheticSource, ...]
         canaries = tuple(f"合成機敏姓名-{purpose}-{page}" for page in range(1, len(pages) + 1))
         path = directory / f"synthetic-{purpose}.pdf"
         pages = tuple(
-            (*lines, canary, f"SYNTHETIC SOURCE {uuid4()}")
+            (*lines, canary, "SYNTHETIC SOURCE")
             for lines, canary in zip(pages, canaries, strict=True)
         )
         if purpose == "criteria":
@@ -152,8 +152,8 @@ def write_privacy_sources(directory: Path) -> tuple[PrivacySyntheticSource, ...]
             canvas.setCreator("")
             canvas.setTitle("Synthetic raster review form")
             for lines in pages:
-                canvas.setFont(FONT_NAME, 13)
                 for line, y in zip(lines, (375, 335, 295, 255, 80, 55), strict=True):
+                    canvas.setFont(FONT_NAME, 13 if y == 80 else 16)
                     canvas.drawString(30, y, line)
                 canvas.setFont("Helvetica", 9)
                 for label, y in (
@@ -691,6 +691,8 @@ async def create_sanitized_synthetic_case(
                 font_path=font_path,
                 font_name=FONT_NAME,
                 approved_font_sha256=BUNDLED_CJK_SHA256,
+                font_size=14,
+                annotation_color="#000000",
                 grade_labels={
                     "excellent": "優",
                     "slightly_superior": "略優",

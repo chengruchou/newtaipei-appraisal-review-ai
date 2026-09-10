@@ -196,6 +196,7 @@ async def create_rehearsal(
     origin: str,
     ocr_config: Path,
     ocr_dpi: int = 144,
+    raster_dpi: int = 144,
 ) -> CombinedRehearsal:
     from privacy_browser_rehearsal import create_privacy_rehearsal
     from privacy_raster_fixture import create_sanitized_synthetic_case
@@ -262,6 +263,7 @@ async def create_rehearsal(
         key_id=key_id,
         case_id=case,
         on_ready=on_ready,
+        raster_dpi=raster_dpi,
     )
 
     def forms(case_id: str) -> DocumentMetadata:
@@ -302,7 +304,10 @@ def main() -> None:
     parser.add_argument("--privacy-port", type=int, default=8788)
     parser.add_argument("--origin", default="http://127.0.0.1:4174")
     parser.add_argument("--ocr-config", type=Path, required=True)
-    parser.add_argument("--ocr-dpi", type=int, choices=range(72, 301), default=144)
+    parser.add_argument("--ocr-dpi", type=int, choices=range(72, 301), metavar="DPI", default=144)
+    parser.add_argument(
+        "--raster-dpi", type=int, choices=range(72, 301), metavar="DPI", default=144
+    )
     args = parser.parse_args()
 
     async def run() -> None:
@@ -313,6 +318,7 @@ def main() -> None:
             origin=args.origin,
             ocr_config=args.ocr_config,
             ocr_dpi=args.ocr_dpi,
+            raster_dpi=args.raster_dpi,
         )
         print(f"Synthetic core: http://127.0.0.1:{args.port}", flush=True)
         print(f"Local privacy bridge: http://127.0.0.1:{args.privacy_port}", flush=True)

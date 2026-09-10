@@ -34,6 +34,7 @@ from appraisal_review.adapters.local.privacy.mapping_store import (
     LinuxEncryptedMappingStore,
     MacOSEncryptedMappingStore,
 )
+from appraisal_review.adapters.local.privacy.pdf_worker import ScanLimits
 from appraisal_review.adapters.local.privacy.review import LocalPrivacyPreviews
 from appraisal_review.adapters.local.privacy.sanitize import IsolatedPrivacyRasterProcessor
 from appraisal_review.adapters.local.privacy.source import IsolatedPrivacyPDF, LocalSnapshotStore
@@ -105,8 +106,10 @@ class _SyntheticRaster(IsolatedPrivacyRasterProcessor):
         self,
         directory: Path,
         candidates: Mapping[UUID, tuple[SensitiveCandidate, ...]],
+        *,
+        raster_dpi: int = 144,
     ) -> None:
-        super().__init__(directory)
+        super().__init__(directory, limits=ScanLimits(dpi=raster_dpi))
         self.candidates = dict(candidates)
         self.bundle: SanitizedBundle | None = None
 
@@ -226,6 +229,7 @@ def create_privacy_rehearsal(
     on_admitted: Callable[[DocumentMetadata], None] | None = None,
     on_ready: Callable[[RevisionSnapshot], None] | None = None,
     results: PrivacyBridgeResultResolver | None = None,
+    raster_dpi: int = 144,
 ) -> PrivacyRehearsal:
     """Compose a real bridge; hand off the first exact paired candidate revision once.
 
@@ -236,6 +240,7 @@ def create_privacy_rehearsal(
     """
     from privacy_raster_fixture import material_from_admitted, write_privacy_sources
 
+    ScanLimits(dpi=raster_dpi)
     supplied = (principal, documents, signing_key, key_id)
     if any(item is not None for item in supplied) and any(item is None for item in supplied):
         raise ValueError("Supply the complete trusted C2 configuration")
@@ -314,7 +319,7 @@ def create_privacy_rehearsal(
         previews=LocalPrivacyPreviews(sources),
         human=human,
     )
-    processor = _SyntheticRaster(directory, candidates)
+    processor = _SyntheticRaster(directory, candidates, raster_dpi=raster_dpi)
     verifier = LocalSanitizedVerifier(processor, _SyntheticOutputOCR(processor))
     builder = LocalSanitizedBundleBuilder(
         sources=sources,

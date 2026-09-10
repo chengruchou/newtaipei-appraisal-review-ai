@@ -92,6 +92,11 @@ PYTHONPATH="$PWD/src" .venv/bin/python scripts/run_integration_rehearsal.py \
   --ocr-config artifacts/integration-ocr/config.json
 ```
 
+`--raster-dpi` selects the initial sanitized raster resolution; `--ocr-dpi`
+selects both actual restoration rendering and OCR resolution. Both default to
+144 and accept the existing worker range of 72 through 300. A different
+resolution applies to a new rehearsal, never an already admitted source.
+
 The OCR configuration must pin a real local Tesseract executable and the English
 and Traditional Chinese language assets by digest. Startup performs preflight;
 it neither installs global tools nor substitutes synthetic OCR for restoration.
