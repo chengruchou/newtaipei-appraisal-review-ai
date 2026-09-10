@@ -41,7 +41,7 @@ from appraisal_review.adapters.local.synthetic_workbench import (
 )
 from appraisal_review.application.document_transfer import DocumentTransferService
 from appraisal_review.application.revisions import RevisionSnapshot
-from appraisal_review.domain.artifact_publication import SourceVersion
+from appraisal_review.domain.artifact_publication import PublicationError, SourceVersion
 from appraisal_review.domain.document_transfer import DocumentMetadata, DocumentOperation
 from appraisal_review.domain.privacy_models import PrivacyPage
 from appraisal_review.domain.privacy_review import PrivacyPagePreview
@@ -229,9 +229,22 @@ class CombinedRehearsal:
             return
         status = await self.core.case_status(self.case_id)
         manifest = self.base_fixture | status
+        for key in ("restore_result_id", "restoration_unavailable", "restoration_unavailable_code"):
+            manifest.pop(key, None)
         if status.get("completed_job_id"):
-            handle = await asyncio.to_thread(self.results.bind, UUID(status["completed_job_id"]))
-            manifest["restore_result_id"] = str(handle)
+            try:
+                handle = await asyncio.to_thread(
+                    self.results.bind, UUID(status["completed_job_id"])
+                )
+            except PublicationError as error:
+                if error.code != "publication_unauthorized":
+                    raise
+                manifest.update(
+                    restoration_unavailable=True,
+                    restoration_unavailable_code=error.code,
+                )
+            else:
+                manifest["restore_result_id"] = str(handle)
         _private_json(self.private_fixture, manifest)
 
     async def serve(self, *, port: int, privacy_port: int) -> None:

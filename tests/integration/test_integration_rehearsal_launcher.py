@@ -11,7 +11,8 @@ from appraisal_review.adapters.local.synthetic_workbench import prepare_workbenc
 from appraisal_review.domain.artifact_publication import PublicationError
 
 
-def test_restore_handle_requires_current_completed_owned_result(monkeypatch, tmp_path):
+@pytest.mark.parametrize("unavailable", ["revoke", "expire"])
+def test_restore_handle_requires_current_completed_owned_result(monkeypatch, tmp_path, unavailable):
     monkeypatch.syspath_prepend(str(Path(__file__).resolve().parents[2] / "scripts"))
     launcher = importlib.import_module("run_integration_rehearsal")
 
@@ -39,9 +40,67 @@ def test_restore_handle_requires_current_completed_owned_result(monkeypatch, tmp
             results(str(uuid4()), handle)
         restored = launcher.PublishedResults(context, forms)
         assert restored(context.principal.actor.actor_id, handle).pdf == publication.pdf
-        context.manifests.revoke(publication.run.revision.case_id)
-        with pytest.raises(PublicationError):
+        import hashlib
+        import json
+        import sqlite3
+        from contextlib import closing
+        from types import SimpleNamespace
+
+        projection = SimpleNamespace(
+            core=context,
+            results=results,
+            case_id=publication.run.revision.case_id,
+            base_fixture={"restore_result_id": str(handle)},
+            private_fixture=context.root / "poll-fixture.json",
+        )
+        await launcher.CombinedRehearsal.publish_status(projection)
+        assert json.loads(projection.private_fixture.read_bytes())["restore_result_id"] == str(
+            handle
+        )
+
+        def durable_effects():
+            with closing(sqlite3.connect(context.root / "state/review.sqlite")) as db:
+                return {
+                    table: db.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+                    for table in (
+                        "publication_manifests",
+                        "synthetic_material_grants",
+                        "rehearsal_restore_handles",
+                    )
+                }
+
+        before_counts = durable_effects()
+        before_pdfs = {
+            str(p): hashlib.sha256(p.read_bytes()).hexdigest() for p in context.root.rglob("*.pdf")
+        }
+        if unavailable == "revoke":
+            context.manifests.revoke(publication.run.revision.case_id)
+        else:
+            now = context.manifests.clock()
+            monkeypatch.setattr(context.manifests, "clock", lambda: now + 86400)
+        with pytest.raises(PublicationError, match="publication_unauthorized"):
             results(context.principal.actor.actor_id, handle)
+        for _ in range(2):
+            await launcher.CombinedRehearsal.publish_status(projection)
+            view = json.loads(projection.private_fixture.read_bytes())
+            assert view["job_status"] == "succeeded"
+            assert "restore_result_id" not in view
+            assert view["restoration_unavailable"] is True
+            assert view["restoration_unavailable_code"] == "publication_unauthorized"
+        assert durable_effects() == before_counts
+        assert {
+            str(p): hashlib.sha256(p.read_bytes()).hexdigest() for p in context.root.rglob("*.pdf")
+        } == before_pdfs
+
+        unexpected = PublicationError("artifact_integrity_failed")
+
+        def fail_unexpected(job_id):
+            raise unexpected
+
+        monkeypatch.setattr(results, "bind", fail_unexpected)
+        with pytest.raises(PublicationError) as raised:
+            await launcher.CombinedRehearsal.publish_status(projection)
+        assert raised.value is unexpected
 
     asyncio.run(scenario())
 

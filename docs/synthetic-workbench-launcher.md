@@ -146,3 +146,10 @@ Status polling waits until trusted registration has persisted the submitted job
 identity. A fixture may already be available to execution while admission is
 awaiting submission; that intermediate state does not publish a job ID. Errors
 after registration remain visible and are not swallowed by the poller.
+
+If an otherwise completed publication loses its local access grant through expiry
+or revocation, the private status fixture omits `restore_result_id` and reports
+`restoration_unavailable: true` with code `publication_unauthorized`. Job status
+remains visible and polling continues. This handling neither renews authorization
+nor creates approval, output, or a publication. Other publication errors and
+unexpected exceptions continue to fail explicitly.
