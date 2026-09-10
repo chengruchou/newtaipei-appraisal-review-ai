@@ -1,0 +1,37 @@
+{
+  "schema_version": "local-privacy-v1",
+  "case_id": "00000000-0000-4000-8000-000000000001",
+  "document_id": "00000000-0000-4000-8000-000000000002",
+  "run_id": "00000000-0000-4000-8000-000000000021",
+  "revision_id": "00000000-0000-4000-8000-000000000022",
+  "artifact_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "base_sanitized_digest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "template_digest": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+  "pages": [
+    {
+      "number": 1,
+      "width": 600.0,
+      "height": 800.0,
+      "coordinate_system": "pdf_bottom_left",
+      "page_space": "unrotated_crop_box"
+    }
+  ],
+  "targets": [
+    {
+      "schema_version": "local-privacy-v1",
+      "occurrence_id": "00000000-0000-4000-8000-000000000007",
+      "entity_id": "00000000-0000-4000-8000-000000000005",
+      "output_field_id": "00000000-0000-4000-8000-000000000023",
+      "region": {
+        "page": 1,
+        "bbox": [
+          380.0,
+          700.0,
+          580.0,
+          770.0
+        ]
+      },
+      "present": true
+    }
+  ]
+}

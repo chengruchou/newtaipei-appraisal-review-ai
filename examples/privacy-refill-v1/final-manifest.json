@@ -1,0 +1,19 @@
+{
+  "schema_version": "local-privacy-v1",
+  "case_id": "00000000-0000-4000-8000-000000000001",
+  "document_id": "00000000-0000-4000-8000-000000000002",
+  "map_id": "00000000-0000-4000-8000-000000000020",
+  "run_id": "00000000-0000-4000-8000-000000000021",
+  "revision_id": "00000000-0000-4000-8000-000000000022",
+  "input_artifact_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "final_digest": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+  "byte_size": 100,
+  "filename": "final-local.pdf",
+  "state": "refilled_local",
+  "business_authority": "unchanged",
+  "signature_effect": "visual_only_no_digital_signature",
+  "restored_fields": [
+    "00000000-0000-4000-8000-000000000023"
+  ],
+  "omitted_fields": []
+}

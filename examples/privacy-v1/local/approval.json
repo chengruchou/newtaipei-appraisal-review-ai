@@ -1,0 +1,10 @@
+{
+  "schema_version": "local-privacy-v1",
+  "approval_id": "00000000-0000-4000-8000-000000000006",
+  "case_id": "00000000-0000-4000-8000-000000000001",
+  "snapshot_id": "00000000-0000-4000-8000-000000000003",
+  "review_digest": "5edc507a87471d97aea629030ad65bc82b904620bd579162fd9412f26d96826a",
+  "principal_id": "synthetic-human",
+  "approved_at": "2026-09-10T00:00:00Z",
+  "expires_at": "2026-09-10T01:00:00Z"
+}
