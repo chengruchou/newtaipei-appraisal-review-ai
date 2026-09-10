@@ -1,15 +1,16 @@
 # Architecture
 
-Snapshot: main `ea55043d90aa21e6f0a7e3fe05aa34ef8a3553d3` inspected on 2026-09-07,
-including merged #15/#16/#19, plus M0 review-branch work on
-`feat/shared-service-contracts`. M0 is not deployed or merged. Current and target
-views below are deliberately separate. [Service contracts](service-contracts.md)
-is the authority for all new shared DTOs and ports.
+Snapshot: main `463880af3a6dc6aad2bfa6fdfc3bc267afc4d4a5` inspected on 2026-09-10,
+including merged #15/#16/#19/#20/#33. M0 is merged and is not deployed.
+[Service contracts](service-contracts.md) define the shared service-v1 DTOs.
+[Document transfer](document-transfer.md) adds this branch's controlled C2 ingestion
+and immutable source snapshots without changing those DTOs or mounting new HTTP routes.
+[Project progress](project-progress.md) records the active work lines.
 
 ## Current program structure
 
-Solid lines are implemented calls/data flow. Orange nodes are this working-branch
-integration; other nodes are merged core. These are local components, not deployed
+Solid lines are implemented calls/data flow. Orange nodes highlight the merged M0
+integration. These are local components, not deployed
 AWS infrastructure. Prepared material may originate from real/native candidate
 adapters or the bounded injected Bedrock adapter; M0 tests make no model calls.
 
