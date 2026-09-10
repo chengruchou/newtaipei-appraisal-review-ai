@@ -1,5 +1,20 @@
 # Requirements to implementation and acceptance
 
+## Issue 22 local privacy closeout (2026-09-10)
+
+The [Phase 8 acceptance matrix and handoff](issue-22-acceptance.md) is the current
+privacy implementation record for uncommitted work based on
+`8591bddc76584ad630774f214c7452c397c937d5`. It maps input, detection, confirmation,
+redaction, geometry, tokens, encryption, refill, egress and compatibility to local
+tests and explicitly blocked runtime/consumer acceptance. It supplements rather
+than replaces the dated business-core evidence below.
+
+The local privacy SDK, mapping, refill and export gate do not constitute a deployed
+frontend/cloud pipeline. Original and refilled final PDFs remain local. #25 UI,
+#26/#28 formal output/publication, exact-export mapping coordination, Linux assets
+and #31 live AWS verification remain pending. Independent review and each remote
+publication action require separate approval.
+
 ## PR #20 local P2 correction (2026-09-07)
 
 The [P2 correction record](m0-p2-review.md) supersedes the earlier review's limited
