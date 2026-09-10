@@ -6,6 +6,7 @@
 !infra/
 !infra/runtime/
 !infra/runtime/requirements.lock
+!infra/runtime/build-tooling.lock
 **/__pycache__/
 **/*.pyc
 **/.env*

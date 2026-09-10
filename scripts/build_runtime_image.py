@@ -149,6 +149,7 @@ def build_context(directory: Path) -> None:
         "lambda.Dockerfile",
         "lambda.Dockerfile.dockerignore",
         "requirements.lock",
+        "build-tooling.lock",
     ):
         destination = directory / "infra" / "runtime" / name
         destination.parent.mkdir(parents=True, exist_ok=True)
@@ -159,7 +160,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--tag", required=True, help="Explicit local image tag; never latest")
     parser.add_argument("--target", choices=("runtime", "lambda"), required=True)
-    parser.add_argument("--base-image", help="Target-compatible Python 3.11 base pinned by digest")
+    parser.add_argument("--base-image", help="Target-compatible Python 3.12 base pinned by digest")
     parser.add_argument(
         "--runtime-config", type=Path, help="Private operator JSON, runtime target only"
     )
@@ -240,6 +241,9 @@ def main() -> int:
                 evidence["base_image"] = args.base_image
                 evidence["dependencies_sha256"] = hashlib.sha256(
                     (ROOT / "infra" / "runtime" / "requirements.lock").read_bytes()
+                ).hexdigest()
+                evidence["build_tooling_sha256"] = hashlib.sha256(
+                    (ROOT / "infra" / "runtime" / "build-tooling.lock").read_bytes()
                 ).hexdigest()
             output.parent.mkdir(parents=True, exist_ok=True)
             with output.open("x") as receipt:
