@@ -46,7 +46,6 @@ const task = {
   question: "Is the target road width 10 m?",
   evidence: [
     {
-      schema_version: "2.0",
       document_id: "forms.pdf",
       content_hash: DIGEST,
       version: "1",
@@ -81,8 +80,23 @@ test.beforeEach(async ({ page }) => {
             schema_version: "service-v1",
             reference: revision,
             parent: null,
-            documents: [],
-            rules: [],
+            documents: ["forms", "criteria"].map((purpose) => ({
+              schema_version: "service-v1",
+              case_id: "case-1",
+              document_id: `${purpose}.pdf`,
+              version: "1",
+              content_hash: DIGEST,
+              purpose,
+            })),
+            rules: [
+              {
+                schema_version: "service-v1",
+                rule_set_id: "synthetic-rules",
+                version: "1",
+                context: task.side.context,
+                content_hash: DIGEST,
+              },
+            ],
             changes: [],
             canonicalization: "review-material-json-v1",
           },

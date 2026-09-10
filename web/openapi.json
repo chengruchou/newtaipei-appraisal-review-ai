@@ -2657,6 +2657,76 @@
         "title": "TaskListView",
         "type": "object"
       },
+      "TaskSubjectView": {
+        "additionalProperties": false,
+        "description": "Exact stored value and input requirements; a separate opt-in projection.\n\nKeeping this out of TaskView preserves the frozen legacy response shape.\nA client must never infer a measurement unit from a factor name.",
+        "properties": {
+          "observation": {
+            "$ref": "#/components/schemas/PublicValue-Output"
+          },
+          "required_type": {
+            "anyOf": [
+              {
+                "enum": [
+                  "number",
+                  "text",
+                  "category",
+                  "boolean"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Required Type"
+          },
+          "required_unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Required Unit"
+          },
+          "revision": {
+            "$ref": "#/components/schemas/RevisionReference"
+          },
+          "schema_version": {
+            "const": "service-v1",
+            "default": "service-v1",
+            "title": "Schema Version",
+            "type": "string"
+          },
+          "subject_id": {
+            "title": "Subject Id",
+            "type": "string"
+          },
+          "task_id": {
+            "format": "uuid",
+            "title": "Task Id",
+            "type": "string"
+          },
+          "unit_required": {
+            "title": "Unit Required",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "task_id",
+          "revision",
+          "subject_id",
+          "observation",
+          "required_type",
+          "required_unit",
+          "unit_required"
+        ],
+        "title": "TaskSubjectView",
+        "type": "object"
+      },
       "TaskView": {
         "additionalProperties": false,
         "description": "One task plus the names a client would otherwise have to re-derive to answer it.\n\n`subject_id` is the ledger name of the observation the task is about. It is published\nrather than left to the caller because deriving it means canonicalizing the comparison\ncontext, and two languages do not canonicalize alike: Python's json.dumps escapes\nnon-ASCII by default and JavaScript's JSON.stringify does not, so a browser would\ncompute a different name for any case whose identifiers are not ASCII. Every identifier\nin this project's real cases is Chinese.",
@@ -3645,6 +3715,89 @@
           }
         },
         "summary": "Submit Task Response",
+        "tags": [
+          "human-tasks"
+        ]
+      }
+    },
+    "/v1/review-tasks/{task_id}/subject": {
+      "get": {
+        "operationId": "read_task_subject_v1_review_tasks__task_id__subject_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Task Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskSubjectView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceProblem"
+                }
+              }
+            },
+            "description": "The principal lacks the case permission"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceProblem"
+                }
+              }
+            },
+            "description": "No such task or job for this principal"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceProblem"
+                }
+              }
+            },
+            "description": "The task or revision moved first"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceProblem"
+                }
+              }
+            },
+            "description": "Invalid response"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceProblem"
+                }
+              }
+            },
+            "description": "No human-task store is configured"
+          }
+        },
+        "summary": "Read Task Subject",
         "tags": [
           "human-tasks"
         ]

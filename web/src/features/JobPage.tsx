@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import type { JobStatusView, RevisionListView, ReviewClient, TaskListView } from "@/api/client";
 import { EXPLANATIONS, ServiceError } from "@/api/problems";
 import { ValueAuthority } from "@/ui/Authority";
+import { ResultPanel } from "./ResultPanel";
 
 interface Loaded {
   job: JobStatusView;
@@ -122,6 +123,7 @@ export function JobPage({ jobId, client }: { jobId: string; client: ReviewClient
         </>
       )}
 
+      <ResultPanel key={jobId} client={client} jobId={jobId} />
       <h2>Revision history</h2>
       <ol>
         {revisions.revisions.map((revision) => (

@@ -1,4 +1,5 @@
 import type { SourceCitation } from "@/api/client";
+import { PdfEvidence, type SourceLoader } from "./PdfEvidence";
 
 /**
  * A citation is only useful if the reviewer can go and look. #25 forbids inventing a
@@ -16,7 +17,13 @@ export function locatable(citation: SourceCitation): boolean {
   return [x0, y0, x1, y1].every(Number.isFinite) && x1 > x0 && y1 > y0;
 }
 
-export function CitationItem({ citation }: { citation: SourceCitation }) {
+export function CitationItem({
+  citation,
+  loadSource,
+}: {
+  citation: SourceCitation;
+  loadSource?: SourceLoader;
+}) {
   const canLocate = locatable(citation);
   return (
     <li className="card">
@@ -51,11 +58,18 @@ export function CitationItem({ citation }: { citation: SourceCitation }) {
           page {citation.page} of {citation.document_id} and read it directly.
         </p>
       )}
+      {loadSource ? <PdfEvidence citation={citation} loadSource={loadSource} /> : null}
     </li>
   );
 }
 
-export function EvidenceList({ citations }: { citations: readonly SourceCitation[] }) {
+export function EvidenceList({
+  citations,
+  loadSource,
+}: {
+  citations: readonly SourceCitation[];
+  loadSource?: SourceLoader;
+}) {
   if (citations.length === 0) {
     return (
       <p className="notice" data-tone="warn">
@@ -70,6 +84,7 @@ export function EvidenceList({ citations }: { citations: readonly SourceCitation
         <CitationItem
           key={`${citation.document_id}:${citation.page}:${citation.region_id}`}
           citation={citation}
+          {...(loadSource ? { loadSource } : {})}
         />
       ))}
     </ul>

@@ -1,9 +1,8 @@
-import type { HumanTask, SourceCitation, TaskView } from "@/api/client";
+import type { HumanTask, SourceCitation, TaskView, TaskSubjectView } from "@/api/client";
 
 const DIGEST = "a".repeat(64);
 
 export const citation: SourceCitation = {
-  schema_version: "2.0",
   document_id: "forms.pdf",
   content_hash: DIGEST,
   version: "1",
@@ -76,4 +75,25 @@ export function correctionView(): TaskView {
     }),
     subject_id: SUBJECT,
   } as unknown as TaskView;
+}
+
+export function subjectView(taskView: TaskView = correctionView()): TaskSubjectView {
+  return {
+    schema_version: "service-v1",
+    task_id: taskView.task.task_id,
+    revision: taskView.task.run.revision,
+    subject_id: SUBJECT,
+    required_type: "number",
+    required_unit: "m",
+    unit_required: true,
+    observation: {
+      schema_version: "service-v1",
+      state: "present",
+      value: { type: "number", value: 10, unit: "m" },
+      raw_text: "10 m",
+      unit: "m",
+      confidence: 0,
+      evidence: [citation],
+    },
+  };
 }

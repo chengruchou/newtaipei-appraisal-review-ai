@@ -57,7 +57,7 @@ for (const file of files) {
     fail(`${shown} is a source map and must not be published`);
     continue;
   }
-  if (![".js", ".html", ".css", ".json"].includes(extname(file))) {
+  if (![".js", ".mjs", ".html", ".css", ".json"].includes(extname(file))) {
     continue;
   }
   const text = readFileSync(file, "utf8");

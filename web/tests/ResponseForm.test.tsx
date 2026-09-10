@@ -14,7 +14,7 @@ import type { HumanResponse, ResponseReceipt, ReviewClient } from "@/api/client"
 import { ServiceError, TransportError } from "@/api/problems";
 import { ResponseForm } from "@/features/ResponseForm";
 
-import { correctionView, SUBJECT, view } from "./fixtures";
+import { correctionView, SUBJECT, view, subjectView } from "./fixtures";
 
 const receipt = {
   schema_version: "service-v1",
@@ -184,6 +184,7 @@ describe("ResponseForm", () => {
     render(
       <ResponseForm
         view={correctionView()}
+        subject={subjectView()}
         client={clientWith(submit)}
         onCommitted={vi.fn()}
         onReload={vi.fn()}
@@ -208,6 +209,7 @@ describe("ResponseForm", () => {
     render(
       <ResponseForm
         view={correctionView()}
+        subject={subjectView()}
         client={clientWith(vi.fn())}
         onCommitted={vi.fn()}
         onReload={vi.fn()}

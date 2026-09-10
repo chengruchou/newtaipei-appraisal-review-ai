@@ -178,6 +178,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/review-tasks/{task_id}/subject": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Read Task Subject */
+    get: operations["read_task_subject_v1_review_tasks__task_id__subject_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/reviews": {
     parameters: {
       query?: never;
@@ -1317,6 +1334,36 @@ export interface components {
       tasks: components["schemas"]["TaskView"][];
     };
     /**
+     * TaskSubjectView
+     * @description Exact stored value and input requirements; a separate opt-in projection.
+     *
+     *     Keeping this out of TaskView preserves the frozen legacy response shape.
+     *     A client must never infer a measurement unit from a factor name.
+     */
+    TaskSubjectView: {
+      observation: components["schemas"]["PublicValue-Output"];
+      /** Required Type */
+      required_type: ("number" | "text" | "category" | "boolean") | null;
+      /** Required Unit */
+      required_unit: string | null;
+      revision: components["schemas"]["RevisionReference"];
+      /**
+       * Schema Version
+       * @default service-v1
+       * @constant
+       */
+      schema_version: "service-v1";
+      /** Subject Id */
+      subject_id: string;
+      /**
+       * Task Id
+       * Format: uuid
+       */
+      task_id: string;
+      /** Unit Required */
+      unit_required: boolean;
+    };
+    /**
      * TaskView
      * @description One task plus the names a client would otherwise have to re-derive to answer it.
      *
@@ -1962,6 +2009,73 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ResponseReceipt"];
+        };
+      };
+      /** @description The principal lacks the case permission */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description No such task or job for this principal */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description The task or revision moved first */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description Invalid response */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description No human-task store is configured */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+    };
+  };
+  read_task_subject_v1_review_tasks__task_id__subject_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        task_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TaskSubjectView"];
         };
       };
       /** @description The principal lacks the case permission */

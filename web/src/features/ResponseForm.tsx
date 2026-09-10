@@ -1,8 +1,15 @@
-import { useMemo, useRef, useState } from "react";
+import { useState } from "react";
 
-import type { HumanResponse, ResponseReceipt, ReviewClient, TaskView } from "@/api/client";
+import type {
+  HumanResponse,
+  ResponseReceipt,
+  ReviewClient,
+  TaskView,
+  TaskSubjectView,
+} from "@/api/client";
 import { newIdempotencyKey } from "@/api/client";
 import { EXPLANATIONS, ServiceError, TransportError } from "@/api/problems";
+import { renderValue } from "@/ui/Authority";
 
 type Phase =
   | { name: "editing" }
@@ -10,7 +17,7 @@ type Phase =
   | { name: "submitting"; command: HumanResponse }
   | { name: "committed"; receipt: ResponseReceipt }
   | { name: "conflict" }
-  | { name: "unreachable"; message: string }
+  | { name: "unreachable"; message: string; command: HumanResponse }
   | { name: "refused"; error: ServiceError };
 
 const ACTION_WORDS: Record<string, string> = {
@@ -23,6 +30,7 @@ const ACTION_WORDS: Record<string, string> = {
 
 export interface ResponseFormProps {
   view: TaskView;
+  subject?: TaskSubjectView | null;
   client: ReviewClient;
   onCommitted: (receipt: ResponseReceipt) => void;
   onReload: () => void;
@@ -32,24 +40,36 @@ export interface ResponseFormProps {
 
 export function ResponseForm({
   view,
+  subject = null,
   client,
   onCommitted,
   onReload,
   mintKey = newIdempotencyKey,
 }: ResponseFormProps) {
   const task = view.task;
-  // Minted once per mounted form, so every retry of this one decision reuses it. Minting
-  // at submit time would turn a retry after a timeout into a second distinct write.
-  const idempotencyKey = useRef<string>(mintKey()).current;
-  const [action, setAction] = useState<string>(task.allowed_responses[0] ?? "");
+  const [action, setAction] = useState<HumanResponse["action"]>(
+    task.allowed_responses[0] ?? "reject",
+  );
   const [correctedText, setCorrectedText] = useState("");
   const [phase, setPhase] = useState<Phase>({ name: "editing" });
   const inFlight = phase.name === "submitting";
+  const locked = ["confirming", "submitting", "unreachable"].includes(phase.name);
 
   const closed = task.state !== "open";
-  const numeric = useMemo(() => Number(correctedText), [correctedText]);
+  const subjectValid = subject !== null && subjectMatches(view, subject);
+  const requiredType = subjectValid ? subject.required_type : null;
+  const unit = subjectValid ? subject.required_unit : null;
+  const numeric = Number(correctedText);
   const correctionInvalid =
-    action === "correct" && (correctedText.trim() === "" || !Number.isFinite(numeric));
+    action === "correct" &&
+    (!subjectValid ||
+      requiredType === null ||
+      ((subject.unit_required || requiredType === "number") && !unit?.trim()) ||
+      correctedText.trim() === "" ||
+      (requiredType === "number" &&
+        (!Number.isFinite(numeric) ||
+          !/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(correctedText.trim()))) ||
+      (requiredType === "boolean" && !["true", "false"].includes(correctedText)));
 
   function build(): HumanResponse | null {
     const base = {
@@ -59,14 +79,14 @@ export function ResponseForm({
       revision: task.run.revision,
       side_digest: task.side?.input_digest ?? null,
       result_digest: task.result_digest ?? null,
-      idempotency_key: idempotencyKey,
+      idempotency_key: mintKey(),
       action,
       correction: null,
-    } as unknown as HumanResponse;
+    } satisfies HumanResponse;
     if (action !== "correct") {
       return base;
     }
-    if (view.subject_id === null || view.subject_id === undefined) {
+    if (correctionInvalid || !subjectValid || requiredType === null) {
       return null;
     }
     return {
@@ -75,21 +95,30 @@ export function ResponseForm({
       // comparison context differently for any case identified in Chinese.
       correction: {
         schema_version: "service-v1",
-        subject_id: view.subject_id,
-        original: { schema_version: "service-v1", state: "blank", raw_text: "" },
+        subject_id: subject.subject_id,
+        original: subject.observation,
         proposed: {
           schema_version: "service-v1",
           state: "present",
-          value: { type: "number", value: numeric, unit: task.side?.factor_id ? null : null },
+          value: {
+            type: requiredType,
+            value:
+              requiredType === "number"
+                ? numeric
+                : requiredType === "boolean"
+                  ? correctedText === "true"
+                  : correctedText,
+            unit,
+          },
           raw_text: correctedText,
-          unit: null,
-          confidence: null,
-          evidence: [],
+          unit,
+          confidence: subject.observation.confidence ?? null,
+          evidence: subject.observation.evidence ?? [],
         },
         corrected: null,
         corrected_by: null,
       },
-    } as unknown as HumanResponse;
+    };
   }
 
   async function submit(command: HumanResponse) {
@@ -102,7 +131,7 @@ export function ResponseForm({
       if (error instanceof TransportError) {
         // The write may or may not have applied. The key makes resending safe, so offer
         // exactly that rather than telling the reviewer to start again.
-        setPhase({ name: "unreachable", message: error.message });
+        setPhase({ name: "unreachable", message: error.message, command });
         return;
       }
       if (error instanceof ServiceError && error.code === "version_conflict") {
@@ -145,14 +174,15 @@ export function ResponseForm({
     <form
       onSubmit={(event) => {
         event.preventDefault();
+        if (locked || correctionInvalid) return;
         const command = build();
         if (command === null) {
           return;
         }
-        setPhase({ name: "confirming", command });
+        setPhase({ name: "confirming", command: freezeCommand(command) });
       }}
     >
-      <fieldset disabled={inFlight} style={{ border: 0, padding: 0, margin: 0 }}>
+      <fieldset disabled={locked} style={{ border: 0, padding: 0, margin: 0 }}>
         <legend className="authority-label">Your response</legend>
         {/* Only what the task itself allows. The form never offers an action the server
             would reject, and never invents one the schema does not list. */}
@@ -176,12 +206,19 @@ export function ResponseForm({
             </label>
             <input
               id="corrected-value"
-              inputMode="decimal"
+              inputMode={requiredType === "number" ? "decimal" : "text"}
               value={correctedText}
               aria-describedby="corrected-help"
               onChange={(event) => setCorrectedText(event.target.value)}
             />
             <span id="corrected-help" className="muted">
+              {requiredType
+                ? `Required type: ${requiredType}. Unit: ${unit ?? "not specified"}. `
+                : "Correction unavailable: authoritative value metadata is missing. "}
+              {requiredType === "boolean" ? "Enter true or false. " : null}
+              {requiredType === "number" && !unit?.trim()
+                ? "Correction blocked: required numeric unit is missing. "
+                : null}
               Recorded against {view.subject_id}. Your correction is attributed to you and clears
               every existing confirmation on this case.
             </span>
@@ -196,16 +233,7 @@ export function ResponseForm({
             it carries the same submission key, so the service will either accept it once or return
             the answer it already has.
           </p>
-          <button
-            type="button"
-            data-variant="primary"
-            onClick={() => {
-              const command = build();
-              if (command !== null) {
-                void submit(command);
-              }
-            }}
-          >
+          <button type="button" data-variant="primary" onClick={() => void submit(phase.command)}>
             Send again
           </button>
         </div>
@@ -221,8 +249,17 @@ export function ResponseForm({
       {phase.name === "confirming" || phase.name === "submitting" ? (
         <div className="notice" data-tone="warn">
           <p>
-            Submit <strong>{ACTION_WORDS[action] ?? action}</strong> for this task? This is recorded
-            against your name and creates a new revision.
+            Submit <strong>{ACTION_WORDS[phase.command.action] ?? phase.command.action}</strong> for
+            this task? This records your response against revision{" "}
+            {phase.command.revision.revision_id}.
+            {phase.command.correction ? (
+              <span>
+                {" "}
+                Original: {renderValue(phase.command.correction.original)}. Proposed correction (not
+                accepted): {renderValue(phase.command.correction.proposed)}. Entered text:{" "}
+                {phase.command.correction.proposed?.raw_text}.
+              </span>
+            ) : null}
           </p>
           <button
             type="button"
@@ -236,7 +273,7 @@ export function ResponseForm({
             Go back
           </button>
         </div>
-      ) : (
+      ) : phase.name === "unreachable" ? null : (
         <button type="submit" data-variant="primary" disabled={inFlight || correctionInvalid}>
           Review and submit
         </button>
@@ -268,5 +305,29 @@ function Committed({ receipt }: { receipt: ResponseReceipt }) {
         </p>
       ) : null}
     </div>
+  );
+}
+
+/** Detach and freeze the exact reviewed command, including nested correction evidence. */
+function freezeCommand(command: HumanResponse): HumanResponse {
+  const snapshot = structuredClone(command);
+  function freeze(value: unknown): void {
+    if (value && typeof value === "object") {
+      Object.values(value).forEach(freeze);
+      Object.freeze(value);
+    }
+  }
+  freeze(snapshot);
+  return snapshot;
+}
+
+export function subjectMatches(view: TaskView, subject: TaskSubjectView): boolean {
+  const expected = view.task.run.revision;
+  return (
+    subject.task_id === view.task.task_id &&
+    subject.subject_id === view.subject_id &&
+    subject.revision.case_id === expected.case_id &&
+    subject.revision.revision_id === expected.revision_id &&
+    subject.revision.material_digest === expected.material_digest
   );
 }

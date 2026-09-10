@@ -1,10 +1,17 @@
 import { useCallback, useEffect, useState } from "react";
 
-import type { ResponseReceipt, ReviewClient, TaskView } from "@/api/client";
+import type {
+  ResponseReceipt,
+  ReviewClient,
+  TaskView,
+  TaskSubjectView,
+  SourceCitation,
+} from "@/api/client";
 import { EXPLANATIONS, ServiceError } from "@/api/problems";
+import { ValueAuthority } from "@/ui/Authority";
 import { EvidenceList } from "@/ui/Evidence";
 
-import { ResponseForm } from "./ResponseForm";
+import { ResponseForm, subjectMatches } from "./ResponseForm";
 
 type Load =
   { name: "loading" } | { name: "ready"; view: TaskView } | { name: "failed"; error: ServiceError };
@@ -26,6 +33,11 @@ export function TaskPage({
   client: ReviewClient;
   onCommitted?: (receipt: ResponseReceipt) => void;
 }) {
+  const loadSource = useCallback(
+    (citation: SourceCitation) => client.readSource(citation),
+    [client],
+  );
+  const [subject, setSubject] = useState<TaskSubjectView | null>(null);
   const [load, setLoad] = useState<Load>({ name: "loading" });
 
   const reload = useCallback(() => {
@@ -53,6 +65,23 @@ export function TaskPage({
   }, [client, taskId]);
 
   useEffect(() => reload(), [reload]);
+  useEffect(() => {
+    let cancelled = false;
+    setSubject(null);
+    if (load.name === "ready") {
+      void client
+        .readTaskSubject(taskId)
+        .then((value) => {
+          if (!cancelled && subjectMatches(load.view, value)) setSubject(value);
+        })
+        .catch(() => {
+          /* Metadata errors block correction without hiding other actions. */
+        });
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [load, client, taskId]);
 
   if (load.name === "loading") {
     return (
@@ -85,8 +114,24 @@ export function TaskPage({
 
       {/* A reviewer answering from the question alone is the failure this section exists to
           prevent, so evidence comes before the form, not after it. */}
+      {subject ? (
+        <ValueAuthority
+          change={{
+            schema_version: "service-v1",
+            subject_id: subject.subject_id,
+            original: subject.observation,
+            proposed: null,
+            corrected: null,
+            corrected_by: null,
+          }}
+        />
+      ) : (
+        <p className="notice" data-tone="warn">
+          Authoritative observation metadata is unavailable or loading. Corrections remain blocked.
+        </p>
+      )}
       <h2>Evidence</h2>
-      <EvidenceList citations={task.evidence} />
+      <EvidenceList citations={task.evidence} loadSource={loadSource} />
 
       <h2>Findings this task answers</h2>
       <ul>
@@ -99,7 +144,9 @@ export function TaskPage({
 
       <h2>Respond</h2>
       <ResponseForm
+        key={`${task.task_id}:${task.version}`}
         view={view}
+        subject={subject}
         client={client}
         onReload={reload}
         onCommitted={(receipt) => onCommitted?.(receipt)}

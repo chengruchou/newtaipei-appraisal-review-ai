@@ -1,6 +1,6 @@
 import type { components } from "@/api/schema";
 
-type PublicValue = components["schemas"]["PublicValue-Output"];
+type PublicValue = components["schemas"]["PublicValue-Input"];
 type ValueRevision = components["schemas"]["ValueRevision-Output"];
 
 /**
@@ -35,8 +35,10 @@ export function renderValue(value: PublicValue | null | undefined): string {
   if (inner === null || inner === undefined) {
     return "—";
   }
-  if (typeof inner === "string") {
-    return value.unit === null || value.unit === undefined ? inner : `${inner} ${value.unit}`;
+  if (typeof inner === "string" || typeof inner === "number") {
+    return value.unit === null || value.unit === undefined
+      ? String(inner)
+      : `${inner} ${value.unit}`;
   }
   const unit = inner.unit ?? value.unit;
   const shown = String(inner.value);

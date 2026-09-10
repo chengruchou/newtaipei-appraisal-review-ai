@@ -7,6 +7,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { ReviewClient } from "@/api/client";
 import { ServiceError, TransportError } from "@/api/problems";
+import { view } from "./fixtures";
 
 function clientWith(fetchImpl: typeof globalThis.fetch, timeoutMs = 50): ReviewClient {
   return new ReviewClient({
@@ -26,7 +27,7 @@ function jsonResponse(status: number, body: unknown): Response {
 
 describe("ReviewClient", () => {
   it("sends the bearer token but never puts identity in the body", async () => {
-    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse(200, { task_id: "t" }));
+    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse(200, view()));
     await clientWith(fetchImpl).readTask("t1");
 
     const init = fetchImpl.mock.calls[0]?.[1] as RequestInit;
@@ -84,7 +85,7 @@ describe("ReviewClient", () => {
   });
 
   it("percent-encodes a path segment rather than pasting it into the URL", async () => {
-    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse(200, {}));
+    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse(200, view()));
     await clientWith(fetchImpl).readTask("../v1/review-jobs");
 
     expect(fetchImpl.mock.calls[0]?.[0]).toBe(
