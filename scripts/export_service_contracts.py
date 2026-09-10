@@ -204,6 +204,16 @@ def fixtures() -> dict[str, ServiceModel]:
             current_run=run,
             open_task_ids=(task.task_id,),
         ),
+        # A running attempt that has been asked to stop. Without cancel_requested a
+        # consumer cannot tell this apart from an ordinary running job, so the principal
+        # who cancelled sees no trace of the decision until it lands.
+        "job-status-cancelling": JobStatusView(
+            job=job,
+            job_status=JobStatus.RUNNING,
+            current_run=run,
+            attempt_count=1,
+            cancel_requested=True,
+        ),
         "job-status-failed": JobStatusView(
             job=job,
             job_status=JobStatus.FAILED,

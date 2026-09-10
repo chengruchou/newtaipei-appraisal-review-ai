@@ -192,6 +192,14 @@ dispatched, so recovery never depends on the queue redelivering a message a dead
 may have consumed; the duplicate delivery this can cause is absorbed by the conditional
 claim. A lease takeover has its own ceiling and never consumes a business attempt.
 
+Recovery stops at a recorded cancellation. Cancelling a running attempt sets
+`cancel_requested` and asks it to stop cooperatively, and every path that would otherwise
+carry the job forward from there — a reclaim, a retryable failure, a hand-off to a
+reviewer — resolves to cancelled rather than starting work the principal forbade. Only an
+attempt that had already finished its work may still publish. `cancel_requested` is part
+of JobStatusView so a job under notice is distinguishable from one that is merely running;
+it is observable while the job runs and afterwards only on a terminal job.
+
 POST /v1/review-jobs returns 202 with JobAcceptance, whose status is pinned to queued so
 the body can never advertise work that has not started. An exact replay returns 200 with
 JobStatusView instead, because reporting the pinned acceptance for a job that has already
@@ -200,7 +208,7 @@ committed and never synthesizes a ServiceResult that no run wrote; a terminal fa
 reported through the status route. Cancel is offered because it binds one principal and
 one case; retry and dead-letter redrive stay operator actions in a runbook rather than a
 general-purpose administrative endpoint. See
-[ADR 0014](adr/0014-durable-review-jobs.md).
+[ADR 0015](adr/0015-durable-review-jobs.md).
 
 ## Result and error meanings
 

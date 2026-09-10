@@ -5,7 +5,7 @@
     "case_id": "synthetic-case",
     "job_id": "00000000-0000-0000-0000-000000000006"
   },
-  "job_status": "queued",
+  "job_status": "running",
   "current_run": {
     "schema_version": "service-v1",
     "run_id": "00000000-0000-0000-0000-000000000001",
@@ -18,9 +18,9 @@
     "attempt_id": null,
     "runtime_session_id": null
   },
-  "attempt_count": 0,
+  "attempt_count": 1,
   "result_version": 0,
-  "cancel_requested": false,
+  "cancel_requested": true,
   "open_task_ids": [],
   "problem": null
 }

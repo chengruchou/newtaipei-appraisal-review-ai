@@ -17,7 +17,6 @@ from typing import Literal
 from uuid import UUID
 
 from appraisal_review.application.review_jobs import ReviewJobService
-from appraisal_review.domain.job_contracts import JobStatus
 from appraisal_review.ports.jobs import ConditionFailed, DispatchRecord
 
 
@@ -52,6 +51,7 @@ class DispatchOutcome:
     sent: int = 0
     deferred: int = 0
     superseded: int = 0
+    abandoned: int = 0
 
 
 @dataclass(frozen=True)
@@ -69,15 +69,19 @@ class OutboxDispatcher:
         self.send = send
 
     async def run_once(self, *, limit: int = 25) -> DispatchOutcome:
-        sent = deferred = superseded = 0
+        sent = deferred = superseded = abandoned = 0
         for record in await self.service.due_dispatches(limit=limit):
             try:
                 await self.send(self._message(record))
             except TransientDispatchError:
-                # The work stays queued and owned; only its schedule moves. Reporting the
-                # job as failed here would discard work the store still holds.
-                await self.service.defer_dispatch(record)
-                deferred += 1
+                # The work stays owned; only its schedule moves. Reporting the job as
+                # failed here would discard work the store still holds. One round failing
+                # must not end the pass either: the remaining rounds, and the reclaim work
+                # already done, belong to other jobs.
+                if await self.service.defer_dispatch(record):
+                    deferred += 1
+                else:
+                    abandoned += 1
                 continue
             try:
                 await self.service.confirm_dispatch(record)
@@ -86,7 +90,9 @@ class OutboxDispatcher:
                 # A duplicate pass, or a worker that already claimed between the send and
                 # this mark. The message is out either way, and a claim is still safe.
                 superseded += 1
-        return DispatchOutcome(sent=sent, deferred=deferred, superseded=superseded)
+        return DispatchOutcome(
+            sent=sent, deferred=deferred, superseded=superseded, abandoned=abandoned
+        )
 
     def _message(self, record: DispatchRecord) -> DispatchMessage:
         return DispatchMessage(
@@ -109,12 +115,10 @@ class JobReconciler:
         # Order matters: reclaim first, so a run whose worker died becomes dispatchable
         # again within the same pass instead of waiting for the next one.
         reclaimed = await self.service.reclaim_expired_leases(limit=limit)
-        retries = 0
-        for record in reclaimed:
-            if record.status is not JobStatus.RETRYABLE_FAILED:
-                continue
-            if await self.service.recover_retryable(job_id=record.job_id) is not None:
-                retries += 1
+        # A reclaim never yields retryable_failed, so this needs its own scan: a job left
+        # there by a crash between finishing an attempt and scheduling its retry holds no
+        # lease and no outbox entry, and both other passes are blind to it.
+        retries = await self.service.recover_stranded_retryables(limit=limit)
         dispatch = await self.dispatcher.run_once(limit=limit)
         return ReconcileOutcome(
             dispatch=dispatch, leases_reclaimed=len(reclaimed), retries_scheduled=retries

@@ -6,7 +6,7 @@ transaction. Its purpose is to make every condition in ports.jobs executable, so
 DynamoDB adapter is verified against the same expectations rather than against prose.
 
 Every mutation runs under one lock and rejects the same situations the conditional writes
-in docs/adr/0014-durable-review-jobs.md reject.
+in docs/adr/0015-durable-review-jobs.md reject.
 """
 
 from __future__ import annotations
@@ -383,7 +383,13 @@ class InMemoryJobStore:
             job.attempt_count += transition.attempt_delta
             job.status = transition.status
             job.problem = problem
-            job.open_task_ids = tuple(dict.fromkeys(open_task_ids))
+            # A cancel that preempted this outcome drops the tasks with it: they were
+            # never opened for a reviewer, and the job is terminal.
+            job.open_task_ids = (
+                ()
+                if transition.status == JobStatus.CANCELLED
+                else tuple(dict.fromkeys(open_task_ids))
+            )
             job.updated_at = now
             run.run_status = transition.status
             self._release(run, transition.release_lease)
@@ -442,6 +448,10 @@ class InMemoryJobStore:
             run.run_status = transition.status
             if transition.status == JobStatus.FAILED:
                 job.problem = ServiceProblem(code=ServiceErrorCode.EXECUTION)
+            if transition.status == JobStatus.CANCELLED:
+                # The reclaim completed a cancellation the dead worker never acknowledged.
+                job.problem = CANCELLED_PROBLEM
+                job.open_task_ids = ()
             self._release(run, transition.release_lease)
             if transition.enqueue_outbox:
                 # A fresh round, because the previous one was already marked sent and its
@@ -475,7 +485,15 @@ class InMemoryJobStore:
             job = self._jobs.get(job_id)
             if job is None:
                 raise ConditionFailed("Unknown job")
-            transition = next_state(self._facts(job), JobEvent.SCHEDULE_RETRY, policy=self.policy)
+            try:
+                transition = next_state(
+                    self._facts(job), JobEvent.SCHEDULE_RETRY, policy=self.policy
+                )
+            except ServiceFault as fault:
+                # The owner's own retry, or a claim, landed first. Two schedulers racing
+                # here is expected now that the reconciler scans for stranded jobs, and
+                # losing is not the caller's error.
+                raise ConditionFailed("The job is no longer awaiting a retry") from fault
             job.status = transition.status
             job.problem = None
             job.updated_at = now
@@ -538,7 +556,7 @@ class InMemoryJobStore:
             job.updated_at = now
             return self._record(job)
 
-    async def reschedule_dispatch(self, record: DispatchRecord, *, available_at: int) -> None:
+    async def reschedule_dispatch(self, record: DispatchRecord, *, available_at: int) -> bool:
         async with self._lock:
             entry = self._outbox.get((record.job_id, record.outbox_seq))
             if entry is None:
@@ -546,10 +564,17 @@ class InMemoryJobStore:
             if entry.dispatch_token != record.dispatch_token or entry.dispatch_state != "pending":
                 raise ConditionFailed("This dispatch round is no longer pending")
             job = self._jobs[record.job_id]
+            if job.status in TERMINAL_STATUSES:
+                # The job finished — often by cancellation — while this round waited. There
+                # is no work left to hand over, so the round is abandoned rather than
+                # retried forever against a job no worker may claim.
+                entry.dispatch_state = "abandoned"
+                return False
             # T3: the work is still durably owned, so only the schedule moves.
             next_state(self._facts(job), JobEvent.DISPATCH_FAILED, policy=self.policy)
             entry.available_at = available_at
             entry.dispatch_attempts += 1
+            return True
 
     async def pending_dispatches(self, *, now: int, limit: int) -> tuple[DispatchRecord, ...]:
         if limit < 1:
@@ -572,6 +597,20 @@ class InMemoryJobStore:
                 )
                 for entry in due[:limit]
             )
+
+    async def stranded_retryables(
+        self, *, stranded_before: int, limit: int
+    ) -> tuple[JobRecord, ...]:
+        if limit < 1:
+            raise ValueError("A scan needs a positive limit")
+        async with self._lock:
+            stranded = [
+                job
+                for job in self._jobs.values()
+                if job.status == JobStatus.RETRYABLE_FAILED and job.updated_at <= stranded_before
+            ]
+            stranded.sort(key=lambda job: job.updated_at)
+            return tuple(self._record(job) for job in stranded[:limit])
 
     async def expired_leases(self, *, now: int, limit: int) -> tuple[ExpiredLease, ...]:
         if limit < 1:

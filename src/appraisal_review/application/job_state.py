@@ -128,6 +128,20 @@ def _conflict() -> ServiceFault:
     return ServiceFault(ServiceErrorCode.CONFLICT)
 
 
+def _cancel_preempted(*, requires_lease: bool) -> Transition:
+    """A recorded cancel outranks any path that would hand the job's work forward.
+
+    Stopping the running attempt is not enough. Reclaim, retry and resume all start new
+    work from a non-terminal status, so each of them must honour the decision instead of
+    discarding it: otherwise the work a principal forbade is completed by a fresh worker
+    and published, and the principal is told the job succeeded.
+
+    A completed publication is the one outcome that survives a pending cancel, because
+    cancellation is cooperative and that attempt had already finished its work.
+    """
+    return Transition(status=JobStatus.CANCELLED, release_lease=True, requires_lease=requires_lease)
+
+
 def initial_transition() -> Transition:
     """T1: a submission creates the job, its first run and its first outbox entry."""
     return Transition(status=JobStatus.QUEUED, enqueue_outbox=True)
@@ -158,10 +172,14 @@ def next_state(facts: JobFacts, event: JobEvent, *, policy: JobPolicy) -> Transi
         return Transition(status=JobStatus.DISPATCHED)
 
     if event == JobEvent.DISPATCH_FAILED:
-        # T3: only the outbox schedule moves; the job stays queued and keeps its work.
-        if facts.status != JobStatus.QUEUED:
-            raise _conflict()
-        return Transition(status=JobStatus.QUEUED)
+        # T3: only the outbox schedule moves; the job keeps both its status and its work.
+        # This is deliberately status-preserving rather than queued-only. Two rounds are
+        # pending after every reclaim, retry and resume, so one round can fail after a
+        # later round has already moved the job to dispatched or a worker has claimed it.
+        # Refusing the event there aborted the whole reconcile pass over a benign send
+        # failure. A round belonging to a finished job is not rescheduled at all; the
+        # store abandons it without asking for a transition.
+        return Transition(status=facts.status)
 
     if event == JobEvent.CLAIM:
         if facts.status not in CLAIMABLE_STATUSES:
@@ -174,6 +192,11 @@ def next_state(facts: JobFacts, event: JobEvent, *, policy: JobPolicy) -> Transi
     if event == JobEvent.LEASE_EXPIRED:
         if facts.status != JobStatus.RUNNING:
             raise _conflict()
+        if facts.cancel_requested:
+            # The worker that was asked to stop died before acknowledging. Requeuing here
+            # would hand the forbidden work to a fresh worker, so the reclaim completes
+            # the cancellation the dead worker never got to confirm.
+            return _cancel_preempted(requires_lease=False)
         # A dead worker is an infrastructure event, so it must not consume a business
         # attempt: one Runtime restart would otherwise push every live job to the DLQ.
         # Takeovers still need their own ceiling, or a crash loop retries forever.
@@ -191,6 +214,11 @@ def next_state(facts: JobFacts, event: JobEvent, *, policy: JobPolicy) -> Transi
         )
 
     if event == JobEvent.NEEDS_HUMAN:
+        if facts.cancel_requested:
+            # Parking a cancelled job in front of a reviewer would launder the cancel: a
+            # committed response resumes the job on a new run and completes the forbidden
+            # work. The open tasks are dropped rather than shown to a reviewer.
+            return _cancel_preempted(requires_lease=True)
         if not facts.has_open_tasks:
             raise _conflict()
         return Transition(
@@ -201,6 +229,11 @@ def next_state(facts: JobFacts, event: JobEvent, *, policy: JobPolicy) -> Transi
         return Transition(status=JobStatus.SUCCEEDED, release_lease=True, requires_lease=True)
 
     if event == JobEvent.RETRYABLE_ERROR:
+        if facts.cancel_requested:
+            # A retry of a cancelled job is still forbidden work, and the retry is
+            # scheduled through the outbox where nothing would re-check the flag. The
+            # cancellation is recorded instead of a failed attempt.
+            return _cancel_preempted(requires_lease=True)
         exhausted = facts.attempt_count + 1 >= policy.max_attempts
         return Transition(
             status=JobStatus.FAILED if exhausted else JobStatus.RETRYABLE_FAILED,

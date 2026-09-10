@@ -205,7 +205,11 @@ class JobStore(Protocol):
         ...
 
     async def schedule_retry(self, *, job_id: UUID, available_at: int, now: int) -> JobRecord:
-        """Return a retryable failure to the queue with a new outbox entry and a delay."""
+        """Return a retryable failure to the queue with a new outbox entry and a delay.
+
+        Raises ConditionFailed if the job has left retryable_failed, because the failing
+        worker and the reconciler both schedule retries and either may arrive first.
+        """
         ...
 
     async def resume_after_human(self, *, job_id: UUID, run: RunReference, now: int) -> JobRecord:
@@ -221,10 +225,15 @@ class JobStore(Protocol):
         """Record that the queue accepted this exact dispatch, leaving the index sparse."""
         ...
 
-    async def reschedule_dispatch(self, record: DispatchRecord, *, available_at: int) -> None:
+    async def reschedule_dispatch(self, record: DispatchRecord, *, available_at: int) -> bool:
         """A send failed: move only the outbox schedule, never the job status.
 
-        The work is still durably owned, so the job must not be reported as failed.
+        The work is still durably owned, so the job must not be reported as failed. This
+        must succeed whatever non-terminal status the job now holds: a later round may
+        already have moved it to dispatched, or a worker may already have claimed it.
+
+        Returns False when the job is terminal and the round was abandoned instead, so a
+        cancelled or failed job is not rescheduled against workers that cannot claim it.
         """
         ...
 
@@ -234,4 +243,16 @@ class JobStore(Protocol):
 
     async def expired_leases(self, *, now: int, limit: int) -> tuple[ExpiredLease, ...]:
         """Same contract: candidates only, never an authorization to take over."""
+        ...
+
+    async def stranded_retryables(
+        self, *, stranded_before: int, limit: int
+    ) -> tuple[JobRecord, ...]:
+        """Jobs still in retryable_failed since before the cutoff, oldest first.
+
+        A crash between finishing an attempt and scheduling its retry leaves a job with
+        no lease and no outbox entry, so neither of the other two scans can see it. The
+        caller sets the cutoff far enough back that a live worker's own retry wins first;
+        candidates only, like the other scans.
+        """
         ...

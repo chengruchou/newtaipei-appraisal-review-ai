@@ -20,6 +20,7 @@
   },
   "attempt_count": 0,
   "result_version": 0,
+  "cancel_requested": false,
   "open_task_ids": [
     "00000000-0000-0000-0000-000000000002"
   ],

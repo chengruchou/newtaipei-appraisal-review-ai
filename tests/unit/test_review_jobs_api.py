@@ -173,6 +173,7 @@ class TestStatusAndResult:
             "current_run",
             "attempt_count",
             "result_version",
+            "cancel_requested",
             "open_task_ids",
             "problem",
         }
@@ -269,8 +270,13 @@ class TestCancellation:
         harness = build()
         accepted = harness.client.post("/v1/review-jobs", json=body()).json()
         attempt = claim(harness, accepted["job"]["job_id"], accepted["run"]["run_id"])
-        response = harness.client.post(f"/v1/review-jobs/{accepted['job']['job_id']}/cancel")
+        job_id = accepted["job"]["job_id"]
+        response = harness.client.post(f"/v1/review-jobs/{job_id}/cancel")
         assert response.json()["job_status"] == JobStatus.RUNNING.value
+        # The caller sees the decision it just made, rather than a job that still reads
+        # as plainly running until the worker gets around to acknowledging it.
+        assert response.json()["cancel_requested"] is True
+        assert harness.client.get(f"/v1/review-jobs/{job_id}").json()["cancel_requested"] is True
         state = asyncio.run(harness.service.heartbeat(attempt))  # type: ignore[arg-type]
         assert state.cancel_requested is True
 

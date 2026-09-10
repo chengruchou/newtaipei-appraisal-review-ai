@@ -26,7 +26,12 @@ from appraisal_review.domain.service_contracts import (
     ServiceErrorCode,
     ServiceProblem,
 )
-from appraisal_review.ports.jobs import ConditionFailed, JobStore, ResultReference
+from appraisal_review.ports.jobs import (
+    ClaimedAttempt,
+    ConditionFailed,
+    JobStore,
+    ResultReference,
+)
 
 NOW = 1_700_000_000
 
@@ -386,13 +391,52 @@ class JobStoreContract:
             principal(), submission(), job_id=uuid4(), run_id=uuid4(), now=NOW
         )
         pending = await store.pending_dispatches(now=NOW, limit=10)
-        await store.reschedule_dispatch(pending[0], available_at=NOW + 60)
+        assert await store.reschedule_dispatch(pending[0], available_at=NOW + 60) is True
         after = await store.read_job(job_id=record.job_id)
         assert after is not None and after.status is JobStatus.QUEUED
         # The work is still durably owned; it is simply not due yet.
         assert await store.pending_dispatches(now=NOW + 1, limit=10) == ()
         due = await store.pending_dispatches(now=NOW + 60, limit=10)
         assert len(due) == 1 and due[0].dispatch_attempts == 1
+
+    async def check_a_failed_send_is_accepted_after_a_later_round_moved_the_job(
+        self, store: JobStore
+    ) -> None:
+        record, _ = await store.create_job(
+            principal(), submission(), job_id=uuid4(), run_id=uuid4(), now=NOW
+        )
+        # Claiming without a dispatch leaves round 1 pending; the reclaim adds round 2.
+        # This is the ordinary shape after any lease expiry, retry or resume.
+        await store.claim(
+            job_id=record.job_id,
+            run_id=record.current_run.run_id,
+            owner=uuid4(),
+            lease_seconds=120,
+            now=NOW,
+        )
+        expired = await store.expired_leases(now=NOW + 121, limit=5)
+        await store.expire_lease(expired[0], now=NOW + 121)
+        pending = await store.pending_dispatches(now=NOW + 121, limit=10)
+        assert len(pending) == 2
+        # One round succeeds and moves the job to dispatched. A send failure on the other
+        # round must still be accepted: the job keeps the status the first round gave it,
+        # and refusing here would abort a reconcile pass over a benign queue error.
+        await store.mark_dispatched(pending[0], now=NOW + 122)
+        assert await store.reschedule_dispatch(pending[1], available_at=NOW + 200) is True
+        after = await store.read_job(job_id=record.job_id)
+        assert after is not None and after.status is JobStatus.DISPATCHED
+
+    async def check_a_finished_jobs_pending_round_is_abandoned(self, store: JobStore) -> None:
+        record, _ = await store.create_job(
+            principal(), submission(), job_id=uuid4(), run_id=uuid4(), now=NOW
+        )
+        pending = await store.pending_dispatches(now=NOW, limit=10)
+        cancelled = await store.cancel(job_id=record.job_id, now=NOW + 1)
+        assert cancelled.status is JobStatus.CANCELLED
+        # There is no work left to hand over, so the round is dropped rather than backed
+        # off against a job no worker may claim.
+        assert await store.reschedule_dispatch(pending[0], available_at=NOW + 60) is False
+        assert await store.pending_dispatches(now=NOW + 6_000, limit=10) == ()
 
     async def check_a_retry_enqueues_new_work_without_a_new_job(self, store: JobStore) -> None:
         record, _ = await store.create_job(
@@ -437,6 +481,135 @@ class JobStoreContract:
         assert flagged.cancel_requested is True
         state = await store.heartbeat(attempt, lease_seconds=120, now=NOW + 2)
         assert state.cancel_requested is True
+
+    async def _cancelled_running_attempt(
+        self, store: JobStore
+    ) -> tuple[UUID, UUID, ClaimedAttempt]:
+        """A claimed attempt that has been asked to stop but has not acknowledged.
+
+        The first round is dispatched before the claim, so the outbox is empty and any
+        entry a later check sees was enqueued by the transition under test.
+        """
+        record, _ = await store.create_job(
+            principal(), submission(), job_id=uuid4(), run_id=uuid4(), now=NOW
+        )
+        await store.mark_dispatched((await store.pending_dispatches(now=NOW, limit=5))[0], now=NOW)
+        assert await store.pending_dispatches(now=NOW, limit=5) == ()
+        attempt = await store.claim(
+            job_id=record.job_id,
+            run_id=record.current_run.run_id,
+            owner=uuid4(),
+            lease_seconds=120,
+            now=NOW,
+        )
+        flagged = await store.cancel(job_id=record.job_id, now=NOW + 1)
+        assert flagged.status is JobStatus.RUNNING and flagged.cancel_requested is True
+        return record.job_id, record.current_run.run_id, attempt
+
+    async def check_a_reclaim_completes_a_pending_cancellation(self, store: JobStore) -> None:
+        job_id, run_id, _ = await self._cancelled_running_attempt(store)
+        expired = await store.expired_leases(now=NOW + 121, limit=5)
+        reclaimed = await store.expire_lease(expired[0], now=NOW + 121)
+        # The worker died before acknowledging. Requeuing would hand the forbidden work
+        # to a fresh worker and report the job as succeeded to the principal who
+        # cancelled it, so the reclaim completes the cancellation instead.
+        assert reclaimed.status is JobStatus.CANCELLED
+        assert reclaimed.problem is not None
+        # An ordinary reclaim enqueues a fresh round so the work is not stranded. A
+        # cancelled one must not, or the recovery it skipped happens anyway.
+        assert await store.pending_dispatches(now=NOW + 6_000, limit=10) == ()
+        try:
+            await store.claim(
+                job_id=job_id, run_id=run_id, owner=uuid4(), lease_seconds=120, now=NOW + 122
+            )
+        except ConditionFailed:
+            return
+        raise AssertionError("A cancelled job must not be claimable")
+
+    async def check_a_cancelled_attempt_is_not_retried(self, store: JobStore) -> None:
+        job_id, _, attempt = await self._cancelled_running_attempt(store)
+        finished = await store.finish(
+            attempt,
+            event=JobEvent.RETRYABLE_ERROR,
+            now=NOW + 5,
+            problem=ServiceProblem(code=ServiceErrorCode.EXECUTION),
+        )
+        # A retry is scheduled through the outbox, where nothing re-checks the flag, so
+        # the cancellation has to be recorded here rather than a failed attempt.
+        assert finished.status is JobStatus.CANCELLED
+        assert finished.attempt_count == 0
+        try:
+            await store.schedule_retry(job_id=job_id, available_at=NOW + 65, now=NOW + 5)
+        except (ConditionFailed, ServiceFault):
+            return
+        raise AssertionError("A cancelled job must not be rescheduled for a retry")
+
+    async def check_a_cancelled_attempt_is_not_parked_for_a_reviewer(self, store: JobStore) -> None:
+        _, _, attempt = await self._cancelled_running_attempt(store)
+        finished = await store.finish(
+            attempt, event=JobEvent.NEEDS_HUMAN, now=NOW + 5, open_task_ids=(uuid4(),)
+        )
+        # Parking the job in front of a reviewer would launder the cancel: a committed
+        # response resumes it on a new run and completes the work that was forbidden.
+        assert finished.status is JobStatus.CANCELLED
+        assert finished.open_task_ids == ()
+
+    async def check_a_stranded_retryable_job_is_visible_to_its_own_scan(
+        self, store: JobStore
+    ) -> None:
+        record, _ = await store.create_job(
+            principal(), submission(), job_id=uuid4(), run_id=uuid4(), now=NOW
+        )
+        await store.mark_dispatched((await store.pending_dispatches(now=NOW, limit=5))[0], now=NOW)
+        attempt = await store.claim(
+            job_id=record.job_id,
+            run_id=record.current_run.run_id,
+            owner=uuid4(),
+            lease_seconds=120,
+            now=NOW,
+        )
+        # The process dies here, between finishing the attempt and scheduling the retry.
+        failed = await store.finish(
+            attempt,
+            event=JobEvent.RETRYABLE_ERROR,
+            now=NOW + 5,
+            problem=ServiceProblem(code=ServiceErrorCode.EXECUTION),
+        )
+        assert failed.status is JobStatus.RETRYABLE_FAILED
+        # It holds no lease and no outbox entry, so the other two scans cannot see it.
+        assert await store.expired_leases(now=NOW + 6_000, limit=5) == ()
+        assert await store.pending_dispatches(now=NOW + 6_000, limit=5) == ()
+        assert await store.stranded_retryables(stranded_before=NOW, limit=5) == ()
+        stranded = await store.stranded_retryables(stranded_before=NOW + 5, limit=5)
+        assert [job.job_id for job in stranded] == [record.job_id]
+
+    async def check_a_lost_retry_race_is_reported_as_a_condition_failure(
+        self, store: JobStore
+    ) -> None:
+        record, _ = await store.create_job(
+            principal(), submission(), job_id=uuid4(), run_id=uuid4(), now=NOW
+        )
+        attempt = await store.claim(
+            job_id=record.job_id,
+            run_id=record.current_run.run_id,
+            owner=uuid4(),
+            lease_seconds=120,
+            now=NOW,
+        )
+        await store.finish(
+            attempt,
+            event=JobEvent.RETRYABLE_ERROR,
+            now=NOW + 5,
+            problem=ServiceProblem(code=ServiceErrorCode.EXECUTION),
+        )
+        await store.schedule_retry(job_id=record.job_id, available_at=NOW + 65, now=NOW + 5)
+        try:
+            # The failing worker and the reconciler both schedule retries, so the second
+            # writer must lose a condition rather than raise a fault at its caller.
+            await store.schedule_retry(job_id=record.job_id, available_at=NOW + 65, now=NOW + 6)
+        except ConditionFailed:
+            return
+        raise AssertionError("A second retry schedule must fail its condition")
 
     async def check_a_terminal_job_refuses_further_work(self, store: JobStore) -> None:
         record, _ = await store.create_job(

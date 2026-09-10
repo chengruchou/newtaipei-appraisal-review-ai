@@ -904,6 +904,11 @@
           "title": "Result Version",
           "type": "integer"
         },
+        "cancel_requested": {
+          "default": false,
+          "title": "Cancel Requested",
+          "type": "boolean"
+        },
         "open_task_ids": {
           "default": [],
           "items": {

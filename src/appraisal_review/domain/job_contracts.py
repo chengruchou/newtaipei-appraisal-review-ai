@@ -43,6 +43,12 @@ TERMINAL_STATUSES = frozenset({JobStatus.FAILED, JobStatus.SUCCEEDED, JobStatus.
 # stays non-terminal. Retry policy must never treat it as an infrastructure error.
 LEASE_HOLDING_STATUSES = frozenset({JobStatus.RUNNING})
 
+# Only a running attempt defers its cancellation, and every event that ends or reclaims
+# that attempt resolves the request. A pending cancel is therefore observable while the
+# job runs and afterwards only on a terminal job: no other status may carry one forward
+# into new work. See job_state._cancel_preempted for the transitions that guarantee it.
+CANCEL_PENDING_STATUSES = frozenset({JobStatus.RUNNING}) | TERMINAL_STATUSES
+
 WIRE_STATUS: Mapping[JobStatus, ExecutionStatus] = {
     JobStatus.QUEUED: ExecutionStatus.QUEUED,
     JobStatus.DISPATCHED: ExecutionStatus.QUEUED,
@@ -79,6 +85,10 @@ class JobStatusView(ServiceModel):
     current_run: RunReference | None = None
     attempt_count: int = Field(default=0, ge=0, strict=True)
     result_version: int = Field(default=0, ge=0, strict=True)
+    # A cancel a running attempt has not yet acknowledged. Without it the status view
+    # cannot distinguish a job that is running from one that is running under notice,
+    # and the principal who cancelled sees no trace of the decision until it lands.
+    cancel_requested: bool = False
     open_task_ids: tuple[UUID, ...] = ()
     problem: ServiceProblem | None = None
 
@@ -92,6 +102,8 @@ class JobStatusView(ServiceModel):
             raise ValueError("A succeeded job must reference a committed result version")
         if self.job_status == JobStatus.WAITING_FOR_HUMAN and not self.open_task_ids:
             raise ValueError("Waiting for human requires at least one open task")
+        if self.cancel_requested and self.job_status not in CANCEL_PENDING_STATUSES:
+            raise ValueError("A pending cancel cannot survive into work that was not cancelled")
         if len(set(self.open_task_ids)) != len(self.open_task_ids):
             raise ValueError("Duplicate open task reference")
         if self.current_run is not None and self.current_run.revision.case_id != self.job.case_id:

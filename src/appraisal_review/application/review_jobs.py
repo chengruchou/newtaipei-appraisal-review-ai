@@ -82,6 +82,7 @@ def status_view(record: JobRecord) -> JobStatusView:
         current_run=record.current_run,
         attempt_count=record.attempt_count,
         result_version=record.result_version,
+        cancel_requested=record.cancel_requested,
         open_task_ids=record.open_task_ids,
         problem=record.problem,
     )
@@ -293,10 +294,13 @@ class ReviewJobService:
         """Record that the queue accepted this exact round, after the send returned."""
         return await self.store.mark_dispatched(record, now=self.clock())
 
-    async def defer_dispatch(self, record: DispatchRecord) -> None:
-        """A send failed: back the outbox entry off. The job keeps its work and status."""
+    async def defer_dispatch(self, record: DispatchRecord) -> bool:
+        """A send failed: back the outbox entry off. The job keeps its work and status.
+
+        False means the job finished while the round waited and the round was abandoned.
+        """
         delay = self.policy.backoff_seconds(record.dispatch_attempts + 1)
-        await self.store.reschedule_dispatch(
+        return await self.store.reschedule_dispatch(
             record, available_at=self.clock() + delay + self.jitter(delay)
         )
 
@@ -312,12 +316,31 @@ class ReviewJobService:
                 continue
         return tuple(reclaimed)
 
+    async def recover_stranded_retryables(self, *, limit: int = 25) -> int:
+        """Reschedule jobs the reconciler can see are stranded in retryable_failed.
+
+        A crash between finishing an attempt and scheduling its retry leaves a job with
+        no lease and no outbox entry, so it is invisible to both other scans and would
+        wait for an operator who already knows its id. The cutoff keeps this pass off
+        jobs whose own worker is still alive and about to schedule the retry itself.
+        """
+        cutoff = self.clock() - self.policy.lease_seconds
+        scheduled = 0
+        for record in await self.store.stranded_retryables(stranded_before=cutoff, limit=limit):
+            if await self.recover_retryable(job_id=record.job_id) is not None:
+                scheduled += 1
+        return scheduled
+
     async def recover_retryable(self, *, job_id: UUID) -> JobRecord | None:
         """Reschedule a job left in retryable_failed by a process that died mid-recovery."""
         record = await self.store.read_job(job_id=job_id)
         if record is None or record.status != JobStatus.RETRYABLE_FAILED:
             return None
-        return await self._reschedule(record)
+        try:
+            return await self._reschedule(record)
+        except ConditionFailed:
+            # The owner's own retry, or a claim, won between the read and this write.
+            return None
 
     async def _reschedule(self, record: JobRecord) -> JobRecord:
         delay = self.policy.backoff_seconds(record.attempt_count)

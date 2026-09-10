@@ -106,7 +106,7 @@ injected store, and only an in-memory reference adapter exists: state does not
 survive the process, and there is no DynamoDB, queue, dead-letter queue or alarm
 yet. Without a configured store and authenticator the routes answer
 capability_unavailable rather than a fabricated acceptance. See
-[ADR 0014](docs/adr/0014-durable-review-jobs.md).
+[ADR 0015](docs/adr/0015-durable-review-jobs.md).
 
 The [shared service contract](docs/service-contracts.md),
 [schema](schemas/service-v1.json) and [fixtures](examples/service-v1/README.md)

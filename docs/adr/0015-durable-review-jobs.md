@@ -1,4 +1,4 @@
-# ADR 0014: Durable review jobs, outbox dispatch and lease fencing
+# ADR 0015: Durable review jobs, outbox dispatch and lease fencing
 
 Status: proposed on the `feat/durable-review-jobs` branch for #29; not merged.
 Supersedes the reserved job duties described in
@@ -83,6 +83,24 @@ Backoff caps at 900 seconds because that is the queue's maximum delivery delay. 
 backoff comes from the outbox entry's `available_at`, which makes the outbox a schedule as
 well as a recovery log.
 
+A failed send is therefore **status-preserving, not queued-only**. More than one round is
+pending after every reclaim, retry and resume, so an earlier round can fail after a later
+one already moved the job to `dispatched` or a worker already claimed it. Requiring
+`queued` there made a benign queue error raise a conflict out of the dispatcher, which
+abandoned the remaining rounds and the reclaim work the same pass had already done. A
+round belonging to a job that has since finished is abandoned outright rather than backed
+off, because nothing may claim that job again.
+
+### Reconciliation needs three scans, not two
+
+The reconciler reclaims expired leases, recovers jobs stranded in `retryable_failed`, then
+dispatches. The middle scan is not redundant: a crash between `finish` and the retry's own
+`schedule_retry` leaves a job with no lease and no outbox entry, so the lease scan and the
+outbox scan are both blind to it and only an operator who already knew the job id could
+recover it. Its cutoff is one lease behind now, so a worker that is merely slow schedules
+its own retry first; the loser of that race fails a condition rather than raising at its
+caller.
+
 ### Idempotency on a primary key, never on an index
 
 Uniqueness is a conditional write on the idempotency record's own key,
@@ -119,6 +137,25 @@ belong in a runbook. An HTTP route able to reschedule arbitrary jobs is exactly 
 unauthenticated general-purpose admin surface #29 forbids. Cancelling a running attempt
 raises a flag the worker observes on its next heartbeat; it never kills a mid-write
 attempt.
+
+### A recorded cancel outranks every recovery path
+
+Flagging the running attempt is not enough. Every event that ends that attempt from a
+non-terminal status is followed by a path that starts new work — a reclaim requeues, a
+retryable failure is rescheduled through the outbox, a reviewer's response resumes on a
+new run — and none of those paths re-reads the flag. So `lease_expired`, `retryable_error`
+and `needs_human` all resolve a pending cancel to `cancelled` instead of continuing.
+
+This is an authority decision, not a liveness one: continuing discards a recorded human
+decision, completes the work that decision forbade, and reports `succeeded` to the
+principal who cancelled. A completed publication is the single exception, because
+cancellation is cooperative and that attempt had already finished its work.
+
+The resulting invariant is that `cancel_requested` is observable while a job runs and
+afterwards only on a terminal job; `JobStatusView.honest_status` enforces it. The field is
+part of the view for the same reason: without it a job under notice is indistinguishable
+from an ordinary running job, so the principal who cancelled sees no trace of the decision
+until it lands.
 
 ### Existence is not leaked
 

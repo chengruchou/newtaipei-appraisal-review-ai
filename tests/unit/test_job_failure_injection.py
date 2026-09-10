@@ -152,6 +152,47 @@ class TestDispatchGap:
         assert asyncio.run(world.dispatcher.run_once()).sent == 0
         assert world.queue.messages == []
 
+    def test_one_failed_round_does_not_abandon_the_rest_of_the_pass(self) -> None:
+        world = build()
+        first_id, first_run = submit(world)
+        second_id, _ = submit(world, key="contract-key-2")
+        # Two rounds for the first job, which is the normal state after a reclaim, a
+        # retry or a resume: the reclaim adds a round while the original is still due.
+        claim(world, first_id, first_run)
+        world.clock[0] += world.service.policy.lease_seconds + 1
+        asyncio.run(world.service.reclaim_expired_leases())
+        assert len(asyncio.run(world.service.due_dispatches())) == 3
+
+        sent: list[DispatchMessage] = []
+
+        async def send_then_fail(message: DispatchMessage) -> None:
+            if sent:
+                raise TransientDispatchError("The queue refused a later round")
+            sent.append(message)
+
+        world.dispatcher.send = send_then_fail
+        outcome = asyncio.run(world.dispatcher.run_once())
+        # The failure arrives after another round moved the job out of queued. Refusing
+        # it there raised a fault through the dispatcher, so the two remaining rounds
+        # were never backed off and the pass abandoned its own reclaim work.
+        assert outcome.sent == 1 and outcome.deferred == 2
+        assert status(world, first_id) is JobStatus.DISPATCHED
+        assert status(world, second_id) is JobStatus.QUEUED
+        later = world.clock[0] + world.service.policy.backoff_seconds(1)
+        assert len(asyncio.run(world.store.pending_dispatches(now=later, limit=10))) == 2
+
+    def test_a_round_for_a_finished_job_is_abandoned_rather_than_retried(self) -> None:
+        world = build(send_failures=1)
+        job_id, _ = submit(world)
+        asyncio.run(world.service.cancel(principal(), job_id))
+        assert status(world, job_id) is JobStatus.CANCELLED
+        outcome = asyncio.run(world.dispatcher.run_once())
+        # Nothing may claim this job, so backing the round off would keep a cancelled
+        # job in the dispatch rotation for as long as the outbox entry lives.
+        assert outcome.abandoned == 1 and outcome.deferred == 0
+        world.clock[0] += 6_000
+        assert asyncio.run(world.service.due_dispatches()) == ()
+
     def test_a_claim_between_send_and_mark_does_not_lose_the_send(self) -> None:
         world = build()
         job_id, run_id = submit(world)
@@ -266,6 +307,75 @@ class TestLeaseRecovery:
         assert status(world, job_id) is JobStatus.FAILED
 
 
+class TestCancellationAuthority:
+    """A recorded cancel is a human decision; no recovery path may discard it.
+
+    Each of these leaves a cancel pending and then kills the attempt in a different way.
+    Before, every one of them resumed the job and published a result, and the principal
+    who cancelled was told the job succeeded.
+    """
+
+    def test_a_cancel_survives_the_death_of_the_worker_it_was_sent_to(self) -> None:
+        world = build()
+        job_id, run_id = submit(world)
+        claim(world, job_id, run_id)
+        view = asyncio.run(world.service.cancel(principal(), job_id))
+        assert view.job_status is JobStatus.RUNNING
+        # The pending decision is observable rather than hidden behind "running".
+        assert view.cancel_requested is True
+        world.clock[0] += world.service.policy.lease_seconds + 1
+        assert asyncio.run(world.reconciler.run_once()).leases_reclaimed == 1
+        assert status(world, job_id) is JobStatus.CANCELLED
+        with pytest.raises(ConditionFailed):
+            claim(world, job_id, run_id)
+
+    def test_a_cancel_is_not_laundered_through_a_retryable_failure(self) -> None:
+        world = build()
+        job_id, run_id = submit(world)
+        attempt = claim(world, job_id, run_id)
+        asyncio.run(world.service.cancel(principal(), job_id))
+        record = asyncio.run(
+            world.service.fail(attempt, code=ServiceErrorCode.EXECUTION, retryable=True)
+        )
+        # A retry is scheduled through the outbox, where nothing re-checks the flag.
+        assert record.status is JobStatus.CANCELLED
+        assert record.attempt_count == 0
+        world.clock[0] += 10_000
+        asyncio.run(world.reconciler.run_once())
+        assert status(world, job_id) is JobStatus.CANCELLED
+
+    def test_a_cancel_is_not_laundered_through_a_reviewer(self) -> None:
+        world = build()
+        job_id, run_id = submit(world)
+        attempt = claim(world, job_id, run_id)
+        asyncio.run(world.service.cancel(principal(), job_id))
+        record = asyncio.run(world.service.wait_for_human(attempt, (uuid4(),)))
+        # Parking the job would launder the cancel: a committed response resumes it on a
+        # new run, and the reviewer is shown work that was already called off.
+        assert record.status is JobStatus.CANCELLED
+        assert record.open_task_ids == ()
+        revision = submission().revision.model_copy(update={"revision_id": "case-contract-r2"})
+        with pytest.raises(ServiceFault):
+            asyncio.run(
+                world.service.resume(
+                    job_id=job_id, run=RunReference(run_id=uuid4(), revision=revision)
+                )
+            )
+
+    def test_a_cancel_that_loses_the_race_to_a_publication_still_reports_honestly(self) -> None:
+        world = build()
+        job_id, run_id = submit(world)
+        attempt = claim(world, job_id, run_id)
+        asyncio.run(world.service.cancel(principal(), job_id))
+        # Cancellation is cooperative: an attempt that had already finished its work may
+        # publish. That outcome is legitimate, and the flag stays visible on the view.
+        record = asyncio.run(world.service.publish(attempt, published_result(run_id)))
+        assert record.status is JobStatus.SUCCEEDED
+        view = asyncio.run(world.service.status(principal(), job_id))
+        assert view.job_status is JobStatus.SUCCEEDED
+        assert view.cancel_requested is True
+
+
 class TestErrorClassification:
     def test_retryable_failures_reschedule_until_the_ceiling(self) -> None:
         world = build()
@@ -334,6 +444,43 @@ class TestErrorClassification:
         assert record.status is JobStatus.RETRYABLE_FAILED
         assert asyncio.run(world.reconciler.recover_job(job_id=job_id)) is True
         assert status(world, job_id) is JobStatus.QUEUED
+
+    def test_a_stranded_retryable_job_is_recovered_without_an_operator(self) -> None:
+        world = build()
+        job_id, run_id = submit(world)
+        attempt = claim(world, job_id, run_id)
+        # The same crash between finishing the attempt and scheduling the retry. This
+        # job holds no lease and no outbox entry, so it is invisible to both other
+        # passes and used to wait for an operator who already knew its id.
+        asyncio.run(
+            world.store.finish(
+                attempt,
+                event=JobEvent.RETRYABLE_ERROR,
+                now=world.clock[0],
+                problem=ServiceProblem(code=ServiceErrorCode.EXECUTION),
+            )
+        )
+        assert asyncio.run(world.store.expired_leases(now=world.clock[0], limit=5)) == ()
+        # Not yet: the worker may still be alive and about to schedule its own retry.
+        assert asyncio.run(world.reconciler.run_once()).retries_scheduled == 0
+        assert status(world, job_id) is JobStatus.RETRYABLE_FAILED
+        world.clock[0] += world.service.policy.lease_seconds + 1
+        assert asyncio.run(world.reconciler.run_once()).retries_scheduled == 1
+        assert status(world, job_id) is JobStatus.QUEUED
+
+    def test_a_reconciler_retry_does_not_double_schedule_the_workers_own(self) -> None:
+        world = build()
+        job_id, run_id = submit(world)
+        attempt = claim(world, job_id, run_id)
+        # fail() schedules the retry itself, so the scan must find nothing to repair and
+        # must not raise when it loses the race for a job it read a moment earlier.
+        record = asyncio.run(
+            world.service.fail(attempt, code=ServiceErrorCode.EXECUTION, retryable=True)
+        )
+        assert record.status is JobStatus.QUEUED
+        world.clock[0] += 10_000
+        assert asyncio.run(world.reconciler.run_once()).retries_scheduled == 0
+        assert asyncio.run(world.service.recover_retryable(job_id=job_id)) is None
 
 
 class TestPublicationIntegrity:

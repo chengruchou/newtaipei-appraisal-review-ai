@@ -30,6 +30,13 @@ BASELINE_TABLE: dict[tuple[JobStatus, JobEvent], JobStatus] = {
     (JobStatus.QUEUED, JobEvent.CANCEL): JobStatus.CANCELLED,
     (JobStatus.DISPATCHED, JobEvent.CLAIM): JobStatus.RUNNING,
     (JobStatus.DISPATCHED, JobEvent.CANCEL): JobStatus.CANCELLED,
+    # A failed send is status-preserving wherever an outbox round can still be pending:
+    # two rounds exist after every reclaim, retry and resume, so a later round may have
+    # moved the job on before an earlier one fails.
+    (JobStatus.DISPATCHED, JobEvent.DISPATCH_FAILED): JobStatus.DISPATCHED,
+    (JobStatus.RUNNING, JobEvent.DISPATCH_FAILED): JobStatus.RUNNING,
+    (JobStatus.WAITING_FOR_HUMAN, JobEvent.DISPATCH_FAILED): JobStatus.WAITING_FOR_HUMAN,
+    (JobStatus.RETRYABLE_FAILED, JobEvent.DISPATCH_FAILED): JobStatus.RETRYABLE_FAILED,
     (JobStatus.RUNNING, JobEvent.HEARTBEAT): JobStatus.RUNNING,
     (JobStatus.RUNNING, JobEvent.LEASE_EXPIRED): JobStatus.QUEUED,
     (JobStatus.RUNNING, JobEvent.PUBLISH_RESULT): JobStatus.SUCCEEDED,
@@ -109,6 +116,49 @@ def test_cancellation_of_a_running_attempt_only_raises_a_flag() -> None:
     transition = next_state(JobFacts(status=JobStatus.RUNNING), JobEvent.CANCEL, policy=POLICY)
     assert transition.status is JobStatus.RUNNING
     assert transition.request_cancel is True
+    assert transition.release_lease is False
+
+
+@pytest.mark.parametrize(
+    "event", [JobEvent.LEASE_EXPIRED, JobEvent.RETRYABLE_ERROR, JobEvent.NEEDS_HUMAN]
+)
+def test_a_pending_cancel_preempts_every_event_that_would_continue_the_work(
+    event: JobEvent,
+) -> None:
+    facts = JobFacts(status=JobStatus.RUNNING, cancel_requested=True, has_open_tasks=True)
+    transition = next_state(facts, event, policy=POLICY)
+    # Each of these ends the attempt from a non-terminal status, and each is followed by
+    # a path that starts new work: a reclaim requeues, a retryable failure is rescheduled
+    # and a reviewer's response resumes. Continuing there discards a human decision and
+    # completes work that was forbidden, so the cancellation lands here instead.
+    assert transition.status is JobStatus.CANCELLED
+    assert transition.release_lease is True
+    assert transition.enqueue_outbox is False
+    assert transition.attempt_delta == 0
+
+
+def test_a_publication_still_wins_over_a_pending_cancel() -> None:
+    facts = JobFacts(status=JobStatus.RUNNING, cancel_requested=True)
+    # Cancellation is cooperative, so the one attempt that had already finished its work
+    # is allowed to commit it rather than throwing the result away.
+    assert next_state(facts, JobEvent.PUBLISH_RESULT, policy=POLICY).status is JobStatus.SUCCEEDED
+
+
+@pytest.mark.parametrize(
+    "status", [status for status in JobStatus if status is not JobStatus.QUEUED]
+)
+def test_a_failed_send_never_moves_a_job_it_finds_in_another_status(status: JobStatus) -> None:
+    facts = JobFacts(status=status, cancel_requested=status is JobStatus.RUNNING)
+    if status in TERMINAL_STATUSES:
+        # A finished job's round is abandoned by the store; no transition is asked for.
+        with pytest.raises(ServiceFault):
+            next_state(facts, JobEvent.DISPATCH_FAILED, policy=POLICY)
+        return
+    # Two rounds are pending after every reclaim, retry and resume, so an earlier round
+    # can fail after a later one already moved the job on. Only the schedule moves.
+    transition = next_state(facts, JobEvent.DISPATCH_FAILED, policy=POLICY)
+    assert transition.status is status
+    assert transition.enqueue_outbox is False
     assert transition.release_lease is False
 
 
