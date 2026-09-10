@@ -68,12 +68,16 @@ class RuntimeWorker:
                 done, _ = await asyncio.wait(
                     {task}, timeout=min(self.service.policy.heartbeat_seconds, remaining)
                 )
+                if asyncio.get_running_loop().time() >= deadline:
+                    raise TimeoutError
                 state = await self.service.heartbeat(attempt)
                 if state.cancel_requested:
                     task.cancel()
                     await asyncio.gather(task, return_exceptions=True)
                     await self.service.acknowledge_cancel(attempt)
                     return "cancelled"
+                if asyncio.get_running_loop().time() >= deadline:
+                    raise TimeoutError
                 if done:
                     break
             executed = task.result()
