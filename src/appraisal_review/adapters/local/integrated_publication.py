@@ -54,6 +54,7 @@ from appraisal_review.domain.service_contracts import (
     RevisionReference,
     ServiceResult,
 )
+from appraisal_review.ports.approval import ReviewAuthorization
 from appraisal_review.ports.artifact_publication import PublicationAttempt
 from appraisal_review.ports.jobs import ClaimedAttempt, JobRecord
 from appraisal_review.ports.pdf import PDFWriter
@@ -93,6 +94,19 @@ class PublicationEvidenceWriter(ConfinedWriter):
 
 
 @dataclass(frozen=True)
+class TrustedRasterPublication:
+    """Server-owned exact authored assets, never a request flag or model assertion.
+
+    The independent fixture authority must validate current material and its
+    original pinned configuration/assets. Hashes alone do not grant this scope.
+    """
+
+    source_versions: tuple[SourceVersion, ...]
+    template_hash: str
+    authorization: ReviewAuthorization
+
+
+@dataclass(frozen=True)
 class PublicationInputs:
     """Fixed synthetic assets selected by server configuration, not model arguments."""
 
@@ -103,6 +117,7 @@ class PublicationInputs:
     fixed_synthetic_assets: bool = False
     expected_placeholder_tokens: tuple[str, ...] = ()
     forbidden_originals: tuple[str, ...] = ()
+    raster_assets: TrustedRasterPublication | None = None
 
 
 class PublicationCatalog(Protocol):
@@ -320,6 +335,9 @@ class IntegratedResultProjection:
             if len(matches) != 1 or _file_path(matches[0].uri).resolve() != requested_path:
                 raise PublicationError("artifact_evidence_missing")
         protected = []
+        raster = inputs.raster_assets
+        if raster is not None:
+            IntegratedResultProjection._check_raster_assets(raster, snapshot, config, sources)
         for document in registry.documents:
             path = _file_path(document.uri)
             raw, source_identity = read_artifact(path)
@@ -327,8 +345,11 @@ class IntegratedResultProjection:
                 identity == source_identity
                 or output.resolve() == path.resolve()
                 or hashlib.sha256(raw).hexdigest() != document.content_hash
-                or "SYNTHETIC SOURCE"
-                not in "\n".join(p.extract_text() for p in PdfReader(BytesIO(raw)).pages)
+                or (
+                    raster is None
+                    and "SYNTHETIC SOURCE"
+                    not in "\n".join(p.extract_text() for p in PdfReader(BytesIO(raw)).pages)
+                )
             ):
                 raise PublicationError("artifact_evidence_missing")
             protected.append(document.uri)
@@ -343,8 +364,8 @@ class IntegratedResultProjection:
                 not original or original in text or original.encode() in data
                 for original in inputs.forbidden_originals
             )
-            or "SYNTHETIC OUTPUT" not in template_text
-            or "SYNTHETIC OUTPUT" not in text
+            or (raster is None and "SYNTHETIC OUTPUT" not in template_text)
+            or (raster is None and "SYNTHETIC OUTPUT" not in text)
             or reader.metadata is None
             or reader.metadata.get("/AppraisalReviewWriterVersion") != "2"
             or json.loads(reader.metadata.get("/AppraisalReviewFieldIds", "null"))
@@ -373,6 +394,8 @@ class IntegratedResultProjection:
             plan=plan,
             mutation_result=PDFMutationResult(pdf.page_count, tuple(pdf.written_field_ids)),
         )
+        if raster is not None:
+            IntegratedResultProjection._check_raster_assets(raster, snapshot, config, sources)
         # A stable attempt/version identity makes post-commit crash replay exact.
         attempt_id = record.current_run.attempt_id
         if attempt_id is None:
@@ -395,3 +418,33 @@ class IntegratedResultProjection:
             source_versions=sources,
             placeholder_only=True,
         )
+
+    @staticmethod
+    def _check_raster_assets(
+        assets: TrustedRasterPublication,
+        snapshot: RevisionSnapshot,
+        configuration: LocalWriterConfiguration,
+        sources: tuple[SourceVersion, ...],
+    ) -> None:
+        try:
+            if type(assets) is not TrustedRasterPublication:
+                raise ValueError("Explicit trusted raster authority required")
+            expected = {(s.document_id, s.version, s.content_hash) for s in assets.source_versions}
+            actual = {(s.document_id, s.version, s.content_hash) for s in sources}
+            template, _ = read_artifact(configuration.template_path)
+            registry = snapshot.material.policy.registry
+            forms = [document for document in registry.documents if document.role == "forms"]
+            if (
+                not actual
+                or expected != actual
+                or len(assets.source_versions) != len(sources)
+                or len(forms) != 1
+                or forms[0].content_hash != assets.template_hash
+                or any(page.has_text for document in registry.documents for page in document.pages)
+                or assets.template_hash != configuration.template_policy.template_sha256
+                or hashlib.sha256(template).hexdigest() != assets.template_hash
+                or assets.authorization.permits(snapshot.material) is not True
+            ):
+                raise ValueError("Authored raster assets or approval changed")
+        except Exception:
+            raise PublicationError("artifact_evidence_missing") from None

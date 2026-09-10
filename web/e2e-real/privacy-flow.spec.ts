@@ -23,10 +23,39 @@ interface ReviewProjection {
   };
 }
 
+test.use({ actionTimeout: 15_000 });
+
+function observeHttp(page: Page) {
+  page.on("request", (request) => {
+    const url = new URL(request.url());
+    if (url.protocol === "http:")
+      console.info(
+        JSON.stringify({ event: "request", method: request.method(), path: url.pathname }),
+      );
+  });
+  page.on("response", (response) => {
+    const url = new URL(response.url());
+    if (url.protocol === "http:")
+      console.info(
+        JSON.stringify({ event: "response", status: response.status(), path: url.pathname }),
+      );
+  });
+  page.on("requestfailed", (request) => {
+    console.info(
+      JSON.stringify({
+        event: "requestfailed",
+        path: new URL(request.url()).pathname,
+        error: request.failure()?.errorText,
+      }),
+    );
+  });
+}
+
 test("real local privacy review explicitly confirms, transfers and restores exact bytes", async ({
   page,
 }) => {
   test.setTimeout(240_000);
+  observeHttp(page);
   const path = process.env["PRIVACY_BROWSER_FIXTURE"];
   if (!path) throw new Error("PRIVACY_BROWSER_FIXTURE must name the private real bridge manifest");
   const fixture = JSON.parse(readFileSync(path, "utf8")) as PrivacyFixture;
@@ -75,7 +104,9 @@ test("real local privacy review explicitly confirms, transfers and restores exac
   await page.getByRole("button", { name: "Connect local bridge" }).click();
   expect(fixture.sources).toHaveLength(2);
   for (const [sourceIndex, source] of fixture.sources.entries()) {
-    await page.getByLabel("Source handle", { exact: true }).selectOption(source.source_id);
+    await page
+      .getByRole("combobox", { name: "Source handle", exact: true })
+      .selectOption(source.source_id);
     const opened = await clickResponse("Open selected source", `/sources/${source.source_id}/open`);
     let current = (await opened.json()) as ReviewProjection;
     let digest = opened.headers()["x-privacy-review-digest"];
@@ -85,13 +116,13 @@ test("real local privacy review explicitly confirms, transfers and restores exac
     expect(count("/exports/preview")).toBe(sourceIndex);
 
     await page
-      .getByLabel("Original page", { exact: true })
+      .getByRole("combobox", { name: "Original page", exact: true })
       .selectOption(String(source.add_region.page));
     await loadedPage(page, source.add_region.page);
     for (const [index, label] of ["Left x", "Bottom y", "Right x", "Top y"].entries())
       await page.getByLabel(label, { exact: true }).fill(String(source.add_region.bbox[index]));
     await page
-      .getByLabel("Region category", { exact: true })
+      .getByRole("combobox", { name: "Region category", exact: true })
       .selectOption(source.add_region.category);
     const added = await clickResponse("Add redaction region", "/review/add");
     expect(added.request().postDataJSON()).toMatchObject({
@@ -102,7 +133,7 @@ test("real local privacy review explicitly confirms, transfers and restores exac
     current = (await added.json()) as ReviewProjection;
     for (const sourcePage of current.command.source.pages) {
       await page
-        .getByLabel("Original page", { exact: true })
+        .getByRole("combobox", { name: "Original page", exact: true })
         .selectOption(String(sourcePage.number));
       await loadedPage(page, sourcePage.number);
       const reviewed = await clickResponse(
@@ -190,6 +221,7 @@ test("real local privacy review explicitly confirms, transfers and restores exac
     .toBe(true);
   const jobId = handoff.review_job_id!;
   const reviewer = await page.context().newPage();
+  observeHttp(reviewer);
   await reviewer.goto(`/jobs/${jobId}`);
   await reviewer.getByLabel("Session token", { exact: true }).fill(reviewFixture.session_token);
   await reviewer.getByRole("button", { name: "Continue", exact: true }).click();
