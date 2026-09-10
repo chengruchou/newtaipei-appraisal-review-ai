@@ -57,9 +57,8 @@ Consume the updated service-v1
 schema and result fixtures together; extra-forbid consumers of the earlier PR #20
 draft must adopt the added verification field. No fixture exposes a storage URI
 or grants authority.
-problem and a structured verification diagnostic. Consume the updated service-v1
-schema and fixtures together. Existing result/task records retain service-v1; action
-records migrate explicitly to controlled-action-v1 because extra-forbid consumers cannot
-accept the new bindings selectively. No fixture exposes a storage URI or grants authority.
+Existing task/result records retain service-v1; controlled action records migrate
+explicitly to controlled-action-v1. Strict consumers must adopt the current
+canonical union together rather than accepting selected new bindings.
 See [service contracts](../../docs/service-contracts.md) and
 [local runbook](../../docs/local-service-runbook.md) before integration.
