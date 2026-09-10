@@ -13,6 +13,9 @@
   "job-status-cancelling.json": "JobStatusView",
   "job-status-failed.json": "JobStatusView",
   "submission.json": "ReviewSubmission",
+  "task-list.json": "TaskListView",
+  "revision-list.json": "RevisionListView",
+  "response-receipt.json": "ResponseReceipt",
   "problem.json": "ServiceProblem",
   "value.json": "ValueRevision"
 }

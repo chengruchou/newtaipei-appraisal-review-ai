@@ -5,6 +5,8 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict
 
+from appraisal_review.api.routes.human_tasks import HUMAN_TASK_ENDPOINTS
+from appraisal_review.api.routes.human_tasks import router as human_task_router
 from appraisal_review.api.routes.review_jobs import JOB_ENDPOINTS
 from appraisal_review.api.routes.review_jobs import router as job_router
 from appraisal_review.api.routes.reviews import review, router
@@ -14,6 +16,7 @@ from appraisal_review.application.bootstrap import (
     build_controller,
 )
 from appraisal_review.application.entrypoint import EntryError, EntryProblem
+from appraisal_review.application.human_tasks import HumanTaskService
 from appraisal_review.application.review_jobs import ReviewJobService
 from appraisal_review.application.service_guards import ServiceFault
 from appraisal_review.config import Settings
@@ -55,14 +58,24 @@ def create_app(
     adapters: ReviewAdapters | None = None,
     controller_factory: ControllerFactory | None = None,
     job_service: ReviewJobService | None = None,
+    human_task_service: HumanTaskService | None = None,
     principal_resolver: PrincipalResolver | None = None,
 ) -> FastAPI:
     if controller_factory is not None and (settings is not None or adapters is not None):
         raise ValueError("Choose an explicit factory or settings/adapters, not both")
-    # A durable job plane without authentication would expose other principals' jobs, so
-    # neither half is usable alone; the routes report capability_unavailable instead.
-    if (job_service is None) != (principal_resolver is None):
+    # Neither authenticated plane may be mounted without an authenticator: the job routes
+    # would expose other principals' jobs, and answering a task is a write, so an
+    # unauthenticated caller could confirm another case's observations. An unmounted plane
+    # reports capability_unavailable rather than answering as if work were accepted.
+    #
+    # These are implications, not biconditionals. Two planes now share one resolver, and a
+    # resolver on its own mounts nothing and grants nothing, so demanding a job store would
+    # refuse both a human-task-only composition and the deliberately unconfigured one whose
+    # 503 the contract promises.
+    if job_service is not None and principal_resolver is None:
         raise ValueError("Durable jobs require both a store and a principal resolver")
+    if human_task_service is not None and principal_resolver is None:
+        raise ValueError("Human tasks require a principal resolver")
     app = FastAPI(
         title="Agentic AI Real Estate Valuation Reviewer",
         version="0.1.0",
@@ -74,9 +87,11 @@ def create_app(
     app.add_api_route("/health", health, methods=["GET"])
     app.add_api_route("/v1/validate", validate, methods=["POST"], response_model=ReviewResult)
     app.state.job_service = job_service
+    app.state.human_task_service = human_task_service
     app.state.principal_resolver = principal_resolver
     app.include_router(router)
     app.include_router(job_router)
+    app.include_router(human_task_router)
 
     @app.exception_handler(ServiceFault)
     async def service_fault(request: Request, fault: ServiceFault) -> JSONResponse:
@@ -100,9 +115,9 @@ def create_app(
                     code="invalid_request", message="Invalid review request."
                 ).response(),
             )
-        if endpoint in JOB_ENDPOINTS:
-            # Job routes answer with the sanitized service envelope and never echo the
-            # rejected payload, which may quote document text.
+        if endpoint in JOB_ENDPOINTS or endpoint in HUMAN_TASK_ENDPOINTS:
+            # These routes answer with the sanitized service envelope and never echo the
+            # rejected payload, which may quote document text or a proposed correction.
             return JSONResponse(
                 status_code=422,
                 content=ServiceFault(ServiceErrorCode.VALIDATION).problem.model_dump(mode="json"),
