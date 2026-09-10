@@ -27,6 +27,7 @@ from appraisal_review.domain.service_contracts import (
     RevisionReference,
 )
 from appraisal_review.domain.task_contracts import ResponseReceipt
+from appraisal_review.ports.jobs import JobRecord
 
 
 @dataclass(frozen=True)
@@ -57,6 +58,10 @@ class StoredReceipt:
 
 
 class HumanTaskStore(Protocol):
+    async def read_job(self, *, job_id: UUID) -> JobRecord | None:
+        """Read authoritative job ownership independently of any task collection."""
+        ...
+
     async def read_task(self, *, task_id: UUID) -> TaskRecord | None:
         """Strongly consistent read of one task, or None when no such task exists."""
         ...

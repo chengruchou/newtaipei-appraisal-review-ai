@@ -23,7 +23,7 @@ from appraisal_review.application.service_guards import (
     admit_response,
     response_digest,
 )
-from appraisal_review.domain.confidence import Side, confirm_side
+from appraisal_review.domain.confidence import Side, confirm_side, confirmation_digest
 from appraisal_review.domain.document_models import SourceCitation
 from appraisal_review.domain.factor_models import (
     EvidencedPair,
@@ -49,10 +49,11 @@ from appraisal_review.domain.task_contracts import (
     ResponseReceipt,
     RevisionListView,
     TaskListView,
+    TaskSubjectView,
     TaskView,
 )
 from appraisal_review.ports.human_tasks import HumanTaskStore, TaskRecord
-from appraisal_review.ports.jobs import ConditionFailed
+from appraisal_review.ports.jobs import ConditionFailed, JobRecord
 
 Clock = Callable[[], int]
 RevisionIdFactory = Callable[[], str]
@@ -128,29 +129,56 @@ class HumanTaskService:
     # -- reads ---------------------------------------------------------------
 
     async def list_tasks(self, principal: Principal, job_id: UUID) -> TaskListView:
+        job = await self._authorized_job(principal, job_id)
         records = await self.store.list_tasks(job_id=job_id)
-        # An empty list and someone else's job are indistinguishable on purpose: replying
-        # "forbidden" for a job that exists would confirm that it exists.
-        if not records or not self._visible(principal, records[0]):
+        if any(not self._visible(principal, record) for record in records):
             raise ServiceFault(ServiceErrorCode.NOT_FOUND)
-        principal.require(records[0].case_id, Permission.REVIEW)
         return TaskListView(
-            job=JobReference(case_id=records[0].case_id, job_id=job_id),
+            job=JobReference(case_id=job.case_id, job_id=job_id),
             tasks=tuple(task_view(record.task) for record in records),
         )
 
     async def read_task(self, principal: Principal, task_id: UUID) -> TaskView:
         return task_view((await self._authorized(principal, task_id)).task)
 
+    async def read_subject(self, principal: Principal, task_id: UUID) -> TaskSubjectView:
+        record = await self._authorized(principal, task_id)
+        side = record.task.side
+        snapshot = await self.store.read_snapshot(revision=record.task.run.revision)
+        if side is None or snapshot is None:
+            raise ServiceFault(ServiceErrorCode.CAPABILITY)
+        pair = _locate(snapshot.material, side)
+        if confirmation_digest(pair, side.side) != side.input_digest:
+            raise ServiceFault(ServiceErrorCode.CONFLICT)
+        value = _public(getattr(pair.pair, side.side), getattr(pair, f"{side.side}_sources"))
+        normalized = value.value if isinstance(value.value, NormalizedValue) else None
+        return TaskSubjectView(
+            task_id=task_id,
+            revision=record.task.run.revision,
+            subject_id=side_subject_id(side),
+            observation=value,
+            required_type=normalized.type if normalized else None,
+            required_unit=normalized.unit if normalized else None,
+            unit_required=normalized is None or normalized.type == "number",
+        )
+
     async def list_revisions(self, principal: Principal, job_id: UUID) -> RevisionListView:
-        records = await self.store.list_tasks(job_id=job_id)
-        if not records or not self._visible(principal, records[0]):
-            raise ServiceFault(ServiceErrorCode.NOT_FOUND)
-        principal.require(records[0].case_id, Permission.REVIEW)
+        job = await self._authorized_job(principal, job_id)
         return RevisionListView(
-            job=JobReference(case_id=records[0].case_id, job_id=job_id),
+            job=JobReference(case_id=job.case_id, job_id=job_id),
             revisions=await self.store.list_revisions(job_id=job_id),
         )
+
+    async def _authorized_job(self, principal: Principal, job_id: UUID) -> JobRecord:
+        job = await self.store.read_job(job_id=job_id)
+        if (
+            job is None
+            or job.principal_id != principal.actor.actor_id
+            or job.case_id not in principal.case_ids
+        ):
+            raise ServiceFault(ServiceErrorCode.NOT_FOUND)
+        principal.require(job.case_id, Permission.REVIEW)
+        return job
 
     def _visible(self, principal: Principal, record: TaskRecord) -> bool:
         return (
@@ -161,7 +189,7 @@ class HumanTaskService:
         record = await self.store.read_task(task_id=task_id)
         if record is None or not self._visible(principal, record):
             raise ServiceFault(ServiceErrorCode.NOT_FOUND)
-        principal.require(record.case_id, Permission.REVIEW)
+        await self._authorized_job(principal, record.job_id)
         return record
 
     # -- the one write -------------------------------------------------------
@@ -278,6 +306,16 @@ class HumanTaskService:
         observation = getattr(pair.pair, side)
         sources = getattr(pair, f"{side}_sources")
         original = _public(observation, sources)
+        if proposed.state == "present" and isinstance(proposed.value, NormalizedValue):
+            stored_value = observation.value
+            if stored_value is None or proposed.value.type != stored_value.type:
+                raise ServiceFault(ServiceErrorCode.VALIDATION)
+            if proposed.value.type == "number" and (
+                stored_value.unit is None
+                or proposed.value.unit != stored_value.unit
+                or proposed.unit != stored_value.unit
+            ):
+                raise ServiceFault(ServiceErrorCode.VALIDATION)
         observation.value = proposed.value if proposed.state == "present" else None
         observation.raw_text = proposed.raw_text or None
         # A correction never raises a raw score: human authority is recorded as a
@@ -290,7 +328,7 @@ class HumanTaskService:
             subject_id=subject_id,
             original=original,
             proposed=proposed,
-            corrected=proposed,
+            corrected=_public(observation, sources),
             corrected_by=ActorReference(actor_id=accepted.actor.actor_id, kind="human"),
         )
         # `revise` is right here: the observation changed, so every confirmation that was

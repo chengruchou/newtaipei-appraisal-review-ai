@@ -201,7 +201,7 @@ def test_a_refused_resume_leaves_no_task_revision_or_head_change() -> None:
     asyncio.run(scenario())
 
 
-def test_a_rejection_reports_the_jobs_real_status_without_touching_it() -> None:
+def test_a_rejection_reports_the_jobs_reconciled_blocked_status() -> None:
     async def scenario() -> None:
         harness, task = await prepared()
         command = confirming(harness, task).model_copy(update={"action": ResponseAction.REJECT})
@@ -214,7 +214,9 @@ def test_a_rejection_reports_the_jobs_real_status_without_touching_it() -> None:
             now=NOW,
         )
 
-        assert receipt.job_status == JobStatus.WAITING_FOR_HUMAN
+        assert receipt.job_status == JobStatus.FAILED
+        job = await harness.jobs.read_job(job_id=harness.job_id)
+        assert job is not None and job.open_task_ids == () and job.problem is not None
         assert receipt.revision is None and receipt.resumed_run is None
         assert len(await harness.tasks.list_revisions(job_id=harness.job_id)) == 1
 

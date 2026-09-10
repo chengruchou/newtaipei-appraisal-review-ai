@@ -20,6 +20,7 @@ from appraisal_review.domain.job_contracts import JobReference, JobStatus
 from appraisal_review.domain.service_contracts import (
     HumanTask,
     MaterialRevision,
+    PublicValue,
     ResponseAction,
     RevisionReference,
     RunReference,
@@ -46,6 +47,22 @@ class TaskView(ServiceModel):
         if (self.task.side is None) != (self.subject_id is None):
             raise ValueError("A task about an exact side carries that side's subject name")
         return self
+
+
+class TaskSubjectView(ServiceModel):
+    """Exact stored value and input requirements; a separate opt-in projection.
+
+    Keeping this out of TaskView preserves the frozen legacy response shape.
+    A client must never infer a measurement unit from a factor name.
+    """
+
+    task_id: UUID
+    revision: RevisionReference
+    subject_id: str
+    observation: PublicValue
+    required_type: Literal["number", "text", "category", "boolean"] | None
+    required_unit: str | None
+    unit_required: bool
 
 
 class TaskListView(ServiceModel):

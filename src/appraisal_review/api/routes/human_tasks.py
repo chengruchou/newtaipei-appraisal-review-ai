@@ -23,6 +23,7 @@ from appraisal_review.domain.task_contracts import (
     ResponseReceipt,
     RevisionListView,
     TaskListView,
+    TaskSubjectView,
     TaskView,
 )
 
@@ -69,6 +70,17 @@ async def read_task(
     return await service.read_task(principal, task_id)
 
 
+@router.get(
+    "/v1/review-tasks/{task_id}/subject",
+    response_model=TaskSubjectView,
+    responses=PROBLEM_RESPONSES,
+)
+async def read_task_subject(
+    task_id: UUID, service: ServiceDependency, principal: PrincipalDependency
+) -> TaskSubjectView:
+    return await service.read_subject(principal, task_id)
+
+
 @router.post(
     "/v1/review-tasks/{task_id}/responses",
     response_model=ResponseReceipt,
@@ -85,5 +97,5 @@ async def submit_task_response(
 
 
 HUMAN_TASK_ENDPOINTS = frozenset(
-    {list_job_tasks, list_job_revisions, read_task, submit_task_response}
+    {list_job_tasks, list_job_revisions, read_task, read_task_subject, submit_task_response}
 )

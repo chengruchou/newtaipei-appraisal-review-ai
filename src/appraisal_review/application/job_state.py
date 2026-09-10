@@ -32,6 +32,7 @@ class JobEvent(StrEnum):
     PERMANENT_ERROR = "permanent_error"
     SCHEDULE_RETRY = "schedule_retry"
     HUMAN_RESPONSE_COMMITTED = "human_response_committed"
+    HUMAN_REJECTED = "human_rejected"
     CANCEL = "cancel"
     CANCEL_ACKNOWLEDGED = "cancel_acknowledged"
 
@@ -249,6 +250,13 @@ def next_state(facts: JobFacts, event: JobEvent, *, policy: JobPolicy) -> Transi
         if facts.status != JobStatus.RETRYABLE_FAILED:
             raise _conflict()
         return Transition(status=JobStatus.QUEUED, enqueue_outbox=True)
+
+    if event == JobEvent.HUMAN_REJECTED:
+        if facts.status != JobStatus.WAITING_FOR_HUMAN:
+            raise _conflict()
+        return Transition(
+            status=JobStatus.WAITING_FOR_HUMAN if facts.has_open_tasks else JobStatus.FAILED
+        )
 
     if event == JobEvent.HUMAN_RESPONSE_COMMITTED:
         # T12: a response does not revive the finished attempt. The caller writes a new

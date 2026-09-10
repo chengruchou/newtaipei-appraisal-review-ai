@@ -252,7 +252,9 @@ def test_a_rejection_records_an_answer_and_commits_no_revision() -> None:
         receipt = await harness.service.respond(principal, task.task_id, command)
 
         assert receipt.revision is None and receipt.resumed_run is None
-        assert receipt.job_status == JobStatus.WAITING_FOR_HUMAN
+        assert receipt.job_status == JobStatus.FAILED
+        job = await harness.jobs.read_job(job_id=harness.job_id)
+        assert job is not None and job.open_task_ids == () and job.problem is not None
         assert len(await harness.tasks.list_revisions(job_id=harness.job_id)) == 1
 
     asyncio.run(scenario())
