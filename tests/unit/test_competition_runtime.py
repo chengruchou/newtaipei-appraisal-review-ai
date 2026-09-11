@@ -15,11 +15,12 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import closing, contextmanager
 from datetime import UTC, datetime, timedelta
+from decimal import Decimal
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 from urllib.parse import unquote, urlsplit
 from uuid import uuid4
 
@@ -28,6 +29,7 @@ import pytest
 from botocore import UNSIGNED
 from botocore.config import Config
 from moto import mock_aws
+from moto.core.botocore_stubber import BotocoreStubber
 from test_competition_preflight import ROLE, ready_profile
 
 from appraisal_review.adapters.aws.competition_budget import (
@@ -558,8 +560,36 @@ def budget_parts(output: int = 8) -> tuple[DataPart, ...]:
 
 
 @contextmanager
-def budget_ledger(*, max_calls: int = 2):
-    with mock_aws():
+def budget_ledger(*, max_calls: int = 2, synchronize_first_reads=False, updates=None):
+    # Moto checks conditions and mutates separately without concurrency safety.
+    # Serialize only its UpdateItem transport, preserving real CAS evaluation,
+    # concurrent SDK callers and GetItem reads, including the localhost server.
+    update_lock = threading.Lock()
+    read_lock = threading.Lock()
+    first_reads = threading.Barrier(2)
+    read_count = 0
+    process_request = BotocoreStubber.process_request
+
+    def process(stubber, request):
+        nonlocal read_count
+        target = request.headers.get("X-Amz-Target", "")
+        if isinstance(target, bytes):
+            target = target.decode("ascii")
+        if target == "DynamoDB_20120810.UpdateItem":
+            with update_lock:
+                if updates is not None:
+                    updates.append(json.loads(request.body))
+                return process_request(stubber, request)
+        response = process_request(stubber, request)
+        if synchronize_first_reads and target == "DynamoDB_20120810.GetItem":
+            with read_lock:
+                read_count += 1
+                ordinal = read_count
+            if ordinal <= 2:
+                first_reads.wait(timeout=10)
+        return response
+
+    with mock_aws(), patch.object(BotocoreStubber, "process_request", process):
         client = boto3.session.Session().client(
             "dynamodb",
             region_name="us-east-1",
@@ -583,8 +613,52 @@ def budget_ledger(*, max_calls: int = 2):
         yield p, client, seed
 
 
+def assert_budget_cas_updates(p, seed, updates):
+    assert len(updates) >= 3  # Two first reads observe zero; one CAS must lose.
+    counters = ("calls", "input_tokens", "output_tokens", "cost_usd", "version")
+    stable = {key: value for key, value in seed.items() if key not in counters}
+    keys = [*stable, *counters]
+    bound = next(r for r in p.budget.operation_reservations if r.operation == "Converse")
+    for body in updates:
+        assert set(body) == {
+            "TableName",
+            "Key",
+            "ConditionExpression",
+            "UpdateExpression",
+            "ExpressionAttributeNames",
+            "ExpressionAttributeValues",
+        }
+        assert body["TableName"] == "shared"
+        assert body["Key"] == {"pk": seed["pk"]}
+        assert body["ConditionExpression"] == " AND ".join(
+            f"#old{i} = :old{i}" for i in range(len(keys))
+        )
+        assert body["ExpressionAttributeNames"] == {
+            **{f"#{key}": key for key in counters},
+            **{f"#old{i}": key for i, key in enumerate(keys)},
+        }
+        assert body["UpdateExpression"] == "SET " + ", ".join(
+            f"#{key} = :{key}" for key in counters
+        )
+        attributes = body["ExpressionAttributeValues"]
+        observed = {key: attributes[f":old{i}"] for i, key in enumerate(keys)}
+        assert {key: observed[key] for key in stable} == stable
+        calls = int(observed["calls"]["N"])
+        assert calls in (0, 1)
+        for key, increment in zip(
+            counters, (1, bound.input_tokens, bound.output_tokens, bound.cost_usd, 1), strict=True
+        ):
+            assert Decimal(observed[key]["N"]) == calls * increment
+            assert Decimal(attributes[f":{key}"]["N"]) == (calls + 1) * increment
+        assert set(attributes) == {
+            *(f":old{i}" for i in range(len(keys))),
+            *(f":{key}" for key in counters),
+        }
+
+
 def test_two_budget_workers_and_restart_share_atomic_cap() -> None:
-    with budget_ledger() as (p, client, seed):
+    updates = []
+    with budget_ledger(synchronize_first_reads=True, updates=updates) as (p, client, seed):
 
         def spend(_):
             ledger = DynamoDBCompetitionBudget(p, lambda: client)
@@ -609,6 +683,9 @@ def test_two_budget_workers_and_restart_share_atomic_cap() -> None:
         ]
         assert row["calls"] == {"N": "2"}
         assert row["input_tokens"] == {"N": "200"}
+        assert row["output_tokens"] == {"N": "20"}
+        assert row["version"] == {"N": "2"}
+        assert_budget_cas_updates(p, seed, updates)
 
 
 def test_unknown_bounds_wire_token_mutation_window_and_ledger_drift_deny() -> None:
@@ -781,7 +858,11 @@ def _process_budget_spend(arguments):
 
 
 def test_separate_processes_share_one_moto_dynamodb_budget():
-    with budget_ledger() as (p, raw, seed), endpoint(ddb=raw) as (url, requests):
+    updates = []
+    with (
+        budget_ledger(synchronize_first_reads=True, updates=updates) as (p, raw, seed),
+        endpoint(ddb=raw) as (url, requests),
+    ):
         with multiprocessing.get_context("spawn").Pool(2) as pool:
             outcomes = pool.map(_process_budget_spend, [(p.model_dump_json(), url)] * 6)
         assert sum(outcomes) == 2
@@ -790,6 +871,7 @@ def test_separate_processes_share_one_moto_dynamodb_budget():
             "N": "2"
         }
         assert requests
+        assert_budget_cas_updates(p, seed, updates)
 
 
 def test_actual_async_snapshot_authority_reads_guarded_s3_without_recursion(tmp_path):
