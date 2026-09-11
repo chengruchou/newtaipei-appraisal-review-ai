@@ -68,7 +68,7 @@ class PDFMutationExecutor:
     ) -> PDFMutationResult:
         """Write only ``output_path``; publication belongs to object access."""
         self._reject_same_file(source_path, output_path)
-        font = self._register_font()
+        font = self._register_font(plan.font_bytes)
         writer = self._clone_source(source_path, plan.source_sha256)
         if len(writer.pages) != plan.page_count:
             raise PDFFieldPlacementError("PDF source changed after preflight")
@@ -176,15 +176,32 @@ class PDFMutationExecutor:
         except OSError as error:
             raise PDFWriteError("PDF path identity could not be checked") from error
 
-    def _register_font(self) -> TTFont:
+    def _register_font(self, font_bytes: bytes) -> TTFont:
         try:
+            digest = sha256(font_bytes).hexdigest()
+            if (
+                self.render_config.approved_font_sha256 is not None
+                and digest != self.render_config.approved_font_sha256
+            ):
+                raise PDFFontError("Preflight font does not match the approved digest")
+            # ReportLab caches by registration and PostScript face names. Use
+            # a byte-bound name and reject any cache substitution of the face.
+            font_name = f"{self.render_config.font_name}-{digest}"
             font = TTFont(
-                self.render_config.font_name,
-                str(self.render_config.font_path),
+                font_name,
+                BytesIO(font_bytes),
                 validate=1,
             )
             pdfmetrics.registerFont(font)
+            registered = pdfmetrics.getFont(font_name)
+            if (
+                not isinstance(registered, TTFont)
+                or getattr(registered.face, "_ttf_data", None) != font_bytes
+            ):
+                raise PDFFontError("Registered PDF font differs from the preflight bytes")
             return font
+        except PDFFontError:
+            raise
         except Exception as error:
             raise PDFFontError("Configured PDF font could not be registered") from error
 
@@ -252,7 +269,7 @@ class PDFMutationExecutor:
             x = x2 - text_width
         descent = float(font.face.descent) * font_size / 1000.0
         baseline = y1 + ((y2 - y1) - text_height) / 2.0 - descent
-        canvas.setFont(self.render_config.font_name, font_size)
+        canvas.setFont(font.fontName, font_size)
         canvas.drawString(x, baseline, field.display_text)
 
     def _add_annotation(

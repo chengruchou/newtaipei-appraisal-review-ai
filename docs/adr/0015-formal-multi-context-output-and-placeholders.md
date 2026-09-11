@@ -34,6 +34,10 @@ template byte digest, complete field-map digest, per-page unrotated-CropBox
 geometry, page classification and approved fonts pinned by file digest.
 Registration validates field/page/geometry coherence without opening a PDF;
 preflight now also verifies the loaded font file against the approved digest.
+An absent digest rejects multiple-context and placeholder requests, including
+local backfill, before rendering. Only legacy single-context requests without
+placeholders may omit it. A readable or cached font is not approval; the digest
+must come from trusted composition, never be inferred from write-time bytes.
 
 `PDFField` alternatively carries an opaque `placeholder_token` (never both a
 token and a value reference). A cloud writer renders the token verbatim; it has
@@ -44,6 +48,12 @@ private mapping, verifies the downloaded cloud artifact by digest without
 editing it, and only accepts local file destinations. Publication wrappers
 refuse any writer that reveals placeholders, so a re-identified PDF cannot be
 uploaded by the artifact publisher.
+
+The downloaded artifact participates in the existing protected-source identity
+checks through atomic publication, including explicit overwrite. Font approval,
+measurement and embedding use one immutable byte snapshot; a registration-cache
+substitution fails closed. See the scoped
+[review repair and composition notes](../formal-pdf-review-repair.md).
 
 ## Consequences
 
