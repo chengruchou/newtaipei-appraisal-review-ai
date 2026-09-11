@@ -91,7 +91,7 @@ contract byte-for-byte. Published teammate updates were preserved.
 `feat/versioned-document-transfer` starts from the above main, in an isolated
 repository-local worktree. The older working checkout and its untracked
 `cloud_tests/` copy were preserved. [The C2 contract](document-transfer.md),
-[ADR 0024](adr/0024-versioned-document-transfer.md) and
+[ADR 0028](adr/0028-versioned-document-transfer.md) and
 [storage runbook](../infra/documents/README.md) record scope and remaining acceptance.
 
 The implementation offers the controlled ingestion service alternative allowed

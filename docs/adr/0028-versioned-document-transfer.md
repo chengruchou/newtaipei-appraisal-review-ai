@@ -1,4 +1,4 @@
-# ADR 0024: Controlled sanitized documents and immutable run sources
+# ADR 0028: Controlled sanitized documents and immutable run sources
 
 Status: proposed implementation, pending independent review and live acceptance.
 
