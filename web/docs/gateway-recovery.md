@@ -16,8 +16,9 @@ success receipts. The existing form retains the detached, deeply frozen command,
 including nested correction values/evidence and its original idempotency key.
 Inputs remain locked and Send again resends the same command. Only a validated
 receipt completes the submission. Validated canonical rejections keep their
-existing refusal or conflict/reload behavior. Read-only error status fallbacks
-remain compatible. No DTO, generated schema, confidence or authority change is
+existing refusal or conflict/reload behavior. Read-only errors also require a
+canonical envelope, and existing TransportError wording is preserved. No DTO,
+generated schema, confidence or authority change is
 introduced by this repair.
 
 The unit/component regression matrix reproduced 11 failures on

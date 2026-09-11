@@ -218,3 +218,62 @@ test("the confirmation step cannot be skipped by pressing Enter in the form", as
   );
   expect(sent).toHaveLength(0);
 });
+
+test("a gateway failure keeps the answer recoverable under its original key", async ({ page }) => {
+  // The response route is re-registered so the first write is answered by an intermediary,
+  // not the service. The reviewer's answer may already have been committed upstream, which
+  // is why the only safe offer is to replay the identical command under the identical key.
+  const sent: unknown[] = [];
+  let attempts = 0;
+  await page.route(`**/v1/review-tasks/${TASK}/responses`, async (route) => {
+    sent.push(route.request().postDataJSON());
+    attempts += 1;
+    if (attempts === 1) {
+      await route.fulfill({
+        status: 502,
+        contentType: "text/html",
+        body: "<html><body>502 Bad Gateway</body></html>",
+      });
+      return;
+    }
+    await route.fulfill({
+      json: {
+        schema_version: "service-v1",
+        task_id: TASK,
+        consumed_version: 1,
+        task_state: "answered",
+        action: "confirm",
+        job: { schema_version: "service-v1", case_id: "case-1", job_id: JOB },
+        job_status: "queued",
+        revision: { ...revision, revision_id: "r2", material_digest: "b".repeat(64) },
+        resumed_run: {
+          schema_version: "service-v1",
+          run_id: "44444444-4444-4444-4444-444444444444",
+          revision: { ...revision, revision_id: "r2", material_digest: "b".repeat(64) },
+          attempt_id: null,
+          runtime_session_id: null,
+        },
+        superseded_task_ids: [],
+      },
+    });
+  });
+
+  await page.goto("/");
+  await page.getByLabel("Session token").fill("smoke-token");
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByLabel("Job identifier").fill(JOB);
+  await page.getByRole("button", { name: "Open" }).click();
+  await page.getByRole("link", { name: /road width/i }).click();
+  await page.getByRole("button", { name: /review and submit/i }).click();
+  await page.getByRole("button", { name: /yes, submit/i }).click();
+
+  // Not a refusal: the service never answered, so the outcome is unknown.
+  const retry = page.getByRole("button", { name: /send again/i });
+  await expect(retry).toBeVisible();
+  await retry.click();
+  await expect(page.getByRole("status")).toContainText("Response recorded");
+
+  const keys = sent.map((body) => (body as { idempotency_key: string }).idempotency_key);
+  expect(keys).toHaveLength(2);
+  expect(keys[0]).toBe(keys[1]);
+});

@@ -39,8 +39,9 @@ correction from current inputs, mint a replacement key, invent a receipt or
 interpret a missing response as proof of rejection.
 
 Validated canonical validation and authorization errors retain their existing
-refusal behavior. A validated version conflict requires reload. Read-only status
-fallbacks remain compatible. Domain calculations, confidence, permissions,
+refusal behavior. A validated version conflict requires reload. Read-only errors
+also require a canonical envelope; unknown errors retain their precise transport
+wording. HTTP status alone never invents a service decision. Domain calculations, confidence, permissions,
 response DTOs and backend idempotency semantics do not change.
 
 ## Consequences and verification
