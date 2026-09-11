@@ -35,14 +35,13 @@ class AppraisalReviewStack(Stack):
             versioned=True,
             removal_policy=RemovalPolicy.RETAIN,
             lifecycle_rules=[
-                # Attempt-scoped artifact hygiene only. Current objects are
-                # retained: published artifacts stay referenced by committed
-                # manifests, and unpublished attempt output is removed by an
-                # explicit reconciliation decision, never by a blanket rule.
+                # Incomplete uploads have no published object version. Retain
+                # all completed versions, including noncurrent ones: manifests
+                # pin exact versions, and safe deletion requires checking every
+                # committed reference before an explicit cleanup decision.
                 s3.LifecycleRule(
                     id="attempt-output-hygiene",
                     abort_incomplete_multipart_upload_after=Duration.days(7),
-                    noncurrent_version_expiration=Duration.days(30),
                 )
             ],
         )

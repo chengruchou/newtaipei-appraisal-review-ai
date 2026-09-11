@@ -81,3 +81,15 @@ source-revocation integration belong to the shared service composition. Keep
 output and evidence under ignored repository `artifacts/`. Preserve noncurrent
 S3 versions for the full lifetime of manifests that pin them; blanket expiration
 of all noncurrent versions is incompatible with version-pinned downloads.
+
+The CDK result bucket now retains completed current and noncurrent versions;
+its only lifecycle action aborts incomplete multipart uploads after seven days.
+No trusted unreferenced-version collector exists yet, so storage may grow.
+Cleanup must establish that no committed manifest needs the exact version and
+must not replace version-pinned reads with latest-object reads. The synthesized
+template regression rejects expiration while retaining encryption, versioning,
+public access blocking and TLS denial. Moto separately verifies that a manifest
+committed to v1 still downloads v1 after v2 is created and adapters restart,
+including idempotent publication and denial after access revocation. Moto does
+not simulate the passage of lifecycle time; the template assertion checks that
+the unsafe deletion action is absent.

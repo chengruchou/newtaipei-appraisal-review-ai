@@ -60,8 +60,8 @@ class PDFRenderConfig(PDFAdapterConfig):
 
     font_path: Path
     font_name: FontName = "AppraisalCJK"
-    # When set, preflight verifies the loaded font file bytes against this
-    # registry-approved digest before any measurement or embedding.
+    # Required for multi-context and placeholder writes. Legacy single-context
+    # writes may omit it. Preflight checks these trusted bytes before rendering.
     approved_font_sha256: SHA256Hex | None = None
     font_size: float = Field(default=10.0, gt=0.0, le=72.0)
     text_color: RGBColor = "#000000"

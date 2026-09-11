@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 from io import BytesIO
+from urllib.parse import parse_qs, urlparse
 from uuid import uuid4
 
 import boto3
@@ -394,6 +395,47 @@ def test_stage_retry_recovers_created_immutable_version(environment):
     assert target.read_bytes() == h.data
     with pytest.raises(PublicationError, match="artifact_mismatch"):
         h.stage(h.candidate, h.data)
+
+
+def test_committed_manifest_retains_version_after_newer_object_and_restart(environment):
+    h = environment
+    committed = h.publish()
+    artifact = committed.candidate.artifacts[0]
+    latest = h.s3.put_object(
+        Bucket="result-bucket",
+        Key=artifact.key,
+        Body=b"a later object must not replace committed evidence",
+        ContentType="application/pdf",
+    )
+    assert latest["VersionId"] != artifact.object_version
+    assert h.publish() == committed
+
+    # Fresh adapters recover the durable manifest and its pinned version.
+    store = DynamoDBManifestStore(
+        h.client, table_name="publication", job_table_name="publication", clock=h.clock
+    )
+    resolver = CommittedResultResolver(
+        manifests=store,
+        object_store=S3ObjectStore(h.s3),
+        presigner=h.s3,
+        result_bucket="result-bucket",
+        work_directory=h.tmp_path,
+    )
+    assert resolver.result(h.principal, "case-1", h.run.run_id) == committed
+    target = h.tmp_path / "retained-version.pdf"
+    resolver.fetch_verified(h.principal, "case-1", h.run.run_id, artifact.artifact_id, target)
+    assert target.read_bytes() == h.data
+    url = resolver.download_url(h.principal, "case-1", h.run.run_id, artifact.artifact_id)
+    assert parse_qs(urlparse(url).query)["versionId"] == [artifact.object_version]
+
+    # Retention never restores expired or revoked download authority.
+    h.access["active"] = False
+    h.put(h.access)
+    with pytest.raises(PublicationError, match="publication_unauthorized"):
+        resolver.fetch_verified(
+            h.principal, "case-1", h.run.run_id, artifact.artifact_id, h.tmp_path / "revoked.pdf"
+        )
+    assert not (h.tmp_path / "revoked.pdf").exists()
 
 
 def test_download_revocation_during_object_read_leaves_no_file(environment, monkeypatch):

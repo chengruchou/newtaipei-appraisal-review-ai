@@ -24,8 +24,14 @@ face bytes, failing closed if its PostScript-name cache would substitute another
 font. The internal face-byte check is covered by an actual same-name cache
 substitution regression; an unavailable byte record also fails closed.
 
-`PDFRenderConfig.approved_font_sha256` stays optional for legacy callers.
-Registry configuration always supplies the approved digest. The writer metadata
+`PDFRenderConfig.approved_font_sha256` stays optional only for legacy
+single-context writes with no placeholders. Preflight rejects every request
+with additional comparison results or placeholder fields when the digest is
+missing, including local backfill. It neither computes approval from the input
+nor infers approval from a registered font cache. Registry configuration always
+supplies the approved digest. The integration publication boundary retains its
+separate mandatory font check; this low-level finding is not evidence of a
+publication bypass. The writer metadata
 version remains `2`; this is an enforcement correction to that writer's existing
 contract. Approval of a synthetic font does not establish approval of a formal
 government font or template.
@@ -66,6 +72,14 @@ Use `LocalPlaceholderBackfill` only on the local privacy side with the original
 request, local private mapping, downloaded artifact and expected artifact digest.
 
 ## Regression and local evidence
+
+The missing-approval regressions reproduce six real-write failures on
+`c8f739ff936b772200dda9d8e09d18049df03cfc`: multi-context output, opaque
+placeholder output and local backfill, each with an absent or existing
+destination. The repaired paths reject before rendering, leave source bytes
+and any existing destination unchanged, and clean up temporary files. Positive
+fixtures explicitly approve their original synthetic font bytes; the runtime
+does not infer approval. Existing alias, immutable-font and cache tests remain.
 
 At original head `ca4149439ce65dbf8176043aadad13b5d76ba0f9`, the initial
 regression suite produced 10 failures and 4 passes. Failures independently

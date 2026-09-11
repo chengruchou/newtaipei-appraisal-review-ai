@@ -54,6 +54,11 @@ def vera_font() -> Path:
 def render_config(**changes: object) -> PDFRenderConfig:
     values: dict[str, object] = {"font_path": vera_font()}
     values.update(changes)
+    # The synthetic test composition explicitly approves its fixture font.
+    # Passing None still exercises missing approval; production never auto-approves.
+    values.setdefault(
+        "approved_font_sha256", hashlib.sha256(Path(values["font_path"]).read_bytes()).hexdigest()
+    )
     return PDFRenderConfig.model_validate(values)
 
 

@@ -11,6 +11,7 @@ import pytest
 from pypdf import PdfReader
 from test_formal_pdf_output import (
     TOKEN,
+    multi_request,
     placeholder_map,
     placeholder_request,
     render_config,
@@ -23,6 +24,39 @@ from appraisal_review.adapters.local.fake_pdf import FakePDFWriter
 from appraisal_review.adapters.local.pdf_writer import LocalPDFWriter
 from appraisal_review.adapters.local.placeholder_backfill import LocalPlaceholderBackfill
 from appraisal_review.domain.pdf_models import PDFFontError, PDFWriteError
+
+
+@pytest.mark.parametrize("mode", ["multi_context", "placeholder", "backfill"])
+@pytest.mark.parametrize("existing_destination", [False, True])
+def test_new_output_requires_approved_font_before_real_write(
+    tmp_path: Path, mode: str, existing_destination: bool
+) -> None:
+    if mode == "multi_context":
+        request, policy = multi_request(tmp_path, "output.pdf")
+    else:
+        request, policy = placeholder_request(tmp_path, placeholder_map(), "output.pdf")
+    template = (tmp_path / "template.pdf").read_bytes()
+    destination = tmp_path / "output.pdf"
+    if existing_destination:
+        destination.write_bytes(b"existing output must survive rejection")
+    original = destination.read_bytes() if existing_destination else None
+    config = render_config(approved_font_sha256=None, overwrite_existing=True)
+    if mode == "backfill":
+        write = LocalPlaceholderBackfill(
+            render_config=config, template_policy=policy, values={TOKEN: "private value"}
+        ).backfill(request)
+    else:
+        write = LocalPDFWriter(render_config=config, template_policy=policy).write_pdf(request)
+
+    with pytest.raises(PDFFontError, match="requires an approved font digest"):
+        asyncio.run(write)
+
+    assert (tmp_path / "template.pdf").read_bytes() == template
+    if existing_destination:
+        assert destination.read_bytes() == original
+    else:
+        assert not destination.exists()
+    assert not list(tmp_path.glob(".*.tmp"))
 
 
 @pytest.mark.parametrize("alias", ["direct", "symlink", "hardlink", "parent_symlink"])
