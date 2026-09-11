@@ -3,6 +3,7 @@ import addFormats from "ajv-formats";
 import contracts from "./contracts.json";
 import type { components } from "./schema";
 import { LocalOcrReviewClient, OcrReviewRequired, requiredOcrReview } from "./ocr-review-client";
+import { responseDiagnostic, transportDiagnostic, type PrivacyDiagnostic } from "./diagnostics";
 
 export type ReviewView = components["schemas"]["PrivacyReviewView"];
 export type Selection = components["schemas"]["ReviewSelection"];
@@ -47,7 +48,10 @@ function object(value: unknown): value is Record<string, unknown> {
 }
 
 export class BridgeError extends Error {
-  constructor(readonly unknownOutcome: boolean) {
+  constructor(
+    readonly unknownOutcome: boolean,
+    readonly diagnostic?: PrivacyDiagnostic,
+  ) {
     super(
       unknownOutcome
         ? "The local operation's outcome is unknown. Reconcile it before continuing; do not resend a transfer."
@@ -94,11 +98,12 @@ export class LocalPrivacyClient {
     // Restoration can render and inspect every page before returning its review stage.
     const duration = this.options.timeoutMs ?? (allowOcrReview ? 120_000 : 30_000);
     const deadline = Date.now() + duration;
+    let observed: PrivacyDiagnostic | undefined;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const timeout = new Promise<never>((_resolve, reject) => {
       timer = setTimeout(() => {
         controller.abort();
-        reject(new BridgeError(true));
+        reject(new BridgeError(true, transportDiagnostic(observed, "deadline_exceeded")));
       }, duration);
     });
     try {
@@ -119,12 +124,13 @@ export class LocalPrivacyClient {
               redirect: "error",
             },
           );
+          observed = responseDiagnostic(response.status, response.headers);
           if (!response.ok) {
             if (allowOcrReview && response.status === 409) {
               const required = requiredOcrReview(await response.json());
               if (required) throw required;
             }
-            throw new BridgeError(false);
+            throw new BridgeError(false, observed);
           }
           return await read(response);
         })(),
@@ -132,13 +138,23 @@ export class LocalPrivacyClient {
       ]);
       if (Date.now() >= deadline) {
         controller.abort();
-        throw new BridgeError(true);
+        throw new BridgeError(true, transportDiagnostic(observed, "deadline_exceeded"));
       }
       return value;
     } catch (error) {
-      throw error instanceof BridgeError || error instanceof OcrReviewRequired
-        ? error
-        : new BridgeError(true);
+      if (error instanceof OcrReviewRequired) throw error;
+      if (error instanceof BridgeError && error.diagnostic) throw error;
+      throw new BridgeError(
+        error instanceof BridgeError ? error.unknownOutcome : true,
+        transportDiagnostic(
+          observed,
+          controller.signal.aborted
+            ? "deadline_exceeded"
+            : observed
+              ? "response_unusable"
+              : "request_failed",
+        ),
+      );
     } finally {
       clearTimeout(timer);
     }

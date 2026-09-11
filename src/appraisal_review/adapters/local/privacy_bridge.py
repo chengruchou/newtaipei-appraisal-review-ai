@@ -11,7 +11,7 @@ import os
 import stat
 import time
 from collections.abc import Callable, Mapping
-from contextlib import suppress
+from contextlib import ExitStack, suppress
 from contextvars import ContextVar
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -31,6 +31,14 @@ from appraisal_review.application.privacy_bundle import (
     LocalSanitizedBundleBuilder,
     LocalSanitizedVerifier,
 )
+from appraisal_review.application.privacy_diagnostics import (
+    RestoreDiagnostics,
+    diagnostic_request,
+    diagnostic_stage,
+    note_failure,
+    note_ocr_failure,
+    restore_stage,
+)
 from appraisal_review.application.privacy_export import (
     LocalPrivacyExportGate,
     sanitize_reviewer_text,
@@ -45,6 +53,11 @@ from appraisal_review.application.privacy_refill import (
 from appraisal_review.application.privacy_refill_review import LocalRefillReview
 from appraisal_review.application.privacy_review import LocalPrivacyReviewService
 from appraisal_review.domain.privacy_bundle import SanitizedBundle
+from appraisal_review.domain.privacy_diagnostics import (
+    LocalRestoreFailure,
+    RestoreFailureCode,
+    RestoreStage,
+)
 from appraisal_review.domain.privacy_export import PrivacyExportPayload
 from appraisal_review.domain.privacy_mapping import LocalMappingHandle, MappingFault
 from appraisal_review.domain.privacy_models import (
@@ -194,9 +207,10 @@ class _Preview:
     attempted: bool = False
 
 
-class _BridgeFault(Exception):
+class _BridgeFault(LocalRestoreFailure):
     def __init__(self, status: int = 409) -> None:
         self.status = status
+        super().__init__(RestoreFailureCode.REQUEST_REJECTED)
 
 
 def _problem(status: int) -> JSONResponse:
@@ -222,6 +236,7 @@ def _private_directory(path: Path, workspace: Path) -> None:
         raise _BridgeFault()
 
 
+@diagnostic_stage(RestoreStage.FILE_READ)
 def _read_bound(path: Path, workspace: Path, digest: str) -> bytes:
     _private_directory(path.parent, workspace)
     if path.resolve(strict=True) != path:
@@ -285,6 +300,9 @@ class _Boundary:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
+        diagnostic: RestoreDiagnostics | None = None
+        observed_status: int | None = None
+        diagnostic_scope = ExitStack()
         request_id = str(uuid4())
         correlation = _REQUEST_ID.set(request_id)
         scope.setdefault("state", {})["privacy_request_id"] = request_id
@@ -299,7 +317,18 @@ class _Boundary:
             return values[0].decode("ascii")
 
         async def guarded_send(message: Message) -> None:
+            nonlocal observed_status
             if message["type"] == "http.response.start":
+                observed_status = message["status"]
+                if diagnostic is not None and diagnostic.failure is not None:
+                    message["headers"] = [
+                        *message.get("headers", []),
+                        (
+                            b"x-privacy-failure-stage",
+                            diagnostic.failure.stage.value.encode("ascii"),
+                        ),
+                        (b"x-privacy-failure-code", diagnostic.failure.code.value.encode("ascii")),
+                    ]
                 message["headers"] = [
                     *message.get("headers", []),
                     (b"cache-control", b"no-store"),
@@ -312,7 +341,8 @@ class _Boundary:
                     (b"x-privacy-request-id", request_id.encode("ascii")),
                     (
                         b"access-control-expose-headers",
-                        b"X-Privacy-Review-Digest, X-Privacy-Request-Id",
+                        b"X-Privacy-Review-Digest, X-Privacy-Request-Id, "
+                        b"X-Privacy-Failure-Stage, X-Privacy-Failure-Code",
                     ),
                 ]
             await send(message)
@@ -375,6 +405,19 @@ class _Boundary:
             if scope["method"] == "GET" and body:
                 raise _BridgeFault(400)
             scope.setdefault("state", {})["privacy_session"] = session
+            path = scope.get("path", "")
+            operation = (
+                "restore"
+                if path.startswith("/local-privacy/restore/")
+                else "download"
+                if path.startswith("/local-privacy/restored/")
+                else "review"
+                if path.startswith("/local-privacy/restore-reviews/")
+                else None
+            )
+            if operation is not None:
+                diagnostic = RestoreDiagnostics(request_id, operation)
+                diagnostic_scope.enter_context(diagnostic_request(diagnostic))
             sent = False
 
             async def replay() -> Message:
@@ -385,13 +428,23 @@ class _Boundary:
                 return await receive()
 
             await self.app(scope, replay, guarded_send)
+        except asyncio.CancelledError:
+            note_failure(LocalRestoreFailure(RestoreFailureCode.OPERATION_FAILED))
+            raise
         except _BridgeFault as error:
+            note_failure(error)
             await _problem(error.status)(scope, receive, guarded_send)
-        except (ValueError, UnicodeError, TimeoutError):
+        except (ValueError, UnicodeError, TimeoutError) as error:
+            note_failure(error)
             await _problem(400)(scope, receive, guarded_send)
-        except Exception:
+        except Exception as error:
+            note_failure(error)
             await _problem(409)(scope, receive, guarded_send)
         finally:
+            if diagnostic is not None and self.config.diagnostic is not None:
+                with suppress(Exception):
+                    self.config.diagnostic(diagnostic.record(observed_status))
+            diagnostic_scope.close()
             _REQUEST_ID.reset(correlation)
 
 
@@ -427,14 +480,16 @@ class _PinnedPublisher:
     ) -> None:
         self.result, self.workspace, self.expected = result, workspace, expected
 
+    @diagnostic_stage(RestoreStage.PUBLICATION)
     def current(self, plan: RehydrationPlan) -> PublishedRefillArtifact:
         artifact = self.result.publisher.current(plan)
         if artifact != self.expected or not self.permits(plan, artifact):
             raise _BridgeFault()
         return artifact
 
+    @diagnostic_stage(RestoreStage.AUTHORITY)
     def permits(self, plan: RehydrationPlan, artifact: PublishedRefillArtifact) -> bool:
-        return (
+        permitted = (
             artifact == self.expected
             and self.result.publisher.permits(plan, artifact) is True
             and _read_bound(
@@ -442,31 +497,42 @@ class _PinnedPublisher:
             )
             == artifact.pdf
         )
+        if not permitted:
+            note_failure(LocalRestoreFailure(RestoreFailureCode.AUTHORITY_DENIED))
+        return permitted
 
 
+@diagnostic_stage(RestoreStage.FINAL_READ)
 def _read_restored(
     session: PrivacyBridgeSession, entry: _RestoredDownload, workspace: Path
 ) -> bytes:
     def require_current() -> None:
-        result = session.results.resolve(session.principal_id, entry.result_id)
-        if result.plan != entry.plan or result.authority.permits(entry.plan) is not True:
-            raise _BridgeFault()
-        handle = session._maps.get(entry.plan.map_id)
-        if handle is None:
-            raise _BridgeFault()
-        mapping = session.mappings.read(handle)
-        artifact = result.publisher.current(entry.plan)
-        validate_refill(mapping, entry.plan, artifact)
-        if not _PinnedPublisher(result, workspace, artifact).permits(entry.plan, artifact):
-            raise _BridgeFault()
-        if entry.review_id is not None:
-            context = session._ocr_reviews.get(entry.review_id)
-            if (
-                context is None
-                or context.result_id != entry.result_id
-                or not context.review.permits_completed(entry.digest)
-            ):
+        with restore_stage(RestoreStage.PUBLICATION):
+            result = session.results.resolve(session.principal_id, entry.result_id)
+        with restore_stage(RestoreStage.AUTHORITY):
+            if result.plan != entry.plan or result.authority.permits(entry.plan) is not True:
+                raise LocalRestoreFailure(RestoreFailureCode.AUTHORITY_DENIED)
+        with restore_stage(RestoreStage.MAPPING):
+            handle = session._maps.get(entry.plan.map_id)
+            if handle is None:
                 raise _BridgeFault()
+            mapping = session.mappings.read(handle)
+        with restore_stage(RestoreStage.PUBLICATION):
+            artifact = result.publisher.current(entry.plan)
+        with restore_stage(RestoreStage.PLAN):
+            validate_refill(mapping, entry.plan, artifact)
+        with restore_stage(RestoreStage.AUTHORITY):
+            if not _PinnedPublisher(result, workspace, artifact).permits(entry.plan, artifact):
+                raise LocalRestoreFailure(RestoreFailureCode.AUTHORITY_DENIED)
+        with restore_stage(RestoreStage.REVIEW):
+            if entry.review_id is not None:
+                context = session._ocr_reviews.get(entry.review_id)
+                if (
+                    context is None
+                    or context.result_id != entry.result_id
+                    or not context.review.permits_completed(entry.digest)
+                ):
+                    raise _BridgeFault()
 
     require_current()
     data = _read_bound(entry.path, workspace, entry.digest)
@@ -474,6 +540,7 @@ def _read_restored(
     return data
 
 
+@diagnostic_stage(RestoreStage.FINAL_WRITE)
 def _save_new(workspace: Path, data: bytes, identifier: UUID | None = None) -> tuple[UUID, Path]:
     _private_directory(workspace, workspace)
     identifier = identifier or uuid4()
@@ -648,16 +715,9 @@ def create_privacy_bridge(
         )
 
     async def rejected(request: Request, error: Exception) -> JSONResponse:
-        if isinstance(error, RefillOCRFailure) and config.diagnostic is not None:
-            record = {
-                "request_id": request.state.privacy_request_id,
-                "status": 409,
-                "code": error.problem.code.value,
-                **error.diagnostic,
-            }
-            # Observability cannot authorize a rejected request or expose its exception.
-            with suppress(Exception):
-                config.diagnostic(record)
+        note_failure(error)
+        if isinstance(error, RefillOCRFailure):
+            note_ocr_failure(error.diagnostic)
         return _problem(error.status if isinstance(error, _BridgeFault) else 409)
 
     for error_type in (
@@ -673,6 +733,7 @@ def create_privacy_bridge(
     def session_for(request: Request) -> PrivacyBridgeSession:
         return request.state.privacy_session  # type: ignore[no-any-return]
 
+    @diagnostic_stage(RestoreStage.SOURCE)
     def selected(session: PrivacyBridgeSession) -> PrivacyBridgeSource:
         if session._source_id is None:
             raise _BridgeFault()
@@ -909,14 +970,17 @@ def create_privacy_bridge(
             if result_id not in session._result_reviews and len(session._ocr_reviews) >= 2:
                 raise _BridgeFault()
             source = selected(session)
-            result = session.results.resolve(session.principal_id, result_id)
-            handle = session._maps.get(result.plan.map_id)
-            if handle is None:
-                raise _BridgeFault(404)
-            mapping = session.mappings.read(handle)
+            with restore_stage(RestoreStage.PUBLICATION):
+                result = session.results.resolve(session.principal_id, result_id)
+            with restore_stage(RestoreStage.MAPPING):
+                handle = session._maps.get(result.plan.map_id)
+                if handle is None:
+                    raise _BridgeFault(404)
+                mapping = session.mappings.read(handle)
             if mapping.command.source != source.snapshot:
                 raise _BridgeFault()
-            artifact = result.publisher.current(result.plan)
+            with restore_stage(RestoreStage.PUBLICATION):
+                artifact = result.publisher.current(result.plan)
             publisher = _PinnedPublisher(result, config.workspace, artifact)
             if not publisher.permits(result.plan, artifact):
                 raise _BridgeFault()
@@ -945,21 +1009,34 @@ def create_privacy_bridge(
                     def authorize_review() -> None:
                         if selected(session).snapshot != mapping.command.source:
                             raise _BridgeFault()
-                        current = session.results.resolve(session.principal_id, result_id)
-                        if (
-                            current.plan != result.plan
-                            or current.ocr_identity is None
-                            or current.ocr_identity() != identity()
-                            or current.authority.permits(result.plan) is not True
-                            or session._maps.get(handle.map_id) != handle
-                            or session.mappings.read(handle) != mapping
-                            or session.sources.read(mapping.command.source) != original
-                            or current.publisher.current(result.plan) != artifact
-                            or not _PinnedPublisher(current, config.workspace, artifact).permits(
+                        with restore_stage(RestoreStage.PUBLICATION):
+                            current = session.results.resolve(session.principal_id, result_id)
+                        with restore_stage(RestoreStage.PLAN):
+                            if current.plan != result.plan:
+                                raise _BridgeFault()
+                        with restore_stage(RestoreStage.ENGINE):
+                            if current.ocr_identity is None or current.ocr_identity() != identity():
+                                raise LocalRestoreFailure(RestoreFailureCode.ENGINE_CHANGED)
+                        with restore_stage(RestoreStage.AUTHORITY):
+                            if current.authority.permits(result.plan) is not True:
+                                raise LocalRestoreFailure(RestoreFailureCode.AUTHORITY_DENIED)
+                        with restore_stage(RestoreStage.MAPPING):
+                            if (
+                                session._maps.get(handle.map_id) != handle
+                                or session.mappings.read(handle) != mapping
+                            ):
+                                raise _BridgeFault()
+                        with restore_stage(RestoreStage.SOURCE):
+                            if session.sources.read(mapping.command.source) != original:
+                                raise _BridgeFault()
+                        with restore_stage(RestoreStage.PUBLICATION):
+                            if current.publisher.current(result.plan) != artifact:
+                                raise _BridgeFault()
+                        with restore_stage(RestoreStage.AUTHORITY):
+                            if not _PinnedPublisher(current, config.workspace, artifact).permits(
                                 result.plan, artifact
-                            )
-                        ):
-                            raise _BridgeFault()
+                            ):
+                                raise LocalRestoreFailure(RestoreFailureCode.AUTHORITY_DENIED)
 
                     review = await _run_sync(
                         LocalRefillReview,
