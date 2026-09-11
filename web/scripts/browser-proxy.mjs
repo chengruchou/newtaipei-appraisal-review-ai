@@ -20,6 +20,8 @@ if (process.env.PRIVACY_BROWSER_FIXTURE) {
   publicPrivacyBase = configured.origin;
 }
 let dropPath = null;
+let gatewayFault = null;
+let lastFaultReceipt = null;
 const mime = { ".html": "text/html", ".js": "text/javascript", ".mjs": "text/javascript", ".css": "text/css" };
 createServer(async (request, response) => {
   try {
@@ -31,6 +33,22 @@ createServer(async (request, response) => {
         response.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" })
           .end(JSON.stringify({ privacy_bridge_base: publicPrivacyBase }));
       }
+      return;
+    }
+    if (url.pathname === "/__test__/gateway-next-response" && request.method === "POST" && request.headers["x-test-control"] === "local-rehearsal") {
+      const chunks = [];
+      for await (const chunk of request) chunks.push(chunk);
+      const { task_id, status } = JSON.parse(Buffer.concat(chunks).toString());
+      if (!Object.values(fixture.tasks).includes(task_id) || ![0, 502, 504].includes(status)) {
+        response.writeHead(400).end();
+        return;
+      }
+      gatewayFault = { path: `/v1/review-tasks/${encodeURIComponent(task_id)}/responses`, status };
+      response.writeHead(204).end();
+      return;
+    }
+    if (url.pathname === "/__test__/last-fault-receipt" && request.method === "GET" && request.headers["x-test-control"] === "local-rehearsal") {
+      response.writeHead(lastFaultReceipt === null ? 404 : 200, { "content-type": "application/json" }).end(lastFaultReceipt);
       return;
     }
     if (url.pathname === "/__test__/drop-next-response" && request.method === "POST" && request.headers["x-test-control"] === "local-rehearsal") {
@@ -53,6 +71,22 @@ createServer(async (request, response) => {
       });
       // Consume the real response before faulting: the upstream write really ran.
       const bytes = Buffer.from(await result.arrayBuffer());
+      const privacyRequestId = result.headers.get("x-privacy-request-id");
+      if (privacyRequestId) response.setHeader("X-Privacy-Request-Id", privacyRequestId);
+      if (request.method === "POST" && url.pathname === gatewayFault?.path && result.ok) {
+        const { status } = gatewayFault;
+        gatewayFault = null;
+        lastFaultReceipt = bytes;
+        if (status === 0) {
+          response.writeHead(200, { "content-type": "application/json", "content-length": bytes.length });
+          response.flushHeaders();
+          response.write(bytes.subarray(0, 1));
+          setTimeout(() => response.destroy(), 50);
+        } else {
+          response.writeHead(status, { "content-type": "text/html" }).end("<html>Gateway response unavailable</html>");
+        }
+        return;
+      }
       response.writeHead(result.status, { "content-type": result.headers.get("content-type") ?? "application/json", "content-length": bytes.length });
       if (request.method === "POST" && url.pathname === dropPath && result.ok) {
         dropPath = null;
