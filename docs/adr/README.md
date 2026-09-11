@@ -68,6 +68,7 @@ work is tracked in [the backlog](../implementation-backlog.md).
 | 0047 | [Explicit competition runtime composition and atomic spending limits](0047-competition-runtime-composition.md) |
 | 0048 | [Bind model discovery to each guarded invocation](0048-model-routing-snapshots.md) |
 | 0049 | [Bounded diagnostics for local restoration and download](0049-local-restoration-diagnostics.md) |
+| 0050 | [Explicit local Docker validation composition](0050-local-validation-stack.md) |
 
 ## Originating filename migration
 

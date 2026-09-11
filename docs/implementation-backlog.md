@@ -1,11 +1,24 @@
 # Implementation backlog after the integration merge
 
-Updated 2026-09-11. The implementation baseline is merged [PR #45](https://github.com/chengruchou/newtaipei-appraisal-review-ai/pull/45),
+Updated 2026-09-12. The implementation baseline is merged [PR #45](https://github.com/chengruchou/newtaipei-appraisal-review-ai/pull/45),
 main `d148422adb18190bada93b8588a4e34d73e3c2e4`, whose runtime tree matches
 `fd22e68321bad6b58f06068dfef1db67fdb1c269`. Subsequent documentation commits do not
 represent new runtime validation. [Project progress](project-progress.md) records
 current capability; [validation evidence](local-validation-record.md) records
 exact checkpoints and environment limits.
+
+The follow-up candidate adds ADRs 0048-0050: exact model routing proofs, bounded
+local restoration diagnostics and explicit synthetic container composition.
+Their PR evidence identifies the new source/image checkpoints. The baseline
+counts above must not be reused as validation of these additions.
+
+The current remote main snapshot is `f241e7a479d3135e81bb47bcf9a94f2685492fdf`.
+Follow-ups #52 and #53 are integrated into `feat/local-validation-stack` at
+executable checkpoint `add3c0e23dc978dff082450d6475ace1e599261c`.
+[Current local evidence](followup-local-validation-record.md) includes full tests,
+the installed wheel, actual image core, a complete original synthetic privacy
+flow and a separate paused/automatic/resume flow. The 176-finding image OS gate
+and exact-head hosted CI remain separate blockers.
 
 The local integrated core is usable for verification. One complete synthetic OCR
 restoration was reported successful; repeatability remains work. Cloud deployment,
@@ -16,14 +29,14 @@ table below tracks remaining work rather than recreating completed components.
 
 | Issue | Remaining deliverable | Start condition / dependency |
 | --- | --- | --- |
-| [#48](https://github.com/chengruchou/newtaipei-appraisal-review-ai/issues/48) | Runnable local Docker validation setup: built frontend, configured API, private durable state and a trusted local privacy companion | Start now from the host-local launchers; coordinate #22 and #25. Existing AWS Docker default returns 503 and is not this package |
+| [#48](https://github.com/chengruchou/newtaipei-appraisal-review-ai/issues/48) | Explicit synthetic container and separate host companion implemented and exercised at the recorded checkpoint; independent review, supported-platform and production acceptance remain | Follow the [local validation stack](local-validation-stack.md); coordinate #22/#25 production provisioning. Existing AWS Docker default remains unconfigured |
 | [#25](https://github.com/chengruchou/newtaipei-appraisal-review-ai/issues/25) | Browser onboarding, trusted local file import, case/job creation and listing, session lifecycle and complete operator workflow | Build against current local contracts; coordinate deployed identity/transactions with #24 and #30 |
 | [#47](https://github.com/chengruchou/newtaipei-appraisal-review-ai/issues/47) | Fresh routing discovery now binds each requested model's exact approved destination set in the guarded composition | Local SDK/HTTP regressions implemented; independent review, hosted CI and real invocation acceptance pending; see ADR 0048 |
-| [#49](https://github.com/chengruchou/newtaipei-appraisal-review-ai/issues/49) | Diagnose empty hosted CI jobs and obtain actual exact-commit verification | Runner/account diagnosis first; account-owner action may be needed |
+| [#49](https://github.com/chengruchou/newtaipei-appraisal-review-ai/issues/49) | Obtain actual exact-commit hosted verification; current inspected jobs never started | GitHub reports payment or spending-limit restrictions; account-owner remediation is required before separately authorized CI execution |
 | [#50](https://github.com/chengruchou/newtaipei-appraisal-review-ai/issues/50) | Remediate and verify the intended image's OS vulnerability findings | Scan exact image/base/lock inputs; supported fixes or explicit pending human risk decisions |
 | [#24](https://github.com/chengruchou/newtaipei-appraisal-review-ai/issues/24) | Cloud human-task/revision/receipt transactions and atomic resume/outbox integration | Reuse implemented host-local SQLite semantics; provide production persistence and identity interfaces to #30 |
 | [#30](https://github.com/chengruchou/newtaipei-appraisal-review-ai/issues/30) | Configured AWS API/worker/publication entrypoints and approved competition deployment inputs | #24 and #47; effective role/data/model/budget/resource/stop approval; release evidence from #49/#50 |
-| [#22](https://github.com/chengruchou/newtaipei-appraisal-review-ai/issues/22) | OCR restoration repeatability, failure diagnostics and supported local key/map/isolation operations | Continue independently with private synthetic fixtures; retain exact two-stage review and original evidence |
+| [#22](https://github.com/chengruchou/newtaipei-appraisal-review-ai/issues/22) | Bounded diagnostics and isolated browser configurations implemented; corpus repeatability and supported local key/map/isolation operations remain | Preserve failed and successful runs separately, exact two-stage review and every original observation; see [OCR review](local-privacy-ocr-review.md) |
 | [#21](https://github.com/chengruchou/newtaipei-appraisal-review-ai/issues/21) | Designated-model extraction and controlled-selection evaluation against reviewed cases | Exact model/routing/data/budget approval; quality metrics are separate from the local injected-model evidence |
 | [#26](https://github.com/chengruchou/newtaipei-appraisal-review-ai/issues/26) | Approved rules, templates, CJK fonts, maps and independent formal acceptance cases | Authorized assets/reviewer input; keep them private and retain existing synthetic goldens |
 | [#31](https://github.com/chengruchou/newtaipei-appraisal-review-ai/issues/31) | Deployed browser-to-AWS acceptance, live collectors and recovery/rollback/stop evidence | The applicable work above, separately authorized environment and actual reviewer participation |
@@ -35,9 +48,9 @@ model, material, financial-data or deployment approval.
 
 ## Recommended execution order
 
-1. Deliver #48 for reproducible local startup and #25 for the missing user flows.
-   Implement #47 and investigate #49/#50 in parallel. These tasks can start
-   without waiting for OCR stability work or a paid model run.
+1. Review the #47/#22/#48 follow-up stack and its exact-checkpoint evidence.
+   Continue #25 for the missing user flows and #50 for image remediation; #49
+   needs account-owner action. These workstreams do not require a paid model run.
 2. Complete #24, then wire #30 using the actual persistence and authority providers.
    The checked-in pending competition profile must continue to reject execution
    until real operator inputs and approvals exist.
