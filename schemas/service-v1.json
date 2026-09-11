@@ -23,6 +23,37 @@
       "title": "AcceptedResponse",
       "type": "object"
     },
+    "ActionCost": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "controlled-action-v1",
+          "default": "controlled-action-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "steps": {
+          "default": 1,
+          "minimum": 1,
+          "title": "Steps",
+          "type": "integer"
+        },
+        "model_calls": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Model Calls",
+          "type": "integer"
+        },
+        "retries": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Retries",
+          "type": "integer"
+        }
+      },
+      "title": "ActionCost",
+      "type": "object"
+    },
     "ActionKind": {
       "enum": [
         "extract_page",
@@ -33,12 +64,29 @@
       "title": "ActionKind",
       "type": "string"
     },
+    "ActionPrerequisite": {
+      "enum": [
+        "criteria_document",
+        "forms_document",
+        "authorized_source",
+        "criteria_parsed",
+        "forms_parsed",
+        "extraction_retry_available",
+        "reference_available",
+        "rules_available",
+        "rules_approved",
+        "critical_evidence_available",
+        "material_complete"
+      ],
+      "title": "ActionPrerequisite",
+      "type": "string"
+    },
     "ActionProposal": {
       "additionalProperties": false,
       "properties": {
         "schema_version": {
-          "const": "service-v1",
-          "default": "service-v1",
+          "const": "controlled-action-v1",
+          "default": "controlled-action-v1",
           "title": "Schema Version",
           "type": "string"
         },
@@ -50,8 +98,23 @@
         "run": {
           "$ref": "#/$defs/RunReference"
         },
+        "action_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+          "title": "Action Id",
+          "type": "string"
+        },
         "action": {
           "$ref": "#/$defs/ActionKind"
+        },
+        "policy_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+          "title": "Policy Version",
+          "type": "string"
+        },
+        "snapshot_digest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Snapshot Digest",
+          "type": "string"
         },
         "proposer": {
           "$ref": "#/$defs/ActorReference"
@@ -82,18 +145,46 @@
           "default": null,
           "title": "Prompt Version"
         },
-        "document": {
+        "input_tokens": {
           "anyOf": [
             {
-              "$ref": "#/$defs/DocumentReference"
+              "minimum": 0,
+              "type": "integer"
             },
             {
               "type": "null"
             }
           ],
-          "default": null
+          "default": null,
+          "title": "Input Tokens"
         },
-        "page": {
+        "output_tokens": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Output Tokens"
+        },
+        "latency_ms": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Latency Ms"
+        },
+        "attempt_count": {
           "anyOf": [
             {
               "minimum": 1,
@@ -104,22 +195,57 @@
             }
           ],
           "default": null,
-          "title": "Page"
+          "title": "Attempt Count"
         },
-        "evidence": {
-          "default": [],
-          "items": {
-            "$ref": "#/$defs/SourceCitation"
+        "arguments": {
+          "discriminator": {
+            "mapping": {
+              "deterministic_review": "#/$defs/DeterministicReviewArguments",
+              "extract_page": "#/$defs/ExtractPageArguments",
+              "inspect_reference": "#/$defs/InspectReferenceArguments",
+              "request_human_review": "#/$defs/RequestHumanReviewArguments"
+            },
+            "propertyName": "kind"
           },
-          "title": "Evidence",
-          "type": "array"
+          "oneOf": [
+            {
+              "$ref": "#/$defs/ExtractPageArguments"
+            },
+            {
+              "$ref": "#/$defs/InspectReferenceArguments"
+            },
+            {
+              "$ref": "#/$defs/RequestHumanReviewArguments"
+            },
+            {
+              "$ref": "#/$defs/DeterministicReviewArguments"
+            }
+          ],
+          "title": "Arguments"
+        },
+        "proposer_rationale": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Proposer Rationale"
         }
       },
       "required": [
         "proposal_id",
         "run",
+        "action_id",
         "action",
-        "proposer"
+        "policy_version",
+        "snapshot_digest",
+        "proposer",
+        "arguments"
       ],
       "title": "ActionProposal",
       "type": "object"
@@ -160,27 +286,161 @@
       "additionalProperties": false,
       "properties": {
         "schema_version": {
-          "const": "service-v1",
-          "default": "service-v1",
+          "const": "controlled-action-v1",
+          "default": "controlled-action-v1",
           "title": "Schema Version",
+          "type": "string"
+        },
+        "action_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+          "title": "Action Id",
           "type": "string"
         },
         "action": {
           "$ref": "#/$defs/ActionKind"
         },
+        "permitted_states": {
+          "items": {
+            "$ref": "#/$defs/WorkflowState"
+          },
+          "minItems": 1,
+          "title": "Permitted States",
+          "type": "array"
+        },
+        "permitted_document_purposes": {
+          "default": [],
+          "items": {
+            "enum": [
+              "criteria",
+              "forms",
+              "reference",
+              "brief",
+              "template"
+            ],
+            "type": "string"
+          },
+          "title": "Permitted Document Purposes",
+          "type": "array"
+        },
+        "revision": {
+          "$ref": "#/$defs/RevisionReference"
+        },
+        "rules": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/RuleReference"
+          },
+          "title": "Rules",
+          "type": "array"
+        },
+        "proposer_kinds": {
+          "items": {
+            "enum": [
+              "system",
+              "model"
+            ],
+            "type": "string"
+          },
+          "maxItems": 1,
+          "minItems": 1,
+          "title": "Proposer Kinds",
+          "type": "array"
+        },
+        "executor_kinds": {
+          "default": [
+            "system"
+          ],
+          "items": {
+            "const": "system",
+            "type": "string"
+          },
+          "maxItems": 1,
+          "minItems": 1,
+          "title": "Executor Kinds",
+          "type": "array"
+        },
         "prerequisites": {
           "default": [],
           "items": {
-            "type": "string"
+            "$ref": "#/$defs/ActionPrerequisite"
           },
           "title": "Prerequisites",
+          "type": "array"
+        },
+        "cost": {
+          "$ref": "#/$defs/ActionCost",
+          "default": {
+            "schema_version": "controlled-action-v1",
+            "steps": 1,
+            "model_calls": 0,
+            "retries": 0
+          }
+        }
+      },
+      "required": [
+        "action_id",
+        "action",
+        "permitted_states",
+        "revision",
+        "proposer_kinds"
+      ],
+      "title": "AllowedAction",
+      "type": "object"
+    },
+    "AllowedActionSet": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "controlled-action-v1",
+          "default": "controlled-action-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "policy_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+          "title": "Policy Version",
+          "type": "string"
+        },
+        "snapshot_digest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Snapshot Digest",
+          "type": "string"
+        },
+        "revision": {
+          "$ref": "#/$defs/RevisionReference"
+        },
+        "documents": {
+          "items": {
+            "$ref": "#/$defs/DocumentReference"
+          },
+          "minItems": 2,
+          "title": "Documents",
+          "type": "array"
+        },
+        "rules": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/RuleReference"
+          },
+          "title": "Rules",
+          "type": "array"
+        },
+        "actions": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/AllowedAction"
+          },
+          "title": "Actions",
           "type": "array"
         }
       },
       "required": [
-        "action"
+        "policy_version",
+        "snapshot_digest",
+        "revision",
+        "documents"
       ],
-      "title": "AllowedAction",
+      "title": "AllowedActionSet",
       "type": "object"
     },
     "ArtifactManifest": {
@@ -318,6 +578,61 @@
       "title": "AuthorizationRecord",
       "type": "object"
     },
+    "BoundedWorkflowResult": {
+      "additionalProperties": false,
+      "description": "Terminal result of one bounded local workflow invocation.",
+      "properties": {
+        "schema_version": {
+          "const": "controlled-action-v1",
+          "default": "controlled-action-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "run": {
+          "$ref": "#/$defs/RunReference"
+        },
+        "termination": {
+          "$ref": "#/$defs/WorkflowTermination"
+        },
+        "events": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/DecisionEvent"
+          },
+          "title": "Events",
+          "type": "array"
+        },
+        "selection_failures": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/SelectionFailureEvent"
+          },
+          "title": "Selection Failures",
+          "type": "array"
+        },
+        "final_budget": {
+          "$ref": "#/$defs/Budget"
+        },
+        "handoff": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/HumanReviewHandoff"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "run",
+        "termination",
+        "final_budget"
+      ],
+      "title": "BoundedWorkflowResult",
+      "type": "object"
+    },
     "Budget": {
       "additionalProperties": false,
       "properties": {
@@ -341,6 +656,19 @@
           "minimum": 0,
           "title": "Retries Remaining",
           "type": "integer"
+        },
+        "time_remaining_ms": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Time Remaining Ms"
         }
       },
       "required": [
@@ -349,6 +677,135 @@
         "retries_remaining"
       ],
       "title": "Budget",
+      "type": "object"
+    },
+    "BudgetConsumption": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "controlled-action-v1",
+          "default": "controlled-action-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "steps": {
+          "minimum": 0,
+          "title": "Steps",
+          "type": "integer"
+        },
+        "model_calls": {
+          "minimum": 0,
+          "title": "Model Calls",
+          "type": "integer"
+        },
+        "retries": {
+          "minimum": 0,
+          "title": "Retries",
+          "type": "integer"
+        },
+        "elapsed_ms": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Elapsed Ms"
+        }
+      },
+      "required": [
+        "steps",
+        "model_calls",
+        "retries"
+      ],
+      "title": "BudgetConsumption",
+      "type": "object"
+    },
+    "CaseIdentity": {
+      "additionalProperties": false,
+      "properties": {
+        "case_id": {
+          "title": "Case Id",
+          "type": "string"
+        },
+        "version": {
+          "title": "Version",
+          "type": "string"
+        },
+        "district": {
+          "title": "District",
+          "type": "string"
+        },
+        "zone": {
+          "title": "Zone",
+          "type": "string"
+        },
+        "land_use_category": {
+          "title": "Land Use Category",
+          "type": "string"
+        },
+        "effective_date": {
+          "format": "date",
+          "title": "Effective Date",
+          "type": "string"
+        }
+      },
+      "required": [
+        "case_id",
+        "version",
+        "district",
+        "zone",
+        "land_use_category",
+        "effective_date"
+      ],
+      "title": "CaseIdentity",
+      "type": "object"
+    },
+    "CaseReviewResult": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "2.0",
+          "default": "2.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "identity": {
+          "$ref": "#/$defs/CaseIdentity"
+        },
+        "comparisons": {
+          "items": {
+            "$ref": "#/$defs/FactorReviewResult"
+          },
+          "title": "Comparisons",
+          "type": "array"
+        },
+        "findings": {
+          "items": {
+            "$ref": "#/$defs/ReviewFinding"
+          },
+          "title": "Findings",
+          "type": "array"
+        },
+        "coverage": {
+          "$ref": "#/$defs/Coverage"
+        },
+        "status": {
+          "$ref": "#/$defs/EvaluationStatus"
+        }
+      },
+      "required": [
+        "identity",
+        "comparisons",
+        "findings",
+        "coverage",
+        "status"
+      ],
+      "title": "CaseReviewResult",
       "type": "object"
     },
     "ComparisonContext": {
@@ -381,12 +838,127 @@
       "title": "ComparisonContext",
       "type": "object"
     },
+    "ControlledToolReceipt": {
+      "additionalProperties": false,
+      "description": "Sanitized actual executor result; workflow state comes from a fresh snapshot.",
+      "properties": {
+        "schema_version": {
+          "const": "controlled-action-v1",
+          "default": "controlled-action-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "outcome": {
+          "$ref": "#/$defs/ToolOutcome"
+        },
+        "reason_code": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+          "title": "Reason Code",
+          "type": "string"
+        },
+        "reviewer_summary": {
+          "minLength": 1,
+          "title": "Reviewer Summary",
+          "type": "string"
+        },
+        "affected_subject_ids": {
+          "default": [],
+          "items": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+            "type": "string"
+          },
+          "title": "Affected Subject Ids",
+          "type": "array"
+        },
+        "evidence": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/SourceCitation"
+          },
+          "title": "Evidence",
+          "type": "array"
+        },
+        "linked_task_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Linked Task Id"
+        },
+        "linked_response_key": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Linked Response Key"
+        }
+      },
+      "required": [
+        "outcome",
+        "reason_code",
+        "reviewer_summary"
+      ],
+      "title": "ControlledToolReceipt",
+      "type": "object"
+    },
+    "Coverage": {
+      "additionalProperties": false,
+      "properties": {
+        "required": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Required",
+          "type": "array"
+        },
+        "verified": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Verified",
+          "type": "array"
+        },
+        "missing": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Missing",
+          "type": "array"
+        },
+        "unsupported": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Unsupported",
+          "type": "array"
+        }
+      },
+      "required": [
+        "required",
+        "verified",
+        "missing"
+      ],
+      "title": "Coverage",
+      "type": "object"
+    },
     "DecisionEvent": {
       "additionalProperties": false,
       "properties": {
         "schema_version": {
-          "const": "service-v1",
-          "default": "service-v1",
+          "const": "controlled-action-v1",
+          "default": "controlled-action-v1",
           "title": "Schema Version",
           "type": "string"
         },
@@ -423,6 +995,12 @@
           "title": "Policy Version",
           "type": "string"
         },
+        "state_before": {
+          "$ref": "#/$defs/WorkflowState"
+        },
+        "state_after": {
+          "$ref": "#/$defs/WorkflowState"
+        },
         "disposition": {
           "enum": [
             "rejected",
@@ -446,7 +1024,7 @@
         "checked_prerequisites": {
           "default": [],
           "items": {
-            "type": "string"
+            "$ref": "#/$defs/ActionPrerequisite"
           },
           "title": "Checked Prerequisites",
           "type": "array"
@@ -455,6 +1033,28 @@
           "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
           "title": "Reason Code",
           "type": "string"
+        },
+        "reviewer_summary": {
+          "minLength": 1,
+          "title": "Reviewer Summary",
+          "type": "string"
+        },
+        "affected_subject_ids": {
+          "default": [],
+          "items": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+            "type": "string"
+          },
+          "title": "Affected Subject Ids",
+          "type": "array"
+        },
+        "evidence": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/SourceCitation"
+          },
+          "title": "Evidence",
+          "type": "array"
         },
         "tool_result": {
           "anyOf": [
@@ -475,26 +1075,90 @@
           "title": "Remaining Blockers",
           "type": "array"
         },
-        "budget": {
+        "linked_task_id": {
           "anyOf": [
             {
-              "$ref": "#/$defs/Budget"
+              "format": "uuid",
+              "type": "string"
             },
             {
               "type": "null"
             }
           ],
-          "default": null
+          "default": null,
+          "title": "Linked Task Id"
+        },
+        "linked_response_key": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Linked Response Key"
+        },
+        "budget_before": {
+          "$ref": "#/$defs/Budget"
+        },
+        "budget_after": {
+          "$ref": "#/$defs/Budget"
+        },
+        "budget_consumed": {
+          "$ref": "#/$defs/BudgetConsumption"
         }
       },
       "required": [
         "event_id",
         "proposal",
         "policy_version",
+        "state_before",
+        "state_after",
         "disposition",
-        "reason_code"
+        "reason_code",
+        "reviewer_summary",
+        "budget_before",
+        "budget_after",
+        "budget_consumed"
       ],
       "title": "DecisionEvent",
+      "type": "object"
+    },
+    "DeterministicReviewArguments": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "controlled-action-v1",
+          "default": "controlled-action-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "kind": {
+          "const": "deterministic_review",
+          "default": "deterministic_review",
+          "title": "Kind",
+          "type": "string"
+        },
+        "revision": {
+          "$ref": "#/$defs/RevisionReference"
+        },
+        "rules": {
+          "items": {
+            "$ref": "#/$defs/RuleReference"
+          },
+          "minItems": 1,
+          "title": "Rules",
+          "type": "array"
+        }
+      },
+      "required": [
+        "revision",
+        "rules"
+      ],
+      "title": "DeterministicReviewArguments",
       "type": "object"
     },
     "DocumentReference": {
@@ -558,6 +1222,31 @@
       "title": "EvaluationStatus",
       "type": "string"
     },
+    "EvaluationSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "total_adjustment_percent": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Total Adjustment Percent"
+        },
+        "status": {
+          "$ref": "#/$defs/EvaluationStatus"
+        }
+      },
+      "required": [
+        "total_adjustment_percent",
+        "status"
+      ],
+      "title": "EvaluationSummary",
+      "type": "object"
+    },
     "ExecutionStatus": {
       "enum": [
         "queued",
@@ -567,6 +1256,48 @@
       ],
       "title": "ExecutionStatus",
       "type": "string"
+    },
+    "ExtractPageArguments": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "controlled-action-v1",
+          "default": "controlled-action-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "kind": {
+          "const": "extract_page",
+          "default": "extract_page",
+          "title": "Kind",
+          "type": "string"
+        },
+        "document": {
+          "$ref": "#/$defs/DocumentReference"
+        },
+        "page": {
+          "minimum": 1,
+          "title": "Page",
+          "type": "integer"
+        },
+        "region": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SourceCitation"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "document",
+        "page"
+      ],
+      "title": "ExtractPageArguments",
+      "type": "object"
     },
     "FactSideReference": {
       "additionalProperties": false,
@@ -607,6 +1338,283 @@
       ],
       "title": "FactSideReference",
       "type": "object"
+    },
+    "FactorEvaluationResult": {
+      "additionalProperties": false,
+      "properties": {
+        "factor_id": {
+          "title": "Factor Id",
+          "type": "string"
+        },
+        "target_grade": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Grade"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "comparable_grade": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Grade"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "adjustment_percent": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Adjustment Percent"
+        },
+        "rule_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rule Id"
+        },
+        "calculation_trace": {
+          "title": "Calculation Trace",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/EvaluationStatus"
+        },
+        "warnings": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Warnings",
+          "type": "array"
+        }
+      },
+      "required": [
+        "factor_id",
+        "calculation_trace",
+        "status"
+      ],
+      "title": "FactorEvaluationResult",
+      "type": "object"
+    },
+    "FactorReviewResult": {
+      "additionalProperties": false,
+      "properties": {
+        "case_id": {
+          "title": "Case Id",
+          "type": "string"
+        },
+        "rule_set_id": {
+          "title": "Rule Set Id",
+          "type": "string"
+        },
+        "rule_version": {
+          "title": "Rule Version",
+          "type": "string"
+        },
+        "context": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ComparisonContext"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "case_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Case Version"
+        },
+        "source_hashes": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Source Hashes",
+          "type": "object"
+        },
+        "results": {
+          "items": {
+            "$ref": "#/$defs/FactorEvaluationResult"
+          },
+          "title": "Results",
+          "type": "array"
+        },
+        "summary": {
+          "$ref": "#/$defs/EvaluationSummary"
+        }
+      },
+      "required": [
+        "case_id",
+        "rule_set_id",
+        "rule_version",
+        "results",
+        "summary"
+      ],
+      "title": "FactorReviewResult",
+      "type": "object"
+    },
+    "FailureCategory": {
+      "description": "Stable workflow failure classes; raw provider messages never cross this boundary.",
+      "enum": [
+        "retryable_provider_tool_failure",
+        "permanent_malformed_proposal",
+        "unauthorized_or_wrong_purpose_source",
+        "missing_evidence",
+        "unsupported_rule_or_context",
+        "deterministic_review_blocker",
+        "unresolved_execution"
+      ],
+      "title": "FailureCategory",
+      "type": "string"
+    },
+    "FencedArtifactManifest": {
+      "additionalProperties": false,
+      "description": "Versioned public projection of a committed, possibly multi-context PDF.\n\nThe original service-v1 local-only artifact remains unchanged. A consumer\nmust explicitly support this version before accepting a fenced publication.",
+      "properties": {
+        "schema_version": {
+          "const": "artifact-manifest-v2",
+          "default": "artifact-manifest-v2",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "artifact_id": {
+          "format": "uuid",
+          "title": "Artifact Id",
+          "type": "string"
+        },
+        "content_hash": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Content Hash",
+          "type": "string"
+        },
+        "media_type": {
+          "const": "application/pdf",
+          "default": "application/pdf",
+          "title": "Media Type",
+          "type": "string"
+        },
+        "scope": {
+          "const": "review_contexts",
+          "default": "review_contexts",
+          "title": "Scope",
+          "type": "string"
+        },
+        "context": {
+          "$ref": "#/$defs/ComparisonContext"
+        },
+        "contexts": {
+          "items": {
+            "$ref": "#/$defs/ComparisonContext"
+          },
+          "minItems": 1,
+          "title": "Contexts",
+          "type": "array"
+        },
+        "field_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Field Ids",
+          "type": "array"
+        },
+        "page_count": {
+          "minimum": 1,
+          "title": "Page Count",
+          "type": "integer"
+        },
+        "template_hash": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Template Hash",
+          "type": "string"
+        },
+        "field_map_hash": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Field Map Hash",
+          "type": "string"
+        },
+        "font_hash": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Font Hash",
+          "type": "string"
+        },
+        "writer_version": {
+          "minLength": 1,
+          "title": "Writer Version",
+          "type": "string"
+        },
+        "manifest_digest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Manifest Digest",
+          "type": "string"
+        },
+        "verification": {
+          "const": "local_writer_reopened",
+          "default": "local_writer_reopened",
+          "title": "Verification",
+          "type": "string"
+        },
+        "publication": {
+          "const": "fenced",
+          "default": "fenced",
+          "title": "Publication",
+          "type": "string"
+        }
+      },
+      "required": [
+        "artifact_id",
+        "content_hash",
+        "context",
+        "contexts",
+        "field_ids",
+        "page_count",
+        "template_hash",
+        "field_map_hash",
+        "font_hash",
+        "writer_version",
+        "manifest_digest"
+      ],
+      "title": "FencedArtifactManifest",
+      "type": "object"
+    },
+    "Grade": {
+      "enum": [
+        "excellent",
+        "slightly_superior",
+        "normal",
+        "slightly_inferior",
+        "inferior"
+      ],
+      "title": "Grade",
+      "type": "string"
     },
     "HumanResponse": {
       "additionalProperties": false,
@@ -685,6 +1693,147 @@
         "action"
       ],
       "title": "HumanResponse",
+      "type": "object"
+    },
+    "HumanResponseResult": {
+      "additionalProperties": false,
+      "description": "Actual atomic local response event; no execution/completion status is asserted.",
+      "properties": {
+        "schema_version": {
+          "const": "service-v1",
+          "default": "service-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "event_id": {
+          "format": "uuid",
+          "title": "Event Id",
+          "type": "string"
+        },
+        "accepted": {
+          "$ref": "#/$defs/AcceptedResponse"
+        },
+        "task": {
+          "$ref": "#/$defs/HumanTask"
+        },
+        "revision": {
+          "$ref": "#/$defs/MaterialRevision"
+        },
+        "next_run": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RunReference"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "authorization": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AuthorizationRecord"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "event_id",
+        "accepted",
+        "task",
+        "revision"
+      ],
+      "title": "HumanResponseResult",
+      "type": "object"
+    },
+    "HumanReviewHandoff": {
+      "additionalProperties": false,
+      "description": "Concrete non-persisted request; the task adapter declares its durability.",
+      "properties": {
+        "schema_version": {
+          "const": "controlled-action-v1",
+          "default": "controlled-action-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "reason_code": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+          "title": "Reason Code",
+          "type": "string"
+        },
+        "category": {
+          "$ref": "#/$defs/FailureCategory"
+        },
+        "question": {
+          "minLength": 1,
+          "title": "Question",
+          "type": "string"
+        },
+        "revision": {
+          "$ref": "#/$defs/RevisionReference"
+        },
+        "blockers": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/WorkflowBlocker"
+          },
+          "title": "Blockers",
+          "type": "array"
+        },
+        "affected_subject_ids": {
+          "default": [],
+          "items": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+            "type": "string"
+          },
+          "title": "Affected Subject Ids",
+          "type": "array"
+        },
+        "evidence": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/SourceCitation"
+          },
+          "title": "Evidence",
+          "type": "array"
+        },
+        "last_tool_outcome": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ToolOutcome"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "no_progress_fingerprint": {
+          "anyOf": [
+            {
+              "pattern": "^[a-f0-9]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "No Progress Fingerprint"
+        }
+      },
+      "required": [
+        "reason_code",
+        "category",
+        "question",
+        "revision"
+      ],
+      "title": "HumanReviewHandoff",
       "type": "object"
     },
     "HumanTask": {
@@ -777,6 +1926,28 @@
           "minItems": 1,
           "title": "Allowed Responses",
           "type": "array"
+        },
+        "reason_code": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reason Code"
+        },
+        "affected_subject_ids": {
+          "default": [],
+          "items": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+            "type": "string"
+          },
+          "title": "Affected Subject Ids",
+          "type": "array"
         }
       },
       "required": [
@@ -790,6 +1961,50 @@
         "allowed_responses"
       ],
       "title": "HumanTask",
+      "type": "object"
+    },
+    "InspectReferenceArguments": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "controlled-action-v1",
+          "default": "controlled-action-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "kind": {
+          "const": "inspect_reference",
+          "default": "inspect_reference",
+          "title": "Kind",
+          "type": "string"
+        },
+        "document": {
+          "$ref": "#/$defs/DocumentReference"
+        },
+        "page": {
+          "minimum": 1,
+          "title": "Page",
+          "type": "integer"
+        },
+        "section_id": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Section Id"
+        }
+      },
+      "required": [
+        "document",
+        "page"
+      ],
+      "title": "InspectReferenceArguments",
       "type": "object"
     },
     "JobAcceptance": {
@@ -969,10 +2184,10 @@
           "type": "array"
         },
         "rules": {
+          "default": [],
           "items": {
             "$ref": "#/$defs/RuleReference"
           },
-          "minItems": 1,
           "title": "Rules",
           "type": "array"
         },
@@ -985,16 +2200,18 @@
           "type": "array"
         },
         "canonicalization": {
-          "const": "review-material-json-v1",
           "default": "review-material-json-v1",
+          "enum": [
+            "review-material-json-v1",
+            "source-documents-json-v1"
+          ],
           "title": "Canonicalization",
           "type": "string"
         }
       },
       "required": [
         "reference",
-        "documents",
-        "rules"
+        "documents"
       ],
       "title": "MaterialRevision",
       "type": "object"
@@ -1144,16 +2361,145 @@
       "title": "PublicValue",
       "type": "object"
     },
+    "RequestHumanReviewArguments": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "controlled-action-v1",
+          "default": "controlled-action-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "kind": {
+          "const": "request_human_review",
+          "default": "request_human_review",
+          "title": "Kind",
+          "type": "string"
+        },
+        "reason_code": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+          "title": "Reason Code",
+          "type": "string"
+        },
+        "question": {
+          "minLength": 1,
+          "title": "Question",
+          "type": "string"
+        },
+        "affected_subject_ids": {
+          "items": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Affected Subject Ids",
+          "type": "array"
+        },
+        "evidence": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/SourceCitation"
+          },
+          "title": "Evidence",
+          "type": "array"
+        }
+      },
+      "required": [
+        "reason_code",
+        "question",
+        "affected_subject_ids"
+      ],
+      "title": "RequestHumanReviewArguments",
+      "type": "object"
+    },
     "ResponseAction": {
       "enum": [
         "confirm",
         "correct",
         "reject",
         "approve",
-        "authorize_publication"
+        "authorize_publication",
+        "supply_evidence"
       ],
       "title": "ResponseAction",
       "type": "string"
+    },
+    "ResponseReceipt": {
+      "additionalProperties": false,
+      "description": "What one accepted response actually committed. Never an approval or a review result.\n\nThe receipt is the idempotent body: an exact replay of the same principal, key and\npayload returns this same value, so a reviewer who retries a lost response can tell\nthat their answer landed once rather than twice.",
+      "properties": {
+        "schema_version": {
+          "const": "service-v1",
+          "default": "service-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "task_id": {
+          "format": "uuid",
+          "title": "Task Id",
+          "type": "string"
+        },
+        "consumed_version": {
+          "minimum": 1,
+          "title": "Consumed Version",
+          "type": "integer"
+        },
+        "task_state": {
+          "const": "answered",
+          "default": "answered",
+          "title": "Task State",
+          "type": "string"
+        },
+        "action": {
+          "$ref": "#/$defs/ResponseAction"
+        },
+        "job": {
+          "$ref": "#/$defs/JobReference"
+        },
+        "job_status": {
+          "$ref": "#/$defs/JobStatus"
+        },
+        "revision": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RevisionReference"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "resumed_run": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RunReference"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "superseded_task_ids": {
+          "default": [],
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "title": "Superseded Task Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "task_id",
+        "consumed_version",
+        "action",
+        "job",
+        "job_status"
+      ],
+      "title": "ResponseReceipt",
+      "type": "object"
     },
     "ReviewFinding": {
       "additionalProperties": false,
@@ -1256,6 +2602,14 @@
         "trace": {
           "title": "Trace",
           "type": "string"
+        },
+        "originating_field_ids": {
+          "description": "Exact source-evidence blocker IDs from this review's inventory, sorted and unique.",
+          "items": {
+            "type": "string"
+          },
+          "title": "Originating Field Ids",
+          "type": "array"
         }
       },
       "required": [
@@ -1300,6 +2654,34 @@
         "idempotency_key"
       ],
       "title": "ReviewSubmission",
+      "type": "object"
+    },
+    "RevisionListView": {
+      "additionalProperties": false,
+      "description": "The revision chain this job produced, oldest first and explicitly linked.\n\nThe order is part of the contract: a consumer reconstructing what a reviewer changed\nmust not have to re-sort by a timestamp the service does not publish.",
+      "properties": {
+        "schema_version": {
+          "const": "service-v1",
+          "default": "service-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "job": {
+          "$ref": "#/$defs/JobReference"
+        },
+        "revisions": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/MaterialRevision"
+          },
+          "title": "Revisions",
+          "type": "array"
+        }
+      },
+      "required": [
+        "job"
+      ],
+      "title": "RevisionListView",
       "type": "object"
     },
     "RevisionReference": {
@@ -1423,6 +2805,190 @@
       "title": "RunReference",
       "type": "object"
     },
+    "SelectionFailureEvent": {
+      "additionalProperties": false,
+      "description": "Observed selection failure without fabricating a valid action proposal.",
+      "properties": {
+        "schema_version": {
+          "const": "controlled-action-v1",
+          "default": "controlled-action-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "event_id": {
+          "format": "uuid",
+          "title": "Event Id",
+          "type": "string"
+        },
+        "parent_event_ids": {
+          "default": [],
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "title": "Parent Event Ids",
+          "type": "array"
+        },
+        "run": {
+          "$ref": "#/$defs/RunReference"
+        },
+        "snapshot_digest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Snapshot Digest",
+          "type": "string"
+        },
+        "policy_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+          "title": "Policy Version",
+          "type": "string"
+        },
+        "actor": {
+          "$ref": "#/$defs/ActorReference"
+        },
+        "error_code": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+          "title": "Error Code",
+          "type": "string"
+        },
+        "model_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model Id"
+        },
+        "prompt_version": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Prompt Version"
+        },
+        "attempt_count": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Attempt Count"
+        },
+        "input_tokens": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Input Tokens"
+        },
+        "output_tokens": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Output Tokens"
+        },
+        "latency_ms": {
+          "minimum": 0,
+          "title": "Latency Ms",
+          "type": "integer"
+        },
+        "budget_before": {
+          "$ref": "#/$defs/Budget"
+        },
+        "budget_after": {
+          "$ref": "#/$defs/Budget"
+        },
+        "budget_consumed": {
+          "$ref": "#/$defs/BudgetConsumption"
+        },
+        "remaining_blockers": {
+          "default": [],
+          "items": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+            "type": "string"
+          },
+          "title": "Remaining Blockers",
+          "type": "array"
+        }
+      },
+      "required": [
+        "event_id",
+        "run",
+        "snapshot_digest",
+        "policy_version",
+        "actor",
+        "error_code",
+        "latency_ms",
+        "budget_before",
+        "budget_after",
+        "budget_consumed"
+      ],
+      "title": "SelectionFailureEvent",
+      "type": "object"
+    },
+    "SelectorInput": {
+      "additionalProperties": false,
+      "description": "Exact, URI-free selector view assembled only by trusted application code.",
+      "properties": {
+        "schema_version": {
+          "const": "controlled-action-v1",
+          "default": "controlled-action-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "snapshot": {
+          "$ref": "#/$defs/WorkflowSnapshot"
+        },
+        "allowed_actions": {
+          "$ref": "#/$defs/AllowedActionSet"
+        },
+        "evidence": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/SourceCitation"
+          },
+          "title": "Evidence",
+          "type": "array"
+        },
+        "budget": {
+          "$ref": "#/$defs/Budget"
+        }
+      },
+      "required": [
+        "snapshot",
+        "allowed_actions",
+        "budget"
+      ],
+      "title": "SelectorInput",
+      "type": "object"
+    },
     "ServiceErrorCode": {
       "enum": [
         "invalid_request",
@@ -1525,7 +3091,14 @@
         "artifacts": {
           "default": [],
           "items": {
-            "$ref": "#/$defs/ArtifactManifest"
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ArtifactManifest"
+              },
+              {
+                "$ref": "#/$defs/FencedArtifactManifest"
+              }
+            ]
           },
           "maxItems": 1,
           "title": "Artifacts",
@@ -1660,10 +3233,141 @@
         "material_correction",
         "rule_approval",
         "material_approval",
-        "publication_authorization"
+        "publication_authorization",
+        "evidence_supply"
       ],
       "title": "TaskKind",
       "type": "string"
+    },
+    "TaskListView": {
+      "additionalProperties": false,
+      "description": "The tasks of one job the caller may act on, ordered oldest first.\n\nSuperseded tasks stay listed: a reviewer who is holding a stale task page needs to be\nable to discover that it was superseded, rather than to see it silently disappear.",
+      "properties": {
+        "schema_version": {
+          "const": "service-v1",
+          "default": "service-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "job": {
+          "$ref": "#/$defs/JobReference"
+        },
+        "tasks": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/TaskView"
+          },
+          "title": "Tasks",
+          "type": "array"
+        }
+      },
+      "required": [
+        "job"
+      ],
+      "title": "TaskListView",
+      "type": "object"
+    },
+    "TaskSubjectView": {
+      "additionalProperties": false,
+      "description": "Exact stored value and input requirements; a separate opt-in projection.\n\nKeeping this out of TaskView preserves the frozen legacy response shape.\nA client must never infer a measurement unit from a factor name.",
+      "properties": {
+        "schema_version": {
+          "const": "service-v1",
+          "default": "service-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "task_id": {
+          "format": "uuid",
+          "title": "Task Id",
+          "type": "string"
+        },
+        "revision": {
+          "$ref": "#/$defs/RevisionReference"
+        },
+        "subject_id": {
+          "title": "Subject Id",
+          "type": "string"
+        },
+        "observation": {
+          "$ref": "#/$defs/PublicValue"
+        },
+        "required_type": {
+          "anyOf": [
+            {
+              "enum": [
+                "number",
+                "text",
+                "category",
+                "boolean"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Required Type"
+        },
+        "required_unit": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Required Unit"
+        },
+        "unit_required": {
+          "title": "Unit Required",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "task_id",
+        "revision",
+        "subject_id",
+        "observation",
+        "required_type",
+        "required_unit",
+        "unit_required"
+      ],
+      "title": "TaskSubjectView",
+      "type": "object"
+    },
+    "TaskView": {
+      "additionalProperties": false,
+      "description": "One task plus the names a client would otherwise have to re-derive to answer it.\n\n`subject_id` is the ledger name of the observation the task is about. It is published\nrather than left to the caller because deriving it means canonicalizing the comparison\ncontext, and two languages do not canonicalize alike: Python's json.dumps escapes\nnon-ASCII by default and JavaScript's JSON.stringify does not, so a browser would\ncompute a different name for any case whose identifiers are not ASCII. Every identifier\nin this project's real cases is Chinese.",
+      "properties": {
+        "schema_version": {
+          "const": "service-v1",
+          "default": "service-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "task": {
+          "$ref": "#/$defs/HumanTask"
+        },
+        "subject_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Subject Id"
+        }
+      },
+      "required": [
+        "task"
+      ],
+      "title": "TaskView",
+      "type": "object"
     },
     "ToolOutcome": {
       "additionalProperties": false,
@@ -1809,6 +3513,200 @@
       "title": "VerificationDiagnostic",
       "type": "object"
     },
+    "WorkflowBlocker": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "controlled-action-v1",
+          "default": "controlled-action-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "blocker_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+          "title": "Blocker Id",
+          "type": "string"
+        },
+        "reason_code": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+          "title": "Reason Code",
+          "type": "string"
+        },
+        "affected_subject_ids": {
+          "items": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Affected Subject Ids",
+          "type": "array"
+        },
+        "evidence": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/SourceCitation"
+          },
+          "title": "Evidence",
+          "type": "array"
+        }
+      },
+      "required": [
+        "blocker_id",
+        "reason_code",
+        "affected_subject_ids"
+      ],
+      "title": "WorkflowBlocker",
+      "type": "object"
+    },
+    "WorkflowContinuation": {
+      "additionalProperties": false,
+      "description": "Link an admitted human response to pending new work, never dispatch success.",
+      "properties": {
+        "schema_version": {
+          "const": "controlled-action-v1",
+          "default": "controlled-action-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "pause_id": {
+          "format": "uuid",
+          "title": "Pause Id",
+          "type": "string"
+        },
+        "response_event_id": {
+          "format": "uuid",
+          "title": "Response Event Id",
+          "type": "string"
+        },
+        "task_id": {
+          "format": "uuid",
+          "title": "Task Id",
+          "type": "string"
+        },
+        "previous_run": {
+          "$ref": "#/$defs/RunReference"
+        },
+        "next_run": {
+          "$ref": "#/$defs/RunReference"
+        }
+      },
+      "required": [
+        "pause_id",
+        "response_event_id",
+        "task_id",
+        "previous_run",
+        "next_run"
+      ],
+      "title": "WorkflowContinuation",
+      "type": "object"
+    },
+    "WorkflowPause": {
+      "additionalProperties": false,
+      "description": "Local handoff checkpoint, not a durable commit or Runtime release receipt.",
+      "properties": {
+        "schema_version": {
+          "const": "controlled-action-v1",
+          "default": "controlled-action-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "pause_id": {
+          "format": "uuid",
+          "title": "Pause Id",
+          "type": "string"
+        },
+        "result": {
+          "$ref": "#/$defs/BoundedWorkflowResult"
+        },
+        "task_ids": {
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Task Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "pause_id",
+        "result",
+        "task_ids"
+      ],
+      "title": "WorkflowPause",
+      "type": "object"
+    },
+    "WorkflowSnapshot": {
+      "additionalProperties": false,
+      "description": "Exact trusted workflow input; selectors may inspect but never author it.",
+      "properties": {
+        "schema_version": {
+          "const": "controlled-action-v1",
+          "default": "controlled-action-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "state_version": {
+          "minimum": 1,
+          "title": "State Version",
+          "type": "integer"
+        },
+        "run": {
+          "$ref": "#/$defs/RunReference"
+        },
+        "revision": {
+          "$ref": "#/$defs/MaterialRevision"
+        },
+        "state": {
+          "$ref": "#/$defs/WorkflowState"
+        },
+        "satisfied_prerequisites": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ActionPrerequisite"
+          },
+          "title": "Satisfied Prerequisites",
+          "type": "array"
+        },
+        "unresolved_blockers": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/WorkflowBlocker"
+          },
+          "title": "Unresolved Blockers",
+          "type": "array"
+        },
+        "budget": {
+          "$ref": "#/$defs/Budget"
+        }
+      },
+      "required": [
+        "state_version",
+        "run",
+        "revision",
+        "state",
+        "budget"
+      ],
+      "title": "WorkflowSnapshot",
+      "type": "object"
+    },
+    "WorkflowState": {
+      "enum": [
+        "criteria_pending",
+        "forms_pending",
+        "extraction_retryable",
+        "reference_available",
+        "rules_awaiting_approval",
+        "evidence_needs_review",
+        "material_ready",
+        "review_failed",
+        "verified",
+        "unsupported_contexts",
+        "waiting_for_human"
+      ],
+      "title": "WorkflowState",
+      "type": "string"
+    },
     "WorkflowStatus": {
       "enum": [
         "received",
@@ -1818,6 +3716,17 @@
         "failed"
       ],
       "title": "WorkflowStatus",
+      "type": "string"
+    },
+    "WorkflowTermination": {
+      "enum": [
+        "verified",
+        "waiting_for_human",
+        "budget_exhausted",
+        "no_progress",
+        "permanent_failure"
+      ],
+      "title": "WorkflowTermination",
       "type": "string"
     }
   },

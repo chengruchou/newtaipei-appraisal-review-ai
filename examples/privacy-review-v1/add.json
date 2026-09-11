@@ -1,0 +1,16 @@
+{
+  "schema_version": "local-privacy-v1",
+  "case_id": "00000000-0000-4000-8000-000000000001",
+  "snapshot_id": "00000000-0000-4000-8000-000000000003",
+  "revision": 1,
+  "region": {
+    "page": 1,
+    "bbox": [
+      10.0,
+      20.0,
+      80.0,
+      40.0
+    ]
+  },
+  "category": "signature"
+}

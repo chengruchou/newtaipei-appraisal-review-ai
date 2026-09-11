@@ -1,0 +1,56 @@
+{
+  "schema_version": "competition-profile-v1",
+  "profile_id": "newtaipei-20260722-pending",
+  "sources": {
+    "version": "20260722",
+    "pdf_sha256": "64bbda4d8056d3edd913ced8e96330f282621a00fe9d4152341d162fd385aec0",
+    "workbook_sha256": "378eb61dba941647748f03b16ea4fb5f37ceba5610dd0f013dd759b0f5e0ccae",
+    "pdf_pages_read": [
+      1,
+      2
+    ],
+    "worksheets": [
+      {
+        "name": "Services List",
+        "rows_read": 315,
+        "columns_read": 4
+      },
+      {
+        "name": "SageMaker AI",
+        "rows_read": 1909,
+        "columns_read": 3
+      },
+      {
+        "name": "EC2",
+        "rows_read": 11,
+        "columns_read": 3
+      }
+    ]
+  },
+  "account_id": null,
+  "role_arn": null,
+  "role_permissions_evidence_sha256": null,
+  "primary_region": "us-east-1",
+  "iam_actions": [],
+  "models": [],
+  "allow_cross_region": false,
+  "allow_global": false,
+  "routing_approval_reference": null,
+  "throttle": {
+    "scope": "team-wide",
+    "interval_seconds": 1.1,
+    "includes_control_plane": true,
+    "includes_count_tokens": true,
+    "central_store_arn": null,
+    "connected_entrypoints": [],
+    "integration_evidence_sha256": null,
+    "scope_approval_reference": null
+  },
+  "budget": null,
+  "resources": [],
+  "invocation_auth": "iam_sigv4",
+  "invocation_principal_arns": [],
+  "invocation_auth_evidence_sha256": null,
+  "data_policy_digest": null,
+  "synthetic_financial_organizer_reference": null
+}

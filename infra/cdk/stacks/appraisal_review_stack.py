@@ -1,5 +1,6 @@
 from aws_cdk import (
     CfnOutput,
+    Duration,
     RemovalPolicy,
     Stack,
 )
@@ -33,6 +34,16 @@ class AppraisalReviewStack(Stack):
             enforce_ssl=True,
             versioned=True,
             removal_policy=RemovalPolicy.RETAIN,
+            lifecycle_rules=[
+                # Incomplete uploads have no published object version. Retain
+                # all completed versions, including noncurrent ones: manifests
+                # pin exact versions, and safe deletion requires checking every
+                # committed reference before an explicit cleanup decision.
+                s3.LifecycleRule(
+                    id="attempt-output-hygiene",
+                    abort_incomplete_multipart_upload_after=Duration.days(7),
+                )
+            ],
         )
         cases_table = dynamodb.Table(
             self,

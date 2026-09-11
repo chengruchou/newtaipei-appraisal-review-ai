@@ -1,0 +1,223 @@
+{
+  "$defs": {
+    "PlaceholderOccurrence": {
+      "additionalProperties": false,
+      "properties": {
+        "occurrence_id": {
+          "format": "uuid4",
+          "title": "Occurrence Id",
+          "type": "string"
+        },
+        "entity_id": {
+          "format": "uuid4",
+          "title": "Entity Id",
+          "type": "string"
+        },
+        "region": {
+          "$ref": "#/$defs/PrivacyRegion"
+        }
+      },
+      "required": [
+        "occurrence_id",
+        "entity_id",
+        "region"
+      ],
+      "title": "PlaceholderOccurrence",
+      "type": "object"
+    },
+    "PrivacyErrorCode": {
+      "enum": [
+        "privacy_invalid_input",
+        "privacy_stale_confirmation",
+        "privacy_unauthorized",
+        "privacy_capability_unavailable",
+        "privacy_verification_failed"
+      ],
+      "title": "PrivacyErrorCode",
+      "type": "string"
+    },
+    "PrivacyManifest": {
+      "additionalProperties": false,
+      "description": "Allowlisted sanitized identity only; DTO validity does not permit upload.\n\nIDs must be issued randomly by the future trusted adapter. UUID shape cannot\nprove randomness. Repeated entity IDs are legal; occurrence IDs are unique.",
+      "properties": {
+        "schema_version": {
+          "const": "privacy-v1",
+          "default": "privacy-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "processor_version": {
+          "const": "privacy-processor-v1",
+          "default": "privacy-processor-v1",
+          "title": "Processor Version",
+          "type": "string"
+        },
+        "policy_version": {
+          "const": "privacy-policy-v1",
+          "default": "privacy-policy-v1",
+          "title": "Policy Version",
+          "type": "string"
+        },
+        "case_id": {
+          "format": "uuid4",
+          "title": "Case Id",
+          "type": "string"
+        },
+        "document_id": {
+          "format": "uuid4",
+          "title": "Document Id",
+          "type": "string"
+        },
+        "sanitized_digest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Sanitized Digest",
+          "type": "string"
+        },
+        "byte_size": {
+          "exclusiveMinimum": 0,
+          "title": "Byte Size",
+          "type": "integer"
+        },
+        "filename": {
+          "const": "sanitized.pdf",
+          "default": "sanitized.pdf",
+          "title": "Filename",
+          "type": "string"
+        },
+        "media_type": {
+          "const": "application/pdf",
+          "default": "application/pdf",
+          "title": "Media Type",
+          "type": "string"
+        },
+        "pages": {
+          "items": {
+            "$ref": "#/$defs/PrivacyPage"
+          },
+          "minItems": 1,
+          "title": "Pages",
+          "type": "array"
+        },
+        "occurrences": {
+          "items": {
+            "$ref": "#/$defs/PlaceholderOccurrence"
+          },
+          "title": "Occurrences",
+          "type": "array"
+        }
+      },
+      "required": [
+        "case_id",
+        "document_id",
+        "sanitized_digest",
+        "byte_size",
+        "pages",
+        "occurrences"
+      ],
+      "title": "PrivacyManifest",
+      "type": "object"
+    },
+    "PrivacyPage": {
+      "additionalProperties": false,
+      "properties": {
+        "number": {
+          "minimum": 1,
+          "title": "Number",
+          "type": "integer"
+        },
+        "width": {
+          "exclusiveMinimum": 0,
+          "title": "Width",
+          "type": "number"
+        },
+        "height": {
+          "exclusiveMinimum": 0,
+          "title": "Height",
+          "type": "number"
+        },
+        "coordinate_system": {
+          "const": "pdf_bottom_left",
+          "default": "pdf_bottom_left",
+          "title": "Coordinate System",
+          "type": "string"
+        },
+        "page_space": {
+          "const": "unrotated_crop_box",
+          "default": "unrotated_crop_box",
+          "title": "Page Space",
+          "type": "string"
+        }
+      },
+      "required": [
+        "number",
+        "width",
+        "height"
+      ],
+      "title": "PrivacyPage",
+      "type": "object"
+    },
+    "PrivacyProblem": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "privacy-v1",
+          "default": "privacy-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "code": {
+          "$ref": "#/$defs/PrivacyErrorCode"
+        },
+        "message": {
+          "const": "Local privacy processing requires review.",
+          "default": "Local privacy processing requires review.",
+          "title": "Message",
+          "type": "string"
+        }
+      },
+      "required": [
+        "code"
+      ],
+      "title": "PrivacyProblem",
+      "type": "object"
+    },
+    "PrivacyRegion": {
+      "additionalProperties": false,
+      "properties": {
+        "page": {
+          "minimum": 1,
+          "title": "Page",
+          "type": "integer"
+        },
+        "bbox": {
+          "maxItems": 4,
+          "minItems": 4,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Bbox",
+          "type": "array"
+        }
+      },
+      "required": [
+        "page",
+        "bbox"
+      ],
+      "title": "PrivacyRegion",
+      "type": "object"
+    }
+  },
+  "title": "privacy-v1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}

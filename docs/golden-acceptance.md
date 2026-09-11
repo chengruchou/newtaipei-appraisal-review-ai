@@ -220,17 +220,104 @@ Reuse the entry points rather than rebuilding fixtures: `golden_fixtures()` retu
 with its material and request, `golden_adapters(fixture)` composes a local controller over it,
 and `load_golden_manifests(directory)` reads the reviewed expectations.
 
-## Recommended updates to #7 and #8
+## What this matrix settles for the umbrella issues
 
-- #8 should record that the deterministic gates are exercised end to end by a full-case
-  matrix, listing which behaviours are now verified: rule applicability selection, evidence
-  reliability, arithmetic derivation with a single grounded candidate, cross-page copy
-  equality, blank derivation under explicit approval, and coverage reporting.
-- #7 should record that candidate rule extraction and formal rule approval remain separate:
-  every golden rule set is a `candidate` with `business_approval: pending`. The matrix proves
-  the approval boundary is testable; it does not approve any band for competition use.
-- Both issues should state that a live-model or AWS evaluation compares against these
-  manifests read-only, and that changing an expected value requires an adjudication record.
+#7 and #8 are umbrella issues. Both were split on 2026-09-09: #7 into #21 (A2), #22 (A3) and
+#23 (B1); #8 into #23 (B1) and #26 (C1). They stay open as umbrellas, so nothing here is a
+request for someone to act on them — these are the facts B1 establishes, for whoever reads
+the umbrella next.
+
+- **Deterministic gates are exercised end to end** by the full-case matrix: rule
+  applicability selection, evidence reliability, arithmetic derivation with a single
+  grounded candidate, cross-page copy equality, blank derivation under explicit approval,
+  and coverage reporting.
+- **Candidate extraction and formal approval stay separate.** Every golden rule set is a
+  `candidate` with `business_approval: pending`, which satisfies #8's requirement that
+  unapproved rules remain proposed or unresolved. The matrix proves the approval boundary is
+  testable; it approves no band for competition use.
+- **Goldens are independent of the model implementer**, as #8 requires. Expected values are
+  authored and re-derived from the fixture by separate implementations, never captured from
+  engine output, and the acceptance sign-off must come from someone outside the A2/A3
+  extraction work.
+- **A live-model or AWS evaluation compares against these manifests read-only.** Changing an
+  expected value requires an adjudication record, not an edit.
+
+## Ruling: an unevidenced field withdraws fill authority case-wide
+
+`missing-observation` freezes a wide behaviour, so it is recorded here as a decision rather
+than left implicit in a manifest. #8's split assigns source conflicts and human adjudication
+to B1 (#23), so this is B1's ruling to make.
+
+### What the engine does
+
+One observation carrying no citation costs the whole case its fill authority. In
+`missing-observation`, all thirteen slots move from `verified` to `needs_review`, not just
+the offending cell.
+
+The path is short. `SourcePurposes.allows` is `bool(refs) and all(...)`, so an observation
+with an empty citation list fails at the first term and is recorded as a source-purpose
+violation. `CaseReviewer` then computes one case-wide flag:
+
+```python
+source_trust = (
+    authorized
+    and not violations
+    and not any(f.id in {"sources", "trust"} and f.status != "verified" for f in findings)
+)
+```
+
+and passes it to every slot, where `validate_slot` returns `needs_review` /
+`observed_unresolved` for each. Note that the `sources` and `trust` findings are themselves
+`verified` in this case: the registry is current and exact-material authority was granted.
+It is `violations` alone that withdraws the authority.
+
+### The ruling
+
+**Upheld. The case-wide withdrawal is the intended semantics.**
+
+The reason is what a fill actually is. Writing a derived value into an official appraisal
+form asserts that the value came from the authorized source for this case. That assertion is
+not per-cell. An observation with no citation could have come from anywhere — a model
+proposal, a stale version of the form, or a different case entirely — and nothing in the
+material distinguishes those. Because the origin is unknown, the damage cannot be locally
+bounded: if that value came from a different document, then the single current `forms`
+document `SourcePurposes.selected` chose for this case may be the wrong one, which makes
+every other citation's resolution suspect too.
+
+This is the same conservatism as `RevisionSnapshot.revise` clearing every confirmation on a
+revision. In both places the system declines to reason about blast radius because it has no
+validated dependency graph with which to do so, and says so rather than guessing.
+
+Three things this ruling does **not** claim:
+
+- It is not a claim that the other twelve values are wrong. Their independent derivations
+  still agree, and the manifest records exactly that: *"The value and its derivation still
+  agree, but one unevidenced field in the case removes the current-source authority every
+  fill depends on."* Every value is still computed and still shown.
+- It is not a rejection of the case. `needs_review` routes to a human; it does not fail the
+  review or publish a wrong number.
+- It is not a statement that the registry is stale. `sources` stays `verified`.
+
+### The cost, stated plainly
+
+The blast radius is total. In a real case, one unevidenced cell sends every field to manual
+review. That is the price of refusing to bound the damage, and it should be measured against
+real documents in A2 (#21) rather than assumed tolerable.
+
+### Required follow-up
+
+The cascade is currently undiagnosable. Twelve findings share one rationale that says "one
+unevidenced field in the case" without naming which field, so a reviewer holding the output
+cannot tell where to look. The ruling is upheld on condition that the cascade findings name
+the originating field. That is a message change, not a semantics change, and it does not
+alter any status in these manifests.
+
+### Reopening this
+
+Per [Changing a golden](#changing-a-golden), overturning this needs an adjudication record,
+not an edit. The evidence that would justify narrowing it is a measured false-positive rate
+from real documents under #21, or a per-citation trust model that can show one field's
+provenance is independent of another's. Neither exists today.
 
 ## Known limits
 

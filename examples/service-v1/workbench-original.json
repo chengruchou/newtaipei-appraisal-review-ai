@@ -1,0 +1,28 @@
+{
+  "schema_version": "service-v1",
+  "state": "present",
+  "value": {
+    "type": "number",
+    "value": 9.0,
+    "unit": "m"
+  },
+  "raw_text": "9 m",
+  "unit": "m",
+  "confidence": 0.99,
+  "evidence": [
+    {
+      "document_id": "synthetic-forms",
+      "content_hash": "37f1b0a1872d76a68cd0a482eb4aeb0ce4f3dae564f5e23340b470cef41835ab",
+      "version": "1",
+      "page": 1,
+      "region_id": "body",
+      "bbox": [
+        1.0,
+        2.0,
+        90.0,
+        40.0
+      ],
+      "excerpt": "Synthetic target 10 m; comparable 9 m; rate 5"
+    }
+  ]
+}

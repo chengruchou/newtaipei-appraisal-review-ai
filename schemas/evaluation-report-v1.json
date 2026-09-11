@@ -1,0 +1,715 @@
+{
+  "$defs": {
+    "CostEstimate": {
+      "additionalProperties": false,
+      "properties": {
+        "amount": {
+          "anyOf": [
+            {
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Amount"
+        },
+        "currency": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Currency"
+        },
+        "evidence_digest": {
+          "anyOf": [
+            {
+              "pattern": "^[a-f0-9]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Evidence Digest"
+        },
+        "exceeds_ceiling": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Exceeds Ceiling"
+        },
+        "known_usage_subtotal": {
+          "anyOf": [
+            {
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Known Usage Subtotal"
+        },
+        "reason": {
+          "enum": [
+            "estimated",
+            "no_policy",
+            "no_rate_evidence",
+            "unknown_usage"
+          ],
+          "title": "Reason",
+          "type": "string"
+        },
+        "scope": {
+          "const": "input_output_tokens_only",
+          "default": "input_output_tokens_only",
+          "title": "Scope",
+          "type": "string"
+        }
+      },
+      "required": [
+        "amount",
+        "known_usage_subtotal",
+        "currency",
+        "evidence_digest",
+        "reason",
+        "exceeds_ceiling"
+      ],
+      "title": "CostEstimate",
+      "type": "object"
+    },
+    "EvaluationVersions": {
+      "additionalProperties": false,
+      "properties": {
+        "normalizer_digest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Normalizer Digest",
+          "type": "string"
+        },
+        "normalizer_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+          "title": "Normalizer Version",
+          "type": "string"
+        },
+        "parser_digest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Parser Digest",
+          "type": "string"
+        },
+        "parser_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+          "title": "Parser Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "parser_version",
+        "parser_digest",
+        "normalizer_version",
+        "normalizer_digest"
+      ],
+      "title": "EvaluationVersions",
+      "type": "object"
+    },
+    "Metric": {
+      "additionalProperties": false,
+      "properties": {
+        "denominator": {
+          "minimum": 0,
+          "title": "Denominator",
+          "type": "integer"
+        },
+        "numerator": {
+          "minimum": 0,
+          "title": "Numerator",
+          "type": "integer"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Value"
+        }
+      },
+      "required": [
+        "numerator",
+        "denominator",
+        "value"
+      ],
+      "title": "Metric",
+      "type": "object"
+    },
+    "Quantity": {
+      "additionalProperties": false,
+      "description": "Known subtotal is not a total when observations or usage are missing.",
+      "properties": {
+        "known": {
+          "title": "Known",
+          "type": "number"
+        },
+        "total": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Total"
+        },
+        "unknown_records": {
+          "minimum": 0,
+          "title": "Unknown Records",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "known",
+        "total",
+        "unknown_records"
+      ],
+      "title": "Quantity",
+      "type": "object"
+    },
+    "RepeatDifference": {
+      "additionalProperties": false,
+      "properties": {
+        "changed_pages": {
+          "minimum": 0,
+          "title": "Changed Pages",
+          "type": "integer"
+        },
+        "changes": {
+          "additionalProperties": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "title": "Changes",
+          "type": "object"
+        },
+        "left_repeat": {
+          "minimum": 1,
+          "title": "Left Repeat",
+          "type": "integer"
+        },
+        "metric_differences": {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "title": "Metric Differences",
+          "type": "object"
+        },
+        "missing_left": {
+          "minimum": 0,
+          "title": "Missing Left",
+          "type": "integer"
+        },
+        "missing_right": {
+          "minimum": 0,
+          "title": "Missing Right",
+          "type": "integer"
+        },
+        "observed_in_both": {
+          "minimum": 0,
+          "title": "Observed In Both",
+          "type": "integer"
+        },
+        "right_repeat": {
+          "minimum": 1,
+          "title": "Right Repeat",
+          "type": "integer"
+        },
+        "scheduled_pages": {
+          "minimum": 0,
+          "title": "Scheduled Pages",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "left_repeat",
+        "right_repeat",
+        "scheduled_pages",
+        "observed_in_both",
+        "missing_left",
+        "missing_right",
+        "changed_pages",
+        "changes",
+        "metric_differences"
+      ],
+      "title": "RepeatDifference",
+      "type": "object"
+    },
+    "ScoreSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "attempt_failures": {
+          "additionalProperties": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "title": "Attempt Failures",
+          "type": "object"
+        },
+        "cost": {
+          "$ref": "#/$defs/CostEstimate"
+        },
+        "counts": {
+          "additionalProperties": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "title": "Counts",
+          "type": "object"
+        },
+        "expected_states": {
+          "additionalProperties": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "title": "Expected States",
+          "type": "object"
+        },
+        "field_errors": {
+          "additionalProperties": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "title": "Field Errors",
+          "type": "object"
+        },
+        "handoff_reasons": {
+          "additionalProperties": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "title": "Handoff Reasons",
+          "type": "object"
+        },
+        "metrics": {
+          "additionalProperties": {
+            "$ref": "#/$defs/Metric"
+          },
+          "title": "Metrics",
+          "type": "object"
+        },
+        "page_failures": {
+          "additionalProperties": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "title": "Page Failures",
+          "type": "object"
+        },
+        "predicted_states": {
+          "additionalProperties": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "title": "Predicted States",
+          "type": "object"
+        },
+        "state_confusion": {
+          "additionalProperties": {
+            "additionalProperties": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "type": "object"
+          },
+          "title": "State Confusion",
+          "type": "object"
+        },
+        "unscored_proposals": {
+          "additionalProperties": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "title": "Unscored Proposals",
+          "type": "object"
+        },
+        "usage": {
+          "$ref": "#/$defs/UsageReport"
+        }
+      },
+      "required": [
+        "counts",
+        "metrics",
+        "expected_states",
+        "predicted_states",
+        "state_confusion",
+        "field_errors",
+        "page_failures",
+        "attempt_failures",
+        "handoff_reasons",
+        "unscored_proposals",
+        "usage",
+        "cost"
+      ],
+      "title": "ScoreSummary",
+      "type": "object"
+    },
+    "TokenQuantity": {
+      "additionalProperties": false,
+      "properties": {
+        "known": {
+          "minimum": 0,
+          "title": "Known",
+          "type": "integer"
+        },
+        "total": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Total"
+        },
+        "unknown_attempts": {
+          "minimum": 0,
+          "title": "Unknown Attempts",
+          "type": "integer"
+        },
+        "unobserved_pages": {
+          "minimum": 0,
+          "title": "Unobserved Pages",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "known",
+        "total",
+        "unknown_attempts",
+        "unobserved_pages"
+      ],
+      "title": "TokenQuantity",
+      "type": "object"
+    },
+    "UsageReport": {
+      "additionalProperties": false,
+      "properties": {
+        "attempt_elapsed_seconds": {
+          "$ref": "#/$defs/Quantity"
+        },
+        "backoff_seconds": {
+          "$ref": "#/$defs/Quantity"
+        },
+        "callback_error_elapsed_seconds": {
+          "minimum": 0,
+          "title": "Callback Error Elapsed Seconds",
+          "type": "number"
+        },
+        "input_tokens": {
+          "$ref": "#/$defs/TokenQuantity"
+        },
+        "mean_observed_page_seconds": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Mean Observed Page Seconds"
+        },
+        "observed_attempts": {
+          "minimum": 0,
+          "title": "Observed Attempts",
+          "type": "integer"
+        },
+        "observed_retries": {
+          "minimum": 0,
+          "title": "Observed Retries",
+          "type": "integer"
+        },
+        "output_tokens": {
+          "$ref": "#/$defs/TokenQuantity"
+        },
+        "p50_observed_page_seconds": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "P50 Observed Page Seconds"
+        },
+        "p95_observed_page_seconds": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "P95 Observed Page Seconds"
+        },
+        "page_elapsed_seconds": {
+          "$ref": "#/$defs/Quantity"
+        },
+        "retry_elapsed_seconds": {
+          "$ref": "#/$defs/Quantity"
+        },
+        "retry_input_tokens": {
+          "$ref": "#/$defs/TokenQuantity"
+        },
+        "retry_output_tokens": {
+          "$ref": "#/$defs/TokenQuantity"
+        },
+        "total_attempts": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Total Attempts"
+        },
+        "total_retries": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Total Retries"
+        },
+        "unknown_completion_attempts": {
+          "minimum": 0,
+          "title": "Unknown Completion Attempts",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "observed_attempts",
+        "total_attempts",
+        "observed_retries",
+        "total_retries",
+        "unknown_completion_attempts",
+        "input_tokens",
+        "output_tokens",
+        "retry_input_tokens",
+        "retry_output_tokens",
+        "page_elapsed_seconds",
+        "attempt_elapsed_seconds",
+        "backoff_seconds",
+        "retry_elapsed_seconds",
+        "callback_error_elapsed_seconds",
+        "mean_observed_page_seconds",
+        "p50_observed_page_seconds",
+        "p95_observed_page_seconds"
+      ],
+      "title": "UsageReport",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "configuration_digest": {
+      "pattern": "^[a-f0-9]{64}$",
+      "title": "Configuration Digest",
+      "type": "string"
+    },
+    "dataset_digest": {
+      "pattern": "^[a-f0-9]{64}$",
+      "title": "Dataset Digest",
+      "type": "string"
+    },
+    "dataset_kind": {
+      "enum": [
+        "synthetic",
+        "sanitized"
+      ],
+      "title": "Dataset Kind",
+      "type": "string"
+    },
+    "dataset_version": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+      "title": "Dataset Version",
+      "type": "string"
+    },
+    "determinism_claim": {
+      "const": "none",
+      "default": "none",
+      "title": "Determinism Claim",
+      "type": "string"
+    },
+    "differences": {
+      "items": {
+        "$ref": "#/$defs/RepeatDifference"
+      },
+      "title": "Differences",
+      "type": "array"
+    },
+    "execution_kind": {
+      "enum": [
+        "replay",
+        "mocked",
+        "live"
+      ],
+      "title": "Execution Kind",
+      "type": "string"
+    },
+    "field_scope": {
+      "const": "golden_observed_slots",
+      "default": "golden_observed_slots",
+      "title": "Field Scope",
+      "type": "string"
+    },
+    "golden_digest": {
+      "pattern": "^[a-f0-9]{64}$",
+      "title": "Golden Digest",
+      "type": "string"
+    },
+    "limitations": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Limitations",
+      "type": "array"
+    },
+    "manifest_digest": {
+      "pattern": "^[a-f0-9]{64}$",
+      "title": "Manifest Digest",
+      "type": "string"
+    },
+    "pipeline_version": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+      "title": "Pipeline Version",
+      "type": "string"
+    },
+    "prompt_digest": {
+      "pattern": "^[a-f0-9]{64}$",
+      "title": "Prompt Digest",
+      "type": "string"
+    },
+    "prompt_version": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+      "title": "Prompt Version",
+      "type": "string"
+    },
+    "proposal_schema_digest": {
+      "pattern": "^[a-f0-9]{64}$",
+      "title": "Proposal Schema Digest",
+      "type": "string"
+    },
+    "rendering_configuration_digest": {
+      "pattern": "^[a-f0-9]{64}$",
+      "title": "Rendering Configuration Digest",
+      "type": "string"
+    },
+    "repeats": {
+      "items": {
+        "$ref": "#/$defs/ScoreSummary"
+      },
+      "title": "Repeats",
+      "type": "array"
+    },
+    "replay_digest": {
+      "pattern": "^[a-f0-9]{64}$",
+      "title": "Replay Digest",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "evaluation-report-v1",
+      "default": "evaluation-report-v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "scoring_policy_digest": {
+      "pattern": "^[a-f0-9]{64}$",
+      "title": "Scoring Policy Digest",
+      "type": "string"
+    },
+    "split": {
+      "enum": [
+        "development",
+        "held_out"
+      ],
+      "title": "Split",
+      "type": "string"
+    },
+    "split_digest": {
+      "pattern": "^[a-f0-9]{64}$",
+      "title": "Split Digest",
+      "type": "string"
+    },
+    "summary": {
+      "$ref": "#/$defs/ScoreSummary"
+    },
+    "timing_scope": {
+      "enum": [
+        "provider_only",
+        "parse_render_provider"
+      ],
+      "title": "Timing Scope",
+      "type": "string"
+    },
+    "versions": {
+      "$ref": "#/$defs/EvaluationVersions"
+    }
+  },
+  "required": [
+    "manifest_digest",
+    "replay_digest",
+    "golden_digest",
+    "dataset_digest",
+    "split_digest",
+    "dataset_version",
+    "dataset_kind",
+    "execution_kind",
+    "split",
+    "pipeline_version",
+    "prompt_version",
+    "prompt_digest",
+    "proposal_schema_digest",
+    "rendering_configuration_digest",
+    "configuration_digest",
+    "scoring_policy_digest",
+    "versions",
+    "timing_scope",
+    "summary",
+    "repeats",
+    "differences",
+    "limitations"
+  ],
+  "title": "EvaluationReport",
+  "type": "object"
+}

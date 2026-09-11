@@ -1,0 +1,35 @@
+{
+  "schema_version": "service-v1",
+  "task_id": "00000000-0000-0000-0000-0000001cfde7",
+  "run": {
+    "schema_version": "service-v1",
+    "run_id": "00000000-0000-0000-0000-0000001cfde0",
+    "revision": {
+      "schema_version": "service-v1",
+      "case_id": "synthetic-case",
+      "revision_id": "workbench-r1",
+      "material_digest": "66132edd117ff2b00bdaa074f2116b20d83962df98f79f081f10dd5ba40862c7"
+    },
+    "attempt_id": null,
+    "runtime_session_id": null
+  },
+  "version": 1,
+  "kind": "material_approval",
+  "required_permission": "approve_material",
+  "state": "open",
+  "side": null,
+  "result_digest": null,
+  "question": "Approve this exact material after separate fact and rule review? A current signed local material receipt is required.",
+  "evidence": [],
+  "finding_ids": [
+    "trust"
+  ],
+  "allowed_responses": [
+    "approve",
+    "reject"
+  ],
+  "reason_code": "approval",
+  "affected_subject_ids": [
+    "material"
+  ]
+}

@@ -1,0 +1,111 @@
+{
+  "$defs": {
+    "CanaryHit": {
+      "additionalProperties": false,
+      "properties": {
+        "canary_id": {
+          "enum": [
+            "c01",
+            "c02",
+            "c03"
+          ],
+          "title": "Canary Id",
+          "type": "string"
+        },
+        "count": {
+          "exclusiveMinimum": 0,
+          "title": "Count",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "canary_id",
+        "count"
+      ],
+      "title": "CanaryHit",
+      "type": "object"
+    },
+    "LeakCheck": {
+      "additionalProperties": false,
+      "properties": {
+        "surface": {
+          "enum": [
+            "bundle_bytes",
+            "pdf_streams",
+            "pdf_text",
+            "pdf_images",
+            "stdout",
+            "stderr",
+            "log",
+            "exception",
+            "serializer",
+            "http",
+            "sdk",
+            "telemetry"
+          ],
+          "title": "Surface",
+          "type": "string"
+        },
+        "inspected": {
+          "title": "Inspected",
+          "type": "boolean"
+        },
+        "hits": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/CanaryHit"
+          },
+          "title": "Hits",
+          "type": "array"
+        }
+      },
+      "required": [
+        "surface",
+        "inspected"
+      ],
+      "title": "LeakCheck",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "privacy-leak-report-v1",
+      "default": "privacy-leak-report-v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "scope": {
+      "enum": [
+        "python_hooks",
+        "linux_network_namespace"
+      ],
+      "title": "Scope",
+      "type": "string"
+    },
+    "checks": {
+      "items": {
+        "$ref": "#/$defs/LeakCheck"
+      },
+      "title": "Checks",
+      "type": "array"
+    },
+    "status": {
+      "enum": [
+        "passed",
+        "failed",
+        "blocked"
+      ],
+      "title": "Status",
+      "type": "string"
+    }
+  },
+  "required": [
+    "scope",
+    "checks",
+    "status"
+  ],
+  "title": "LeakScanReport",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}

@@ -8,6 +8,7 @@ from tempfile import TemporaryDirectory
 from appraisal_review.adapters.aws.storage.s3_object_store import S3ObjectStore
 from appraisal_review.domain.pdf_models import (
     InvalidPDFResultError,
+    PDFWriteError,
     PDFWriteRequest,
     PDFWriteResult,
     SourceDestinationConflictError,
@@ -21,8 +22,14 @@ class S3PDFWriter:
     """Transfer S3 objects around the provider-neutral local PDF writer port."""
 
     def __init__(self, *, object_store: S3ObjectStore, local_writer: PDFWriter) -> None:
+        if bool(getattr(local_writer, "reveals_placeholders", False)):
+            raise PDFWriteError("Backfilled placeholder output must never be published")
         self.object_store = object_store
         self.local_writer = local_writer
+
+    @property
+    def supports_multiple_contexts(self) -> bool:
+        return getattr(self.local_writer, "supports_multiple_contexts", False) is True
 
     async def write_pdf(self, request: PDFWriteRequest) -> PDFWriteResult:
         source_location = self.object_store_location(request.source_uri)

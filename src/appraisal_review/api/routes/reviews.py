@@ -15,6 +15,7 @@ router = APIRouter()
 @router.post(
     "/v1/reviews",
     response_model=AgentReviewRun,
+    response_model_exclude={"case_review": {"findings": {"__all__": {"originating_field_ids"}}}},
     responses={
         422: {"model": EntryProblemResponse, "description": "Invalid review request"},
         503: {"model": EntryProblemResponse, "description": "Review service is not configured"},

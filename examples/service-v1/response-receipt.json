@@ -1,0 +1,32 @@
+{
+  "schema_version": "service-v1",
+  "task_id": "00000000-0000-0000-0000-000000000002",
+  "consumed_version": 1,
+  "task_state": "answered",
+  "action": "confirm",
+  "job": {
+    "schema_version": "service-v1",
+    "case_id": "synthetic-case",
+    "job_id": "00000000-0000-0000-0000-000000000006"
+  },
+  "job_status": "queued",
+  "revision": {
+    "schema_version": "service-v1",
+    "case_id": "synthetic-case",
+    "revision_id": "fixture-r2",
+    "material_digest": "6d0d299d215949c7becf20963520a8d84a9932af02a201cc8665f5e17a49130f"
+  },
+  "resumed_run": {
+    "schema_version": "service-v1",
+    "run_id": "00000000-0000-0000-0000-000000000007",
+    "revision": {
+      "schema_version": "service-v1",
+      "case_id": "synthetic-case",
+      "revision_id": "fixture-r2",
+      "material_digest": "6d0d299d215949c7becf20963520a8d84a9932af02a201cc8665f5e17a49130f"
+    },
+    "attempt_id": null,
+    "runtime_session_id": null
+  },
+  "superseded_task_ids": []
+}

@@ -1,0 +1,97 @@
+{
+  "schema_version": "controlled-action-v1",
+  "state_version": 1,
+  "run": {
+    "schema_version": "service-v1",
+    "run_id": "00000000-0000-0000-0000-000000000001",
+    "revision": {
+      "schema_version": "service-v1",
+      "case_id": "synthetic-case",
+      "revision_id": "fixture-r1",
+      "material_digest": "0445917fd60f720359309b58c8edff03c93c929c7270f4ebfde304545595c124"
+    },
+    "attempt_id": null,
+    "runtime_session_id": null
+  },
+  "revision": {
+    "schema_version": "service-v1",
+    "reference": {
+      "schema_version": "service-v1",
+      "case_id": "synthetic-case",
+      "revision_id": "fixture-r1",
+      "material_digest": "0445917fd60f720359309b58c8edff03c93c929c7270f4ebfde304545595c124"
+    },
+    "parent": null,
+    "documents": [
+      {
+        "schema_version": "service-v1",
+        "case_id": "synthetic-case",
+        "document_id": "synthetic-criteria",
+        "version": "1",
+        "content_hash": "7ec36bdcac8d2485eb08b8e61be6ca85970993171ba77047805987d39034520a",
+        "purpose": "criteria"
+      },
+      {
+        "schema_version": "service-v1",
+        "case_id": "synthetic-case",
+        "document_id": "synthetic-forms",
+        "version": "1",
+        "content_hash": "37f1b0a1872d76a68cd0a482eb4aeb0ce4f3dae564f5e23340b470cef41835ab",
+        "purpose": "forms"
+      }
+    ],
+    "rules": [
+      {
+        "schema_version": "service-v1",
+        "rule_set_id": "synthetic-road-v1",
+        "version": "1.0.0",
+        "context": {
+          "scope": "regional",
+          "target_id": "synthetic-target",
+          "comparable_id": "synthetic-comparable"
+        },
+        "content_hash": "4e0c14fac50957b7652d7095c44a3637803396e44546b725e611f4909272b495"
+      }
+    ],
+    "changes": [],
+    "canonicalization": "review-material-json-v1"
+  },
+  "state": "evidence_needs_review",
+  "satisfied_prerequisites": [
+    "criteria_document",
+    "forms_document"
+  ],
+  "unresolved_blockers": [
+    {
+      "schema_version": "controlled-action-v1",
+      "blocker_id": "fixture-confirmation",
+      "reason_code": "low_confidence_observation",
+      "affected_subject_ids": [
+        "synthetic.road_width.target"
+      ],
+      "evidence": [
+        {
+          "document_id": "synthetic-forms",
+          "content_hash": "37f1b0a1872d76a68cd0a482eb4aeb0ce4f3dae564f5e23340b470cef41835ab",
+          "version": "1",
+          "page": 1,
+          "region_id": "body",
+          "bbox": [
+            1.0,
+            2.0,
+            90.0,
+            40.0
+          ],
+          "excerpt": "Synthetic target 10 m; comparable 9 m; rate 5"
+        }
+      ]
+    }
+  ],
+  "budget": {
+    "schema_version": "service-v1",
+    "steps_remaining": 2,
+    "model_calls_remaining": 1,
+    "retries_remaining": 0,
+    "time_remaining_ms": 5000
+  }
+}

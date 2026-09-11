@@ -201,6 +201,19 @@
           ],
           "default": null
         },
+        "placeholder_token": {
+          "anyOf": [
+            {
+              "pattern": "^APR-PH-[A-Z0-9][A-Z0-9-]{7,62}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Placeholder Token"
+        },
         "operation": {
           "default": "fill_blank",
           "enum": [
@@ -277,6 +290,19 @@
           "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$",
           "title": "Font Name",
           "type": "string"
+        },
+        "approved_font_sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Approved Font Sha256"
         },
         "font_size": {
           "default": 10.0,

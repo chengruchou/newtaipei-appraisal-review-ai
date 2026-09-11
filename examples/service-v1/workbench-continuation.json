@@ -1,0 +1,30 @@
+{
+  "schema_version": "controlled-action-v1",
+  "pause_id": "00000000-0000-0000-0000-0000001cfde9",
+  "response_event_id": "00000000-0000-0000-0000-0000001cfdec",
+  "task_id": "00000000-0000-0000-0000-0000001cfde6",
+  "previous_run": {
+    "schema_version": "service-v1",
+    "run_id": "00000000-0000-0000-0000-0000001cfde0",
+    "revision": {
+      "schema_version": "service-v1",
+      "case_id": "synthetic-case",
+      "revision_id": "workbench-r1",
+      "material_digest": "66132edd117ff2b00bdaa074f2116b20d83962df98f79f081f10dd5ba40862c7"
+    },
+    "attempt_id": null,
+    "runtime_session_id": null
+  },
+  "next_run": {
+    "schema_version": "service-v1",
+    "run_id": "00000000-0000-0000-0000-0000001cfdeb",
+    "revision": {
+      "schema_version": "service-v1",
+      "case_id": "synthetic-case",
+      "revision_id": "revision-000000000000000000000000001cfdea",
+      "material_digest": "d935df892066c1257dfa3c9bd3a6badedaeaa8f56cfd742f8cb8831a23ad4314"
+    },
+    "attempt_id": null,
+    "runtime_session_id": null
+  }
+}

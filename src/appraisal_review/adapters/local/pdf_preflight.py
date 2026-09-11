@@ -24,7 +24,7 @@ from appraisal_review.adapters.local.pdf_overlay import (
     text_runs_in_box,
     visual_content_in_box,
 )
-from appraisal_review.adapters.local.pdf_values import PDFValueFormatter
+from appraisal_review.adapters.local.pdf_values import PDFValueFormatter, select_comparison
 from appraisal_review.domain.pdf_models import (
     PDFFieldPlacementError,
     PDFFontError,
@@ -53,6 +53,7 @@ class PDFPreflightPlan:
 
     page_count: int
     source_sha256: bytes
+    font_bytes: bytes
     fields: tuple[PreparedPDFField, ...]
 
 
@@ -64,15 +65,26 @@ class PDFPreflightValidator:
         *,
         render_config: PDFRenderConfig,
         template_policy: PDFTemplatePolicy,
+        placeholder_values: dict[str, str] | None = None,
     ) -> None:
         self.render_config = render_config
         self.template_policy = template_policy
         self.value_formatter = PDFValueFormatter(render_config)
+        # Local re-identification only. A cloud composition never supplies this
+        # mapping, so cloud writes can render nothing but the opaque tokens.
+        self.placeholder_values = dict(placeholder_values) if placeholder_values else None
 
     def validate(self, request: PDFWriteRequest, source_path: Path) -> PDFPreflightPlan:
         reader, source_sha256 = self._read_source(source_path)
         self._validate_template(request, len(reader.pages), source_sha256)
-        font = self._load_font()
+        if self.render_config.approved_font_sha256 is None and (
+            request.additional_results
+            or any(field.placeholder_token is not None for field in request.field_map.fields)
+        ):
+            raise PDFFontError(
+                "Multi-context or placeholder output requires an approved font digest"
+            )
+        font, font_bytes = self._load_font()
         prepared: list[PreparedPDFField] = []
         seen_boxes: dict[int, list[BoundingBox]] = {}
 
@@ -87,8 +99,13 @@ class PDFPreflightValidator:
             self._reject_overlap(seen_boxes.setdefault(field.page, []), box)
 
             if field.value_ref is None:
-                raise PDFFieldPlacementError("PDF field requires an explicit value reference")
-            value = self.value_formatter.resolve(request.result, field.value_ref)
+                if field.placeholder_token is None:
+                    raise PDFFieldPlacementError("PDF field requires an explicit value reference")
+                value = self._placeholder_text(field.placeholder_token)
+            else:
+                value = self.value_formatter.resolve(
+                    select_comparison(request, field.value_ref), field.value_ref
+                )
             display_text = (
                 f"{self.render_config.annotation_label}: {value}"
                 if field.operation == "annotate"
@@ -121,6 +138,7 @@ class PDFPreflightValidator:
         return PDFPreflightPlan(
             page_count=len(reader.pages),
             source_sha256=source_sha256,
+            font_bytes=font_bytes,
             fields=tuple(prepared),
         )
 
@@ -159,12 +177,25 @@ class PDFPreflightValidator:
                 "PDF template policy must classify every source page exactly once"
             )
 
-    def _load_font(self) -> TTFont:
+    def _placeholder_text(self, token: str) -> str:
+        """Cloud writes render the opaque token; only local backfill reveals values."""
+        if self.placeholder_values is None:
+            return token
+        value = self.placeholder_values.get(token)
+        if value is None:
+            raise PDFFieldPlacementError("PDF placeholder value is not locally configured")
+        return value
+
+    def _load_font(self) -> tuple[TTFont, bytes]:
         path = self.render_config.font_path
         try:
             if not path.is_file():
                 raise PDFFontError("Configured PDF font is not a readable file")
-            return TTFont(self.render_config.font_name, str(path), validate=1)
+            font_bytes = path.read_bytes()
+            approved = self.render_config.approved_font_sha256
+            if approved is not None and sha256(font_bytes).hexdigest() != approved:
+                raise PDFFontError("Configured PDF font does not match the approved digest")
+            return TTFont(self.render_config.font_name, BytesIO(font_bytes), validate=1), font_bytes
         except PDFFontError:
             raise
         except Exception as error:

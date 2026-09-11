@@ -1,0 +1,304 @@
+{
+  "schema_version": "service-v1",
+  "event_id": "00000000-0000-0000-0000-00000019f0a4",
+  "accepted": {
+    "schema_version": "service-v1",
+    "command": {
+      "schema_version": "service-v1",
+      "task_id": "00000000-0000-0000-0000-00000019f0a1",
+      "expected_version": 1,
+      "revision": {
+        "schema_version": "service-v1",
+        "case_id": "synthetic-case",
+        "revision_id": "human-fixture-r1",
+        "material_digest": "f46a8d924537229c4c58ea0b3c273b5f5239818e19c97d99a82a6efe4083a1c2"
+      },
+      "side_digest": "a9d7a9c1adefd64e76dc00ebd8137e61f89b5615bfaa9772a75931256d9108c8",
+      "result_digest": null,
+      "idempotency_key": "human-fixture-correction-1",
+      "action": "correct",
+      "correction": {
+        "schema_version": "service-v1",
+        "subject_id": "target-road-width",
+        "original": {
+          "schema_version": "service-v1",
+          "state": "present",
+          "value": {
+            "type": "number",
+            "value": 9.0,
+            "unit": "m"
+          },
+          "raw_text": "Synthetic target 10 m; comparable 9 m; rate 5",
+          "unit": "m",
+          "confidence": 0.4,
+          "evidence": [
+            {
+              "document_id": "synthetic-forms",
+              "content_hash": "37f1b0a1872d76a68cd0a482eb4aeb0ce4f3dae564f5e23340b470cef41835ab",
+              "version": "1",
+              "page": 1,
+              "region_id": "body",
+              "bbox": [
+                1.0,
+                2.0,
+                90.0,
+                40.0
+              ],
+              "excerpt": "Synthetic target 10 m; comparable 9 m; rate 5"
+            }
+          ]
+        },
+        "proposed": {
+          "schema_version": "service-v1",
+          "state": "present",
+          "value": {
+            "type": "number",
+            "value": 10.0,
+            "unit": "m"
+          },
+          "raw_text": "10 m",
+          "unit": "m",
+          "confidence": 0.4,
+          "evidence": [
+            {
+              "document_id": "synthetic-forms",
+              "content_hash": "37f1b0a1872d76a68cd0a482eb4aeb0ce4f3dae564f5e23340b470cef41835ab",
+              "version": "1",
+              "page": 1,
+              "region_id": "body",
+              "bbox": [
+                1.0,
+                2.0,
+                90.0,
+                40.0
+              ],
+              "excerpt": "Synthetic target 10 m; comparable 9 m; rate 5"
+            }
+          ]
+        },
+        "corrected": null,
+        "corrected_by": null
+      }
+    },
+    "actor": {
+      "schema_version": "service-v1",
+      "actor_id": "synthetic-fixture-reviewer",
+      "kind": "human"
+    }
+  },
+  "task": {
+    "schema_version": "service-v1",
+    "task_id": "00000000-0000-0000-0000-00000019f0a1",
+    "run": {
+      "schema_version": "service-v1",
+      "run_id": "00000000-0000-0000-0000-00000019f0a0",
+      "revision": {
+        "schema_version": "service-v1",
+        "case_id": "synthetic-case",
+        "revision_id": "human-fixture-r1",
+        "material_digest": "f46a8d924537229c4c58ea0b3c273b5f5239818e19c97d99a82a6efe4083a1c2"
+      },
+      "attempt_id": null,
+      "runtime_session_id": null
+    },
+    "version": 2,
+    "kind": "material_correction",
+    "required_permission": "correct_material",
+    "state": "answered",
+    "side": {
+      "schema_version": "service-v1",
+      "context": {
+        "scope": "regional",
+        "target_id": "synthetic-target",
+        "comparable_id": "synthetic-comparable"
+      },
+      "factor_id": "synthetic.road_width",
+      "side": "target",
+      "input_digest": "a9d7a9c1adefd64e76dc00ebd8137e61f89b5615bfaa9772a75931256d9108c8"
+    },
+    "result_digest": null,
+    "question": "Correct target-road-width (regional, target) against the cited source. This response will require a full review of the resulting material.",
+    "evidence": [
+      {
+        "document_id": "synthetic-forms",
+        "content_hash": "37f1b0a1872d76a68cd0a482eb4aeb0ce4f3dae564f5e23340b470cef41835ab",
+        "version": "1",
+        "page": 1,
+        "region_id": "body",
+        "bbox": [
+          1.0,
+          2.0,
+          90.0,
+          40.0
+        ],
+        "excerpt": "Synthetic target 10 m; comparable 9 m; rate 5"
+      }
+    ],
+    "finding_ids": [
+      "[\"regional\",\"synthetic-target\",\"synthetic-comparable\"]/factor/synthetic.road_width"
+    ],
+    "allowed_responses": [
+      "correct",
+      "reject"
+    ],
+    "reason_code": "evidence_reliability",
+    "affected_subject_ids": [
+      "target-road-width"
+    ]
+  },
+  "revision": {
+    "schema_version": "service-v1",
+    "reference": {
+      "schema_version": "service-v1",
+      "case_id": "synthetic-case",
+      "revision_id": "revision-0000000000000000000000000019f0a2",
+      "material_digest": "a7a28a8713575300a5a08e7d754f54a23ef2434f22cd9dd8f893d25b8431e070"
+    },
+    "parent": {
+      "schema_version": "service-v1",
+      "case_id": "synthetic-case",
+      "revision_id": "human-fixture-r1",
+      "material_digest": "f46a8d924537229c4c58ea0b3c273b5f5239818e19c97d99a82a6efe4083a1c2"
+    },
+    "documents": [
+      {
+        "schema_version": "service-v1",
+        "case_id": "synthetic-case",
+        "document_id": "synthetic-criteria",
+        "version": "1",
+        "content_hash": "7ec36bdcac8d2485eb08b8e61be6ca85970993171ba77047805987d39034520a",
+        "purpose": "criteria"
+      },
+      {
+        "schema_version": "service-v1",
+        "case_id": "synthetic-case",
+        "document_id": "synthetic-forms",
+        "version": "1",
+        "content_hash": "37f1b0a1872d76a68cd0a482eb4aeb0ce4f3dae564f5e23340b470cef41835ab",
+        "purpose": "forms"
+      }
+    ],
+    "rules": [
+      {
+        "schema_version": "service-v1",
+        "rule_set_id": "synthetic-road-v1",
+        "version": "1.0.0",
+        "context": {
+          "scope": "regional",
+          "target_id": "synthetic-target",
+          "comparable_id": "synthetic-comparable"
+        },
+        "content_hash": "4e0c14fac50957b7652d7095c44a3637803396e44546b725e611f4909272b495"
+      }
+    ],
+    "changes": [
+      {
+        "schema_version": "service-v1",
+        "subject_id": "target-road-width",
+        "original": {
+          "schema_version": "service-v1",
+          "state": "present",
+          "value": {
+            "type": "number",
+            "value": 9.0,
+            "unit": "m"
+          },
+          "raw_text": "Synthetic target 10 m; comparable 9 m; rate 5",
+          "unit": "m",
+          "confidence": 0.4,
+          "evidence": [
+            {
+              "document_id": "synthetic-forms",
+              "content_hash": "37f1b0a1872d76a68cd0a482eb4aeb0ce4f3dae564f5e23340b470cef41835ab",
+              "version": "1",
+              "page": 1,
+              "region_id": "body",
+              "bbox": [
+                1.0,
+                2.0,
+                90.0,
+                40.0
+              ],
+              "excerpt": "Synthetic target 10 m; comparable 9 m; rate 5"
+            }
+          ]
+        },
+        "proposed": {
+          "schema_version": "service-v1",
+          "state": "present",
+          "value": {
+            "type": "number",
+            "value": 10.0,
+            "unit": "m"
+          },
+          "raw_text": "10 m",
+          "unit": "m",
+          "confidence": 0.4,
+          "evidence": [
+            {
+              "document_id": "synthetic-forms",
+              "content_hash": "37f1b0a1872d76a68cd0a482eb4aeb0ce4f3dae564f5e23340b470cef41835ab",
+              "version": "1",
+              "page": 1,
+              "region_id": "body",
+              "bbox": [
+                1.0,
+                2.0,
+                90.0,
+                40.0
+              ],
+              "excerpt": "Synthetic target 10 m; comparable 9 m; rate 5"
+            }
+          ]
+        },
+        "corrected": {
+          "schema_version": "service-v1",
+          "state": "present",
+          "value": {
+            "type": "number",
+            "value": 10.0,
+            "unit": "m"
+          },
+          "raw_text": "10 m",
+          "unit": "m",
+          "confidence": 0.4,
+          "evidence": [
+            {
+              "document_id": "synthetic-forms",
+              "content_hash": "37f1b0a1872d76a68cd0a482eb4aeb0ce4f3dae564f5e23340b470cef41835ab",
+              "version": "1",
+              "page": 1,
+              "region_id": "body",
+              "bbox": [
+                1.0,
+                2.0,
+                90.0,
+                40.0
+              ],
+              "excerpt": "Synthetic target 10 m; comparable 9 m; rate 5"
+            }
+          ]
+        },
+        "corrected_by": {
+          "schema_version": "service-v1",
+          "actor_id": "synthetic-fixture-reviewer",
+          "kind": "human"
+        }
+      }
+    ],
+    "canonicalization": "review-material-json-v1"
+  },
+  "next_run": {
+    "schema_version": "service-v1",
+    "run_id": "00000000-0000-0000-0000-00000019f0a3",
+    "revision": {
+      "schema_version": "service-v1",
+      "case_id": "synthetic-case",
+      "revision_id": "revision-0000000000000000000000000019f0a2",
+      "material_digest": "a7a28a8713575300a5a08e7d754f54a23ef2434f22cd9dd8f893d25b8431e070"
+    },
+    "attempt_id": null,
+    "runtime_session_id": null
+  },
+  "authorization": null
+}

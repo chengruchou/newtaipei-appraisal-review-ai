@@ -1,5 +1,6 @@
 """Deterministic whole-case review and independent inventory completion gate."""
 
+import json
 from decimal import Decimal
 from graphlib import CycleError, TopologicalSorter
 
@@ -56,6 +57,8 @@ class CaseReviewer:
         findings: list[ReviewFinding] = []
         comparisons: list[FactorReviewResult] = []
         required: list[str] = []
+        origin_by_finding_id: dict[str, str] = {}
+        source_origin_ids: list[str] = []
 
         def add(id: str, kind: str, status: str, trace: str, **details: object) -> None:
             findings.append(
@@ -68,6 +71,24 @@ class CaseReviewer:
             return bool(refs) and all(registry.resolves(ref) for ref in refs)
 
         def finish() -> CaseReviewResult:
+            # Diagnostics are derived anew from this reviewed inventory. They
+            # never grant authority or copy observation text into public output.
+            for finding in findings:
+                if finding.status == "verified":
+                    continue
+                origins = (
+                    source_origin_ids
+                    if finding.id in origin_by_finding_id or finding.id.startswith("arithmetic/")
+                    else []
+                )
+                if not origins and finding.kind == "observed_source_binding":
+                    origin = origin_by_finding_id.get(finding.id)
+                    origins = [origin] if origin is not None else []
+                if origins:
+                    finding.originating_field_ids = list(origins)
+                    finding.trace += " Review source evidence for field IDs: " + ", ".join(
+                        json.dumps(origin, ensure_ascii=False) for origin in origins
+                    )
             verified = {f.id for f in findings if f.status == "verified"}
             blocked = {f.id for f in findings if f.status != "verified"}
             status = (
@@ -100,6 +121,7 @@ class CaseReviewer:
         if facts.identity != policy.identity:
             add("trust", "case_identity", "failed", "Case identity/version does not match policy")
             return finish()
+        origin_by_finding_id = {f"observed/{slot.id}": slot.id for slot in policy.inventory.slots}
         authorized = self.authorization is not None and self.authorization.permits(material)
         if not authorized:
             add("trust", "approval", "needs_review", "Exact material requires trusted approval")
@@ -127,6 +149,9 @@ class CaseReviewer:
             violations = purposes.violations(policy, facts)
         except ValueError:
             violations = [("sources", [])]
+        source_origin_ids = sorted(
+            {origin_by_finding_id[id] for id, _ in violations if id in origin_by_finding_id}
+        )
         if violations:
             for id, refs in violations:
                 required.append(id)

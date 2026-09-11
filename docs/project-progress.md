@@ -1,100 +1,103 @@
-# Project progress, 2026-09-10
+# Project progress
 
-## Re-established baseline
+## Current status
 
-The competition requires valuation case review. PDF completion is an output of
-an evidence-bound, deterministic review, not the entire application. The reviewed
-baseline is main `463880af3a6dc6aad2bfa6fdfc3bc267afc4d4a5`, the merge of
-[PR #33](https://github.com/chengruchou/newtaipei-appraisal-review-ai/pull/33).
-It includes #15/#16/#19 and the M0 foundation and follow-up fixes in #20.
+The configured local integration is implemented. Seven actual Chromium scenarios
+against the real API passed, including published download, empty jobs, explicit
+confirmation, unit-preserving correction, rejection, conflicts and exact-command
+recovery after an unknown response. **The complete local privacy/restoration flow,
+AWS deployment, real model quality and formal business approval are not accepted.**
+No test count is used as a completion percentage.
 
-The implemented core parses authorized local documents, preserves source evidence
-and measured confidence, prepares proposed rules/facts, admits explicit human
-confirmation and exact material approval, calculates grades/corrections/totals,
-and verifies original cells and derived fields. A configured local service uses
-the actual parser, controller and optional PDF writer. The writer preserves the
-source and creates a separately verified output. HTTP/invocation compatibility
-and structured preflight diagnostics are present.
+This is the current status authority. Earlier source/main/CI snapshots remain in
+[history](history/2026-09-11-pre-convergence/README.md). Original PRs remain open;
+normal Git integration merges do not approve or merge GitHub pull requests.
 
-The #20 revision fix preserves native status only across unchanged native sides.
-Legitimate explicit human confirmation, including confidence zero, remains valid
-and separate from precise material approval. An original receipt applies only to
-its unchanged original material; a revised material cannot reuse a confirmation
-or approval that does not match the required exact binding.
+## Implemented and integrated work
 
-#33 adds independently derived full-case goldens and reviewer protocol: 13
-case/revision manifests plus an index. Candidate rules still need business approval;
-golden success does not establish accuracy on real cases or complete formal CJK
-output. The main commit's workflow lookup returned no runs during this refresh;
-neither a PR-body test count nor historical CI is treated as fresh local evidence.
-
-## Open work and integration order
-
-These statuses describe inspected implementation and issue scope, not estimates
-of teammates' completion or approval. Open issues can contain merged partial work.
-
-| Issue | Work line and current boundary |
-| --- | --- |
-| #17 | Controlled model action selection, trace and human handoff; active branch separate from main |
-| #21 | Real Chinese extraction/evaluation; consumes authorized sanitized page inputs |
-| #22 | Local privacy processing, original/map isolation, exact export confirmation and local rehydration; active branch |
-| #23 | Full-case goldens merged through #33; formal business/reviewer acceptance remains |
-| #24 | Authenticated persisted human tasks, revisions and precise approvals; a new work branch is published |
-| #25 | Browser private upload, review workbench and result flow |
-| #26 | Formal CJK and multiple-context PDF output; a new work branch is published |
-| **#27** | **This branch: controlled sanitized ingestion, authorized document versions and immutable run sources** |
-| #28 | Fenced artifact publication and authorized downloads; a new work branch is published |
-| #29 | Durable jobs, outbox, leases and recovery; active branch |
-| #30 | Full AgentCore Runtime assembly and deployment |
-| #31 | Full AWS and browser/privacy rehearsal |
-
-Older #5/#7/#8/#9 remain broader PDF/extraction/review/cloud tracking issues. They
-do not mean the corresponding local core is absent. #27 does not take over these
-work lines or approve their real rules or materials.
-
-Read-only coordination used these published branch snapshots:
-
-| Branch | Inspected head | Relevant interface |
+| Work line | Current integrated behavior | Remaining acceptance |
 | --- | --- | --- |
-| feat/local-privacy-pipeline | 6131957d8859ddf47c71cab8eb4130614efeeb77 | PrivacyManifest, PrivacyExportPayload, confirmation/sink and phase-7 gate |
-| feat/model-extraction-evaluation | 6043aaae897475659f8fff5e7d8249fd4c7a0295 | SanitizedSourceReference, PageRequest, AuthorizedSanitizedSnapshot |
-| feat/durable-review-jobs | 644a34ff5d9c3d728ddaf3dfaf3e55dc09f54438 | Durable run/revision admission and worker assembly |
-| feat/controlled_model_selection | 98c7f34efe70955ca37f0955a175db31373cd24a | Bounded policy decisions over shared contracts |
+| #34 PDF | Protected original/download paths and aliases; immutable approved font bytes; two contexts and eight fields through real writer/reopen/manifest | Complete actual OCR restoration; formal font/template/map approval |
+| #35 publication | Restored package; authoritative current attempt/lease/fence/grant and exact source versions; SQLite publication/download | Live DynamoDB/S3 deployment and operational recovery |
+| #36 workflow | Invalid receipts quarantined with trace; persistent run reservations; canonical committed human-response adapter | Designated model accuracy and operational evaluation |
+| #37 privacy | Raw evidence survives label-only edits; exact encrypted mapping readback before one-use C2 transfer; guarded local bridge | Full actual OCR restoration remains blocked, not bypassed |
+| #38 human tasks | Actual corrected values; raw zero confidence; empty owned jobs; atomic task/revision/job/outbox/receipt transitions | Production identity and cloud durable adapter composition |
+| Local persistence | Real SQLite cross-process transactions, durable dispatch, crash/restart and publication authority | Distributed/cloud recovery is a separate guarantee |
+| #39 workbench | Canonical generated client; located PDF/units; frozen confirmed commands and retries; exact all-page PDF preview | Complete privacy browser acceptance and production login |
+| #42 extraction | Real source/parser/SDK paths; known input/output usage counted independently | Real paid model was not called; unknown costs stay unknown |
+| #43 Runtime | Deadline guards; configured wheel/container executes completed two-context cases; UID 10001 resolves without login | Final image security and live deployment gates |
+| #44 acceptance | Read-only local evidence collector, real browser scenarios and strict existing attestation validators | Local observations are not live AWS acceptance or authenticated collector provenance |
 
-A final fetch preserved main at the same baseline and found additional published
-branches: `feat/human-task-api` at `4911c2b6ce70ffe7f4191cee6d6d9b30c76f8ef0`,
-`feat/formal-pdf-output` at `ca4149439ce65dbf8176043aadad13b5d76ba0f9`, and
-`feat/artifact-publication` at `debf034b60e2c50f62aa9dc58b7006d13285280d`.
-Their publication does not establish integration or acceptance here. D1's updated
-head was checked for contract changes; its outbox/recovery changes preserve the
-DocumentReference boundary. No teammate branch was modified or incorporated wholesale.
+See [final local evidence and open gates](local-validation-record.md),
+[reproducible local commands](integrated-local-runbook.md),
+[original repair heads and review replies](integration-repair-delivery.md) and
+[acceptance boundaries](delivery-traceability.md). Deterministic verification,
+raw confidence, exact side confirmation and independent material/publication
+authority remain separate. No real material is approved.
 
-The practical sequence is A3 exact local export, C2 document admission, D1 pinned
-run admission, A2 authorized extraction, human review and deterministic checking,
-C1 output, C3 publication, then D2/D3 cloud assembly and acceptance. Independent
-contract work may proceed in parallel. The integration has not been demonstrated
-end to end merely because the individual branch interfaces exist.
+## Contract and composition ownership
 
-## Publication refresh, 2026-09-11
+The integration owner maintains one canonical model set and composition root.
+Current source combines #36 `domain/service_contracts.py` with #38
+`domain/task_contracts.py`. `controlled-action-v1` is retained. All undeployed
+strict task consumers must regenerate together; accepting extra fields or
+silently dropping task data is not a migration. The decision is a synchronized
+migration of the undeployed union; frozen
+commands and baseline success responses remain compatibility obligations, while
+new serialized nested task keys require upgraded strict consumers. See
+[the migration matrix](service-contracts.md#canonical-36-and-38-migration).
 
-Remote main is now `b0917732cb0bd4597cb7a098421a2dd19a4cea28`, following
-[PR #32](https://github.com/chengruchou/newtaipei-appraisal-review-ai/pull/32).
-It adds review-job state/recovery and mounted routes with an injected store; its
-reference store is in memory, not evidence of deployed durable infrastructure.
-This branch remains based on the earlier #33 snapshot above. The PR targets main;
-GitHub CI checks the proposed merge independently of the local branch tests.
-A3 advanced to `ec8367a`; its three adopted shared files still match the pinned
-contract byte-for-byte. Published teammate updates were preserved.
+Artifact projection ownership includes the new `FencedArtifactManifest`
+(`artifact-manifest-v2`): primary and complete contexts, review-context scope,
+fenced publication and exact digest/font/writer bindings. Legacy `ArtifactManifest`
+stays unchanged. The service result accepts the legacy/new union; consumers must
+regenerate to read the new version. The projection owner must demonstrate actual
+multi-context service, manifest and reader coverage, not only writer output.
 
-## This branch
+`integrated_service.py` and associated application assembly are owned by the
+integration owner. The local SQLite adapter owns its job/task/result transaction;
+the publication adapter owns manifest/grant/object tables, and source authority
+owns current C2 document authorization and revision snapshots. The workflow
+budget ledger cannot be treated as the same transaction merely because both
+stores use SQLite.
 
-`feat/versioned-document-transfer` starts from the above main, in an isolated
-repository-local worktree. The older working checkout and its untracked
-`cloud_tests/` copy were preserved. [The C2 contract](document-transfer.md),
-[ADR 0024](adr/0024-versioned-document-transfer.md) and
-[storage runbook](../infra/documents/README.md) record scope and remaining acceptance.
+The synchronized #37 history uses a branch-local ADR number for document
+transfer. This integration retains [ADR 0024](adr/0024-versioned-document-transfer.md)
+for that contract, [ADR 0028](adr/0028-controlled-execution-failure-boundaries.md)
+for controlled execution, and [ADR 0035](adr/0035-raster-privacy-bundles.md)
+for raster privacy bundles. Their canonical meanings are unchanged.
 
-The implementation offers the controlled ingestion service alternative allowed
-by #27. It does not yet mount browser upload routes or wire the A3/D1
-applications. No AWS account, real source material, model call, business approval
-or deployment is required for its local checks.
+## Evidence and open gates
+
+- The final real core browser run passed seven scenarios in one clean 14.4-second
+  run. Earlier failures and reruns remain separate historical observations.
+- The actual installed wheel and network-isolated Linux container each executed
+  four explicit confirmations, produced a two-context/eight-field PDF, reopened
+  and hash-checked the authorized download, replayed receipts and survived restart.
+  Their exact source/build hashes are retained with local artifacts; later source
+  updates require a new package gate rather than reusing that evidence.
+- The final actual privacy browser run reached two exact transfers, four current
+  confirmations, completed two-context publication, hash-checked download and a
+  current restoration plan. Restoration returned 409; Tesseract observations
+  matching the published first-page raster included four below 0.85, with no final restored output.
+  The response-body diagnostic then timed out; no HTTP error code/body is claimed.
+  [Legibility diagnostics](privacy-ocr-legibility.md) preserve the negative result;
+  scores, observations, placeholder gates and decimal assertions are unchanged.
+- A native PDF iframe failed to complete in actual Chromium. The workbench now
+  uses the existing PDF.js renderer and requires every page to finish before
+  enabling explicit approval. A failed page still blocks approval.
+- Local tests, exact-head remote CI, emulator checks, browser observations and
+  cloud/operator acceptance remain distinct. The repair record identifies each
+  component CI run; failed or unstarted runs are not green.
+- Image scanning reported unresolved findings. No scan was disabled and no
+  threshold reduced. Image security remains a deployment gate.
+
+A completed core flow does not establish a completed privacy flow. Actual
+restoration must produce another local PDF and prove both the original and the
+published placeholder PDF unchanged. The full browser assertion remains enabled;
+an OCR rejection is reported as an acceptance failure.
+
+Live AWS acceptance requires a scoped non-root account/role, region, designated
+model, budget/data-region authorization and real IAM/storage/recovery/alarm
+observations. Formal rules/fonts/templates and human approval are separate gates.
+None is cleared by a synthetic signature or a local test.

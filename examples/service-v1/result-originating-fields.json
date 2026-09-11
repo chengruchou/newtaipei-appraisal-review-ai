@@ -1,0 +1,814 @@
+{
+  "schema_version": "service-v1",
+  "run": {
+    "schema_version": "service-v1",
+    "run_id": "00000000-0000-0000-0000-000000000009",
+    "revision": {
+      "schema_version": "service-v1",
+      "case_id": "golden-case",
+      "revision_id": "originating-fixture-r1",
+      "material_digest": "7faa26e0e026c3e1a15bf8091ebd2e2850d33f20223d6eca8524350f8b56526e"
+    },
+    "attempt_id": null,
+    "runtime_session_id": null
+  },
+  "result_version": 1,
+  "execution_status": "succeeded",
+  "business_status": "needs_review",
+  "artifact_status": "not_requested",
+  "findings": [
+    {
+      "id": "trust",
+      "kind": "approval",
+      "status": "verified",
+      "context": null,
+      "factor_id": null,
+      "rule_id": null,
+      "rule_version": null,
+      "observed": null,
+      "expected": null,
+      "evidence": [],
+      "trace": "Exact case, policy and facts authorized"
+    },
+    {
+      "id": "sources",
+      "kind": "source_identity",
+      "status": "verified",
+      "context": null,
+      "factor_id": null,
+      "rule_id": null,
+      "rule_version": null,
+      "observed": null,
+      "expected": null,
+      "evidence": [],
+      "trace": "Current source versions and hashes match"
+    },
+    {
+      "id": "observed/regional-copied-total",
+      "kind": "source_purpose",
+      "status": "needs_review",
+      "context": null,
+      "factor_id": null,
+      "rule_id": null,
+      "rule_version": null,
+      "observed": null,
+      "expected": null,
+      "evidence": [],
+      "trace": "Source does not support this use in the selected case documents Review source evidence for field IDs: \"regional-copied-total\"",
+      "originating_field_ids": [
+        "regional-copied-total"
+      ]
+    },
+    {
+      "id": "inventory",
+      "kind": "inventory",
+      "status": "verified",
+      "context": null,
+      "factor_id": null,
+      "rule_id": null,
+      "rule_version": null,
+      "observed": null,
+      "expected": null,
+      "evidence": [],
+      "trace": "Explicit inventory examined independently of results"
+    },
+    {
+      "id": "observed/regional-copied-total",
+      "kind": "observed_source_binding",
+      "status": "needs_review",
+      "context": {
+        "scope": "regional",
+        "target_id": "golden-target",
+        "comparable_id": "golden-comparable-a"
+      },
+      "factor_id": null,
+      "rule_id": null,
+      "rule_version": null,
+      "observed": null,
+      "expected": null,
+      "evidence": [
+        {
+          "document_id": "golden-forms",
+          "content_hash": "7bf8d50e4f9227c40347c06808814e1c4e1991f13ef825f7f616e65580c90fe1",
+          "version": "1",
+          "page": 2,
+          "region_id": "regional-copied-total",
+          "bbox": [
+            20.0,
+            495.0,
+            440.0,
+            520.0
+          ],
+          "excerpt": "regional copied total 9"
+        }
+      ],
+      "trace": "Every value-source cell must match the slot's complete anchor set Review source evidence for field IDs: \"regional-copied-total\"",
+      "originating_field_ids": [
+        "regional-copied-total"
+      ]
+    },
+    {
+      "id": "[\"regional\",\"golden-target\",\"golden-comparable-a\"]",
+      "kind": "calculation",
+      "status": "verified",
+      "context": {
+        "scope": "regional",
+        "target_id": "golden-target",
+        "comparable_id": "golden-comparable-a"
+      },
+      "factor_id": null,
+      "rule_id": null,
+      "rule_version": "1.0.0",
+      "observed": null,
+      "expected": null,
+      "evidence": [],
+      "trace": "Recalculated from source facts and rule matrix"
+    },
+    {
+      "id": "[\"regional\",\"golden-target\",\"golden-comparable-a\"]/factor/golden.road_width",
+      "kind": "factor",
+      "status": "verified",
+      "context": {
+        "scope": "regional",
+        "target_id": "golden-target",
+        "comparable_id": "golden-comparable-a"
+      },
+      "factor_id": "golden.road_width",
+      "rule_id": "golden-road.v1",
+      "rule_version": "1.0.0",
+      "observed": null,
+      "expected": "5.0",
+      "evidence": [
+        {
+          "document_id": "golden-forms",
+          "content_hash": "7bf8d50e4f9227c40347c06808814e1c4e1991f13ef825f7f616e65580c90fe1",
+          "version": "1",
+          "page": 1,
+          "region_id": "regional-road-target-value",
+          "bbox": [
+            20.0,
+            615.0,
+            440.0,
+            640.0
+          ],
+          "excerpt": "regional road width target 10 m"
+        },
+        {
+          "document_id": "golden-forms",
+          "content_hash": "7bf8d50e4f9227c40347c06808814e1c4e1991f13ef825f7f616e65580c90fe1",
+          "version": "1",
+          "page": 1,
+          "region_id": "regional-road-comparable-value",
+          "bbox": [
+            20.0,
+            575.0,
+            440.0,
+            600.0
+          ],
+          "excerpt": "regional road width comparable 8 m"
+        }
+      ],
+      "trace": "Classified target and comparable observations, then queried the target-grade row and comparable-grade column."
+    },
+    {
+      "id": "[\"regional\",\"golden-target\",\"golden-comparable-a\"]/factor/golden.frontage_depth",
+      "kind": "factor",
+      "status": "verified",
+      "context": {
+        "scope": "regional",
+        "target_id": "golden-target",
+        "comparable_id": "golden-comparable-a"
+      },
+      "factor_id": "golden.frontage_depth",
+      "rule_id": "golden-frontage.v1",
+      "rule_version": "1.0.0",
+      "observed": null,
+      "expected": "-3.0",
+      "evidence": [
+        {
+          "document_id": "golden-forms",
+          "content_hash": "7bf8d50e4f9227c40347c06808814e1c4e1991f13ef825f7f616e65580c90fe1",
+          "version": "1",
+          "page": 1,
+          "region_id": "regional-frontage-target-value",
+          "bbox": [
+            20.0,
+            415.0,
+            440.0,
+            440.0
+          ],
+          "excerpt": "regional frontage depth target 6 m"
+        },
+        {
+          "document_id": "golden-forms",
+          "content_hash": "7bf8d50e4f9227c40347c06808814e1c4e1991f13ef825f7f616e65580c90fe1",
+          "version": "1",
+          "page": 1,
+          "region_id": "regional-frontage-comparable-value",
+          "bbox": [
+            20.0,
+            375.0,
+            440.0,
+            400.0
+          ],
+          "excerpt": "regional frontage depth comparable 14 m"
+        }
+      ],
+      "trace": "Classified target and comparable observations, then queried the target-grade row and comparable-grade column."
+    },
+    {
+      "id": "[\"regional\",\"golden-target\",\"golden-comparable-a\"]/factor/golden.lane_width",
+      "kind": "factor",
+      "status": "verified",
+      "context": {
+        "scope": "regional",
+        "target_id": "golden-target",
+        "comparable_id": "golden-comparable-a"
+      },
+      "factor_id": "golden.lane_width",
+      "rule_id": "golden-lane.v1",
+      "rule_version": "1.0.0",
+      "observed": null,
+      "expected": "7.0",
+      "evidence": [
+        {
+          "document_id": "golden-forms",
+          "content_hash": "7bf8d50e4f9227c40347c06808814e1c4e1991f13ef825f7f616e65580c90fe1",
+          "version": "1",
+          "page": 1,
+          "region_id": "regional-lane-target-value",
+          "bbox": [
+            20.0,
+            215.0,
+            440.0,
+            240.0
+          ],
+          "excerpt": "regional lane width target 9 m"
+        },
+        {
+          "document_id": "golden-forms",
+          "content_hash": "7bf8d50e4f9227c40347c06808814e1c4e1991f13ef825f7f616e65580c90fe1",
+          "version": "1",
+          "page": 1,
+          "region_id": "regional-lane-comparable-value",
+          "bbox": [
+            20.0,
+            175.0,
+            440.0,
+            200.0
+          ],
+          "excerpt": "regional lane width comparable 2 m"
+        }
+      ],
+      "trace": "Classified target and comparable observations, then queried the target-grade row and comparable-grade column."
+    },
+    {
+      "id": "observed/regional-road-target-grade",
+      "kind": "observed_unresolved",
+      "status": "needs_review",
+      "context": {
+        "scope": "regional",
+        "target_id": "golden-target",
+        "comparable_id": "golden-comparable-a"
+      },
+      "factor_id": "golden.road_width",
+      "rule_id": null,
+      "rule_version": null,
+      "observed": "excellent",
+      "expected": "excellent",
+      "evidence": [
+        {
+          "document_id": "golden-forms",
+          "content_hash": "7bf8d50e4f9227c40347c06808814e1c4e1991f13ef825f7f616e65580c90fe1",
+          "version": "1",
+          "page": 1,
+          "region_id": "regional-road-target-grade",
+          "bbox": [
+            20.0,
+            535.0,
+            440.0,
+            560.0
+          ],
+          "excerpt": "regional road width target grade excellent"
+        }
+      ],
+      "trace": "Current source and exact-material authority required Review source evidence for field IDs: \"regional-copied-total\"",
+      "originating_field_ids": [
+        "regional-copied-total"
+      ]
+    },
+    {
+      "id": "observed/regional-road-comparable-grade",
+      "kind": "observed_unresolved",
+      "status": "needs_review",
+      "context": {
+        "scope": "regional",
+        "target_id": "golden-target",
+        "comparable_id": "golden-comparable-a"
+      },
+      "factor_id": "golden.road_width",
+      "rule_id": null,
+      "rule_version": null,
+      "observed": "inferior",
+      "expected": "inferior",
+      "evidence": [
+        {
+          "document_id": "golden-forms",
+          "content_hash": "7bf8d50e4f9227c40347c06808814e1c4e1991f13ef825f7f616e65580c90fe1",
+          "version": "1",
+          "page": 1,
+          "region_id": "regional-road-comparable-grade",
+          "bbox": [
+            20.0,
+            495.0,
+            440.0,
+            520.0
+          ],
+          "excerpt": "regional road width comparable grade inferior"
+        }
+      ],
+      "trace": "Current source and exact-material authority required Review source evidence for field IDs: \"regional-copied-total\"",
+      "originating_field_ids": [
+        "regional-copied-total"
+      ]
+    },
+    {
+      "id": "observed/regional-road-rate",
+      "kind": "observed_unresolved",
+      "status": "needs_review",
+      "context": {
+        "scope": "regional",
+        "target_id": "golden-target",
+        "comparable_id": "golden-comparable-a"
+      },
+      "factor_id": "golden.road_width",
+      "rule_id": null,
+      "rule_version": null,
+      "observed": "5",
+      "expected": "5.0",
+      "evidence": [
+        {
+          "document_id": "golden-forms",
+          "content_hash": "7bf8d50e4f9227c40347c06808814e1c4e1991f13ef825f7f616e65580c90fe1",
+          "version": "1",
+          "page": 1,
+          "region_id": "regional-road-rate",
+          "bbox": [
+            20.0,
+            455.0,
+            440.0,
+            480.0
+          ],
+          "excerpt": "regional road width rate 5"
+        }
+      ],
+      "trace": "Current source and exact-material authority required Review source evidence for field IDs: \"regional-copied-total\"",
+      "originating_field_ids": [
+        "regional-copied-total"
+      ]
+    },
+    {
+      "id": "observed/regional-frontage-target-grade",
+      "kind": "observed_unresolved",
+      "status": "needs_review",
+      "context": {
+        "scope": "regional",
+        "target_id": "golden-target",
+        "comparable_id": "golden-comparable-a"
+      },
+      "factor_id": "golden.frontage_depth",
+      "rule_id": null,
+      "rule_version": null,
+      "observed": "inferior",
+      "expected": "inferior",
+      "evidence": [
+        {
+          "document_id": "golden-forms",
+          "content_hash": "7bf8d50e4f9227c40347c06808814e1c4e1991f13ef825f7f616e65580c90fe1",
+          "version": "1",
+          "page": 1,
+          "region_id": "regional-frontage-target-grade",
+          "bbox": [
+            20.0,
+            335.0,
+            440.0,
+            360.0
+          ],
+          "excerpt": "regional frontage depth target grade inferior"
+        }
+      ],
+      "trace": "Current source and exact-material authority required Review source evidence for field IDs: \"regional-copied-total\"",
+      "originating_field_ids": [
+        "regional-copied-total"
+      ]
+    },
+    {
+      "id": "observed/regional-frontage-comparable-grade",
+      "kind": "observed_unresolved",
+      "status": "needs_review",
+      "context": {
+        "scope": "regional",
+        "target_id": "golden-target",
+        "comparable_id": "golden-comparable-a"
+      },
+      "factor_id": "golden.frontage_depth",
+      "rule_id": null,
+      "rule_version": null,
+      "observed": "excellent",
+      "expected": "excellent",
+      "evidence": [
+        {
+          "document_id": "golden-forms",
+          "content_hash": "7bf8d50e4f9227c40347c06808814e1c4e1991f13ef825f7f616e65580c90fe1",
+          "version": "1",
+          "page": 1,
+          "region_id": "regional-frontage-comparable-grade",
+          "bbox": [
+            20.0,
+            295.0,
+            440.0,
+            320.0
+          ],
+          "excerpt": "regional frontage depth comparable grade excellent"
+        }
+      ],
+      "trace": "Current source and exact-material authority required Review source evidence for field IDs: \"regional-copied-total\"",
+      "originating_field_ids": [
+        "regional-copied-total"
+      ]
+    },
+    {
+      "id": "observed/regional-frontage-rate",
+      "kind": "observed_unresolved",
+      "status": "needs_review",
+      "context": {
+        "scope": "regional",
+        "target_id": "golden-target",
+        "comparable_id": "golden-comparable-a"
+      },
+      "factor_id": "golden.frontage_depth",
+      "rule_id": null,
+      "rule_version": null,
+      "observed": "-3",
+      "expected": "-3.0",
+      "evidence": [
+        {
+          "document_id": "golden-forms",
+          "content_hash": "7bf8d50e4f9227c40347c06808814e1c4e1991f13ef825f7f616e65580c90fe1",
+          "version": "1",
+          "page": 1,
+          "region_id": "regional-frontage-rate",
+          "bbox": [
+            20.0,
+            255.0,
+            440.0,
+            280.0
+          ],
+          "excerpt": "regional frontage depth rate -3"
+        }
+      ],
+      "trace": "Current source and exact-material authority required Review source evidence for field IDs: \"regional-copied-total\"",
+      "originating_field_ids": [
+        "regional-copied-total"
+      ]
+    },
+    {
+      "id": "observed/regional-lane-target-grade",
+      "kind": "observed_unresolved",
+      "status": "needs_review",
+      "context": {
+        "scope": "regional",
+        "target_id": "golden-target",
+        "comparable_id": "golden-comparable-a"
+      },
+      "factor_id": "golden.lane_width",
+      "rule_id": null,
+      "rule_version": null,
+      "observed": "excellent",
+      "expected": "excellent",
+      "evidence": [
+        {
+          "document_id": "golden-forms",
+          "content_hash": "7bf8d50e4f9227c40347c06808814e1c4e1991f13ef825f7f616e65580c90fe1",
+          "version": "1",
+          "page": 1,
+          "region_id": "regional-lane-target-grade",
+          "bbox": [
+            20.0,
+            135.0,
+            440.0,
+            160.0
+          ],
+          "excerpt": "regional lane width target grade excellent"
+        }
+      ],
+      "trace": "Current source and exact-material authority required Review source evidence for field IDs: \"regional-copied-total\"",
+      "originating_field_ids": [
+        "regional-copied-total"
+      ]
+    },
+    {
+      "id": "observed/regional-lane-comparable-grade",
+      "kind": "observed_unresolved",
+      "status": "needs_review",
+      "context": {
+        "scope": "regional",
+        "target_id": "golden-target",
+        "comparable_id": "golden-comparable-a"
+      },
+      "factor_id": "golden.lane_width",
+      "rule_id": null,
+      "rule_version": null,
+      "observed": "inferior",
+      "expected": "inferior",
+      "evidence": [
+        {
+          "document_id": "golden-forms",
+          "content_hash": "7bf8d50e4f9227c40347c06808814e1c4e1991f13ef825f7f616e65580c90fe1",
+          "version": "1",
+          "page": 1,
+          "region_id": "regional-lane-comparable-grade",
+          "bbox": [
+            20.0,
+            95.0,
+            440.0,
+            120.0
+          ],
+          "excerpt": "regional lane width comparable grade inferior"
+        }
+      ],
+      "trace": "Current source and exact-material authority required Review source evidence for field IDs: \"regional-copied-total\"",
+      "originating_field_ids": [
+        "regional-copied-total"
+      ]
+    },
+    {
+      "id": "observed/regional-lane-rate",
+      "kind": "observed_unresolved",
+      "status": "needs_review",
+      "context": {
+        "scope": "regional",
+        "target_id": "golden-target",
+        "comparable_id": "golden-comparable-a"
+      },
+      "factor_id": "golden.lane_width",
+      "rule_id": null,
+      "rule_version": null,
+      "observed": "7",
+      "expected": "7.0",
+      "evidence": [
+        {
+          "document_id": "golden-forms",
+          "content_hash": "7bf8d50e4f9227c40347c06808814e1c4e1991f13ef825f7f616e65580c90fe1",
+          "version": "1",
+          "page": 1,
+          "region_id": "regional-lane-rate",
+          "bbox": [
+            20.0,
+            55.0,
+            440.0,
+            80.0
+          ],
+          "excerpt": "regional lane width rate 7"
+        }
+      ],
+      "trace": "Current source and exact-material authority required Review source evidence for field IDs: \"regional-copied-total\"",
+      "originating_field_ids": [
+        "regional-copied-total"
+      ]
+    },
+    {
+      "id": "arithmetic/regional-site-subtotal-sum",
+      "kind": "arithmetic_dependency",
+      "status": "needs_review",
+      "context": null,
+      "factor_id": null,
+      "rule_id": "regional-site-subtotal-sum",
+      "rule_version": null,
+      "observed": null,
+      "expected": null,
+      "evidence": [
+        {
+          "document_id": "golden-criteria",
+          "content_hash": "a4a7cc21804923109cc9a3a3e2e42e1189a4c2c93aa07635731ffd776222457c",
+          "version": "1",
+          "page": 1,
+          "region_id": "procedure",
+          "bbox": [
+            20.0,
+            95.0,
+            440.0,
+            120.0
+          ],
+          "excerpt": "The subtotal sums the factor rates, the total sums the subtotals, and the copied total repeats the total"
+        }
+      ],
+      "trace": "Unvalidated or cyclic derivation inputs: ['regional-road-rate', 'regional-frontage-rate'] Review source evidence for field IDs: \"regional-copied-total\"",
+      "originating_field_ids": [
+        "regional-copied-total"
+      ]
+    },
+    {
+      "id": "observed/regional-site-subtotal",
+      "kind": "arithmetic_dependency",
+      "status": "needs_review",
+      "context": {
+        "scope": "regional",
+        "target_id": "golden-target",
+        "comparable_id": "golden-comparable-a"
+      },
+      "factor_id": null,
+      "rule_id": null,
+      "rule_version": null,
+      "observed": "2",
+      "expected": null,
+      "evidence": [
+        {
+          "document_id": "golden-forms",
+          "content_hash": "7bf8d50e4f9227c40347c06808814e1c4e1991f13ef825f7f616e65580c90fe1",
+          "version": "1",
+          "page": 2,
+          "region_id": "regional-site-subtotal",
+          "bbox": [
+            20.0,
+            615.0,
+            440.0,
+            640.0
+          ],
+          "excerpt": "regional site subtotal 2"
+        }
+      ],
+      "trace": "Not every derivation dependency is validated Review source evidence for field IDs: \"regional-copied-total\"",
+      "originating_field_ids": [
+        "regional-copied-total"
+      ]
+    },
+    {
+      "id": "arithmetic/regional-access-subtotal-sum",
+      "kind": "arithmetic_dependency",
+      "status": "needs_review",
+      "context": null,
+      "factor_id": null,
+      "rule_id": "regional-access-subtotal-sum",
+      "rule_version": null,
+      "observed": null,
+      "expected": null,
+      "evidence": [
+        {
+          "document_id": "golden-criteria",
+          "content_hash": "a4a7cc21804923109cc9a3a3e2e42e1189a4c2c93aa07635731ffd776222457c",
+          "version": "1",
+          "page": 1,
+          "region_id": "procedure",
+          "bbox": [
+            20.0,
+            95.0,
+            440.0,
+            120.0
+          ],
+          "excerpt": "The subtotal sums the factor rates, the total sums the subtotals, and the copied total repeats the total"
+        }
+      ],
+      "trace": "Unvalidated or cyclic derivation inputs: ['regional-lane-rate'] Review source evidence for field IDs: \"regional-copied-total\"",
+      "originating_field_ids": [
+        "regional-copied-total"
+      ]
+    },
+    {
+      "id": "observed/regional-access-subtotal",
+      "kind": "arithmetic_dependency",
+      "status": "needs_review",
+      "context": {
+        "scope": "regional",
+        "target_id": "golden-target",
+        "comparable_id": "golden-comparable-a"
+      },
+      "factor_id": null,
+      "rule_id": null,
+      "rule_version": null,
+      "observed": "7",
+      "expected": null,
+      "evidence": [
+        {
+          "document_id": "golden-forms",
+          "content_hash": "7bf8d50e4f9227c40347c06808814e1c4e1991f13ef825f7f616e65580c90fe1",
+          "version": "1",
+          "page": 2,
+          "region_id": "regional-access-subtotal",
+          "bbox": [
+            20.0,
+            575.0,
+            440.0,
+            600.0
+          ],
+          "excerpt": "regional access subtotal 7"
+        }
+      ],
+      "trace": "Not every derivation dependency is validated Review source evidence for field IDs: \"regional-copied-total\"",
+      "originating_field_ids": [
+        "regional-copied-total"
+      ]
+    },
+    {
+      "id": "arithmetic/regional-total-sum",
+      "kind": "arithmetic_dependency",
+      "status": "needs_review",
+      "context": null,
+      "factor_id": null,
+      "rule_id": "regional-total-sum",
+      "rule_version": null,
+      "observed": null,
+      "expected": null,
+      "evidence": [
+        {
+          "document_id": "golden-criteria",
+          "content_hash": "a4a7cc21804923109cc9a3a3e2e42e1189a4c2c93aa07635731ffd776222457c",
+          "version": "1",
+          "page": 1,
+          "region_id": "procedure",
+          "bbox": [
+            20.0,
+            95.0,
+            440.0,
+            120.0
+          ],
+          "excerpt": "The subtotal sums the factor rates, the total sums the subtotals, and the copied total repeats the total"
+        }
+      ],
+      "trace": "Unvalidated or cyclic derivation inputs: ['regional-site-subtotal', 'regional-access-subtotal'] Review source evidence for field IDs: \"regional-copied-total\"",
+      "originating_field_ids": [
+        "regional-copied-total"
+      ]
+    },
+    {
+      "id": "observed/regional-total",
+      "kind": "arithmetic_dependency",
+      "status": "needs_review",
+      "context": {
+        "scope": "regional",
+        "target_id": "golden-target",
+        "comparable_id": "golden-comparable-a"
+      },
+      "factor_id": null,
+      "rule_id": null,
+      "rule_version": null,
+      "observed": "9",
+      "expected": "9.0",
+      "evidence": [
+        {
+          "document_id": "golden-forms",
+          "content_hash": "7bf8d50e4f9227c40347c06808814e1c4e1991f13ef825f7f616e65580c90fe1",
+          "version": "1",
+          "page": 2,
+          "region_id": "regional-total",
+          "bbox": [
+            20.0,
+            535.0,
+            440.0,
+            560.0
+          ],
+          "excerpt": "regional total 9"
+        }
+      ],
+      "trace": "Not every derivation dependency is validated Review source evidence for field IDs: \"regional-copied-total\"",
+      "originating_field_ids": [
+        "regional-copied-total"
+      ]
+    },
+    {
+      "id": "arithmetic/regional-copy",
+      "kind": "arithmetic_dependency",
+      "status": "needs_review",
+      "context": null,
+      "factor_id": null,
+      "rule_id": "regional-copy",
+      "rule_version": null,
+      "observed": null,
+      "expected": null,
+      "evidence": [
+        {
+          "document_id": "golden-criteria",
+          "content_hash": "a4a7cc21804923109cc9a3a3e2e42e1189a4c2c93aa07635731ffd776222457c",
+          "version": "1",
+          "page": 1,
+          "region_id": "procedure",
+          "bbox": [
+            20.0,
+            95.0,
+            440.0,
+            120.0
+          ],
+          "excerpt": "The subtotal sums the factor rates, the total sums the subtotals, and the copied total repeats the total"
+        }
+      ],
+      "trace": "Unvalidated or cyclic derivation inputs: ['regional-total'] Review source evidence for field IDs: \"regional-copied-total\"",
+      "originating_field_ids": [
+        "regional-copied-total"
+      ]
+    }
+  ],
+  "verification": null,
+  "artifacts": [],
+  "problem": null,
+  "durable": false
+}

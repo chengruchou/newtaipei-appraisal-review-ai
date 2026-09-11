@@ -1,0 +1,11 @@
+{
+  "local/source.json": "LocalSourceSnapshot",
+  "local/candidate.json": "SensitiveCandidate",
+  "local/selection.json": "ReviewSelection",
+  "local/review-command.json": "PrivacyReviewCommand",
+  "local/approval.json": "LocalPrivacyApproval",
+  "public/manifest.json": "PrivacyManifest",
+  "local/mapping-envelope.json": "EncryptedMappingEnvelope",
+  "local/rehydration-plan.json": "RehydrationPlan",
+  "public/problem.json": "PrivacyProblem"
+}

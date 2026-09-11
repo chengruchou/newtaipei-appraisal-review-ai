@@ -65,7 +65,7 @@ there is no HTTP route for automatic approval of caller material.
 
 ## B/D: providers, consumers and reserved work
 
-The [service authority](service-contracts.md#ownership-and-wire-authority) contains
+The [service authority](service-contracts.md#ownership-and-consumers) contains
 the type-by-type provider/consumer table. Actual consumers are the revision helper,
 local facade/configuration/factory, entrypoints, fixture/export scripts and tests.
 Task/response and action/idempotency checks are pure functions, not executed human
