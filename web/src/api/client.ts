@@ -1,5 +1,5 @@
 import { validateResponse } from "./validation";
-import { problemFromResponse, ServiceError, TransportError } from "./problems";
+import { canonicalProblem, ServiceError, TransportError, UNKNOWN_OUTCOME } from "./problems";
 import type { components } from "./schema";
 
 export type HumanTask = components["schemas"]["HumanTask"];
@@ -131,7 +131,7 @@ export class ReviewClient {
         } catch {
           /* Use the HTTP problem fallback. */
         }
-        throw problemFromResponse(response.status, problem);
+        throw canonicalProblem(response.status, problem) ?? new TransportError(UNKNOWN_OUTCOME);
       }
       if (response.headers.get("Content-Type")?.split(";")[0] !== "application/pdf")
         throw new Error("Unexpected content type");
@@ -171,7 +171,11 @@ export class ReviewClient {
         if (response.ok) throw error;
         payload = null;
       }
-      if (!response.ok) throw problemFromResponse(response.status, payload, method !== "GET");
+      if (!response.ok) {
+        // Only the service's own canonical envelope is a decision. A gateway's HTML is not,
+        // and the caller must keep its command and key to recover from it.
+        throw canonicalProblem(response.status, payload) ?? new TransportError(UNKNOWN_OUTCOME);
+      }
       if (!validateResponse(schema, payload)) throw new Error("Invalid service response");
       return payload as T;
     });
@@ -196,6 +200,8 @@ export class ReviewClient {
       return value;
     } catch (cause) {
       if (cause instanceof ServiceError) throw cause;
+      // An unknown outcome already described precisely keeps its own wording.
+      if (cause instanceof TransportError) throw cause;
       throw new TransportError(
         controller.signal.aborted || (cause instanceof Error && cause.name === "AbortError")
           ? "The service did not answer in time."
