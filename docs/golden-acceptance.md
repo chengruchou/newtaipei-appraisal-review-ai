@@ -9,12 +9,18 @@ document is the procedure around them.
 
 ## Data use
 
-Every fixture is fully synthetic. Documents, districts, measurements, rules and reviewer
-names are invented for testing by `adapters/local/golden_cases.py`; none is derived from a
-real appraisal case, from the competition brief, or from any sample form. No fixture reads
-an external file, and no committed manifest contains a real case, a reversible identifier
-or a binary document. Each manifest repeats this statement in its `data_use` block, and the
-manifest tests assert it.
+Every fixture is fully synthetic. Documents, districts, measurements, rules and the
+reviewer names appearing *inside* a case are invented for testing by
+`adapters/local/golden_cases.py`; none is derived from a real appraisal case, from the
+competition brief, or from any sample form. No fixture reads an external file, and no
+committed manifest contains a real case, a reversible identifier or a binary document.
+Each manifest repeats this statement in its `data_use` block, and the manifest tests
+assert it.
+
+The one deliberate exception is the `reviewers` list of an adjudication record. Those name
+the real people who accepted the case, because the record's whole purpose is to say who
+examined a contested reading; inventing names there would be the kind of ungrounded claim
+these goldens exist to catch.
 
 ## What a golden case declares
 
@@ -156,7 +162,8 @@ Template:
 {
   "record_id": "short-stable-key",
   "question": "The exact question the two reviewers answered.",
-  "reviewers": ["reviewer-one", "reviewer-two"],
+  "reviewers": ["the two real people who examined it"],
+  "adjudicated_on": "YYYY-MM-DD",
   "outcome": "agreed | disputed",
   "decision": "the agreed value or outcome, null when disputed",
   "rationale": "What each reviewer relied on, and why the outcome is what it is."
@@ -166,6 +173,13 @@ Template:
 `missing-observation` carries the worked example: the reviewers disagree on whether an
 unobserved copy field is an approved blank or was never observed, so the field stays
 unresolved rather than being read the way that would let the case pass.
+
+Being named on a record means having examined the question, and on a disputed record it
+means having held one of the two readings. It is never a sign-off on the case as a whole.
+Both records currently in the suite — `copy-conflict-outcome` in `conflicting-sources` and
+`copied-total-treatment` in `missing-observation` — were adjudicated by ChinHan-0451 and
+ivylingchiang on 2026-09-10; the working record of that examination is the review history
+on #33.
 
 ## Changing a golden
 

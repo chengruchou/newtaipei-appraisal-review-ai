@@ -111,6 +111,11 @@ CATEGORY = "golden-commercial"
 EFFECTIVE_DATE = date(2026, 9, 1)
 GOLDEN_REVIEWER = "golden-reviewer-1"
 
+# Every other name in this module is invented. These two are not: an adjudication record
+# claims that named people examined a contested reading, so it may not carry placeholders.
+ACCEPTANCE_REVIEWERS = ("ChinHan-0451", "ivylingchiang")
+ADJUDICATION_DATE = date(2026, 9, 10)
+
 UNSUPPORTED_FACTOR_ID = "golden.frontage_shape"
 RULE_SET_ID = "golden-site-v1"
 UNSUPPORTED_RULE_ID = "golden-shape.v1"
@@ -1409,7 +1414,8 @@ def _missing_observation_case() -> GoldenFixture:
             "Should an unobserved copy field be treated as an approved blank and derived, or "
             "stay missing until the page is re-read?"
         ),
-        reviewers=("golden-reviewer-1", "golden-reviewer-2"),
+        reviewers=ACCEPTANCE_REVIEWERS,
+        adjudicated_on=ADJUDICATION_DATE,
         outcome="disputed",
         rationale=(
             "One reviewer reads the empty cell as an approved blank; the other holds that a "
@@ -1491,7 +1497,8 @@ def _conflicting_case() -> GoldenFixture:
     record = AdjudicationRecord(
         record_id="copy-conflict-outcome",
         question="Can the review accept either printed value when two form cells disagree?",
-        reviewers=("golden-reviewer-1", "golden-reviewer-2"),
+        reviewers=ACCEPTANCE_REVIEWERS,
+        adjudicated_on=ADJUDICATION_DATE,
         outcome="agreed",
         decision="fail_and_return_for_correction",
         rationale=(

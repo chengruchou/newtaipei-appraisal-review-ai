@@ -1,14 +1,15 @@
 {
   "adjudications": [
     {
+      "adjudicated_on": "2026-09-10",
       "decision": null,
       "outcome": "disputed",
       "question": "Should an unobserved copy field be treated as an approved blank and derived, or stay missing until the page is re-read?",
       "rationale": "One reviewer reads the empty cell as an approved blank; the other holds that a field with no evidence at all was never observed. The fixture records the disagreement instead of choosing the reading that would make the case pass.",
       "record_id": "copied-total-treatment",
       "reviewers": [
-        "golden-reviewer-1",
-        "golden-reviewer-2"
+        "ChinHan-0451",
+        "ivylingchiang"
       ]
     }
   ],

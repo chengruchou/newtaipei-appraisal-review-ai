@@ -1,0 +1,266 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Private append-only sanitized source storage. No automatic evidence retention expiry.",
+  "Parameters": {
+    "RuntimeRoleArn": {
+      "Type": "String",
+      "AllowedPattern": "arn:[a-z-]+:iam::[0-9]{12}:role/.+",
+      "Description": "Existing application role; this stack creates no identity or runtime."
+    },
+    "Namespace": {
+      "Type": "String",
+      "AllowedPattern": "[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}",
+      "Description": "Operator-issued random UUID v4. Use a new dedicated namespace for each cloud test."
+    }
+  },
+  "Resources": {
+    "Documents": {
+      "Type": "AWS::S3::Bucket",
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain",
+      "Properties": {
+        "VersioningConfiguration": {
+          "Status": "Enabled"
+        },
+        "BucketEncryption": {
+          "ServerSideEncryptionConfiguration": [
+            {
+              "ServerSideEncryptionByDefault": {
+                "SSEAlgorithm": "AES256"
+              }
+            }
+          ]
+        },
+        "OwnershipControls": {
+          "Rules": [
+            {
+              "ObjectOwnership": "BucketOwnerEnforced"
+            }
+          ]
+        },
+        "PublicAccessBlockConfiguration": {
+          "BlockPublicAcls": true,
+          "IgnorePublicAcls": true,
+          "BlockPublicPolicy": true,
+          "RestrictPublicBuckets": true
+        },
+        "Tags": [
+          {
+            "Key": "project",
+            "Value": "appraisal-review"
+          },
+          {
+            "Key": "classification",
+            "Value": "sanitized"
+          },
+          {
+            "Key": "namespace",
+            "Value": {
+              "Ref": "Namespace"
+            }
+          }
+        ]
+      }
+    },
+    "DocumentsPolicy": {
+      "Type": "AWS::S3::BucketPolicy",
+      "Properties": {
+        "Bucket": {
+          "Ref": "Documents"
+        },
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Sid": "RuntimeBucketInspection",
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": {
+                  "Ref": "RuntimeRoleArn"
+                }
+              },
+              "Action": [
+                "s3:GetBucketVersioning",
+                "s3:GetEncryptionConfiguration",
+                "s3:GetBucketPublicAccessBlock",
+                "s3:GetBucketOwnershipControls",
+                "s3:GetBucketPolicyStatus"
+              ],
+              "Resource": {
+                "Fn::GetAtt": [
+                  "Documents",
+                  "Arn"
+                ]
+              }
+            },
+            {
+              "Sid": "RuntimeNamespaceOnly",
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": {
+                  "Ref": "RuntimeRoleArn"
+                }
+              },
+              "Action": [
+                "s3:GetObject",
+                "s3:GetObjectVersion",
+                "s3:PutObject",
+                "s3:PutObjectTagging"
+              ],
+              "Resource": {
+                "Fn::Sub": "${Documents.Arn}/sanitized/${Namespace}/*"
+              }
+            },
+            {
+              "Sid": "DenyInsecureTransport",
+              "Effect": "Deny",
+              "Principal": "*",
+              "Action": "s3:*",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "Documents",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Sub": "${Documents.Arn}/*"
+                }
+              ],
+              "Condition": {
+                "Bool": {
+                  "aws:SecureTransport": "false"
+                }
+              }
+            },
+            {
+              "Sid": "RequireConditionalCreation",
+              "Effect": "Deny",
+              "Principal": "*",
+              "Action": "s3:PutObject",
+              "Resource": {
+                "Fn::Sub": "${Documents.Arn}/sanitized/${Namespace}/*"
+              },
+              "Condition": {
+                "Null": {
+                  "s3:if-none-match": "true"
+                }
+              }
+            },
+            {
+              "Sid": "RequireExplicitEncryption",
+              "Effect": "Deny",
+              "Principal": "*",
+              "Action": "s3:PutObject",
+              "Resource": {
+                "Fn::Sub": "${Documents.Arn}/sanitized/${Namespace}/*"
+              },
+              "Condition": {
+                "StringNotEquals": {
+                  "s3:x-amz-server-side-encryption": "AES256"
+                }
+              }
+            },
+            {
+              "Sid": "RequireSanitizedClassification",
+              "Effect": "Deny",
+              "Principal": "*",
+              "Action": [
+                "s3:PutObject",
+                "s3:PutObjectTagging"
+              ],
+              "Resource": {
+                "Fn::Sub": "${Documents.Arn}/sanitized/${Namespace}/*"
+              },
+              "Condition": {
+                "StringNotEquals": {
+                  "s3:RequestObjectTag/classification": "sanitized"
+                }
+              }
+            },
+            {
+              "Sid": "RequireNamespaceTag",
+              "Effect": "Deny",
+              "Principal": "*",
+              "Action": [
+                "s3:PutObject",
+                "s3:PutObjectTagging"
+              ],
+              "Resource": {
+                "Fn::Sub": "${Documents.Arn}/sanitized/${Namespace}/*"
+              },
+              "Condition": {
+                "StringNotEquals": {
+                  "s3:RequestObjectTag/namespace": {
+                    "Ref": "Namespace"
+                  }
+                }
+              }
+            },
+            {
+              "Sid": "RuntimeCannotDeleteEvidenceOrRemoveTags",
+              "Effect": "Deny",
+              "Principal": {
+                "AWS": {
+                  "Ref": "RuntimeRoleArn"
+                }
+              },
+              "Action": [
+                "s3:DeleteObject",
+                "s3:DeleteObjectVersion",
+                "s3:DeleteObjectTagging",
+                "s3:PutObjectVersionTagging",
+                "s3:DeleteObjectVersionTagging"
+              ],
+              "Resource": {
+                "Fn::Sub": "${Documents.Arn}/sanitized/${Namespace}/*"
+              }
+            },
+            {
+              "Sid": "RejectAdditionalTagKeys",
+              "Effect": "Deny",
+              "Principal": "*",
+              "Action": [
+                "s3:PutObject",
+                "s3:PutObjectTagging"
+              ],
+              "Resource": {
+                "Fn::Sub": "${Documents.Arn}/sanitized/${Namespace}/*"
+              },
+              "Condition": {
+                "ForAnyValue:StringNotEquals": {
+                  "s3:RequestObjectTagKeys": [
+                    "classification",
+                    "namespace"
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "Outputs": {
+    "BucketName": {
+      "Value": {
+        "Ref": "Documents"
+      }
+    },
+    "ExpectedOwner": {
+      "Value": {
+        "Ref": "AWS::AccountId"
+      }
+    },
+    "Namespace": {
+      "Value": {
+        "Ref": "Namespace"
+      }
+    },
+    "ObjectPrefix": {
+      "Value": {
+        "Fn::Sub": "sanitized/${Namespace}/"
+      }
+    }
+  }
+}

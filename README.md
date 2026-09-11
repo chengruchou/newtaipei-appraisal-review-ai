@@ -9,20 +9,22 @@ not the whole product.
 
 ## Current delivery
 
-Rechecked main on 2026-09-07:
-`ea55043d90aa21e6f0a7e3fe05aa34ef8a3553d3`. Review #15, extraction #16 and
-[local PDF writer #19](https://github.com/chengruchou/newtaipei-appraisal-review-ai/pull/19)
-are merged. M0 service foundation below is on `feat/shared-service-contracts`,
-pending independent code review and merge. Local pre-publication evidence is dated
-separately from baseline CI and the eventual PR head CI.
+Rechecked main on 2026-09-10:
+`463880af3a6dc6aad2bfa6fdfc3bc267afc4d4a5`. Review #15, extraction #16,
+local PDF writer #19, M0 service foundation #20 and full-case goldens #33 are
+merged. [Project progress](docs/project-progress.md) distinguishes this baseline,
+other active work lines, this branch's #27 implementation and remaining acceptance.
+Local test results, historical CI and a future published head's CI are separate evidence.
 
 | Capability | Implemented behavior | Remaining acceptance |
 | --- | --- | --- |
-| Source-bound review (#15) | Independent calculation, original cells, validated fills, applicability and completion gates | E complete-case golden and human acceptance |
+| Source-bound review (#15) | Independent calculation, original cells, validated fills, applicability and completion gates | Independent human acceptance |
 | Document preparation (#16) | Allowlisted real parser, native/Bedrock candidate adapters, Linux/macOS reviewer and signed receipts | A actual model comparison; E full-field/source accuracy |
 | PDF core (#19) | Real local rendering/correction, template/map binding, preflight, reopen verification, atomic output; injected S3 wrapper | E formal CJK/template/multiple-context output; D live S3/Runtime |
-| M0 local integration (working branch) | Configured HTTP/invocation using real parser/material/authorizer; optional real writer; separate service envelope | B web assembly and D full Runtime wiring |
-| M0 shared contracts (working branch) | Versioned DTOs, immutable material helper, pure admission/idempotency guards, schema/fixtures | Transactional adapters, model selector and real event persistence |
+| M0 local integration (#20) | Configured HTTP/invocation using real parser/material/authorizer; optional real writer; separate service envelope | B web assembly and D full Runtime wiring |
+| M0 shared contracts (#20) | Versioned DTOs, immutable material helper, pure admission/idempotency guards, schema/fixtures | Transactional adapters, model selector and real event persistence |
+| Full-case goldens (#33) | Independently derived expectations, 13 case/revision manifests plus an index | Business rule approval and independent reviewer acceptance |
+| Sanitized document transfer (#27, this branch) | Authorized ingestion, exact privacy attestation, local/S3 immutable storage and run snapshots | A3 production export composition, authenticated gateway/D1 wiring and live S3 acceptance |
 | Runtime smoke (#14) | Synthetic HTTP/container/template preparation, durable=false | D durable jobs, identity, outbox/recovery and deployment |
 | Browser human review | Consumer fixtures only | B task APIs; C workbench |
 
@@ -139,6 +141,8 @@ See [current and target architecture](docs/architecture.md),
 [A–E ownership and M0–M3](docs/mvp-plan.md), [PDF contract](docs/pdf-contract.md),
 [document preparation](docs/member-a-runbook.md), [cloud smoke](cloud_tests/README.md)
 and [competition requirements](docs/competition-requirements.md).
+The [document transfer contract](docs/document-transfer.md) and
+[storage runbook](infra/documents/README.md) describe the new C2 service boundary.
 
 Target AWS integration uses authorized document IDs, controlled S3 transfer,
 durable jobs/tasks/outbox, SQS, dispatcher, Runtime, Bedrock and fenced manifest
@@ -148,8 +152,8 @@ domain audit, and Bedrock cannot bypass deterministic gates. Current CDK and smo
 files are preparation, not evidence of deployed resources.
 
 Real model trials require designated profile/SSO, Region, expected account/role and
-model access. M0 needs no AWS call. Formal CJK fonts/templates, full goldens and
-complete-case review require E's controlled inputs and human acceptance. No real
+model access. M0 needs no AWS call. Formal CJK fonts/templates and independent
+complete-case acceptance still require controlled inputs and human review. No real
 source PDFs, OCR dumps, receipts, keys, generated PDFs or private URIs enter Git.
 Dependency licensing and sensitive inputs remain governed by
 [data handling](docs/data-handling.md).
