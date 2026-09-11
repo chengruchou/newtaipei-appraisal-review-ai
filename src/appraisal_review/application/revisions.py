@@ -111,6 +111,9 @@ class RevisionSnapshot:
             raise ValueError("Cannot revise a different case")
         if revision_id == self.revision.reference.revision_id:
             raise ValueError("A revision cannot replace its parent")
+        bundle = candidate.policy.rule_bundle
+        if bundle is not None and bundle.identity == candidate.policy.identity:
+            bundle.identity.version = revision_id
         candidate.policy.identity.version = candidate.facts.identity.version = revision_id
         previous = {(p.context.key(), p.pair.factor_id): p for p in self.material.facts.pairs}
         for pair in candidate.facts.pairs:
@@ -129,6 +132,23 @@ class RevisionSnapshot:
                 if not retain_native:
                     # The side digest excludes method for confirmation. It cannot prove origin.
                     # Only unchanged native lineage survives; a label is not re-extraction.
-                    reliability.method = "model_proposed"
+                    if (
+                        old is not None
+                        and old_reliability is not None
+                        and old_reliability.method
+                        in {
+                            "native_proposed",
+                            "manual_proposed",
+                        }
+                    ):
+                        # Local proposals never acquire native numeric eligibility. Retain
+                        # their actual origin; a trusted revision is not a model execution.
+                        reliability.method = (
+                            old_reliability.method
+                            if confirmation_digest(old, side) == confirmation_digest(pair, side)
+                            else "manual_proposed"
+                        )
+                    else:
+                        reliability.method = "model_proposed"
                 reliability.confirmation = None
         return self.capture(candidate, revision_id, parent=self.revision.reference, changes=changes)

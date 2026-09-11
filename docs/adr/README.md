@@ -69,6 +69,7 @@ work is tracked in [the backlog](../implementation-backlog.md).
 | 0048 | [Bind model discovery to each guarded invocation](0048-model-routing-snapshots.md) |
 | 0049 | [Bounded diagnostics for local restoration and download](0049-local-restoration-diagnostics.md) |
 | 0050 | [Explicit local Docker validation composition](0050-local-validation-stack.md) |
+| 0051 | [Local original workbench and pinned rule bundles](0051-local-original-workbench-and-rule-bundles.md) |
 
 ## Originating filename migration
 

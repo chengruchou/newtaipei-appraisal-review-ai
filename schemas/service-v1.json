@@ -725,6 +725,153 @@
       "title": "BudgetConsumption",
       "type": "object"
     },
+    "CaseConditionCandidate": {
+      "additionalProperties": false,
+      "description": "A source-backed proposed condition, never an assertion of applicability.",
+      "properties": {
+        "field": {
+          "enum": [
+            "case_id",
+            "district",
+            "zone",
+            "land_use_category",
+            "effective_date",
+            "current_use",
+            "regulatory_zone",
+            "target_id",
+            "comparable_id"
+          ],
+          "title": "Field",
+          "type": "string"
+        },
+        "value": {
+          "minLength": 1,
+          "title": "Value",
+          "type": "string"
+        },
+        "method": {
+          "default": "manual_proposed",
+          "enum": [
+            "native_proposed",
+            "manual_proposed"
+          ],
+          "title": "Method",
+          "type": "string"
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/SourceCitation"
+          },
+          "minItems": 1,
+          "title": "Evidence",
+          "type": "array"
+        },
+        "interpretation": {
+          "minLength": 1,
+          "title": "Interpretation",
+          "type": "string"
+        }
+      },
+      "required": [
+        "field",
+        "value",
+        "evidence",
+        "interpretation"
+      ],
+      "title": "CaseConditionCandidate",
+      "type": "object"
+    },
+    "CaseContextView": {
+      "additionalProperties": false,
+      "description": "Exact current material metadata; selection is not confirmation or approval.\n\nThe exact semantic snapshot is required. No source path, raw material payload,\nprincipal roster or future deployment region is exposed. Document purposes are\npreserved, not inferred as general rules, district prices or report templates.",
+      "properties": {
+        "schema_version": {
+          "const": "service-v1",
+          "default": "service-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "job": {
+          "$ref": "#/$defs/JobReference"
+        },
+        "revision": {
+          "$ref": "#/$defs/RevisionReference"
+        },
+        "identity": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CaseIdentity"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "documents": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/DocumentReference"
+          },
+          "title": "Documents",
+          "type": "array"
+        },
+        "rules": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/PinnedRuleView"
+          },
+          "title": "Rules",
+          "type": "array"
+        },
+        "selections": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/RuleSelectionView"
+          },
+          "title": "Selections",
+          "type": "array"
+        },
+        "observations": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/CaseObservationView"
+          },
+          "title": "Observations",
+          "type": "array"
+        },
+        "rule_bundle": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RuleBundleView"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "rule_bundle_id": {
+          "anyOf": [
+            {
+              "pattern": "^[a-f0-9]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rule Bundle Id"
+        }
+      },
+      "required": [
+        "job",
+        "revision",
+        "identity"
+      ],
+      "title": "CaseContextView",
+      "type": "object"
+    },
     "CaseIdentity": {
       "additionalProperties": false,
       "properties": {
@@ -763,6 +910,29 @@
         "effective_date"
       ],
       "title": "CaseIdentity",
+      "type": "object"
+    },
+    "CaseObservationView": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "service-v1",
+          "default": "service-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "side": {
+          "$ref": "#/$defs/FactSideReference"
+        },
+        "observation": {
+          "$ref": "#/$defs/PublicValue"
+        }
+      },
+      "required": [
+        "side",
+        "observation"
+      ],
+      "title": "CaseObservationView",
       "type": "object"
     },
     "CaseReviewResult": {
@@ -806,6 +976,155 @@
         "status"
       ],
       "title": "CaseReviewResult",
+      "type": "object"
+    },
+    "CatalogRuleSource": {
+      "additionalProperties": false,
+      "properties": {
+        "document_id": {
+          "minLength": 1,
+          "title": "Document Id",
+          "type": "string"
+        },
+        "version": {
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        },
+        "content_hash": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Content Hash",
+          "type": "string"
+        },
+        "pages": {
+          "items": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "minItems": 1,
+          "title": "Pages",
+          "type": "array"
+        },
+        "entry_id": {
+          "minLength": 1,
+          "title": "Entry Id",
+          "type": "string"
+        },
+        "entry_version": {
+          "minLength": 1,
+          "title": "Entry Version",
+          "type": "string"
+        },
+        "role": {
+          "enum": [
+            "general_rules",
+            "district_basis"
+          ],
+          "title": "Role",
+          "type": "string"
+        },
+        "use": {
+          "enum": [
+            "factor_rules",
+            "procedure"
+          ],
+          "title": "Use",
+          "type": "string"
+        },
+        "district": {
+          "minLength": 1,
+          "title": "District",
+          "type": "string"
+        },
+        "zone": {
+          "minLength": 1,
+          "title": "Zone",
+          "type": "string"
+        },
+        "land_use_category": {
+          "minLength": 1,
+          "title": "Land Use Category",
+          "type": "string"
+        },
+        "scopes": {
+          "items": {
+            "enum": [
+              "regional",
+              "individual"
+            ],
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Scopes",
+          "type": "array"
+        },
+        "effective_from": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Effective From"
+        },
+        "effective_to": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Effective To"
+        },
+        "review_status": {
+          "default": "candidate",
+          "enum": [
+            "candidate",
+            "reviewed"
+          ],
+          "title": "Review Status",
+          "type": "string"
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/SourceCitation"
+          },
+          "minItems": 1,
+          "title": "Evidence",
+          "type": "array"
+        },
+        "unresolved": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Unresolved",
+          "type": "array"
+        }
+      },
+      "required": [
+        "document_id",
+        "version",
+        "content_hash",
+        "pages",
+        "entry_id",
+        "entry_version",
+        "role",
+        "use",
+        "district",
+        "zone",
+        "land_use_category",
+        "scopes",
+        "effective_from",
+        "effective_to",
+        "evidence"
+      ],
+      "title": "CatalogRuleSource",
       "type": "object"
     },
     "ComparisonContext": {
@@ -2263,6 +2582,59 @@
       "title": "NormalizedValue",
       "type": "object"
     },
+    "PausedReviewView": {
+      "additionalProperties": false,
+      "description": "An exact stored human-handoff assessment, never a committed or published result.",
+      "properties": {
+        "schema_version": {
+          "const": "service-v1",
+          "default": "service-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "scope": {
+          "const": "paused_review",
+          "default": "paused_review",
+          "title": "Scope",
+          "type": "string"
+        },
+        "run": {
+          "$ref": "#/$defs/RunReference"
+        },
+        "status": {
+          "$ref": "#/$defs/EvaluationStatus"
+        },
+        "findings": {
+          "items": {
+            "$ref": "#/$defs/ReviewFinding"
+          },
+          "title": "Findings",
+          "type": "array"
+        },
+        "coverage": {
+          "$ref": "#/$defs/Coverage"
+        },
+        "verification": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ServiceVerification"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "run",
+        "status",
+        "findings",
+        "coverage",
+        "verification"
+      ],
+      "title": "PausedReviewView",
+      "type": "object"
+    },
     "Permission": {
       "enum": [
         "review",
@@ -2274,6 +2646,52 @@
       ],
       "title": "Permission",
       "type": "string"
+    },
+    "PinnedRuleView": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "service-v1",
+          "default": "service-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "reference": {
+          "$ref": "#/$defs/RuleReference"
+        },
+        "applicability": {
+          "$ref": "#/$defs/RuleApplicability"
+        },
+        "zone": {
+          "title": "Zone",
+          "type": "string"
+        },
+        "declared_status": {
+          "enum": [
+            "candidate",
+            "approved",
+            "rejected"
+          ],
+          "title": "Declared Status",
+          "type": "string"
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/SourceCitation"
+          },
+          "title": "Evidence",
+          "type": "array"
+        }
+      },
+      "required": [
+        "reference",
+        "applicability",
+        "zone",
+        "declared_status",
+        "evidence"
+      ],
+      "title": "PinnedRuleView",
+      "type": "object"
     },
     "PublicValue": {
       "additionalProperties": false,
@@ -2621,6 +3039,44 @@
       "title": "ReviewFinding",
       "type": "object"
     },
+    "ReviewSessionView": {
+      "additionalProperties": false,
+      "description": "The currently authenticated actor, not a registration or permission grant.",
+      "properties": {
+        "schema_version": {
+          "const": "service-v1",
+          "default": "service-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "actor": {
+          "$ref": "#/$defs/ActorReference"
+        },
+        "data_mode": {
+          "default": "unspecified",
+          "enum": [
+            "unspecified",
+            "synthetic",
+            "local_original"
+          ],
+          "title": "Data Mode",
+          "type": "string"
+        },
+        "configured_jobs": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/JobReference"
+          },
+          "title": "Configured Jobs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "actor"
+      ],
+      "title": "ReviewSessionView",
+      "type": "object"
+    },
     "ReviewSubmission": {
       "additionalProperties": false,
       "description": "Reserved jobs request; no jobs route or durable implementation in M0.",
@@ -2717,6 +3173,109 @@
       "title": "RevisionReference",
       "type": "object"
     },
+    "RuleApplicability": {
+      "additionalProperties": false,
+      "properties": {
+        "jurisdiction": {
+          "title": "Jurisdiction",
+          "type": "string"
+        },
+        "land_use_category": {
+          "title": "Land Use Category",
+          "type": "string"
+        },
+        "effective_from": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Effective From"
+        },
+        "effective_to": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Effective To"
+        }
+      },
+      "required": [
+        "jurisdiction",
+        "land_use_category"
+      ],
+      "title": "RuleApplicability",
+      "type": "object"
+    },
+    "RuleBundleView": {
+      "additionalProperties": false,
+      "description": "Selected, authorized sources only; the full internal catalog stays private.",
+      "properties": {
+        "catalog_version": {
+          "title": "Catalog Version",
+          "type": "string"
+        },
+        "catalog_digest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Catalog Digest",
+          "type": "string"
+        },
+        "primary_criteria_document_id": {
+          "title": "Primary Criteria Document Id",
+          "type": "string"
+        },
+        "identity": {
+          "$ref": "#/$defs/CaseIdentity"
+        },
+        "contexts": {
+          "items": {
+            "$ref": "#/$defs/ComparisonContext"
+          },
+          "title": "Contexts",
+          "type": "array"
+        },
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/CatalogRuleSource"
+          },
+          "title": "Sources",
+          "type": "array"
+        },
+        "conditions_confirmed": {
+          "title": "Conditions Confirmed",
+          "type": "boolean"
+        },
+        "condition_candidates": {
+          "items": {
+            "$ref": "#/$defs/CaseConditionCandidate"
+          },
+          "title": "Condition Candidates",
+          "type": "array"
+        }
+      },
+      "required": [
+        "catalog_version",
+        "catalog_digest",
+        "primary_criteria_document_id",
+        "identity",
+        "contexts",
+        "sources",
+        "conditions_confirmed"
+      ],
+      "title": "RuleBundleView",
+      "type": "object"
+    },
     "RuleReference": {
       "additionalProperties": false,
       "properties": {
@@ -2752,6 +3311,43 @@
         "content_hash"
       ],
       "title": "RuleReference",
+      "type": "object"
+    },
+    "RuleSelectionView": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "service-v1",
+          "default": "service-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "context": {
+          "$ref": "#/$defs/ComparisonContext"
+        },
+        "status": {
+          "enum": [
+            "unique",
+            "missing",
+            "ambiguous"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "matches": {
+          "items": {
+            "$ref": "#/$defs/RuleReference"
+          },
+          "title": "Matches",
+          "type": "array"
+        }
+      },
+      "required": [
+        "context",
+        "status",
+        "matches"
+      ],
+      "title": "RuleSelectionView",
       "type": "object"
     },
     "RunReference": {

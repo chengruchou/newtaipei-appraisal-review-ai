@@ -36,7 +36,11 @@ const receipt = {
 } as unknown as ResponseReceipt;
 
 function clientWith(submit: ReturnType<typeof vi.fn>): ReviewClient {
-  return { submitResponse: submit } as unknown as ReviewClient;
+  return {
+    submitResponse: submit,
+    readResponse: vi.fn().mockRejectedValue(new ServiceError("not_found", 404)),
+    readTask: vi.fn().mockResolvedValue(view()),
+  } as unknown as ReviewClient;
 }
 
 async function reachConfirmation(user: ReturnType<typeof userEvent.setup>) {
@@ -130,7 +134,10 @@ describe("ResponseForm", () => {
     await reachConfirmation(user);
     await user.click(screen.getByRole("button", { name: /yes, submit/i }));
     await screen.findByRole("alert");
-    await user.click(screen.getByRole("button", { name: /send again/i }));
+    expect(submit).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("button", { name: /send again/i })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /check submission status/i }));
+    await user.click(await screen.findByRole("button", { name: /send again/i }));
     await screen.findByRole("status");
 
     const keys = submit.mock.calls.map((call) => (call[1] as HumanResponse).idempotency_key);
@@ -181,7 +188,7 @@ describe("ResponseForm", () => {
 
   it("sends the server's subject name verbatim instead of rebuilding it", async () => {
     const user = userEvent.setup();
-    const submit = vi.fn().mockResolvedValue(receipt);
+    const submit = vi.fn().mockResolvedValue({ ...receipt, action: "correct" });
     render(
       <ResponseForm
         view={correctionView()}
@@ -267,18 +274,21 @@ describe("ResponseForm recovering from an untrusted gateway", () => {
     await user.click(screen.getByRole("button", { name: /yes, submit/i }));
     await screen.findByRole("alert");
 
-    // Refused would strand the reviewer: the write may already have been recorded, and the
-    // only way to find out is to replay the identical command under the identical key.
-    const retry = screen.getByRole("button", { name: /send again/i });
+    // The write may already exist. Query its original key without a second POST.
+    expect(screen.queryByRole("button", { name: /send again/i })).not.toBeInTheDocument();
+    const retry = screen.getByRole("button", { name: /check submission status/i });
     expect(retry).toBeInTheDocument();
     await user.click(retry);
     await screen.findByRole("status");
 
-    const keys = fetchImpl.mock.calls.map(
-      (call) =>
-        (JSON.parse((call[1] as RequestInit).body as string) as HumanResponse).idempotency_key,
-    );
-    expect(keys).toEqual(["gateway-key", "gateway-key"]);
+    const calls = fetchImpl.mock.calls as [string, RequestInit][];
+    expect(calls).toHaveLength(2);
+    expect(calls.map((call) => call[1].method)).toEqual(["POST", "GET"]);
+    expect(JSON.parse(calls[0]![1].body as string)).toMatchObject({
+      idempotency_key: "gateway-key",
+    });
+    expect(calls[1]![0]).toMatch(/\/responses\/gateway-key$/);
+    expect(calls[1]![1].body).toBeUndefined();
   });
 
   it("still refuses outright on a definitive canonical rejection", async () => {

@@ -69,7 +69,7 @@ from appraisal_review.application.revisions import RevisionSnapshot
 from appraisal_review.application.runtime_sources import SnapshotJobService
 from appraisal_review.application.service_guards import Principal
 from appraisal_review.domain.artifact_publication import ManifestCandidate, SourceVersion
-from appraisal_review.domain.document_transfer import DocumentOperation
+from appraisal_review.domain.document_transfer import DocumentOperation, Purpose
 from appraisal_review.domain.factor_models import AgentReviewRequest, ReviewMaterial
 from appraisal_review.domain.review_contracts import content_digest
 from appraisal_review.domain.service_contracts import (
@@ -192,6 +192,12 @@ class CaseDocuments(DocumentTransferService):
 
     def __init__(self, cases: dict[str, Any]) -> None:
         self.cases = cases
+        self.authorization = self
+
+    def require(
+        self, principal: Principal, case_id: str, purpose: Purpose, operation: DocumentOperation
+    ) -> None:
+        self._case(case_id).authorization.require(principal, case_id, purpose, operation)
 
     def _case(self, case_id: str) -> DocumentTransferService:
         if case_id not in self.cases:
@@ -269,6 +275,10 @@ class SyntheticWorkbench:
             documents=self.documents,
             execution=self,
             resolver=self.resolver,
+        )
+        self.app.state.workbench_data_mode = "synthetic"
+        self.app.state.configured_workbench_jobs = lambda: tuple(
+            self.state.get("job_ids", {}).values()
         )
 
     def _execution(self, name: str, fixture: Any) -> IntegratedWorkflowExecution:

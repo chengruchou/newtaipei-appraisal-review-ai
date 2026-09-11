@@ -20,6 +20,16 @@ the installed wheel, actual image core, a complete original synthetic privacy
 flow and a separate paused/automatic/resume flow. The 176-finding image OS gate
 and exact-head hosted CI remain separate blockers.
 
+The next local candidate, `feat/local-review-workbench`, starts at the exact
+Draft #54 head `fff14e4e255deb9e72df0c26c1cb3b5afa014a7a`. It adds controlled
+original import, five workbench views, separately paired source preview, a
+pinned multi-source catalog and canonical fact-response recovery. Its
+[KPI1 delivery record](kpi1-delivery.md) separates actual supplied-document
+acceptance from synthetic unit regressions and historical CI. Case-condition
+editing/confirmation, complete applicable rules and real template publication
+remain explicit local gaps; they are not excluded merely because cloud work is
+deferred. No Issue closure or formal approval is implied by this candidate.
+
 The local integrated core is usable for verification. One complete synthetic OCR
 restoration was reported successful; repeatability remains work. Cloud deployment,
 designated-model quality and formal business approval remain unaccepted. The

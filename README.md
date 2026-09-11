@@ -62,6 +62,14 @@ See [contract ownership and migration](docs/service-contracts.md).
   grant must still match. Every download reauthorizes; local revealed values
   cannot enter the publication writer.
 
+## Local original KPI1 workbench
+
+The [controlled original workbench](docs/local-original-workbench.md) adds five
+views over actual local jobs, source PDFs and canonical human responses, with a
+pinned multi-source rule catalog. See [delivery and validation](docs/kpi1-delivery.md)
+for real-data scope and remaining gates. It does not issue rule/material approval
+or claim a complete report, external-model evaluation or cloud acceptance.
+
 ## Run the configured job and review workbench
 
 The [integrated local runbook](docs/integrated-local-runbook.md) provides the

@@ -1,3 +1,4 @@
+import { useText } from "./Language";
 import type { components } from "@/api/schema";
 
 type PublicValue = components["schemas"]["PublicValue-Input"];
@@ -24,12 +25,16 @@ const AUTHORITY = {
   },
 } as const;
 
-export function renderValue(value: PublicValue | null | undefined): string {
+export function renderValue(
+  value: PublicValue | null | undefined,
+  t: (english: string, chinese: string) => string = (english) => english,
+): string {
   if (value === null || value === undefined) {
     return "—";
   }
   if (value.state !== "present") {
-    return STATE_WORDS[value.state] ?? value.state;
+    const words = STATE_WORDS[value.state];
+    return words ? t(...words) : value.state;
   }
   const inner = value.value;
   if (inner === null || inner === undefined) {
@@ -45,11 +50,11 @@ export function renderValue(value: PublicValue | null | undefined): string {
   return unit === null || unit === undefined ? shown : `${shown} ${unit}`;
 }
 
-const STATE_WORDS: Record<string, string> = {
-  blank: "blank",
-  missing: "missing from the source",
-  not_present: "not present in this form",
-  not_applicable: "not applicable",
+const STATE_WORDS: Record<string, [string, string]> = {
+  blank: ["blank", "原欄位空白"],
+  missing: ["missing from the source", "來源中缺少此值"],
+  not_present: ["not present in this form", "此表單無此欄位"],
+  not_applicable: ["not applicable", "不適用"],
 };
 
 function ValueLine({
@@ -61,23 +66,30 @@ function ValueLine({
   value: PublicValue;
   by?: string;
 }) {
+  const t = useText();
   const meta = AUTHORITY[kind];
+  const zh = {
+    observed: ["原始觀察值", "來源文件的擷取內容；人工確認與核准須另依精確綁定紀錄判斷。"],
+    proposed: ["建議值，尚未採納", "這只是提案，不是已接受的決定，也不會自行修改材料。"],
+    corrected: ["人工更正值", "由具權限的審查者提交為新修訂，不會自動確認或核准。"],
+  }[kind];
   return (
     <div className="authority-row">
       <div>
-        <div className="authority-label">{meta.label}</div>
+        <div className="authority-label">{t(meta.label, zh[0]!)}</div>
         {by === undefined ? null : <div className="muted">{by}</div>}
       </div>
       <div>
         <div className="value" data-state={value.state} data-authority={kind}>
-          {renderValue(value)}
+          {renderValue(value, t)}
         </div>
         <p className="muted" style={{ margin: "0.15rem 0 0" }}>
-          {meta.detail}
+          {t(meta.detail, zh[1]!)}
         </p>
         {value.confidence === null || value.confidence === undefined ? null : (
           <p className="muted" style={{ margin: 0 }}>
-            Extractor confidence {value.confidence.toFixed(2)}. A confidence is not an approval.
+            {t("Extractor confidence", "原始擷取信心值")} {value.confidence}.{" "}
+            {t("A confidence is not an approval.", "信心值不是核准。")}
           </p>
         )}
       </div>
@@ -86,9 +98,16 @@ function ValueLine({
 }
 
 export function ValueAuthority({ change }: { change: ValueRevision }) {
+  const t = useText();
   const corrector = change.corrected_by?.actor_id;
   return (
-    <section className="card" aria-label={`Value history for ${change.subject_id}`}>
+    <section
+      className="card"
+      aria-label={t(
+        `Value history for ${change.subject_id}`,
+        `${change.subject_id} 的值與來源角色`,
+      )}
+    >
       <h3 style={{ margin: "0 0 0.5rem", fontSize: "0.95rem" }}>{change.subject_id}</h3>
       <div className="authority">
         <ValueLine kind="observed" value={change.original} />

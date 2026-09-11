@@ -204,7 +204,17 @@ class ReviewAgentController:
                 current: SourceDocument | None
                 if len(matches) == 1:
                     current = matches[0]
-                elif not matches and registered.role in {"reference", "brief"}:
+                elif not matches and (
+                    registered.role in {"reference", "brief"}
+                    or (
+                        registered.role == "criteria"
+                        and rule_set.rule_bundle is not None
+                        and any(
+                            s.document_id == registered.document_id
+                            for s in rule_set.rule_bundle.sources
+                        )
+                    )
+                ):
                     current = (await self._parse(registered.uri, registered.role)).source
                 else:
                     raise SourceBindingError
