@@ -75,3 +75,15 @@ terminal replay, exclusion and crash quarantine; combined job/task/outbox transa
 and cloud acceptance remain outside this change. See [Workflow run authority](../workflow-run-ledger.md) for the operation
 contract, integration obligations and local regression scope. This extends this ADR's
 existing failure-boundary decision and allocates no new ADR number.
+
+## Direct decision handoff
+
+A bounded invocation carries every prior decision for the exact run, including
+single-step decisions made before constructing the runner. Those events remain
+in verified results, human pauses, failure handoffs and terminal replay. The run
+ledger remains the budget authority; reconstruction never restores its original
+allowance. Prior failed decisions seed no-progress detection and consume the
+next retry allowance when bounded execution takes over. A cached result that
+contradicts available run trace evidence is rejected rather than replayed as a
+complete history. This repairs the direct-to-bounded handoff; it does not imply
+that every Runtime restart or ordinary integration flow had the same defect.
