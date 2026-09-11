@@ -61,6 +61,12 @@ owns current C2 document authorization and revision snapshots. The workflow
 budget ledger cannot be treated as the same transaction merely because both
 stores use SQLite.
 
+The synchronized #37 history uses a branch-local ADR number for document
+transfer. This integration retains [ADR 0024](adr/0024-versioned-document-transfer.md)
+for that contract, [ADR 0028](adr/0028-controlled-execution-failure-boundaries.md)
+for controlled execution, and [ADR 0035](adr/0035-raster-privacy-bundles.md)
+for raster privacy bundles. Their canonical meanings are unchanged.
+
 ## Evidence and open gates
 
 - The final real core browser run passed seven scenarios in one clean 14.4-second
