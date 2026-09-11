@@ -10,7 +10,8 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-import type { HumanResponse, ResponseReceipt, ReviewClient } from "@/api/client";
+import { ReviewClient } from "@/api/client";
+import type { HumanResponse, ResponseReceipt } from "@/api/client";
 import { ServiceError, TransportError } from "@/api/problems";
 import { ResponseForm } from "@/features/ResponseForm";
 
@@ -220,5 +221,103 @@ describe("ResponseForm", () => {
     expect(screen.getByRole("button", { name: /review and submit/i })).toBeDisabled();
     await user.type(screen.getByLabelText(/corrected value/i), "not a number");
     expect(screen.getByRole("button", { name: /review and submit/i })).toBeDisabled();
+  });
+});
+
+describe("ResponseForm recovering from an untrusted gateway", () => {
+  it("keeps the command and offers a same-key retry when a gateway answers, not the service", async () => {
+    const user = userEvent.setup();
+    // A 502 carrying HTML: an intermediary failed, possibly *after* the service committed.
+    // Each Response is built inside the mock: a body can only be read once, so a shared
+    // instance would make the retry measure the mock rather than the component.
+    const wireReceipt = {
+      ...receipt,
+      job: { ...receipt.job, job_id: "33333333-3333-3333-3333-333333333333" },
+    };
+    const fetchImpl = vi
+      .fn()
+      .mockImplementationOnce(() =>
+        Promise.resolve(new Response("<html>Bad Gateway</html>", { status: 502 })),
+      )
+      .mockImplementationOnce(() =>
+        Promise.resolve(
+          new Response(JSON.stringify(wireReceipt), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          }),
+        ),
+      );
+    const client = new ReviewClient({
+      baseUrl: "http://service",
+      token: () => Promise.resolve("t"),
+      fetch: fetchImpl,
+      timeoutMs: 1000,
+    });
+    render(
+      <ResponseForm
+        view={view()}
+        client={client}
+        onCommitted={vi.fn()}
+        onReload={vi.fn()}
+        mintKey={() => "gateway-key"}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /review and submit/i }));
+    await user.click(screen.getByRole("button", { name: /yes, submit/i }));
+    await screen.findByRole("alert");
+
+    // Refused would strand the reviewer: the write may already have been recorded, and the
+    // only way to find out is to replay the identical command under the identical key.
+    const retry = screen.getByRole("button", { name: /send again/i });
+    expect(retry).toBeInTheDocument();
+    await user.click(retry);
+    await screen.findByRole("status");
+
+    const keys = fetchImpl.mock.calls.map(
+      (call) =>
+        (JSON.parse((call[1] as RequestInit).body as string) as HumanResponse).idempotency_key,
+    );
+    expect(keys).toEqual(["gateway-key", "gateway-key"]);
+  });
+
+  it("still refuses outright on a definitive canonical rejection", async () => {
+    const user = userEvent.setup();
+    const fetchImpl = vi.fn().mockImplementation(() =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify({
+            schema_version: "service-v1",
+            code: "unauthorized",
+            message: "Service operation could not be completed.",
+          }),
+          { status: 403, headers: { "Content-Type": "application/json" } },
+        ),
+      ),
+    );
+    const client = new ReviewClient({
+      baseUrl: "http://service",
+      token: () => Promise.resolve("t"),
+      fetch: fetchImpl,
+      timeoutMs: 1000,
+    });
+    render(
+      <ResponseForm
+        view={view()}
+        client={client}
+        onCommitted={vi.fn()}
+        onReload={vi.fn()}
+        mintKey={() => "definitive-key"}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /review and submit/i }));
+    await user.click(screen.getByRole("button", { name: /yes, submit/i }));
+    await screen.findByRole("alert");
+
+    // The service really did decide this one, so retrying it would be noise.
+    expect(screen.queryByRole("button", { name: /send again/i })).not.toBeInTheDocument();
+    expect(screen.getByText(/do not have permission/i)).toBeInTheDocument();
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
 });

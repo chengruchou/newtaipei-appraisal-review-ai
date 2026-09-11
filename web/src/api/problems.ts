@@ -1,4 +1,5 @@
 import type { components } from "./schema";
+import { validateResponse } from "./validation";
 
 export type ServiceProblem = components["schemas"]["ServiceProblem"];
 export type ServiceErrorCode = ServiceProblem["code"];
@@ -30,21 +31,29 @@ export class TransportError extends Error {
   }
 }
 
-const FALLBACK: Record<number, ServiceErrorCode> = {
-  403: "unauthorized",
-  404: "not_found",
-  409: "version_conflict",
-  422: "invalid_request",
-  500: "execution_failed",
-  503: "capability_unavailable",
-};
-
-export function problemFromResponse(status: number, body: unknown): ServiceError {
-  const code = (body as ServiceProblem | null)?.code;
-  const known: ServiceErrorCode | undefined =
-    code !== undefined && code in EXPLANATIONS ? code : FALLBACK[status];
-  return new ServiceError(known ?? "execution_failed", status);
+/**
+ * A refusal is definitive only when the service itself said so, in its own canonical
+ * envelope. Everything else leaves the outcome genuinely unknown, and `null` says so.
+ *
+ * The distinction is not pedantry. An intermediary can fail *after* the service already
+ * committed the write: a gateway 502 or 504 carrying HTML says the reviewer's answer may
+ * well have been recorded. Reading authority off the HTTP status alone would let that be
+ * shown as a decision the service never made, and would throw away the command and
+ * idempotency key that are the only way to recover the receipt.
+ *
+ * So the body must validate against the published `ServiceProblem` schema, and its code
+ * must be one this version knows. An unrecognised code from a future version is also an
+ * unknown outcome, not a refusal we may paraphrase.
+ */
+export function canonicalProblem(status: number, body: unknown): ServiceError | null {
+  if (!validateResponse("ServiceProblem", body)) return null;
+  const code = (body as ServiceProblem).code;
+  return code in EXPLANATIONS ? new ServiceError(code, status) : null;
 }
+
+/** Shown when an intermediary answered and the write may or may not have been applied. */
+export const UNKNOWN_OUTCOME =
+  "The service did not give a usable answer, so it is unclear whether this was recorded.";
 
 /**
  * Reviewer-facing wording. Each says what happened and what to do; none invites a blind

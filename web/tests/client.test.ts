@@ -35,31 +35,57 @@ describe("ReviewClient", () => {
     expect(init.body).toBeUndefined();
   });
 
-  it("maps a service problem body onto its machine code", async () => {
-    // A fresh Response per call: a body can only be read once, so a shared instance would
-    // make the second assertion measure the mock rather than the client.
+  it.each([502, 503, 504, 500])(
+    "treats a %i carrying an intermediary's HTML as an unknown outcome",
+    async (status) => {
+      const fetchImpl = vi
+        .fn()
+        .mockImplementation(() =>
+          Promise.resolve(new Response("<html>Bad Gateway</html>", { status })),
+        );
+
+      const failure = await clientWith(fetchImpl as unknown as typeof fetch)
+        .readTask("t1")
+        .catch((error: unknown) => error);
+
+      // Reading authority off the status alone would turn a gateway failure into a
+      // decision the service never made, and would discard the command needed to recover.
+      expect(failure).toBeInstanceOf(TransportError);
+      expect(failure).not.toBeInstanceOf(ServiceError);
+    },
+  );
+
+  it("treats an unrecognised code from a future version as an unknown outcome", async () => {
     const fetchImpl = vi
       .fn()
       .mockImplementation(() =>
-        Promise.resolve(jsonResponse(409, { code: "version_conflict", message: "…" })),
+        Promise.resolve(
+          jsonResponse(409, { schema_version: "service-v1", code: "some_future_code" }),
+        ),
       );
-    const client = clientWith(fetchImpl);
 
-    await expect(client.readTask("t1")).rejects.toThrow(ServiceError);
-    await expect(client.readTask("t1")).rejects.toMatchObject({
-      code: "version_conflict",
-      status: 409,
-    });
+    const failure = await clientWith(fetchImpl as unknown as typeof fetch)
+      .readTask("t1")
+      .catch((error: unknown) => error);
+
+    // Paraphrasing a refusal this version cannot interpret would be inventing its meaning.
+    expect(failure).toBeInstanceOf(TransportError);
   });
 
-  it("falls back to the status when the error body is unusable", async () => {
-    const fetchImpl = vi
-      .fn()
-      .mockResolvedValue(new Response("<html>gateway</html>", { status: 503 }));
+  it("still honours a definitive canonical refusal", async () => {
+    const fetchImpl = vi.fn().mockImplementation(() =>
+      Promise.resolve(
+        jsonResponse(409, {
+          schema_version: "service-v1",
+          code: "version_conflict",
+          message: "Service operation could not be completed.",
+        }),
+      ),
+    );
 
     await expect(
       clientWith(fetchImpl as unknown as typeof fetch).readTask("t1"),
-    ).rejects.toMatchObject({ code: "capability_unavailable" });
+    ).rejects.toMatchObject({ code: "version_conflict", status: 409 });
   });
 
   it("reports a timeout as a transport failure, not as a service decision", async () => {
