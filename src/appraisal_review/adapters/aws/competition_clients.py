@@ -8,7 +8,7 @@ import time
 from collections.abc import Callable
 from contextvars import ContextVar
 from copy import copy
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from types import MappingProxyType
 from typing import Any
 from urllib.parse import parse_qs, parse_qsl, unquote, urlsplit
@@ -18,7 +18,10 @@ from appraisal_review.adapters.aws.competition_budget import DynamoDBCompetition
 from appraisal_review.adapters.aws.competition_wire import WireBinding, install_wire_binding
 from appraisal_review.adapters.aws.dynamodb_model_dispatch import DynamoDBModelDispatchStore
 from appraisal_review.adapters.local.sqlite_model_dispatch import SqliteModelDispatchStore
-from appraisal_review.application.competition_preflight import check_profile
+from appraisal_review.application.competition_preflight import (
+    check_model_destinations,
+    check_profile,
+)
 from appraisal_review.application.model_dispatch import SharedModelDispatcher
 from appraisal_review.domain.competition_data import DataPart, DataSurface
 from appraisal_review.domain.competition_profile import CompetitionProfile, ResourceBinding
@@ -82,6 +85,18 @@ _METADATA_HEADERS = frozenset(
 
 
 @dataclass(frozen=True)
+class _ModelRouting:
+    model_id: str
+    kind: str
+    profile_digest: str
+    snapshot_digest: str
+    approved_arns: tuple[str, ...]
+    deadline: float
+    generation: int
+    discovered_arns: tuple[str, ...] | None = None
+
+
+@dataclass(frozen=True)
 class _Call:
     service: str
     operation: str
@@ -91,6 +106,8 @@ class _Call:
     expected_method: str
     expected_path: str
     expected_query: dict[str, str]
+    region: str
+    routing: _ModelRouting | None
 
 
 _CALL: ContextVar[_Call | None] = ContextVar("competition_sdk_call", default=None)
@@ -143,6 +160,10 @@ class _Transport:
         call = self.owner.require_call()
         self.owner.require_current()
         body = b"" if request.body is None else request.body
+        # The SDK's STS query serializer produces immutable form text. Freeze
+        # its exact UTF-8 bytes before admission and transport, as for JSON APIs.
+        if call.service == "sts" and type(body) is str:
+            body = body.encode("utf-8")
         if type(body) is not bytes or type(request.url) is not str:
             raise CompetitionClientFault("competition_immutable_wire_required")
         prepared = copy(request)
@@ -198,9 +219,15 @@ class _Transport:
 
 class _Client:
     def __init__(
-        self, client: Any, owner: CompetitionAWSClients, service: str, timeout: float
+        self,
+        client: Any,
+        owner: CompetitionAWSClients,
+        service: str,
+        timeout: float,
+        routing: _ModelRouting | None = None,
     ) -> None:
         self._client, self._owner, self._service, self._timeout = client, owner, service, timeout
+        self._routing = routing
 
     @property
     def meta(self) -> Any:
@@ -235,7 +262,13 @@ class _Client:
                     raise CompetitionClientFault("competition_authority_read_scope")
             self._owner.require_current()
             parameters: dict[str, Any] = _snapshot(kwargs)
-            self._owner.authorize(self._service, operation, parameters)
+            self._owner.authorize(
+                self._service,
+                operation,
+                parameters,
+                region=self.meta.region_name,
+                routing=self._routing,
+            )
             if self._service == "s3":
                 parameters["ExpectedBucketOwner"] = self._owner.profile.account_id
             authority = (lambda: True) if authority_read else inherited_dispatch_authority()
@@ -262,6 +295,8 @@ class _Client:
                 model.http["method"],
                 path,
                 query,
+                self.meta.region_name,
+                self._routing,
             )
             token = _CALL.set(call)
             try:
@@ -270,6 +305,63 @@ class _Client:
                 _CALL.reset(token)
 
         return invoke
+
+
+class CompetitionModelClients:
+    """One preflight's immutable model scope, never a shared discovery cache."""
+
+    def __init__(
+        self, owner: CompetitionAWSClients, model_id: str, kind: str, deadline: float
+    ) -> None:
+        owner.require_current()
+        matches = [m for m in owner.profile.models if m.model_id == model_id]
+        if not matches or any(m.kind != kind for m in matches):
+            raise CompetitionClientFault("competition_model_not_approved")
+        first = matches[0]
+        arns = tuple(d.arn for d in first.destinations)
+        if (
+            first.destination_snapshot_sha256 is None
+            or any(
+                m.destination_snapshot_sha256 != first.destination_snapshot_sha256 for m in matches
+            )
+            or not check_model_destinations(owner.profile, model_id, arns)
+        ):
+            raise CompetitionClientFault("competition_model_routing_ambiguous")
+        self.owner = owner
+        self._invalidated = False
+        self._routing = _ModelRouting(
+            model_id,
+            kind,
+            owner.profile.digest,
+            first.destination_snapshot_sha256,
+            arns,
+            deadline,
+            owner._routing_generations.get(model_id, 0),
+        )
+
+    def invalidate(self) -> None:
+        if not self._invalidated:
+            model_id = self._routing.model_id
+            self.owner._routing_generations[model_id] = (
+                self.owner._routing_generations.get(model_id, 0) + 1
+            )
+            self._invalidated = True
+
+    def validate_destinations(self, discovered_arns: tuple[str, ...]) -> None:
+        self.owner.require_current()
+        if not check_model_destinations(
+            self.owner.profile, self._routing.model_id, discovered_arns
+        ):
+            raise CompetitionClientFault("competition_model_routing_changed")
+        self._routing = replace(self._routing, discovered_arns=discovered_arns)
+
+    def client(self, service: str, region: str, timeout: float) -> Any:
+        if service == "bedrock-runtime" and self._routing.discovered_arns is None:
+            raise CompetitionClientFault("competition_model_routing_unverified")
+        client = self.owner.client(service, region, timeout)
+        if service not in {"bedrock", "bedrock-runtime"}:
+            return client
+        return _Client(client._client, self.owner, service, timeout, self._routing)
 
 
 class CompetitionAWSClients:
@@ -309,6 +401,7 @@ class CompetitionAWSClients:
         self._base_factory = base_factory
         self._test_endpoints = dict(test_endpoints or {})
         self._clients: dict[tuple[str, str, float], _Client] = {}
+        self._routing_generations: dict[str, int] = {}
         self._wire_admission = _Admission(self)
         for endpoint in self._test_endpoints.values():
             parsed = urlsplit(endpoint)
@@ -360,6 +453,9 @@ class CompetitionAWSClients:
             raise CompetitionClientFault("competition_central_dispatch_required")
 
     def require_current(self) -> None:
+        budget = getattr(self, "budget", None)
+        if budget is not None and budget.profile.digest != self.profile.digest:
+            raise CompetitionClientFault("competition_budget_profile_changed")
         bound = getattr(self, "_bound_dispatch_store", None)
         if bound is not None and self.dispatcher.store is not bound:
             raise CompetitionClientFault("competition_central_dispatch_changed")
@@ -393,7 +489,76 @@ class CompetitionAWSClients:
             or (time.monotonic() >= call.deadline)
         ):
             raise CompetitionClientFault("competition_call_authority_expired")
+        if call.service in {"bedrock", "bedrock-runtime"}:
+            self.authorize(
+                call.service,
+                call.operation,
+                call.parameters,
+                region=call.region,
+                routing=call.routing,
+            )
         return call
+
+    def for_model(self, model_id: str, kind: str, deadline: float) -> CompetitionModelClients:
+        return CompetitionModelClients(self, model_id, kind, deadline)
+
+    def _authorize_model(
+        self,
+        operation: str,
+        identifier: Any,
+        region: str,
+        routing: _ModelRouting | None,
+    ) -> None:
+        if routing is None:
+            # A foundation model has one static destination. Dynamic profiles
+            # require fresh discovery through their own bound preflight client.
+            arn = (
+                identifier
+                if isinstance(identifier, str) and identifier.startswith("arn:")
+                else (f"arn:aws:bedrock:{region}::foundation-model/{identifier}")
+            )
+            if operation == "GetInferenceProfile" or not any(
+                m.kind == "foundation"
+                and identifier
+                in (m.model_id, m.destinations[0].arn, m.destinations[0].arn.split("/", 1)[1])
+                and arn in {d.arn for d in m.destinations}
+                and arn.split(":")[3] == region
+                for m in self.profile.models
+                if m.destinations
+            ):
+                raise CompetitionClientFault("competition_model_routing_unverified")
+            return
+        matches = [m for m in self.profile.models if m.model_id == routing.model_id]
+        if (
+            time.monotonic() >= routing.deadline
+            or routing.generation != self._routing_generations.get(routing.model_id, 0)
+            or routing.profile_digest != self.profile.digest
+            or not matches
+            or any(
+                m.kind != routing.kind or m.destination_snapshot_sha256 != routing.snapshot_digest
+                for m in matches
+            )
+            or not check_model_destinations(self.profile, routing.model_id, routing.approved_arns)
+        ):
+            raise CompetitionClientFault("competition_model_routing_expired")
+        if operation == "GetInferenceProfile":
+            if identifier != routing.model_id or routing.kind == "foundation":
+                raise CompetitionClientFault("competition_model_not_approved")
+            return
+        if routing.discovered_arns is None or not check_model_destinations(
+            self.profile, routing.model_id, routing.discovered_arns
+        ):
+            raise CompetitionClientFault("competition_model_routing_unverified")
+        if operation == "GetFoundationModel":
+            arn = (
+                identifier
+                if isinstance(identifier, str) and identifier.startswith("arn:")
+                else (f"arn:aws:bedrock:{region}::foundation-model/{identifier}")
+            )
+            if arn not in routing.discovered_arns or arn.split(":")[3] != region:
+                raise CompetitionClientFault("competition_model_not_approved")
+        elif identifier != routing.model_id or region != self.profile.primary_region:
+            raise CompetitionClientFault("competition_model_not_approved")
 
     def binding(self, name: str, kind: str) -> ResourceBinding:
         self.require_current()
@@ -418,7 +583,15 @@ class CompetitionAWSClients:
         ):
             raise CompetitionClientFault("competition_table_not_approved")
 
-    def authorize(self, service: str, operation: str, params: dict[str, Any]) -> None:
+    def authorize(
+        self,
+        service: str,
+        operation: str,
+        params: dict[str, Any],
+        *,
+        region: str = "",
+        routing: _ModelRouting | None = None,
+    ) -> None:
         if service == "s3":
             bucket, key = params.get("Bucket"), params.get("Key")
             matches = [
@@ -488,16 +661,7 @@ class CompetitionAWSClients:
             identifier = params.get(
                 "modelId", params.get("modelIdentifier", params.get("inferenceProfileIdentifier"))
             )
-            allowed = {m.model_id for m in self.profile.models}
-            if operation == "GetFoundationModel":
-                allowed = {
-                    v
-                    for m in self.profile.models
-                    for d in m.destinations
-                    for v in (d.arn, d.arn.split("/", 1)[1])
-                }
-            if identifier not in allowed:
-                raise CompetitionClientFault("competition_model_not_approved")
+            self._authorize_model(operation, identifier, region, routing)
             return
         if service == "sts" and operation == "GetCallerIdentity":
             self._action("sts:GetCallerIdentity")
