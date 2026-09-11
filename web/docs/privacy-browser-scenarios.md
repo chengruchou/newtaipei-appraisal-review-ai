@@ -152,6 +152,15 @@ events keep their existing deadline. Diagnose actual response status, stage,
 correlation and measured time before proposing a deadline change. One historical
 14.318-second successful GET does not prove the cause of an earlier 409.
 
+Both capture and confirmation loops wait for the selected full-page image before
+selecting its item. The existing 30-second image poll uses a non-waiting DOM check:
+an absent or undecoded image returns false, so a nested 15-second locator wait
+cannot prematurely end that poll. This adds no HTTP request, confirmation retry
+or authority extension, and every page hash and individual reading check remains.
+The polling correction is separate from the observed candidate selector timeout;
+that run also lost its bootstrap mapping-key authority. No selector-race cause or
+successful full restoration is inferred from the correction.
+
 ## Evidence and stopping
 
 `local-privacy-http.jsonl` records bounded observations of the actual browser's

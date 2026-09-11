@@ -47,6 +47,26 @@ function readingRoot() {
   return root;
 }
 
+export async function selectReadyOcrItem(page: Page, item: { page: number; item_id: string }) {
+  await page.getByLabel("OCR review page", { exact: true }).selectOption(String(item.page));
+  const image = page.getByRole("img", {
+    name: `OCR review full page ${item.page}`,
+    exact: true,
+  });
+  await expect
+    .poll(
+      () =>
+        image.evaluateAll(
+          (elements: HTMLImageElement[]) =>
+            elements.length === 1 && elements[0]!.complete && elements[0]!.naturalWidth > 0,
+        ),
+      { timeout: 30_000 },
+    )
+    .toBe(true);
+  await page.getByLabel("Required OCR item", { exact: true }).selectOption(item.item_id);
+  return image;
+}
+
 export async function captureLocalOcrReview(
   page: Page,
   fixture: OcrFixture,
@@ -121,21 +141,7 @@ export async function captureLocalOcrReview(
   const orderedItems = [...view.items].sort((left, right) => left.page - right.page);
   const pageBytes = new Map<number, Buffer>();
   for (const item of orderedItems) {
-    await page.getByLabel("OCR review page", { exact: true }).selectOption(String(item.page));
-    await page.getByLabel("Required OCR item", { exact: true }).selectOption(item.item_id);
-    const image = page.getByRole("img", {
-      name: `OCR review full page ${item.page}`,
-      exact: true,
-    });
-    await expect
-      .poll(
-        () =>
-          image.evaluate(
-            (element: HTMLImageElement) => element.complete && element.naturalWidth > 0,
-          ),
-        { timeout: 30_000 },
-      )
-      .toBe(true);
+    const image = await selectReadyOcrItem(page, item);
     if (!pageBytes.has(item.page)) {
       let captured: number[];
       try {
@@ -287,21 +293,7 @@ export async function completeLocalOcrReview(
         expect(reading.reading).toBe(item.confirmed_reading);
         continue;
       }
-      await page.getByLabel("OCR review page", { exact: true }).selectOption(String(item.page));
-      await page.getByLabel("Required OCR item", { exact: true }).selectOption(item.item_id);
-      const image = page.getByRole("img", {
-        name: `OCR review full page ${item.page}`,
-        exact: true,
-      });
-      await expect
-        .poll(
-          () =>
-            image.evaluate(
-              (element: HTMLImageElement) => element.complete && element.naturalWidth > 0,
-            ),
-          { timeout: 30_000 },
-        )
-        .toBe(true);
+      await selectReadyOcrItem(page, item);
       await page.getByLabel("Exact visible reading", { exact: true }).fill(reading.reading);
       await page
         .getByRole("checkbox", {

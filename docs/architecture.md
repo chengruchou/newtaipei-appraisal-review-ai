@@ -166,10 +166,13 @@ Competition-specific builders in `adapters/aws/competition_runtime.py` use
 authority, restrict resources and apply shared physical-dispatch and persistent
 conservative budget reservations. A reviewed profile must come from trusted
 operator configuration. The checked-in pending profile grants no approval.
-Remaining work includes binding the complete discovered destination set and
-request region to each selected model in the production path; a standalone
-destination-check helper does not enforce that binding. The deployment must also
-connect these builders to the authenticated API and complete durable worker.
+The guarded composition binds each selected model to its freshly discovered,
+exact approved destination set and checks that proof, request region and current
+authority at every physical dispatch and retry. A failed fresh preflight revokes
+earlier clients for that model. ADR 0048 defines the bounded snapshot and budget
+binding; it is not a continuous remote routing feed. Deployment must still
+connect these builders to the authenticated API and complete durable worker,
+with reviewed operator inputs and actual invocation evidence.
 See [the competition profile](competition-deployment-profile.md) and
 [data admission](competition-data-review.md).
 
