@@ -16,17 +16,22 @@ records current status; [validation evidence](docs/local-validation-record.md)
 separates checkpoints, and [the implementation backlog](docs/implementation-backlog.md)
 tracks remaining work.
 
+The current follow-up candidate adds per-model routing snapshots, bounded local
+restoration diagnostics and an explicit [local validation stack](docs/local-validation-stack.md).
+These additions require their own exact-commit validation; the historical
+baseline above is not acceptance of the follow-up image or OCR reliability.
+
 ## Integrated boundaries
 
 | Boundary | Implemented and integrated locally | Remaining acceptance |
 | --- | --- | --- |
-| Local privacy | Restricted Origin/session bridge, exact export/mapping readback, two-stage visual OCR review and one complete synthetic restoration/download | Repeated OCR reliability and diagnosis; production desktop distribution |
+| Local privacy | Restricted Origin/session bridge, exact export/mapping readback, two-stage visual OCR review, bounded failure diagnostics and reproducible synthetic scenarios | Repeated OCR reliability; production provisioner, key recovery and desktop distribution |
 | Documents and extraction | Authorized immutable snapshots, actual PDF parser, source checks for resumed runs, production SDK adapter with injected model responses in rehearsal | Measured model quality and real cloud authorization |
 | Jobs and human tasks | SQLite job/task/revision/outbox/receipt transactions, durable dispatch queue, actual authenticated API | Production identity and cloud transaction composition |
 | Controlled actions | Canonical response adapter, trusted allowed actions, persisted run reservations, failed/unknown-effect quarantine | Designated model and operator evaluation |
 | PDF and publication | Two-context/eight-field writer, immutable font bytes, reopen, fenced publication, reauthorized download and separate local restored output | Formal assets and business grants; cloud recovery |
-| Workbench and Runtime | Canonical client, seven core browser scenarios, configured wheel/container local success | Complete Docker service entry, production login, image security and AWS operation |
-| Competition controls | Pinned rule/service catalogs, explicit data admission, guarded clients, shared physical-dispatch reservations and conservative budget ledger | Per-model routing binding, trusted account/profile approval and live verification |
+| Workbench and Runtime | Canonical client and explicit synthetic local container entry with durable API/worker state and optional host companion | Independent review, platform acceptance, production login, image security and AWS operation |
+| Competition controls | Pinned rule/service catalogs, explicit data admission, per-model routing proofs, shared physical-dispatch reservations and conservative budget ledger | Trusted account/profile approval, cross-process deployment and live verification |
 
 There is one canonical #36/#38 service/task union and regenerated #39 consumer.
 The undeployed strict consumers migrate together; frozen commands and legacy
@@ -70,8 +75,11 @@ The workbench opens existing job IDs and uses a manually supplied session token.
 It supports task review, publication/download and local privacy/OCR review; a
 production login, job list and general upload/create flow are not implemented.
 The default AWS Docker entry has no configured execution worker and returns 503.
-The successful configured local container rehearsal does not supply a complete
-frontend/API/worker deployment. See [architecture](docs/architecture.md).
+Use the separate [local validation stack](docs/local-validation-stack.md) for the
+explicit synthetic frontend/API/worker composition. Its host-companion mode
+keeps original documents, mappings and restoration authority on the host. This
+does not supply production identity, general operator provisioning or an AWS
+deployment. See [architecture](docs/architecture.md).
 
 ## Run the existing local reference service
 

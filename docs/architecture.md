@@ -80,9 +80,20 @@ assets. An installed wheel and separately configured container exercised that
 composition. `infra/runtime/Dockerfile` supplies the Python runtime entry, not a
 complete frontend/API/privacy-bridge stack. Its default
 `appraisal_review.adapters.aws.runtime_app:app` has no execution worker and
-returns 503; merely copying `runtime.json` does not configure one. A complete
-Docker validation entry and the production AWS composition are separate backlog
-items. The browser fault-injection proxy is test infrastructure.
+returns 503; merely copying `runtime.json` does not configure one.
+
+The separate `infra/local-validation` entry serves the built workbench and
+configured synthetic API/worker with a private durable volume. The launcher pins
+a local Docker Unix endpoint and exposes only numeric loopback addresses. Its
+host-companion mode forwards to an explicitly configured host API while the
+browser contacts the restricted host privacy bridge directly; original files,
+keys and mappings stay on that host. This mode and the standalone synthetic
+container have distinct acceptance evidence. See
+[local validation](local-validation-stack.md) and ADR 0050.
+
+Production operator provisioning, login and AWS composition remain separate
+work. The browser fault-injection proxy remains test infrastructure; the local
+container entry does not expose those synthetic recovery controls.
 
 ## Transaction and authority boundaries
 

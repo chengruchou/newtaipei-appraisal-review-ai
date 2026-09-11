@@ -22,7 +22,23 @@ milestone issues are delivery history, not an instruction to merge old branches
 again. Earlier source/main/CI snapshots remain in
 [history](history/2026-09-11-pre-convergence/README.md).
 
-## Implemented and integrated work
+## Follow-up candidate after the baseline
+
+The current candidate includes exact per-model routing proofs (ADR 0048), finite
+request-local restoration diagnostics and isolated OCR browser configurations
+(ADR 0049), and an explicit synthetic local container composition (ADR 0050).
+The container serves the built UI and configured API/worker with durable private
+state; host-companion mode retains original documents and mapping authority on
+the host. See the [local validation stack](local-validation-stack.md).
+
+These are additions under review, not a claim that the baseline CI or image
+validated them. Their PRs record exact new source/image checkpoints, failed and
+successful browser runs, and advisory results. Full OCR corpus reliability,
+legitimate operator provisioning, supported-platform acceptance and all real
+approval/deployment gates remain open. The historical evidence below is retained
+without being relabelled as validation of the follow-up candidate.
+
+## Implemented and integrated baseline work
 
 | Work line | Current integrated behavior | Remaining work or acceptance |
 | --- | --- | --- |
@@ -91,9 +107,10 @@ decisions without changing their approval status.
 
 ## Next implementation boundary
 
-Continue from current `main`; do not re-merge the superseded integration branches.
-The [backlog](implementation-backlog.md) separates the complete Docker/runtime
-composition, per-model routing correction, frontend workflow, OCR reliability,
-CI/security and authorized cloud/model acceptance. Preserve raw confidence,
+Review the functional follow-up branches in dependency order; do not re-merge
+the superseded integration branches. The [backlog](implementation-backlog.md)
+separates the candidate's routing/diagnostic/local-container changes from missing
+frontend/operator workflows, OCR reliability, CI/security and authorized
+cloud/model acceptance. Preserve raw confidence,
 exact individual confirmation, independent material/publication authority,
 source bytes and failed observations while completing those items.

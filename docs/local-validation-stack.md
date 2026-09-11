@@ -146,6 +146,50 @@ companion with its separate session and exact Origin checks. Only approved,
 sanitized transfers enter its host API. Published and candidate OCR review receipts,
 current digest/expiry checks and final local download remain mandatory.
 
+For final stack privacy acceptance, run from this checkout's `web` directory,
+using the existing locked browser installation and the exact paired manifests and
+reading directory described in
+[the privacy scenarios runbook](../web/docs/privacy-browser-scenarios.md). Keep the
+real host companion server above running and serve the exact exported built UI.
+The stack-specific configuration attaches to it and never starts the rehearsal
+fault proxy:
+
+```sh
+LOCAL_STACK_PRIVACY_SCENARIO=positive npx --no-install playwright test \
+  --config e2e-real/config/local-stack.config.ts
+```
+
+Use `LOCAL_STACK_PRIVACY_SCENARIO=automatic` for the original automatic-refusal
+check at the published capture checkpoint, before any reading plan. Use `resume`
+only for that same published case with its checkpoint. For an intentional pause
+followed by resume, start a separate fresh paired namespace and keep that same
+backend alive throughout:
+
+```sh
+LOCAL_STACK_PRIVACY_SCENARIO=paused npx --no-install playwright test \
+  --config e2e-real/config/local-stack.config.ts
+LOCAL_STACK_PRIVACY_SCENARIO=resume npx --no-install playwright test \
+  --config e2e-real/config/local-stack.config.ts
+```
+
+Paused retains the original source-to-publication flow, complete page/crop capture
+and automatic refusal assertions, and exits without individual readings or a
+receipt. Resume completes that same case using its exact individual reading plans.
+Report this sequence separately from a fresh complete positive run. All four
+scenarios use the same real server and readiness checks. The wrapper retains
+the shared namespace, unused output directory, fresh case, checkpoint and exact
+reading guards, all selected test assertions, browser identity and existing waits.
+It only removes the test server startup and adds actual HTTP checks for ready
+`host-companion` mode, the exact companion address and an absent fault-control
+route. A failed check stops before the scenario.
+
+Run the configuration from this checkout, not the isolated frontend build copy:
+the shared guards deliberately bind the private namespace to this checkout's
+`artifacts` directory. Keep core and companion sessions separate. Individual
+published/restored page and crop inspection, exact reading plans, current leases,
+receipts and the actual browser download are still required. No response, OCR
+confidence, authority or lifetime is changed by this configuration.
+
 This documented pairing is separate from the container core evidence. Rehearse it
 with current pinnings before claiming privacy acceptance. The earlier restoration
 timeout/409 and repeated-corpus reliability remain in #22; no timeout or privacy
