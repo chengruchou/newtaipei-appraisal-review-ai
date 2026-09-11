@@ -187,7 +187,7 @@ export PRIVACY_BROWSER_FIXTURE="$REVIEW_ROOT/artifacts/integration-demo/privacy/
 export PRIVACY_OCR_READING_DIRECTORY="$REVIEW_ROOT/artifacts/integration-demo/ocr-readings"
 export PLAYWRIGHT_BROWSERS_PATH="$REVIEW_ROOT/artifacts/playwright-browsers"
 npm run e2e:real -- reviewer-api.spec.ts
-npm run e2e:real -- privacy-flow.spec.ts
+npx --no-install playwright test --config e2e-real/config/positive.config.ts
 ```
 
 These tests use the production frontend build and actual loopback HTTP. The
@@ -256,17 +256,39 @@ original case with a pending OCR review. With that case's same private fixtures
 and reading directory, stop any separate manual proxy and run:
 
 ```sh
-npm run e2e:real -- ocr-review-flow.spec.ts
+npx --no-install playwright test --config e2e-real/config/resume.config.ts
 ```
 
 It does not create, transfer or approve a fresh case and is not an additional step
-to run after a completed positive flow. `ocr-review-automatic.spec.ts` instead
-checks the same positive flow while paused before any reading plans exist. It
-expects `ocr-readings` directly under the integration directory so it can bind the
-initial diagnostic. It needs a separate API-only Playwright configuration without
-another proxy; that configuration is not checked in. Do not run it blindly in the
-standard suite or claim its refusal assertions prove successful restoration. The
-remaining harness and OCR reliability work is tracked in
+to run after a completed positive flow. The checked-in automatic configuration
+checks that same positive flow after `published-ready.json` confirms all page and
+crop captures, before any reading plan exists. Run it in a third terminal with
+the same exported fixture/readings paths, and wait for completion before supplying
+the published plan:
+
+```sh
+npx --no-install playwright test --config e2e-real/config/automatic.config.ts
+```
+
+This API-only regression starts no proxy or browser. It verifies the original
+409 diagnostic, every captured page hash and unchanged observations with zero
+confirmations and receipts. Its refusal assertions do not prove restoration.
+To reproduce an intentional pause, start another fresh combined-launcher
+namespace, set all fixture/readings paths to that namespace, and run:
+
+```sh
+npx --no-install playwright test --config e2e-real/config/paused.config.ts
+```
+
+The separate paused scenario performs the original source-to-publication flow,
+captures the published stage, asserts automatic refusal and exits before any
+reading. Keep its backend alive and use the resume configuration above with new,
+individually inspected plans. Report this as a paused case plus focused resume,
+separately from a complete fresh positive. The configurations refuse consumed
+fresh-flow manifests and nonempty output destinations to preserve prior evidence.
+See [privacy browser scenarios](../web/docs/privacy-browser-scenarios.md) for exact
+namespace constraints, plan binding, measured diagnostics and retained outputs.
+The remaining OCR reliability work is tracked in
 [#22](https://github.com/chengruchou/newtaipei-appraisal-review-ai/issues/22).
 
 A failed browser action or uncertain transfer must not be replayed with a new
