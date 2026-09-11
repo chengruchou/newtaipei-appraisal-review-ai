@@ -199,6 +199,38 @@ def _runner(
     )
 
 
+def test_direct_failed_terminal_handoff_retains_all_prior_decisions() -> None:
+    async def scenario() -> None:
+        snapshot = _snapshot()
+        snapshots = MutableSnapshots(snapshot)
+        tool = SequenceTool([_success(), _failed("review-failed")], snapshots=snapshots)
+        trace = NonDurableInMemoryDecisionTrace()
+        coordinator = ControlledWorkflowCoordinator(
+            snapshots=snapshots,
+            policy=ControlledActionPolicy(proposer_kind="system"),
+            selector=DeterministicActionSelector(),
+            executor=RoutedControlledActionExecutor({ActionKind.REVIEW: tool}),
+            trace=trace,
+            executor_actor=ActorReference(actor_id="bounded-executor", kind="system"),
+            monotonic=lambda: 1.0,
+        )
+        first = await coordinator.decide_once(snapshot.run)
+        tool.next_state = WorkflowState.VERIFIED
+        failed = await coordinator.decide_once(snapshot.run)
+        assert failed.disposition == "failed"
+        runner = BoundedWorkflowRunner(coordinator=coordinator, snapshots=snapshots)
+        result = await runner.run(snapshot.run)
+        assert result.termination == WorkflowTermination.PERMANENT_FAILURE
+        assert result.events == (first, failed) == await trace.read(snapshot.run.run_id)
+        assert result.final_budget == failed.budget_after
+        assert result.handoff is not None
+        assert result.handoff.last_tool_outcome == failed.tool_result
+        assert await runner.run(snapshot.run) == result
+        assert tool.calls == 2
+
+    asyncio.run(scenario())
+
+
 def test_retryable_failures_stop_at_retry_limit_with_deterministic_backoff() -> None:
     snapshot = _snapshot(retries=2)
     snapshots = MutableSnapshots(snapshot)

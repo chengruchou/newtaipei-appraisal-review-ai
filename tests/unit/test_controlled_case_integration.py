@@ -21,6 +21,7 @@ from appraisal_review.application.controlled_workflow import (
     RoutedControlledActionExecutor,
 )
 from appraisal_review.application.material_corrections import MaterialSubject, MaterialSubjectMap
+from appraisal_review.application.pause_resume import PauseResumeService
 from appraisal_review.application.revisions import RevisionSnapshot
 from appraisal_review.application.workflow_tasks import HumanTaskBinding, WorkflowTaskService
 from appraisal_review.domain.case_review import CaseReviewer
@@ -136,7 +137,9 @@ def bindings(snapshot, *, side_kind=None):
     )
 
 
-async def execute(snapshot, run, repo, service, approval, mapping, *, model, reentry=False):
+async def execute(
+    snapshot, run, repo, service, approval, mapping, *, model, reentry=False, direct_steps=0
+):
     case = LocalControlledCase(
         snapshot=snapshot,
         run=run,
@@ -167,8 +170,14 @@ async def execute(snapshot, run, repo, service, approval, mapping, *, model, ree
         executor_actor=ActorReference(actor_id="local-executor", kind="system"),
         source_registry=snapshot.material.policy.registry,
     )
+    prior = tuple([await coordinator.decide_once(run) for _ in range(direct_steps)])
     result = await BoundedWorkflowRunner(coordinator=coordinator, snapshots=case).run(run)
     assert result.events == await trace.read(run.run_id)
+    assert result.events[:direct_steps] == prior
+    assert len({event.event_id for event in result.events}) == len(result.events)
+    replay = await BoundedWorkflowRunner(coordinator=coordinator, snapshots=case).run(run)
+    assert replay == result
+    assert await trace.read(run.run_id) == result.events
     if result.events[0].tool_result.result_digest is None:
         raise AssertionError(
             str([(f.id, f.kind, f.trace) for f in case.result.findings if f.status != "verified"])
@@ -177,6 +186,42 @@ async def execute(snapshot, run, repo, service, approval, mapping, *, model, ree
     assert result.selection_failures == ()
     assert len(client.calls) == (len(result.events) if model else 0)
     return case, result
+
+
+@pytest.mark.parametrize("model", [False, True])
+@pytest.mark.parametrize("blocked,direct_steps", [(False, 1), (True, 1), (True, 2)])
+def test_direct_to_bounded_preserves_history_and_terminal_replay(
+    tmp_path, model, blocked, direct_steps
+):
+    async def scenario():
+        snapshot, run, _, principals, repo, service, approval, _ = setup(tmp_path, blocked=blocked)
+        case, result = await execute(
+            snapshot,
+            run,
+            repo,
+            service,
+            approval,
+            bindings(snapshot, side_kind=TaskKind.CORRECTION) if blocked else (),
+            model=model,
+            direct_steps=direct_steps,
+        )
+        assert [event.executed_action for event in result.events] == (
+            [ActionKind.REVIEW, ActionKind.HUMAN] if blocked else [ActionKind.REVIEW]
+        )
+        assert result.final_budget == result.events[-1].budget_after
+        if blocked:
+            assert result.termination.value == "waiting_for_human"
+            assert result.events[1].parent_event_ids == (result.events[0].event_id,)
+            handoff = PauseResumeService(repo, principals)
+            pause = await handoff.pause(result)
+            assert pause.result.events == result.events
+            assert set(pause.task_ids) == {task.task_id for task in case.tasks}
+            assert len(pause.task_ids) == 2
+            assert await handoff.pause(result) == pause
+        else:
+            assert result.termination.value == "verified"
+
+    asyncio.run(scenario())
 
 
 def command(task, action, *, correction=None):

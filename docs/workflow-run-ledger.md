@@ -125,6 +125,13 @@ stores one atomic transaction.
 
 ## Local regression evidence
 
+Direct-to-bounded integration regressions cover switching after review, after
+verification and after human task creation, with deterministic and injected model
+selectors. Results must retain the complete ordered decision trace without duplicate
+IDs, preserve the consumed budget and replay identically through a new runner without
+additional model calls. Human handoffs must pass the actual pause service and retain
+both open tasks. These are local composition checks, not crash recovery acceptance.
+
 On the original PR head, the five initial regression cases failed: three invalid
 action-specific receipt cases, permanent selection failure replay using the actual
 LocalControlledCase with an injected Bedrock selector client, and concurrent new-runner
