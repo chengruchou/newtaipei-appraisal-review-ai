@@ -130,8 +130,14 @@ def preflight(clients: AWSClients, policy: BedrockAccessPolicy) -> Any:
     Runtime supplies an AWSClients implementation bound to its designated role;
     this function verifies STS identity identically and never creates a session.
     """
+    routing_client: Any = None
     try:
         policy = BedrockAccessPolicy.model_validate(policy)
+        from appraisal_review.adapters.aws.competition_clients import (
+            CompetitionAWSClients,
+            CompetitionModelClients,
+        )
+
         deadline = time.monotonic() + policy.timeout_seconds
         try:
             inherited = current_dispatch_guard()
@@ -139,6 +145,9 @@ def preflight(clients: AWSClients, policy: BedrockAccessPolicy) -> Any:
             inherited = None
         if inherited is not None:
             deadline = min(deadline, inherited.deadline)
+        if isinstance(clients, CompetitionAWSClients):
+            clients = clients.for_model(policy.model_id, policy.model_kind, deadline)
+            routing_client = clients
 
         def metadata(call: Any, **kwargs: Any) -> Any:
             guard = DispatchGuard(deadline, inherited_dispatch_authority())
@@ -195,6 +204,13 @@ def preflight(clients: AWSClients, policy: BedrockAccessPolicy) -> Any:
             models = [_foundation(item["modelArn"]) for item in profile["models"]]
         if not models or len(set(models)) != len(models):
             raise ExtractionBoundaryError("unsupported_capability")
+        if isinstance(clients, CompetitionModelClients):
+            clients.validate_destinations(
+                tuple(
+                    f"arn:aws:bedrock:{region}::foundation-model/{model}"
+                    for region, model in models
+                )
+            )
         # Validate the entire destination set before fetching any model metadata.
         if any(
             region not in policy.allowed_regions
@@ -218,8 +234,12 @@ def preflight(clients: AWSClients, policy: BedrockAccessPolicy) -> Any:
                 raise ExtractionBoundaryError("unsupported_capability")
         return client("bedrock-runtime", policy.region)
     except ExtractionBoundaryError:
+        if routing_client is not None:
+            routing_client.invalidate()
         raise
     except Exception as error:
+        if routing_client is not None:
+            routing_client.invalidate()
         code = provider_failure(error)
         raise ExtractionBoundaryError(
             "configuration_error" if code == "provider_error" else code
