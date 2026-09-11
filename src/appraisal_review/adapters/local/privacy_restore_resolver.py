@@ -18,10 +18,20 @@ from appraisal_review.adapters.local.privacy_bridge import (
     PrivacyBridgeSession,
 )
 from appraisal_review.application.document_transfer import DocumentTransferService
+from appraisal_review.application.privacy_diagnostics import (
+    diagnostic_stage,
+    note_failure,
+    restore_stage,
+)
 from appraisal_review.application.privacy_refill import validate_refill
 from appraisal_review.application.service_guards import Principal
 from appraisal_review.domain.artifact_publication import ArtifactKey, PublishedArtifact
 from appraisal_review.domain.document_transfer import DocumentMetadata
+from appraisal_review.domain.privacy_diagnostics import (
+    LocalRestoreFailure,
+    RestoreFailureCode,
+    RestoreStage,
+)
 from appraisal_review.domain.privacy_mapping import LocalMappingRecord
 from appraisal_review.domain.privacy_models import (
     RehydrationField,
@@ -79,16 +89,21 @@ class _CurrentPublication:
         plan: RehydrationPlan,
         artifact: PublishedRefillArtifact | None = None,
     ) -> bool:
-        try:
-            actual, mapping = self.owner._checked(self.principal, self.result)
-            return (
-                actual == self.expected
-                and mapping == self.mapping
-                and plan == self.plan
-                and (artifact is None or artifact == self.artifact)
-            )
-        except Exception:
-            return False
+        with restore_stage(RestoreStage.PUBLICATION):
+            try:
+                actual, mapping = self.owner._checked(self.principal, self.result)
+                permitted = (
+                    actual == self.expected
+                    and mapping == self.mapping
+                    and plan == self.plan
+                    and (artifact is None or artifact == self.artifact)
+                )
+                if not permitted:
+                    note_failure(LocalRestoreFailure(RestoreFailureCode.AUTHORITY_DENIED))
+                return permitted
+            except Exception as error:
+                note_failure(error)
+                return False
 
 
 class LocalRestoreCoordinator:
@@ -121,6 +136,7 @@ class LocalRestoreCoordinator:
         self._lock = RLock()
         self._cache: dict[UUID, tuple[RestorePublication, PrivacyBridgeRestore]] = {}
 
+    @diagnostic_stage(RestoreStage.PUBLICATION)
     def _checked(
         self, principal_id: str, result_id: UUID
     ) -> tuple[RestorePublication, LocalMappingRecord]:
@@ -174,7 +190,8 @@ class LocalRestoreCoordinator:
             raise ValueError("Exact successful export mapping required")
         # Selection never reads unrelated exports. The chosen record must still
         # decrypt and satisfy every identity, retention and access check.
-        mapping = self.session.mappings.read(handle)
+        with restore_stage(RestoreStage.MAPPING):
+            mapping = self.session.mappings.read(handle)
         if (
             mapping.map_id != map_id
             or mapping.manifest != manifest

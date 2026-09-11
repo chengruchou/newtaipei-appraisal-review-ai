@@ -7,7 +7,13 @@ import time
 from datetime import UTC, datetime
 from typing import Literal
 
+from appraisal_review.application.privacy_diagnostics import (
+    diagnostic_stage,
+    note_failure,
+    restore_stage,
+)
 from appraisal_review.application.privacy_guards import PrivacyFault
+from appraisal_review.domain.privacy_diagnostics import RestoreStage
 from appraisal_review.domain.privacy_mapping import LocalMappingHandle, LocalMappingRecord
 from appraisal_review.domain.privacy_models import PrivacyErrorCode, RehydrationPlan
 from appraisal_review.domain.privacy_refill import (
@@ -124,6 +130,7 @@ class LocalPrivacyRefillExecutor:
         self._publisher, self._authority = publisher, authority
         self._processor, self._ocr, self._sink = processor, ocr, sink
 
+    @diagnostic_stage(RestoreStage.OCR_VALIDATION)
     def _tokens(
         self,
         data: bytes,
@@ -133,7 +140,8 @@ class LocalPrivacyRefillExecutor:
         stage: Literal["published", "restored"],
     ) -> None:
         pages = artifact.descriptor.pages
-        rendered = self._processor.render(data, pages)
+        with restore_stage(RestoreStage.RENDER):
+            rendered = self._processor.render(data, pages)
         if len(rendered) != len(pages):
             raise ValueError("Page coverage differs")
         deadline = time.monotonic() + 30
@@ -142,10 +150,11 @@ class LocalPrivacyRefillExecutor:
             if remaining <= 0:
                 raise RefillOCRFailure(stage=stage, page=page.number, reason="ocr_deadline")
             try:
-                observations = tuple(
-                    TextObservation.model_validate(o)
-                    for o in self._ocr.read(image.preview, page, timeout=remaining)
-                )
+                with restore_stage(RestoreStage.OCR):
+                    observations = tuple(
+                        TextObservation.model_validate(o)
+                        for o in self._ocr.read(image.preview, page, timeout=remaining)
+                    )
             except Exception:
                 raise RefillOCRFailure(
                     stage=stage, page=page.number, reason="ocr_unavailable"
@@ -187,39 +196,50 @@ class LocalPrivacyRefillExecutor:
                     observations=observations,
                 ) from None
 
+    @diagnostic_stage(RestoreStage.AUTOMATIC_RESTORE)
     def execute(self, handle: LocalMappingHandle, plan: RehydrationPlan) -> FinalLocalArtifact:
         try:
             handle = LocalMappingHandle.model_validate(handle)
             plan = RehydrationPlan.model_validate(plan)
-            if self._authority.permits(plan) is not True:
-                raise PrivacyFault(PrivacyErrorCode.UNAUTHORIZED)
-            mapping = LocalMappingRecord.model_validate(self._mappings.read(handle))
+            with restore_stage(RestoreStage.AUTHORITY):
+                if self._authority.permits(plan) is not True:
+                    raise PrivacyFault(PrivacyErrorCode.UNAUTHORIZED)
+            with restore_stage(RestoreStage.MAPPING):
+                mapping = LocalMappingRecord.model_validate(self._mappings.read(handle))
             if (
                 mapping.map_id != handle.map_id
                 or mapping.command.source.case_id != handle.case_id
                 or mapping.expires_at != handle.expires_at
             ):
                 raise ValueError("Mapping reader returned different identity")
-            artifact = self._publisher.current(plan)
-            validate_refill(mapping, plan, artifact)
-            if self._publisher.permits(plan, artifact) is not True:
-                raise PrivacyFault(PrivacyErrorCode.UNAUTHORIZED)
+            with restore_stage(RestoreStage.PUBLICATION):
+                artifact = self._publisher.current(plan)
+            with restore_stage(RestoreStage.PLAN):
+                validate_refill(mapping, plan, artifact)
+            with restore_stage(RestoreStage.AUTHORITY):
+                if self._publisher.permits(plan, artifact) is not True:
+                    raise PrivacyFault(PrivacyErrorCode.UNAUTHORIZED)
             self._tokens(artifact.pdf, artifact, artifact.descriptor.targets, stage="published")
-            original = self._sources.read(mapping.command.source)
-            final_pdf = self._processor.write(mapping, plan, artifact, original)
+            with restore_stage(RestoreStage.SOURCE):
+                original = self._sources.read(mapping.command.source)
+            with restore_stage(RestoreStage.CANDIDATE_WRITE):
+                final_pdf = self._processor.write(mapping, plan, artifact, original)
             self._tokens(final_pdf, artifact, (), stage="restored")
             # Revalidate mapping access/retention and both authorities after the slow work.
-            if (
-                self._mappings.read(handle) != mapping
-                or self._sources.read(mapping.command.source) != original
-            ):
-                raise ValueError("Local inputs changed")
-            validate_refill(mapping, plan, artifact)
-            if (
-                self._authority.permits(plan) is not True
-                or self._publisher.permits(plan, artifact) is not True
-            ):
-                raise PrivacyFault(PrivacyErrorCode.UNAUTHORIZED)
+            with restore_stage(RestoreStage.MAPPING):
+                if self._mappings.read(handle) != mapping:
+                    raise ValueError("Local inputs changed")
+            with restore_stage(RestoreStage.SOURCE):
+                if self._sources.read(mapping.command.source) != original:
+                    raise ValueError("Local inputs changed")
+            with restore_stage(RestoreStage.PLAN):
+                validate_refill(mapping, plan, artifact)
+            with restore_stage(RestoreStage.AUTHORITY):
+                if (
+                    self._authority.permits(plan) is not True
+                    or self._publisher.permits(plan, artifact) is not True
+                ):
+                    raise PrivacyFault(PrivacyErrorCode.UNAUTHORIZED)
             result = FinalLocalArtifact(
                 FinalLocalManifest(
                     case_id=plan.case_id,
@@ -244,5 +264,6 @@ class LocalPrivacyRefillExecutor:
             return result
         except PrivacyFault:
             raise
-        except Exception:
+        except Exception as error:
+            note_failure(error)
             raise PrivacyFault(PrivacyErrorCode.VERIFICATION_FAILED) from None
