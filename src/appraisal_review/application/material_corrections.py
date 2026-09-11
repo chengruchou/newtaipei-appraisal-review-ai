@@ -188,7 +188,9 @@ class MaterialSubjectMap:
             original.value is None or not original.evidence or not observation.evidence
         ):
             raise ValueError("Missing values or evidence require an explicit supply task")
-        purposes = SourcePurposes.selected(material.policy.registry)
+        purposes = SourcePurposes.selected(
+            material.policy.registry, bundle=material.policy.rule_bundle
+        )
         if not purposes.allows(list(proposed.evidence), "case"):
             raise ValueError("Correction evidence must resolve to the selected case forms")
         if not proposed.raw_text.strip() or not any(
@@ -246,7 +248,9 @@ class MaterialSubjectMap:
         revised = snapshot.revise(snapshot.material, revision_id, changes=snapshot.revision.changes)
         material = revised.material
         pair, side = self._resolve(material, subject_id)
-        purposes = SourcePurposes.selected(material.policy.registry)
+        purposes = SourcePurposes.selected(
+            material.policy.registry, bundle=material.policy.rule_bundle
+        )
         if not purposes.allows(getattr(pair, f"{side}_sources"), "case"):
             raise ValueError("Confirmation evidence must resolve to the selected case forms")
         confirm_side(pair, side, reviewer=actor.actor_id)

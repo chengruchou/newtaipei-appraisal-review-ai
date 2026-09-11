@@ -156,8 +156,8 @@ class LocalStack:
                 ):
                     raise ValueError("This container only reopens its fixed synthetic core state")
         else:
-            if state is not None or api_fixture is None or privacy_base is None:
-                raise ValueError("Host companion mode requires private API fixture and bridge")
+            if state is not None or api_fixture is None:
+                raise ValueError("Host companion mode requires private API configuration")
             private_path(api_fixture)
             self.fixture = json.loads(api_fixture.read_bytes())
             loopback_origin(self.fixture["api_base_url"])
@@ -228,7 +228,9 @@ class LocalStack:
 
                 from appraisal_review.domain.job_contracts import JobStatusView
 
-                job = str(UUID(self.fixture["empty_job_id"]))
+                job = str(
+                    UUID(self.fixture.get("configured_job_id", self.fixture.get("empty_job_id")))
+                )
                 status, _, body = await asyncio.to_thread(
                     self.forward,
                     "GET",

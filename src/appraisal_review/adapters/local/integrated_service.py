@@ -24,7 +24,6 @@ from appraisal_review.adapters.local.artifact_publication import CommittedResult
 from appraisal_review.adapters.local.sqlite_review_store import SQLiteReviewStore
 from appraisal_review.api.app import create_app
 from appraisal_review.api.dependencies import get_principal
-from appraisal_review.application.document_transfer import DocumentTransferService
 from appraisal_review.application.human_tasks import HumanTaskService
 from appraisal_review.application.outbox import DispatchMessage, JobReconciler, OutboxDispatcher
 from appraisal_review.application.revisions import RevisionSnapshot
@@ -36,15 +35,17 @@ from appraisal_review.application.runtime_worker import (
 )
 from appraisal_review.application.service_guards import Principal, ServiceFault
 from appraisal_review.domain.artifact_publication import PublicationError
-from appraisal_review.domain.document_transfer import DocumentFault
+from appraisal_review.domain.document_transfer import DocumentFault, DocumentOperation
 from appraisal_review.domain.service_contracts import (
     DocumentReference,
     MaterialRevision,
     Permission,
     RevisionReference,
     ServiceErrorCode,
+    ServiceResult,
 )
 from appraisal_review.ports.jobs import ClaimedAttempt, JobRecord
+from appraisal_review.ports.runtime_documents import RuntimeDocuments
 
 _request_principal: ContextVar[Principal | None] = ContextVar("review_principal", default=None)
 
@@ -175,9 +176,16 @@ class LocalMaterialCatalog:
         if row is None or row[0] != principal.actor.actor_id:
             raise ServiceFault(ServiceErrorCode.NOT_FOUND)
         snapshot = RevisionSnapshot(row[1], row[2])
-        if snapshot.revision.reference != reference:
+        revision = snapshot.revision
+        rebuilt = RevisionSnapshot.capture(
+            snapshot.material,
+            revision.reference.revision_id,
+            parent=revision.parent,
+            changes=revision.changes,
+        )
+        if revision.reference != reference or rebuilt.revision != revision:
             raise ServiceFault(ServiceErrorCode.CONFLICT)
-        return snapshot
+        return rebuilt
 
     async def read(self, principal: Principal, reference: RevisionReference) -> MaterialRevision:
         return (await self.snapshot(principal, reference)).revision
@@ -197,11 +205,70 @@ class LocalMaterialCatalog:
 
 
 @dataclass
+class LocalWorkbenchReadAccess:
+    directory: LocalDirectory
+    catalog: LocalMaterialCatalog
+    documents: RuntimeDocuments
+
+    async def read(self, principal: Principal, reference: RevisionReference) -> RevisionSnapshot:
+        current = await self.directory.read(principal.actor.actor_id, reference.case_id)
+        if current.actor != principal.actor:
+            raise ServiceFault(ServiceErrorCode.UNAUTHORIZED)
+        snapshot = await self.catalog.snapshot(current, reference)
+        try:
+            for document in snapshot.revision.documents:
+                await asyncio.to_thread(self.documents.read, current, document)
+        except DocumentFault as error:
+            raise source_fault(error) from None
+        latest = await self.directory.read(principal.actor.actor_id, reference.case_id)
+        if latest != current:
+            raise ServiceFault(ServiceErrorCode.UNAUTHORIZED)
+        return snapshot
+
+    async def require_current(
+        self, principal: Principal, references: tuple[RevisionReference, ...]
+    ) -> None:
+        snapshots = [await self.catalog.snapshot(principal, reference) for reference in references]
+        for case_id in {reference.case_id for reference in references}:
+            latest = await self.directory.read(principal.actor.actor_id, case_id)
+            if latest != principal:
+                raise ServiceFault(ServiceErrorCode.UNAUTHORIZED)
+        # No await after the last principal refresh: independent purpose revocation
+        # must also fence the response, even when case membership remains unchanged.
+        try:
+            for snapshot in snapshots:
+                for document in snapshot.revision.documents:
+                    self.documents.authorization.require(
+                        principal, document.case_id, document.purpose, DocumentOperation.READ
+                    )
+        except DocumentFault as error:
+            raise source_fault(error) from None
+
+
+class LocalWorkbenchJobService(SnapshotJobService):
+    workbench_access: LocalWorkbenchReadAccess
+
+    async def result(self, principal: Principal, job_id: UUID) -> ServiceResult:
+        record = await self._authorized(principal, job_id)
+        reference = record.current_run.revision
+        await self.workbench_access.read(principal, reference)
+        result = await super().result(principal, job_id)
+        if (
+            result.run.revision != reference
+            or result.run.run_id != record.current_run.run_id
+            or await self._authorized(principal, job_id) != record
+        ):
+            raise ServiceFault(ServiceErrorCode.CONFLICT)
+        await self.workbench_access.require_current(principal, (reference,))
+        return result
+
+
+@dataclass
 class CurrentSourceExecution:
     execution: ReviewExecution
     directory: LocalDirectory
     catalog: LocalMaterialCatalog
-    documents: DocumentTransferService
+    documents: RuntimeDocuments
     store: SQLiteReviewStore
 
     async def execute(self, record: JobRecord, attempt: ClaimedAttempt) -> ExecutedReview:
@@ -343,25 +410,59 @@ def create_integrated_service(
     authority: str,
     directory: LocalDirectory,
     catalog: LocalMaterialCatalog,
-    documents: DocumentTransferService,
+    documents: RuntimeDocuments,
     execution: ReviewExecution,
-    resolver: CommittedResultResolver,
+    resolver: CommittedResultResolver | None,
     worker_enabled: bool = True,
     worker_timeout: float = 60,
+    source_delivery_enabled: bool = True,
+    legacy_review_enabled: bool = True,
+    poll_interval: float = 0.1,
+    attempt_scoped_reviews: bool = False,
 ) -> FastAPI:
     if not authority.startswith("127.0.0.1:"):
         raise ValueError("This configured local service requires a numeric loopback authority")
+    if not 0.05 <= poll_interval <= 5:
+        raise ValueError("Local polling requires a bounded interval")
     store = catalog.store
-    service = SnapshotJobService(store, store.results, policy=store.policy)
+    access = LocalWorkbenchReadAccess(directory, catalog, documents)
+    service = LocalWorkbenchJobService(store, store.results, policy=store.policy)
+    service.workbench_access = access
     service.bind_sources(documents, catalog)
     worker = RuntimeWorker(
         service,
         CurrentSourceExecution(execution, directory, catalog, documents, store),
         timeout_seconds=worker_timeout,
     )
+    from appraisal_review.adapters.local.service import public_verification
+    from appraisal_review.adapters.local.workflow_runtime import SQLiteWorkflowReviews
+    from appraisal_review.domain.service_contracts import RunReference
+    from appraisal_review.domain.workbench_contracts import PausedReviewView
+
+    review_store = SQLiteWorkflowReviews(store, attempt_scoped=attempt_scoped_reviews)
+
+    async def assessment(run: RunReference, snapshot: RevisionSnapshot) -> PausedReviewView | None:
+        review = await review_store.read(run)
+        if review is None or review.case_review is None:
+            return None
+        if review.case_review.identity != snapshot.material.policy.identity:
+            raise ServiceFault(ServiceErrorCode.CONFLICT)
+        return PausedReviewView(
+            run=run,
+            status=review.case_review.status,
+            findings=tuple(review.case_review.findings),
+            coverage=review.case_review.coverage,
+            verification=public_verification(review.verification),
+        )
+
     app = create_app(
         job_service=service,
-        human_task_service=HumanTaskService(store, new_revision_id=lambda: str(uuid4())),
+        human_task_service=HumanTaskService(
+            store,
+            new_revision_id=lambda: str(uuid4()),
+            assessment_reader=assessment,
+            workbench_access=access,
+        ),
         principal_resolver=directory,
     )
     app.state.material_catalog = catalog
@@ -369,6 +470,14 @@ def create_integrated_service(
     app.state.worker_problem = None
     queue = SQLiteDispatchQueue(store)
     app.state.dispatch_queue = queue
+    if not legacy_review_enabled:
+        # The local-original composition admits only configured revision references.
+        # It must not expose the legacy caller-URI execution entry point.
+        app.router.routes = [
+            route
+            for route in app.router.routes
+            if getattr(route, "path", None) not in {"/v1/reviews", "/v1/validate"}
+        ]
 
     @asynccontextmanager
     async def lifespan(application: FastAPI) -> AsyncIterator[None]:
@@ -386,7 +495,7 @@ def create_integrated_service(
                 except Exception:
                     application.state.worker_problem = "worker_unavailable"
                 with suppress(TimeoutError):
-                    await asyncio.wait_for(stop.wait(), timeout=0.1)
+                    await asyncio.wait_for(stop.wait(), timeout=poll_interval)
 
         task = asyncio.create_task(tick()) if worker_enabled else None
         try:
@@ -424,6 +533,8 @@ def create_integrated_service(
         content_hash: str,
         principal: Annotated[Principal, Depends(get_principal)],
     ) -> Response:
+        if not source_delivery_enabled:
+            raise ServiceFault(ServiceErrorCode.CAPABILITY)
         reference = catalog.source(str(document_id), version, content_hash)
         principal.require(reference.case_id, Permission.REVIEW)
         try:
@@ -438,6 +549,8 @@ def create_integrated_service(
         artifact_id: UUID,
         principal: Annotated[Principal, Depends(get_principal)],
     ) -> Response:
+        if resolver is None:
+            raise ServiceFault(ServiceErrorCode.CAPABILITY)
         status = await service.status(principal, job_id)
         result = await service.result(principal, job_id)
         if status.current_run is None:

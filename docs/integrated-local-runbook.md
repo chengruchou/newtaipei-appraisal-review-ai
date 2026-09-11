@@ -1,5 +1,10 @@
 # Configured local integration rehearsal
 
+For the current real-source KPI1 flow, use the separate
+[controlled original workbench](local-original-workbench.md). This runbook retains
+its explicitly synthetic rehearsal scope; its results do not substitute for
+real-document acceptance.
+
 Baseline: `main` after PR #45, merge commit
 `d148422adb18190bada93b8588a4e34d73e3c2e4`. Its application tree matches reviewed
 head `fd22e68321bad6b58f06068dfef1db67fdb1c269`. A complete synthetic privacy

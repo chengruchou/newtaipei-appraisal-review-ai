@@ -92,8 +92,16 @@ from appraisal_review.domain.task_contracts import (
     TaskSubjectView,
     TaskView,
 )
+from appraisal_review.domain.workbench_contracts import (
+    CaseContextView,
+    PausedReviewView,
+    ReviewSessionView,
+)
 
 MODELS = (
+    CaseContextView,
+    PausedReviewView,
+    ReviewSessionView,
     CaseReviewResult,
     WorkflowPause,
     WorkflowContinuation,

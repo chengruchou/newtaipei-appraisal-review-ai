@@ -2,6 +2,14 @@
 
 ## Current status
 
+The local KPI1 candidate is recorded separately in
+[the delivery record](kpi1-delivery.md). It adds a real-original workbench on top
+of Draft #54, with actual local parsing, source selection and fact-response
+receipt/recovery evidence. Necessary case-condition operations, applicable-rule
+confirmation and designated-template output are incomplete. This is a partial
+delivery, not KPI1 acceptance, and it does not change the historical validation
+or cloud status below.
+
 The latest inspected remote `main` is
 `f241e7a479d3135e81bb47bcf9a94f2685492fdf`. The follow-up stack is under
 review after #52 and #53; its clean executable checkpoint is

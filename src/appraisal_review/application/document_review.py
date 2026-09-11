@@ -18,16 +18,23 @@ from appraisal_review.domain.factor_models import (
     ScopedRules,
 )
 from appraisal_review.domain.review_contracts import CaseIdentity, InventoryContext, ReviewInventory
+from appraisal_review.domain.rule_sources import RuleBundle, RuleDocumentVersion
 from appraisal_review.domain.source_purpose import SourcePurposes
 from appraisal_review.ports.approval import ReviewAuthorization
 from appraisal_review.ports.workflow import ParsedDocument
 
 
 def assemble(
-    identity: CaseIdentity, registry: SourceRegistry, extractions: list[PageExtraction]
+    identity: CaseIdentity,
+    registry: SourceRegistry,
+    extractions: list[PageExtraction],
+    *,
+    rule_bundle: RuleBundle | None = None,
 ) -> ReviewMaterial:
     """Page continuations merge inventory only; duplicate facts/rules never silently overwrite."""
-    purposes = SourcePurposes.selected(registry)
+    purposes = SourcePurposes.selected(registry, bundle=rule_bundle)
+    if rule_bundle is not None and rule_bundle.identity != identity:
+        raise ValueError("Rule bundle belongs to a different case revision")
     seen = set()
     contexts: dict[str, InventoryContext] = {}
     rules: dict[str, list[ProposedRule]] = defaultdict(list)
@@ -64,7 +71,7 @@ def assemble(
                 current.factor_ids = list(dict.fromkeys([*current.factor_ids, *context.factor_ids]))
                 current.evidence.extend(context.evidence)
         for candidate in proposal.rules:
-            if source.role != "criteria":
+            if not purposes.allows(candidate.evidence, "rule", scope=candidate.scope):
                 unresolved.append(
                     "Reference/background rules require explicit applicability review"
                 )
@@ -72,25 +79,49 @@ def assemble(
             rules[candidate.scope].append(candidate)
             unresolved.extend(candidate.unresolved)
         unresolved.extend(proposal.unresolved)
-    criteria = [d for d in registry.documents if d.role == "criteria"]
-    if len(criteria) != 1:
-        raise ValueError("Exactly one criteria source is required for candidate assembly")
-    source = criteria[0]
     scoped = []
     for context in contexts.values():
         proposed = rules[context.context.scope]
         if not proposed:
             unresolved.append(f"No supported rules for {context.context.scope}")
             continue
+        contributing = {
+            ref.document_id: next(d for d in registry.documents if d.document_id == ref.document_id)
+            for candidate in proposed
+            for ref in candidate.evidence
+        }
+        source = (
+            contributing.get(purposes.criteria.document_id) or contributing[sorted(contributing)[0]]
+        )
+        if rule_bundle is None and (len(contributing) != 1 or source != purposes.criteria):
+            raise ValueError("Multiple rule sources require an explicit bundle")
+        version = rule_bundle.selection_id if rule_bundle is not None else source.version
         scoped.append(
             ScopedRules(
                 context=context.context,
                 source_version=source.version,
                 zone=identity.zone,
                 evidence=[ref for rule in proposed for ref in rule.evidence],
+                additional_sources=[
+                    RuleDocumentVersion(
+                        document_id=d.document_id,
+                        version=d.version,
+                        content_hash=d.content_hash,
+                        pages=sorted(
+                            {
+                                ref.page
+                                for candidate in proposed
+                                for ref in candidate.evidence
+                                if ref.document_id == d.document_id
+                            }
+                        ),
+                    )
+                    for d in contributing.values()
+                    if d.document_id != source.document_id
+                ],
                 rules=FactorRuleSet(
                     rule_set_id=f"{source.document_id}.{context.context.scope}",
-                    version=source.version,
+                    version=version,
                     status="candidate",
                     applicability=RuleApplicability(
                         jurisdiction=identity.district,
@@ -101,7 +132,14 @@ def assemble(
                     source_document=RuleSource(
                         document_id=source.document_id,
                         content_hash=source.content_hash,
-                        pages=sorted({ref.page for rule in proposed for ref in rule.evidence}),
+                        pages=sorted(
+                            {
+                                ref.page
+                                for rule in proposed
+                                for ref in rule.evidence
+                                if ref.document_id == source.document_id
+                            }
+                        ),
                     ),
                     rules=[rule.rule for rule in proposed],
                 ),
@@ -114,6 +152,7 @@ def assemble(
         identity=identity,
         registry=registry,
         rule_sets=scoped,
+        rule_bundle=rule_bundle,
         inventory=ReviewInventory(
             contexts=list(contexts.values()),
             slots=[slot for p in proposals for slot in p.slots],
@@ -147,6 +186,10 @@ class MaterialProvider:
 
     async def load_or_build_rules(self, criteria: ParsedDocument) -> ReviewPolicy:
         expected = [d for d in self.material.policy.registry.documents if d.role == "criteria"]
+        bundle = self.material.policy.rule_bundle
+        if bundle is not None:
+            SourcePurposes.selected(self.material.policy.registry, bundle=bundle)
+            expected = [d for d in expected if d.document_id == bundle.primary_criteria_document_id]
         if len(expected) != 1 or criteria.source != expected[0]:
             raise ValueError("Criteria source changed since candidate preparation")
         return self.material.policy

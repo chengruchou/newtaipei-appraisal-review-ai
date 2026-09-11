@@ -61,6 +61,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/review-jobs/{job_id}/assessment": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Read Paused Assessment */
+    get: operations["read_paused_assessment_v1_review_jobs__job_id__assessment_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/review-jobs/{job_id}/cancel": {
     parameters: {
       query?: never;
@@ -75,6 +92,23 @@ export interface paths {
      * @description A running attempt is asked to stop cooperatively, never killed mid-write.
      */
     post: operations["cancel_review_job_v1_review_jobs__job_id__cancel_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/review-jobs/{job_id}/context": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Read Case Context */
+    get: operations["read_case_context_v1_review_jobs__job_id__context_get"];
+    put?: never;
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -138,6 +172,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/review-session": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Read Review Session */
+    get: operations["read_review_session_v1_review_session_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/review-tasks/{task_id}": {
     parameters: {
       query?: never;
@@ -172,6 +223,23 @@ export interface paths {
      * @description 200 means the answer is committed; an exact replay returns the same receipt body.
      */
     post: operations["submit_task_response_v1_review_tasks__task_id__responses_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/review-tasks/{task_id}/responses/{key}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Read Task Response */
+    get: operations["read_task_response_v1_review_tasks__task_id__responses__key__get"];
+    put?: never;
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -379,6 +447,80 @@ export interface components {
         [key: string]: string;
       };
     };
+    /**
+     * CaseConditionCandidate
+     * @description A source-backed proposed condition, never an assertion of applicability.
+     */
+    CaseConditionCandidate: {
+      /** Evidence */
+      evidence: components["schemas"]["SourceCitation"][];
+      /**
+       * Field
+       * @enum {string}
+       */
+      field:
+        | "case_id"
+        | "district"
+        | "zone"
+        | "land_use_category"
+        | "effective_date"
+        | "current_use"
+        | "regulatory_zone"
+        | "target_id"
+        | "comparable_id";
+      /** Interpretation */
+      interpretation: string;
+      /**
+       * Method
+       * @default manual_proposed
+       * @enum {string}
+       */
+      method: "native_proposed" | "manual_proposed";
+      /** Value */
+      value: string;
+    };
+    /**
+     * CaseContextView
+     * @description Exact current material metadata; selection is not confirmation or approval.
+     *
+     *     The exact semantic snapshot is required. No source path, raw material payload,
+     *     principal roster or future deployment region is exposed. Document purposes are
+     *     preserved, not inferred as general rules, district prices or report templates.
+     */
+    CaseContextView: {
+      /**
+       * Documents
+       * @default []
+       */
+      documents: components["schemas"]["DocumentReference"][];
+      identity: components["schemas"]["CaseIdentity"] | null;
+      job: components["schemas"]["JobReference"];
+      /**
+       * Observations
+       * @default []
+       */
+      observations: components["schemas"]["CaseObservationView"][];
+      revision: components["schemas"]["RevisionReference"];
+      rule_bundle?: components["schemas"]["RuleBundleView"] | null;
+      /** Rule Bundle Id */
+      rule_bundle_id?: string | null;
+      /**
+       * Rules
+       * @default []
+       */
+      rules: components["schemas"]["PinnedRuleView"][];
+      /**
+       * Schema Version
+       * @default service-v1
+       * @constant
+       */
+      schema_version: "service-v1";
+      /**
+       * Selections
+       * @default []
+       */
+      selections: components["schemas"]["RuleSelectionView"][];
+    };
     /** CaseIdentity */
     CaseIdentity: {
       /** Case Id */
@@ -397,6 +539,17 @@ export interface components {
       /** Zone */
       zone: string;
     };
+    /** CaseObservationView */
+    CaseObservationView: {
+      observation: components["schemas"]["PublicValue-Output"];
+      /**
+       * Schema Version
+       * @default service-v1
+       * @constant
+       */
+      schema_version: "service-v1";
+      side: components["schemas"]["FactSideReference"];
+    };
     /** CaseReviewResult */
     CaseReviewResult: {
       /** Comparisons */
@@ -412,6 +565,53 @@ export interface components {
        */
       schema_version: "2.0";
       status: components["schemas"]["EvaluationStatus"];
+    };
+    /** CatalogRuleSource */
+    CatalogRuleSource: {
+      /** Content Hash */
+      content_hash: string;
+      /** District */
+      district: string;
+      /** Document Id */
+      document_id: string;
+      /** Effective From */
+      effective_from: string | null;
+      /** Effective To */
+      effective_to: string | null;
+      /** Entry Id */
+      entry_id: string;
+      /** Entry Version */
+      entry_version: string;
+      /** Evidence */
+      evidence: components["schemas"]["SourceCitation"][];
+      /** Land Use Category */
+      land_use_category: string;
+      /** Pages */
+      pages: number[];
+      /**
+       * Review Status
+       * @default candidate
+       * @enum {string}
+       */
+      review_status: "candidate" | "reviewed";
+      /**
+       * Role
+       * @enum {string}
+       */
+      role: "general_rules" | "district_basis";
+      /** Scopes */
+      scopes: ("regional" | "individual")[];
+      /** Unresolved */
+      unresolved?: string[];
+      /**
+       * Use
+       * @enum {string}
+       */
+      use: "factor_rules" | "procedure";
+      /** Version */
+      version: string;
+      /** Zone */
+      zone: string;
     };
     /**
      * CheckStatus
@@ -990,6 +1190,30 @@ export interface components {
       written_field_ids: string[];
     };
     /**
+     * PausedReviewView
+     * @description An exact stored human-handoff assessment, never a committed or published result.
+     */
+    PausedReviewView: {
+      coverage: components["schemas"]["Coverage"];
+      /** Findings */
+      findings: components["schemas"]["ReviewFinding"][];
+      run: components["schemas"]["RunReference"];
+      /**
+       * Schema Version
+       * @default service-v1
+       * @constant
+       */
+      schema_version: "service-v1";
+      /**
+       * Scope
+       * @default paused_review
+       * @constant
+       */
+      scope: "paused_review";
+      status: components["schemas"]["EvaluationStatus"];
+      verification: components["schemas"]["ServiceVerification"] | null;
+    };
+    /**
      * Permission
      * @enum {string}
      */
@@ -1000,6 +1224,26 @@ export interface components {
       | "approve_rules"
       | "approve_material"
       | "publish_artifact";
+    /** PinnedRuleView */
+    PinnedRuleView: {
+      applicability: components["schemas"]["RuleApplicability"];
+      /**
+       * Declared Status
+       * @enum {string}
+       */
+      declared_status: "candidate" | "approved" | "rejected";
+      /** Evidence */
+      evidence: components["schemas"]["SourceCitation"][];
+      reference: components["schemas"]["RuleReference"];
+      /**
+       * Schema Version
+       * @default service-v1
+       * @constant
+       */
+      schema_version: "service-v1";
+      /** Zone */
+      zone: string;
+    };
     /**
      * PublicValue
      * @description URI-free view of an original/proposed value; never a trusted fact input.
@@ -1149,6 +1393,30 @@ export interface components {
       schema_version: string;
     };
     /**
+     * ReviewSessionView
+     * @description The currently authenticated actor, not a registration or permission grant.
+     */
+    ReviewSessionView: {
+      actor: components["schemas"]["ActorReference"];
+      /**
+       * Configured Jobs
+       * @default []
+       */
+      configured_jobs: components["schemas"]["JobReference"][];
+      /**
+       * Data Mode
+       * @default unspecified
+       * @enum {string}
+       */
+      data_mode: "unspecified" | "synthetic" | "local_original";
+      /**
+       * Schema Version
+       * @default service-v1
+       * @constant
+       */
+      schema_version: "service-v1";
+    };
+    /**
      * ReviewSubmission
      * @description Reserved jobs request; no jobs route or durable implementation in M0.
      */
@@ -1201,6 +1469,38 @@ export interface components {
        */
       schema_version: "service-v1";
     };
+    /** RuleApplicability */
+    RuleApplicability: {
+      /** Effective From */
+      effective_from?: string | null;
+      /** Effective To */
+      effective_to?: string | null;
+      /** Jurisdiction */
+      jurisdiction: string;
+      /** Land Use Category */
+      land_use_category: string;
+    };
+    /**
+     * RuleBundleView
+     * @description Selected, authorized sources only; the full internal catalog stays private.
+     */
+    RuleBundleView: {
+      /** Catalog Digest */
+      catalog_digest: string;
+      /** Catalog Version */
+      catalog_version: string;
+      /** Condition Candidates */
+      condition_candidates?: components["schemas"]["CaseConditionCandidate"][];
+      /** Conditions Confirmed */
+      conditions_confirmed: boolean;
+      /** Contexts */
+      contexts: components["schemas"]["ComparisonContext"][];
+      identity: components["schemas"]["CaseIdentity"];
+      /** Primary Criteria Document Id */
+      primary_criteria_document_id: string;
+      /** Sources */
+      sources: components["schemas"]["CatalogRuleSource"][];
+    };
     /**
      * RuleDefinition
      * @description A versioned deterministic validation rule.
@@ -1246,6 +1546,23 @@ export interface components {
       schema_version: "service-v1";
       /** Version */
       version: string;
+    };
+    /** RuleSelectionView */
+    RuleSelectionView: {
+      context: components["schemas"]["ComparisonContext"];
+      /** Matches */
+      matches: components["schemas"]["RuleReference"][];
+      /**
+       * Schema Version
+       * @default service-v1
+       * @constant
+       */
+      schema_version: "service-v1";
+      /**
+       * Status
+       * @enum {string}
+       */
+      status: "unique" | "missing" | "ambiguous";
     };
     /** RuleSet */
     RuleSet: {
@@ -1736,6 +2053,73 @@ export interface operations {
       };
     };
   };
+  read_paused_assessment_v1_review_jobs__job_id__assessment_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        job_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PausedReviewView"];
+        };
+      };
+      /** @description The principal lacks the case permission */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description No such task or job for this principal */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description The task or revision moved first */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description Invalid response */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description No human-task store is configured */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+    };
+  };
   cancel_review_job_v1_review_jobs__job_id__cancel_post: {
     parameters: {
       query?: never;
@@ -1793,6 +2177,73 @@ export interface operations {
         };
       };
       /** @description No durable job store is configured */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+    };
+  };
+  read_case_context_v1_review_jobs__job_id__context_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        job_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CaseContextView"];
+        };
+      };
+      /** @description The principal lacks the case permission */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description No such task or job for this principal */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description The task or revision moved first */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description Invalid response */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description No human-task store is configured */
       503: {
         headers: {
           [name: string]: unknown;
@@ -2004,6 +2455,71 @@ export interface operations {
       };
     };
   };
+  read_review_session_v1_review_session_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ReviewSessionView"];
+        };
+      };
+      /** @description The principal lacks the case permission */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description No such task or job for this principal */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description The task or revision moved first */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description Invalid response */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description No human-task store is configured */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+    };
+  };
   read_task_v1_review_tasks__task_id__get: {
     parameters: {
       query?: never;
@@ -2085,6 +2601,74 @@ export interface operations {
         "application/json": components["schemas"]["HumanResponse"];
       };
     };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ResponseReceipt"];
+        };
+      };
+      /** @description The principal lacks the case permission */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description No such task or job for this principal */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description The task or revision moved first */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description Invalid response */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description No human-task store is configured */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+    };
+  };
+  read_task_response_v1_review_tasks__task_id__responses__key__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        task_id: string;
+        key: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
     responses: {
       /** @description Successful Response */
       200: {

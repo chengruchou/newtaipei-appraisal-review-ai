@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { expect, it, vi } from "vitest";
 
 import type { ReviewClient } from "@/api/client";
-import { TransportError } from "@/api/problems";
+import { ServiceError, TransportError } from "@/api/problems";
 import { ResponseForm } from "@/features/ResponseForm";
 import { view } from "./fixtures";
 
@@ -11,7 +11,13 @@ function form(submit: ReturnType<typeof vi.fn>) {
   render(
     <ResponseForm
       view={view()}
-      client={{ submitResponse: submit } as unknown as ReviewClient}
+      client={
+        {
+          submitResponse: submit,
+          readResponse: vi.fn().mockRejectedValue(new ServiceError("not_found", 404)),
+          readTask: vi.fn().mockResolvedValue(view()),
+        } as unknown as ReviewClient
+      }
       onCommitted={vi.fn()}
       onReload={vi.fn()}
       mintKey={() => "decision-key"}
@@ -40,7 +46,10 @@ it("resends the exact unknown command and key even after attempted edits", async
   await screen.findByRole("alert");
   const original = JSON.stringify(submit.mock.calls[0]?.[1]);
   await user.click(screen.getByRole("radio", { name: /refuse to confirm/i }));
-  await user.click(screen.getByRole("button", { name: /send again/i }));
+  expect(submit).toHaveBeenCalledTimes(1);
+  expect(screen.queryByRole("button", { name: /send again/i })).not.toBeInTheDocument();
+  await user.click(screen.getByRole("button", { name: /check submission status/i }));
+  await user.click(await screen.findByRole("button", { name: /send again/i }));
   expect(JSON.stringify(submit.mock.calls[1]?.[1])).toBe(original);
   expect(screen.queryByRole("button", { name: /review and submit/i })).not.toBeInTheDocument();
 });
