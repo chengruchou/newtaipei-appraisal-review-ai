@@ -48,6 +48,7 @@ from appraisal_review.ports.controlled_workflow import (
     DecisionTrace,
     WorkflowSnapshotProvider,
 )
+from appraisal_review.ports.model_dispatch import dispatch_async_authority
 from appraisal_review.ports.workflow_run_ledger import (
     WorkflowExternalResultUnknown,
     WorkflowRunLedger,
@@ -159,14 +160,15 @@ class ControlledWorkflowCoordinator:
             await self.ledger.checkpoint(owner, budget)
         current_budget = await self.ledger.remaining(owner)
         try:
-            event = await self._decide_once(
-                owner.run,
-                owner=owner,
-                evidence=evidence,
-                budget=current_budget,
-                retry_charge=retry_charge,
-                initial=initial,
-            )
+            with dispatch_async_authority(lambda: self.ledger.assert_active(owner)):
+                event = await self._decide_once(
+                    owner.run,
+                    owner=owner,
+                    evidence=evidence,
+                    budget=current_budget,
+                    retry_charge=retry_charge,
+                    initial=initial,
+                )
         except ActionSelectionError as error:
             if error.event is not None:
                 await self.ledger.checkpoint(owner, error.event.budget_after)

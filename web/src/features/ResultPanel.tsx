@@ -7,6 +7,9 @@ export function ResultPanel({ client, jobId }: { client: ReviewClient; jobId: st
   const [result, setResult] = useState<ServiceResult | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const sourceOrigins = [
+    ...new Set(result?.findings.flatMap((finding) => finding.originating_field_ids ?? []) ?? []),
+  ].sort();
   const loadSource = useCallback(
     (citation: SourceCitation) => client.readSource(citation),
     [client],
@@ -76,9 +79,38 @@ export function ResultPanel({ client, jobId }: { client: ReviewClient; jobId: st
           ) : (
             <p>Independent verification is unavailable.</p>
           )}
+          {sourceOrigins.length ? (
+            <aside aria-label="Fields requiring source evidence">
+              <h3>Review source evidence for these fields</h3>
+              <p>PDF filling remains blocked for the entire case.</p>
+              <ul>
+                {sourceOrigins.map((fieldId) => {
+                  const label = fieldId || '"" (empty field ID)';
+                  const findingId = `observed/${fieldId}`;
+                  const bindingIndex = result.findings.findIndex(
+                    (finding) =>
+                      finding.id === findingId && finding.kind === "observed_source_binding",
+                  );
+                  const index =
+                    bindingIndex >= 0
+                      ? bindingIndex
+                      : result.findings.findIndex((finding) => finding.id === findingId);
+                  return (
+                    <li key={fieldId}>
+                      {index >= 0 ? <a href={`#review-finding-${index}`}>{label}</a> : label}
+                    </li>
+                  );
+                })}
+              </ul>
+            </aside>
+          ) : null}
           <ul className="plain">
-            {result.findings.map((finding) => (
-              <li className="card" key={finding.id}>
+            {result.findings.map((finding, index) => (
+              <li
+                className="card"
+                key={`${finding.id}/${finding.kind}/${index}`}
+                id={`review-finding-${index}`}
+              >
                 <h3>
                   {finding.kind}: {finding.status}
                 </h3>

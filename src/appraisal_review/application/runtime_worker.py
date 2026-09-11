@@ -13,6 +13,7 @@ from appraisal_review.application.service_guards import ServiceFault
 from appraisal_review.domain.job_contracts import JobStatus
 from appraisal_review.domain.service_contracts import ServiceErrorCode, ServiceResult
 from appraisal_review.ports.jobs import ClaimedAttempt, ConditionFailed, JobRecord
+from appraisal_review.ports.model_dispatch import dispatch_async_authority
 
 
 @dataclass(frozen=True)
@@ -59,8 +60,31 @@ class RuntimeWorker:
                 await self.service.acknowledge_cancel(attempt)
                 return "cancelled"
             # A queue payload contains no caller, source path, rule approval or result.
-            task = asyncio.create_task(self.execution.execute(record, attempt))
-            deadline = asyncio.get_running_loop().time() + self.timeout
+            loop = asyncio.get_running_loop()
+            deadline = loop.time() + self.timeout
+            lease_expires_at = attempt.lease_expires_at
+
+            async def require_dispatch() -> None:
+                current = await self.service.store.read_job(job_id=record.job_id)
+                if (
+                    loop.time() >= deadline
+                    or self.service.clock() >= lease_expires_at
+                    or current is None
+                    or current.status != JobStatus.RUNNING
+                    or current.cancel_requested
+                    or current.current_run != record.current_run
+                    or current.principal_id != record.principal_id
+                    or current.case_id != record.case_id
+                    or current.result_version != attempt.expected_result_version
+                    or current.current_run.attempt_id != attempt.attempt_id
+                ):
+                    raise ConditionFailed("Current uncancelled attempt and lease required")
+
+            async def execute_current() -> ExecutedReview:
+                with dispatch_async_authority(require_dispatch):
+                    return await self.execution.execute(record, attempt)
+
+            task = asyncio.create_task(execute_current())
             while not task.done():
                 remaining = deadline - asyncio.get_running_loop().time()
                 if remaining <= 0:
@@ -71,6 +95,7 @@ class RuntimeWorker:
                 if asyncio.get_running_loop().time() >= deadline:
                     raise TimeoutError
                 state = await self.service.heartbeat(attempt)
+                lease_expires_at = state.lease_expires_at
                 if state.cancel_requested:
                     task.cancel()
                     await asyncio.gather(task, return_exceptions=True)
@@ -115,8 +140,9 @@ class RuntimeWorker:
                 return "superseded"
             return self._failure_outcome(failed)
         finally:
-            if task is not None and not task.done():
-                task.cancel()
+            if task is not None:
+                if not task.done():
+                    task.cancel()
                 await asyncio.gather(task, return_exceptions=True)
 
     @staticmethod

@@ -12,6 +12,7 @@ from pydantic.json_schema import models_json_schema
 
 from appraisal_review.adapters.local.action_selector import DeterministicActionSelector
 from appraisal_review.adapters.local.decision_trace import NonDurableInMemoryDecisionTrace
+from appraisal_review.adapters.local.golden_cases import GoldenAuthorization, golden_fixtures
 from appraisal_review.adapters.local.service import LocalServiceConfiguration
 from appraisal_review.adapters.local.synthetic import synthetic_material
 from appraisal_review.application.action_policy import ControlledActionPolicy
@@ -242,6 +243,17 @@ def fixtures() -> dict[str, DocumentModel]:
         evidence=material.facts.pairs[0].target_sources,
         trace="Synthetic observation requires explicit human confirmation.",
     )
+    originating_material = next(
+        fixture.material
+        for fixture in golden_fixtures()
+        if fixture.case_key == "missing-observation"
+    )
+    originating_review = CaseReviewer(GoldenAuthorization(originating_material)).review(
+        originating_material.policy,
+        originating_material.facts,
+        originating_material.policy.registry,
+    )
+    originating_revision = RevisionSnapshot.capture(originating_material, "originating-fixture-r1")
     budget = Budget(
         steps_remaining=2,
         model_calls_remaining=1,
@@ -406,6 +418,13 @@ def fixtures() -> dict[str, DocumentModel]:
         "decision-executed": executed_decision,
         "bounded-result": bounded_result,
         "result-needs-review": needs_review,
+        "result-originating-fields": ServiceResult(
+            run=RunReference(run_id=UUID(int=9), revision=originating_revision.revision.reference),
+            result_version=1,
+            execution_status=ExecutionStatus.SUCCEEDED,
+            business_status=WorkflowStatus.NEEDS_REVIEW,
+            findings=tuple(originating_review.findings),
+        ),
         "result-source-binding-failed": ServiceResult(
             run=run,
             result_version=1,

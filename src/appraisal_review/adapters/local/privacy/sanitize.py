@@ -133,6 +133,13 @@ class TesseractPrivacyOutputOCR:
         self._ocr = ocr
         self._dpi = dpi
 
+    def identity(self) -> str:
+        """Revalidate the pinned engine/assets before issuing a local review binding."""
+        version = self._ocr.preflight(timeout=5)
+        return hashlib.sha256(
+            f"{version}\n{self._dpi}\n{self._ocr.config.model_dump_json()}".encode()
+        ).hexdigest()
+
     def read(
         self,
         preview: PrivacyPagePreview,

@@ -2602,6 +2602,14 @@
         "trace": {
           "title": "Trace",
           "type": "string"
+        },
+        "originating_field_ids": {
+          "description": "Exact source-evidence blocker IDs from this review's inventory, sorted and unique.",
+          "items": {
+            "type": "string"
+          },
+          "title": "Originating Field Ids",
+          "type": "array"
         }
       },
       "required": [

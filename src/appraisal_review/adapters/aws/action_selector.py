@@ -12,6 +12,7 @@ from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from appraisal_review.adapters.aws.bedrock_dispatch import require_bedrock_dispatch
 from appraisal_review.application.service_guards import ServiceFault, admit_action
 from appraisal_review.domain.service_contracts import (
     ActionArguments,
@@ -23,6 +24,11 @@ from appraisal_review.domain.service_contracts import (
     SelectorInput,
 )
 from appraisal_review.ports.action_selection import ActionSelectionError, SelectorErrorCode
+from appraisal_review.ports.model_dispatch import (
+    DispatchGuard,
+    dispatch_guard,
+    inherited_dispatch_authority,
+)
 
 PROMPT_VERSION = "controlled-action-selector-v1"
 
@@ -71,6 +77,7 @@ class BedrockActionSelector:
         *,
         proposal_id_factory: Callable[[], UUID] = uuid4,
     ) -> None:
+        require_bedrock_dispatch(client)
         self._client = client
         self._config = config
         self._proposal_id_factory = proposal_id_factory
@@ -107,6 +114,7 @@ class BedrockActionSelector:
         max_attempts = min(self._config.attempts, current.budget.model_calls_remaining)
         max_attempts = min(max_attempts, current.budget.retries_remaining + 1)
         for attempt in range(1, max_attempts + 1):
+            guard = DispatchGuard(deadline=started)
             try:
                 remaining = (
                     self._config.timeout_seconds
@@ -122,17 +130,23 @@ class BedrockActionSelector:
                         SelectorErrorCode.IN_FLIGHT, started=started, attempts=attempt - 1
                     )
 
-                def converse() -> dict[str, Any]:
+                guard = DispatchGuard(
+                    deadline=time.monotonic() + remaining,
+                    authority=inherited_dispatch_authority(),
+                )
+
+                def converse(guard: DispatchGuard = guard) -> dict[str, Any]:
                     try:
-                        return self._client.converse(
-                            modelId=self._config.model_id,
-                            system=[{"text": SYSTEM_PROMPT}],
-                            messages=[{"role": "user", "content": [{"text": payload}]}],
-                            inferenceConfig={
-                                "maxTokens": self._config.max_output_tokens,
-                                "temperature": 0,
-                            },
-                        )
+                        with dispatch_guard(guard):
+                            return self._client.converse(
+                                modelId=self._config.model_id,
+                                system=[{"text": SYSTEM_PROMPT}],
+                                messages=[{"role": "user", "content": [{"text": payload}]}],
+                                inferenceConfig={
+                                    "maxTokens": self._config.max_output_tokens,
+                                    "temperature": 0,
+                                },
+                            )
                     finally:
                         self._inflight.release()
 
@@ -151,10 +165,12 @@ class BedrockActionSelector:
                 )
                 return self._proposal(response, current, attempt=attempt, started=started)
             except asyncio.CancelledError:
+                guard.cancelled.set()
                 raise self._error(
                     SelectorErrorCode.TIMEOUT, started=started, attempts=attempt
                 ) from None
             except TimeoutError as error:
+                guard.cancelled.set()
                 raise self._error(
                     SelectorErrorCode.TIMEOUT, started=started, attempts=attempt
                 ) from error

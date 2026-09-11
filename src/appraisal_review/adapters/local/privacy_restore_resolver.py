@@ -23,7 +23,11 @@ from appraisal_review.application.service_guards import Principal
 from appraisal_review.domain.artifact_publication import ArtifactKey, PublishedArtifact
 from appraisal_review.domain.document_transfer import DocumentMetadata
 from appraisal_review.domain.privacy_mapping import LocalMappingRecord
-from appraisal_review.domain.privacy_models import RehydrationField, RehydrationPlan
+from appraisal_review.domain.privacy_models import (
+    RehydrationField,
+    RehydrationPlan,
+    public_manifest_json,
+)
 from appraisal_review.domain.privacy_refill import (
     PublishedRefillArtifact,
     PublishedRefillDescriptor,
@@ -104,6 +108,7 @@ class LocalRestoreCoordinator:
         publication: Callable[[str, UUID], RestorePublication],
         processor: PrivacyRefillProcessor,
         ocr: PrivacyOutputOCR,
+        ocr_identity: Callable[[], str] | None = None,
     ) -> None:
         if not workspace.is_absolute() or workspace.is_symlink() or not workspace.is_dir():
             raise ValueError("Existing private local workspace required")
@@ -112,6 +117,7 @@ class LocalRestoreCoordinator:
             raise ValueError("Owned private local workspace required")
         self.workspace, self.session, self.documents = workspace, session, documents
         self.publication, self.processor, self.ocr = publication, processor, ocr
+        self.ocr_identity = ocr_identity
         self._lock = RLock()
         self._cache: dict[UUID, tuple[RestorePublication, PrivacyBridgeRestore]] = {}
 
@@ -162,21 +168,18 @@ class LocalRestoreCoordinator:
             or hashlib.sha256(admitted.content).hexdigest() != artifact.template_hash
         ):
             raise ValueError("Authorized forms changed")
-        records = []
-        for handle in tuple(self.session._maps.values()):
-            if handle.case_id != manifest.case_id:
-                continue
-            record = self.session.mappings.read(handle)
-            if (
-                record.manifest == manifest
-                and record.command.source.document_id == manifest.document_id
-            ):
-                records.append(record)
-        if len(records) != 1:
-            raise ValueError("One exact session-owned mapping required")
-        mapping = records[0]
+        map_id = self.session._exported_maps.get(public_manifest_json(manifest))
+        handle = self.session._maps.get(map_id) if map_id is not None else None
+        if handle is None or handle.case_id != manifest.case_id or handle.map_id != map_id:
+            raise ValueError("Exact successful export mapping required")
+        # Selection never reads unrelated exports. The chosen record must still
+        # decrypt and satisfy every identity, retention and access check.
+        mapping = self.session.mappings.read(handle)
         if (
-            mapping.command.source.case_id != manifest.case_id
+            mapping.map_id != map_id
+            or mapping.manifest != manifest
+            or mapping.command.source.document_id != manifest.document_id
+            or mapping.command.source.case_id != manifest.case_id
             or self.session.sources.read(mapping.command.source) == admitted.content
             or not manifest.occurrences
         ):
@@ -283,7 +286,7 @@ class LocalRestoreCoordinator:
             if not authority.permits(plan):
                 raise ValueError("Current publication changed")
             result = PrivacyBridgeRestore(
-                plan, authority, authority, self.processor, self.ocr, path
+                plan, authority, authority, self.processor, self.ocr, path, self.ocr_identity
             )
             self._cache[result_id] = value, result
             return result

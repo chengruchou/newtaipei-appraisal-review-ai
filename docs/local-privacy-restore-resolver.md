@@ -32,8 +32,14 @@ this synchronous callback.
 
 The coordinator independently checks actor/case, run/attempt/object identity,
 actual content hash/size, exact forms C2 metadata/readback, source versions and
-template hash. It decrypts the session-owned mapping and requires one exact
-manifest match, preserving the distinction between original local document ID
+template hash. Only a successful bridge transfer records an internal binding
+from the complete canonical manifest to its session-owned mapping ID. Failed
+transfer handles remain available for explicit reconciliation, but are not
+candidates for unrelated artifact restoration. The coordinator selects this
+exact binding before decrypting; it never scans the case's other maps or skips
+a read failure. The selected record must still decrypt, remain accessible and
+unexpired, and match the map, case, source document and complete manifest.
+This preserves the distinction between original local document ID
 and new C2 document ID. Existing map/entity/occurrence IDs remain unchanged;
 each existing occurrence ID also identifies its local restoration field.
 
@@ -55,9 +61,21 @@ confidence override or fallback. Existing `TesseractPrivacyOutputOCR` requires
 both pinned English and Traditional Chinese assets. Missing assets, low scores,
 unreadable or residual tokens continue to fail the existing executor gate.
 
-Seven focused tests passed using real signed C2 admission, encrypted local
+Each local HTTP response exposes a server-generated `X-Privacy-Request-Id`.
+The existing generic rejection body and HTTP status remain unchanged. A trusted
+local composition can supply `PrivacyBridgeConfig.diagnostic` to receive a
+bounded refill failure record: request ID, status, error code, stage, one-based
+page, fixed reason, observation count and low-confidence count. It receives no
+raw text, coordinates, paths, source identifiers or PDFs. Diagnostic sink failure
+cannot change rejection into success. The combined rehearsal saves these
+records privately and includes the same request ID in its original OCR evidence.
+
+Focused tests exercise real signed C2 admission, encrypted local
 mappings, actual PDF rendering/crop writes and an explicitly revocable
 publication callback. They reject changed placeholder pixels, wrong mappings,
-template/run/caller/content substitution and revoked authority. These adapter
+template/run/caller/content substitution and revoked authority. Additional
+regressions retain a failed export's corrupted ciphertext without reading it
+while restoring a different successful export, and reject damaged selected
+ciphertext, missing bindings and substituted map records. These adapter
 tests do not establish real OCR accuracy or combined browser/job publication
 acceptance; those require the separately launched current backend and real OCR.

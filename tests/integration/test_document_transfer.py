@@ -8,6 +8,7 @@ import json
 import runpy
 import sqlite3
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import closing
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -285,7 +286,7 @@ def test_unauthorized_ingestion_never_writes_storage(env, change):
     )
     assert not env.sdk.objects
     if env.mode == "local":
-        with sqlite3.connect(env.storage.database) as connection:
+        with closing(sqlite3.connect(env.storage.database)) as connection, connection:
             assert connection.execute("SELECT count(*) FROM documents").fetchone() == (0,)
 
 
@@ -426,7 +427,7 @@ def test_s3_latest_version_substitution_cannot_change_started_run(env):
 def test_read_audit_and_failure_are_mandatory(env):
     doc = ingest(env)
     env.service.read(env.principal, doc.reference)
-    with sqlite3.connect(env.audit.database) as connection:
+    with closing(sqlite3.connect(env.audit.database)) as connection, connection:
         events = [
             json.loads(row[0]) for row in connection.execute("SELECT event FROM document_audit")
         ]
@@ -472,11 +473,11 @@ def test_canaries_remain_local_across_confirmation_sdk_records_and_public_result
     assert bridge.result is not None
     assert env.service.read(env.principal, bridge.result.reference).content == content
     expect_fault(DocumentErrorCode.PRIVACY, lambda: bridge.accept(payload))
-    with sqlite3.connect(env.audit.database) as connection:
+    with closing(sqlite3.connect(env.audit.database)) as connection, connection:
         audit = str(connection.execute("SELECT event FROM document_audit").fetchall())
     records = repr(env.sdk.calls)
     if env.mode == "local":
-        with sqlite3.connect(env.storage.database) as connection:
+        with closing(sqlite3.connect(env.storage.database)) as connection, connection:
             records += str(
                 connection.execute("SELECT key, content, labels FROM documents").fetchall()
             )
@@ -616,7 +617,7 @@ def test_source_byte_corruption_is_rejected(env):
     document = ingest(env)
     key = env.service._key(document.reference, "content")
     if env.mode == "local":
-        with sqlite3.connect(env.storage.database) as connection:
+        with closing(sqlite3.connect(env.storage.database)) as connection, connection:
             connection.execute(
                 "UPDATE documents SET content = ? WHERE key = ?",
                 (pdf_bytes(200), key.relative_key()),
@@ -661,7 +662,7 @@ def test_audit_can_use_durable_immutable_storage(env):
             json.loads(obj["Body"]) for (key, _), obj in env.sdk.objects.items() if "/audit/" in key
         ]
     else:
-        with sqlite3.connect(env.storage.database) as connection:
+        with closing(sqlite3.connect(env.storage.database)) as connection, connection:
             events = [
                 json.loads(row[0])
                 for row in connection.execute(
@@ -767,7 +768,7 @@ def test_caller_revision_label_cannot_leak_into_snapshot_storage(env):
     if env.mode == "s3":
         assert "SYNTHETIC_PRIVATE_FILENAME" not in repr(env.sdk.calls)
     else:
-        with sqlite3.connect(env.storage.database) as connection:
+        with closing(sqlite3.connect(env.storage.database)) as connection, connection:
             assert connection.execute(
                 "SELECT count(*) FROM documents WHERE key LIKE 'snapshots/%'"
             ).fetchone() == (0,)

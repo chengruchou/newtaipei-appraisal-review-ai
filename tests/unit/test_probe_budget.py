@@ -15,7 +15,10 @@ from botocore.stub import Stubber
 from test_extraction_contracts import payload
 from test_extraction_execution import ledger, run
 
+from appraisal_review.adapters.aws.bedrock_dispatch import install_bedrock_dispatch
 from appraisal_review.adapters.aws.probe_budget import PricedRuntime, ProbePricing
+from appraisal_review.adapters.local.sqlite_model_dispatch import SqliteModelDispatchStore
+from appraisal_review.application.model_dispatch import SharedModelDispatcher
 from appraisal_review.domain.extraction_contracts import PageOutcome
 from appraisal_review.ports.document_extraction import ExtractionBoundaryError
 
@@ -43,12 +46,16 @@ def test_budget_rejects_insufficient_dollars_before_any_provider():
         old.ceiling(4, 8192, Decimal("1"))
 
 
-def test_priced_probe_uses_valid_sdk_count_and_converse_shapes():
+def test_priced_probe_uses_valid_sdk_count_and_converse_shapes(tmp_path):
     client = boto3.client(
         "bedrock-runtime",
         region_name="us-east-1",
         aws_access_key_id="synthetic",
         aws_secret_access_key="synthetic",
+    )
+    # Stubber intercepts before transport; real sends still have no data admission.
+    install_bedrock_dispatch(
+        client, SharedModelDispatcher(SqliteModelDispatchStore(tmp_path / "probe.sqlite3"))
     )
     system = [{"text": "fixed system"}]
     messages = [{"role": "user", "content": [{"text": "synthetic probe"}]}]

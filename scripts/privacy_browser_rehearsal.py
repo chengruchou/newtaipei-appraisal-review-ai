@@ -230,6 +230,7 @@ def create_privacy_rehearsal(
     on_ready: Callable[[RevisionSnapshot], None] | None = None,
     results: PrivacyBridgeResultResolver | None = None,
     raster_dpi: int = 144,
+    diagnostic: Callable[[dict[str, object]], None] | None = None,
 ) -> PrivacyRehearsal:
     """Compose a real bridge; hand off the first exact paired candidate revision once.
 
@@ -356,7 +357,13 @@ def create_privacy_rehearsal(
 
     try:
         sink = CloudExportSink(
-            documents, principal, signing_key, key_id, purposes, on_admitted=record
+            documents,
+            principal,
+            signing_key,
+            key_id,
+            purposes,
+            on_admitted=record,
+            local_rehearsal=True,
         )
     except BaseException:
         maps.close()
@@ -376,7 +383,11 @@ def create_privacy_rehearsal(
         results=results or _NoPublishedResult(),
     )
     config = PrivacyBridgeConfig(
-        workspace=directory, origin=origin, authority=authority, sources=configured
+        workspace=directory,
+        origin=origin,
+        authority=authority,
+        sources=configured,
+        diagnostic=diagnostic,
     )
     token = secrets.token_urlsafe(32)
     try:

@@ -23,6 +23,7 @@
   "decision-executed.json": "DecisionEvent",
   "bounded-result.json": "BoundedWorkflowResult",
   "result-needs-review.json": "ServiceResult",
+  "result-originating-fields.json": "ServiceResult",
   "result-source-binding-failed.json": "ServiceResult",
   "result-written.json": "ServiceResult",
   "job-acceptance.json": "JobAcceptance",

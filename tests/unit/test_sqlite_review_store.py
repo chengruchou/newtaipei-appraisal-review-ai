@@ -5,6 +5,7 @@ import json
 import sqlite3
 import subprocess
 import sys
+from contextlib import closing
 from pathlib import Path
 from uuid import uuid4
 
@@ -48,7 +49,7 @@ def store_at(path: Path) -> SQLiteReviewStore:
 
 
 def stored_json(path: Path) -> dict:
-    with sqlite3.connect(path) as connection:
+    with closing(sqlite3.connect(path)) as connection, connection:
         return json.loads(connection.execute("SELECT payload FROM review_state").fetchone()[0])
 
 
@@ -401,7 +402,7 @@ def test_results_are_durable_digest_bound_and_hidden_until_committed(tmp_path: P
             timeout=20,
         )
         assert json.loads(child.stdout) == json.loads(body.model_dump_json())
-        with sqlite3.connect(path) as connection:
+        with closing(sqlite3.connect(path)) as connection, connection:
             connection.execute("UPDATE review_results SET payload=?", (changed.model_dump_json(),))
         with pytest.raises(SQLiteReviewStoreError):
             await second.results.get_committed(ref)

@@ -53,6 +53,13 @@ migration and ownership.
 | 0038 | [Owned export snapshots and offline regression evidence](0038-local-export-and-offline-regression.md) |
 | 0039 | [Separate local privacy HTTP authority and exact C2 export](0039-local-loopback-privacy-bridge.md) |
 | 0040 | [SQLite publication transactions and current download authority](0040-sqlite-publication-transactions.md) |
+| 0041 | [Versioned competition deployment profile](0041-competition-deployment-profile.md) |
+| 0042 | [Competition data admission is separate from privacy confirmation](0042-competition-data-admission.md) |
+| 0043 | [Shared physical model dispatch](0043-shared-model-dispatch.md) |
+| 0044 | [Originating source-field diagnostics preserve case-wide fill denial](0044-originating-source-field-diagnostics.md) |
+| 0045 | [Preserve unknown gateway write outcomes](0045-gateway-write-outcome.md) |
+| 0046 | [Exact local visual review of uncertain restoration OCR](0046-local-ocr-visual-review.md) |
+| 0047 | [Explicit competition runtime composition and atomic spending limits](0047-competition-runtime-composition.md) |
 
 ## Originating filename migration
 

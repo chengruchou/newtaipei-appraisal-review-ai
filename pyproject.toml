@@ -18,7 +18,7 @@ dependencies = [
 
 [project.optional-dependencies]
 privacy = ["cryptography>=46,<51"]
-documents = ["pymupdf>=1.26,<2"]
+documents = ["pymupdf>=1.28.2,<2"]
 pdf = [
   "pypdf>=6,<7",
   "reportlab>=4.4,<5",
@@ -30,15 +30,16 @@ aws = [
 dev = [
   "boto3>=1.40,<2",
   "cryptography>=46,<51",
-  "pymupdf>=1.26,<2",
+  "pymupdf>=1.28.2,<2",
   "fonttools>=4.59,<5",
   "httpx>=0.28,<1",
+  "httpx2>=2.12,<3",
   "jsonschema>=4.23,<5",
   "boto3-stubs>=1.40,<2",
   "mypy>=1.17,<2",
   "moto[dynamodb,s3,sqs]>=5.1,<6",
   "pypdf>=6,<7",
-  "pytest>=8.4,<9",
+  "pytest>=9.0.3,<10",
   "pytest-cov>=6.2,<7",
   "reportlab>=4.4,<5",
   "ruff>=0.12,<1",

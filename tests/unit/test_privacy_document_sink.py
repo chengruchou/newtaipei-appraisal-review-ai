@@ -2,6 +2,7 @@
 
 import json
 import sqlite3
+from contextlib import closing
 from dataclasses import replace
 from unittest.mock import Mock
 from uuid import uuid4
@@ -64,6 +65,7 @@ def sink_for(bridge, *, purpose="forms", callback=None):
         key_id,
         {(bridge.source.case_id, bridge.source.document_id): purpose},
         on_admitted=callback,
+        local_rehearsal=True,
     )
     bridge.owner.sink = sink
     return service, principal, sink, callback
@@ -104,7 +106,7 @@ def test_actual_http_gate_signs_and_admits_exact_pdf_to_c2(bridge, purpose):
     with pymupdf.open(stream=readback.content, filetype="pdf") as reopened:
         assert len(reopened) == len(preview["manifest"]["pages"])
     bridge.tracker.build.assert_called_once()
-    with sqlite3.connect(service.storage.database) as connection:
+    with closing(sqlite3.connect(service.storage.database)) as connection, connection:
         labels = [json.loads(row[0]) for row in connection.execute("SELECT labels FROM documents")]
     encoded = json.dumps(labels)
     assert "測試姓名" not in encoded and bridge.source.source_digest not in encoded
@@ -125,7 +127,7 @@ def test_wrong_signing_key_is_rejected_before_any_c2_ingestion(bridge):
             on_admitted=Mock(),
         )
     service.ingest.assert_not_called()
-    with sqlite3.connect(service.storage.database) as connection:
+    with closing(sqlite3.connect(service.storage.database)) as connection, connection:
         assert connection.execute("SELECT count(*) FROM documents").fetchone()[0] == 0
 
 
@@ -209,5 +211,5 @@ def test_local_mapping_failure_makes_zero_real_c2_calls(bridge, failure):
     assert bridge.client.post(base + "/transfer", json={}).status_code == 409
     service.ingest.assert_not_called()
     callback.assert_not_called()
-    with sqlite3.connect(service.storage.database) as connection:
+    with closing(sqlite3.connect(service.storage.database)) as connection, connection:
         assert connection.execute("SELECT count(*) FROM documents").fetchone()[0] == 0

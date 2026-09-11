@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import time
 from datetime import UTC, datetime
+from typing import Literal
 
 from appraisal_review.application.privacy_guards import PrivacyFault
 from appraisal_review.domain.privacy_mapping import LocalMappingHandle, LocalMappingRecord
@@ -29,6 +30,29 @@ from appraisal_review.ports.privacy_refill import (
     PrivacyRefillProcessor,
     PrivacyRefillPublisher,
 )
+
+
+class RefillOCRFailure(PrivacyFault):
+    """Bounded local diagnostics; never include text, identifiers, paths or PDF bytes."""
+
+    def __init__(
+        self,
+        *,
+        stage: Literal["published", "restored"],
+        page: int,
+        reason: Literal["ocr_unavailable", "ocr_deadline", "uncertain_ocr", "placeholder_mismatch"],
+        observations: tuple[TextObservation, ...] = (),
+    ) -> None:
+        super().__init__(PrivacyErrorCode.VERIFICATION_FAILED)
+        self.diagnostic: dict[str, object] = {
+            "stage": stage,
+            "page": page,
+            "reason": reason,
+            "observation_count": len(observations),
+            "low_confidence_count": sum(
+                o.confidence is None or o.confidence < 0.85 for o in observations
+            ),
+        }
 
 
 def validate_refill(
@@ -101,7 +125,12 @@ class LocalPrivacyRefillExecutor:
         self._processor, self._ocr, self._sink = processor, ocr, sink
 
     def _tokens(
-        self, data: bytes, artifact: PublishedRefillArtifact, targets: tuple[RefillTarget, ...]
+        self,
+        data: bytes,
+        artifact: PublishedRefillArtifact,
+        targets: tuple[RefillTarget, ...],
+        *,
+        stage: Literal["published", "restored"],
     ) -> None:
         pages = artifact.descriptor.pages
         rendered = self._processor.render(data, pages)
@@ -111,14 +140,25 @@ class LocalPrivacyRefillExecutor:
         for image, page in zip(rendered, pages, strict=True):
             remaining = deadline - time.monotonic()
             if remaining <= 0:
-                raise ValueError("OCR deadline")
-            observations = tuple(
-                TextObservation.model_validate(o)
-                for o in self._ocr.read(image.preview, page, timeout=remaining)
-            )
+                raise RefillOCRFailure(stage=stage, page=page.number, reason="ocr_deadline")
+            try:
+                observations = tuple(
+                    TextObservation.model_validate(o)
+                    for o in self._ocr.read(image.preview, page, timeout=remaining)
+                )
+            except Exception:
+                raise RefillOCRFailure(
+                    stage=stage, page=page.number, reason="ocr_unavailable"
+                ) from None
+            if time.monotonic() > deadline:
+                raise RefillOCRFailure(
+                    stage=stage,
+                    page=page.number,
+                    reason="ocr_deadline",
+                    observations=observations,
+                )
             if (
-                time.monotonic() > deadline
-                or not observations
+                not observations
                 or len(observations) > 10000
                 or (sum(len(o.text) for o in observations) > 100000)
                 or any(
@@ -129,10 +169,23 @@ class LocalPrivacyRefillExecutor:
                     for o in observations
                 )
             ):
-                raise ValueError("Uncertain OCR")
+                raise RefillOCRFailure(
+                    stage=stage,
+                    page=page.number,
+                    reason="uncertain_ocr",
+                    observations=observations,
+                )
             expected = tuple(t for t in targets if t.region.page == page.number)
-            verify_occurrences(observations, expected, pages, require_all=True)
-            verify_occurrences(image.native, expected, pages, require_all=False)
+            try:
+                verify_occurrences(observations, expected, pages, require_all=True)
+                verify_occurrences(image.native, expected, pages, require_all=False)
+            except ValueError:
+                raise RefillOCRFailure(
+                    stage=stage,
+                    page=page.number,
+                    reason="placeholder_mismatch",
+                    observations=observations,
+                ) from None
 
     def execute(self, handle: LocalMappingHandle, plan: RehydrationPlan) -> FinalLocalArtifact:
         try:
@@ -151,10 +204,10 @@ class LocalPrivacyRefillExecutor:
             validate_refill(mapping, plan, artifact)
             if self._publisher.permits(plan, artifact) is not True:
                 raise PrivacyFault(PrivacyErrorCode.UNAUTHORIZED)
-            self._tokens(artifact.pdf, artifact, artifact.descriptor.targets)
+            self._tokens(artifact.pdf, artifact, artifact.descriptor.targets, stage="published")
             original = self._sources.read(mapping.command.source)
             final_pdf = self._processor.write(mapping, plan, artifact, original)
-            self._tokens(final_pdf, artifact, ())
+            self._tokens(final_pdf, artifact, (), stage="restored")
             # Revalidate mapping access/retention and both authorities after the slow work.
             if (
                 self._mappings.read(handle) != mapping

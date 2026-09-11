@@ -44,6 +44,7 @@ from appraisal_review.domain.service_contracts import (
 from appraisal_review.domain.task_contracts import ResponseReceipt
 from appraisal_review.ports.human_tasks import HumanTaskStore
 from appraisal_review.ports.jobs import ClaimedAttempt, JobRecord
+from appraisal_review.ports.model_dispatch import dispatch_async_authority
 
 if TYPE_CHECKING:
     from appraisal_review.domain.service_contracts import (
@@ -243,9 +244,10 @@ class IntegratedWorkflowExecution:
             executor_actor=ActorReference(actor_id="integrated-workflow-executor", kind="system"),
             source_registry=snapshot.material.policy.registry,
         )
-        bounded = await BoundedWorkflowRunner(coordinator=coordinator, snapshots=session).run(
-            record.current_run
-        )
+        with dispatch_async_authority(lambda: self._current(record, attempt, snapshot)):
+            bounded = await BoundedWorkflowRunner(coordinator=coordinator, snapshots=session).run(
+                record.current_run
+            )
         await self._current(record, attempt, snapshot)
         if bounded.termination == WorkflowTermination.WAITING_FOR_HUMAN:
             # Read canonical persisted tasks even after coordinator reconstruction.

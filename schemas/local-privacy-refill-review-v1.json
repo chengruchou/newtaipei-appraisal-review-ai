@@ -1,0 +1,441 @@
+{
+  "$defs": {
+    "OCRReviewConfirmation": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "local-privacy-v1",
+          "default": "local-privacy-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "review_digest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Review Digest",
+          "type": "string"
+        },
+        "page_image_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Page Image Sha256",
+          "type": "string"
+        },
+        "reading": {
+          "maxLength": 4096,
+          "minLength": 1,
+          "title": "Reading",
+          "type": "string"
+        }
+      },
+      "required": [
+        "review_digest",
+        "page_image_sha256",
+        "reading"
+      ],
+      "title": "OCRReviewConfirmation",
+      "type": "object"
+    },
+    "OCRReviewItem": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "local-privacy-v1",
+          "default": "local-privacy-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "item_id": {
+          "format": "uuid4",
+          "title": "Item Id",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "observation",
+            "placeholder"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "page": {
+          "minimum": 1,
+          "title": "Page",
+          "type": "integer"
+        },
+        "bbox": {
+          "maxItems": 4,
+          "minItems": 4,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Bbox",
+          "type": "array"
+        },
+        "observation_ids": {
+          "items": {
+            "format": "uuid4",
+            "type": "string"
+          },
+          "title": "Observation Ids",
+          "type": "array"
+        },
+        "expected_text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expected Text"
+        },
+        "confirmed_reading": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Confirmed Reading"
+        }
+      },
+      "required": [
+        "item_id",
+        "kind",
+        "page",
+        "bbox",
+        "observation_ids"
+      ],
+      "title": "OCRReviewItem",
+      "type": "object"
+    },
+    "OCRReviewObservation": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "local-privacy-v1",
+          "default": "local-privacy-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "observation_id": {
+          "format": "uuid4",
+          "title": "Observation Id",
+          "type": "string"
+        },
+        "page": {
+          "minimum": 1,
+          "title": "Page",
+          "type": "integer"
+        },
+        "bbox": {
+          "maxItems": 4,
+          "minItems": 4,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Bbox",
+          "type": "array"
+        },
+        "raw_text": {
+          "title": "Raw Text",
+          "type": "string"
+        },
+        "confidence": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Confidence"
+        },
+        "review_item_id": {
+          "anyOf": [
+            {
+              "format": "uuid4",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Review Item Id"
+        }
+      },
+      "required": [
+        "observation_id",
+        "page",
+        "bbox",
+        "raw_text",
+        "confidence"
+      ],
+      "title": "OCRReviewObservation",
+      "type": "object"
+    },
+    "OCRReviewPage": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "local-privacy-v1",
+          "default": "local-privacy-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "number": {
+          "minimum": 1,
+          "title": "Number",
+          "type": "integer"
+        },
+        "width": {
+          "exclusiveMinimum": 0,
+          "title": "Width",
+          "type": "number"
+        },
+        "height": {
+          "exclusiveMinimum": 0,
+          "title": "Height",
+          "type": "number"
+        },
+        "image_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Image Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "number",
+        "width",
+        "height",
+        "image_sha256"
+      ],
+      "title": "OCRReviewPage",
+      "type": "object"
+    },
+    "OCRReviewReceipt": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "local-privacy-v1",
+          "default": "local-privacy-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "receipt_id": {
+          "format": "uuid4",
+          "title": "Receipt Id",
+          "type": "string"
+        },
+        "review_id": {
+          "format": "uuid4",
+          "title": "Review Id",
+          "type": "string"
+        },
+        "stage": {
+          "enum": [
+            "published",
+            "restored"
+          ],
+          "title": "Stage",
+          "type": "string"
+        },
+        "principal_id": {
+          "title": "Principal Id",
+          "type": "string"
+        },
+        "binding_digest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Binding Digest",
+          "type": "string"
+        },
+        "review_digest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Review Digest",
+          "type": "string"
+        },
+        "engine_digest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Engine Digest",
+          "type": "string"
+        },
+        "input_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Input Sha256",
+          "type": "string"
+        },
+        "measurements_digest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Measurements Digest",
+          "type": "string"
+        },
+        "page_image_sha256": {
+          "items": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "title": "Page Image Sha256",
+          "type": "array"
+        },
+        "readings": {
+          "items": {
+            "$ref": "#/$defs/OCRReviewItem"
+          },
+          "title": "Readings",
+          "type": "array"
+        },
+        "confirmed_at": {
+          "format": "date-time",
+          "title": "Confirmed At",
+          "type": "string"
+        },
+        "expires_at": {
+          "format": "date-time",
+          "title": "Expires At",
+          "type": "string"
+        },
+        "authority_scope": {
+          "const": "local_visual_ocr_readings_only",
+          "default": "local_visual_ocr_readings_only",
+          "title": "Authority Scope",
+          "type": "string"
+        },
+        "business_authority": {
+          "const": "unchanged",
+          "default": "unchanged",
+          "title": "Business Authority",
+          "type": "string"
+        }
+      },
+      "required": [
+        "receipt_id",
+        "review_id",
+        "stage",
+        "principal_id",
+        "binding_digest",
+        "review_digest",
+        "engine_digest",
+        "input_sha256",
+        "measurements_digest",
+        "page_image_sha256",
+        "readings",
+        "confirmed_at",
+        "expires_at"
+      ],
+      "title": "OCRReviewReceipt",
+      "type": "object"
+    },
+    "OCRReviewView": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "local-privacy-v1",
+          "default": "local-privacy-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "review_id": {
+          "format": "uuid4",
+          "title": "Review Id",
+          "type": "string"
+        },
+        "stage": {
+          "enum": [
+            "published",
+            "restored"
+          ],
+          "title": "Stage",
+          "type": "string"
+        },
+        "review_digest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Review Digest",
+          "type": "string"
+        },
+        "engine_digest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Engine Digest",
+          "type": "string"
+        },
+        "input_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Input Sha256",
+          "type": "string"
+        },
+        "pages": {
+          "items": {
+            "$ref": "#/$defs/OCRReviewPage"
+          },
+          "title": "Pages",
+          "type": "array"
+        },
+        "observations": {
+          "items": {
+            "$ref": "#/$defs/OCRReviewObservation"
+          },
+          "title": "Observations",
+          "type": "array"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/$defs/OCRReviewItem"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "receipts": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/OCRReviewReceipt"
+          },
+          "title": "Receipts",
+          "type": "array"
+        }
+      },
+      "required": [
+        "review_id",
+        "stage",
+        "review_digest",
+        "engine_digest",
+        "input_sha256",
+        "pages",
+        "observations",
+        "items"
+      ],
+      "title": "OCRReviewView",
+      "type": "object"
+    }
+  },
+  "title": "local-privacy-refill-review-v1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}

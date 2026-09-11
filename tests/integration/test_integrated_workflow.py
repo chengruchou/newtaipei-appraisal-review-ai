@@ -6,6 +6,7 @@ import asyncio
 import json
 import runpy
 import sqlite3
+from contextlib import closing
 from pathlib import Path
 from uuid import uuid4
 
@@ -51,13 +52,13 @@ class StoredReviews:
 
     def __init__(self, path):
         self.path = path
-        with sqlite3.connect(path) as db:
+        with closing(sqlite3.connect(path)) as db, db:
             db.execute(
                 "CREATE TABLE IF NOT EXISTS workflow_reviews (run TEXT PRIMARY KEY, body TEXT)"
             )
 
     async def put(self, run, review):
-        with sqlite3.connect(self.path) as db:
+        with closing(sqlite3.connect(self.path)) as db, db:
             db.execute("BEGIN IMMEDIATE")
             previous = db.execute(
                 "SELECT body FROM workflow_reviews WHERE run=?", (run.model_dump_json(),)
@@ -71,7 +72,7 @@ class StoredReviews:
                 )
 
     async def read(self, run):
-        with sqlite3.connect(self.path) as db:
+        with closing(sqlite3.connect(self.path)) as db, db:
             row = db.execute(
                 "SELECT body FROM workflow_reviews WHERE run=?", (run.model_dump_json(),)
             ).fetchone()
@@ -407,7 +408,7 @@ def test_cached_controller_receipt_digest_tamper_is_rejected(tmp_path):
         await h.execution().execute(record, attempt)
         review = await h.reviews.read(record.current_run)
         review.audit_events = []
-        with sqlite3.connect(tmp_path / "outputs.sqlite3") as db:
+        with closing(sqlite3.connect(tmp_path / "outputs.sqlite3")) as db, db:
             db.execute("UPDATE workflow_reviews SET body=?", (review.model_dump_json(),))
         with pytest.raises(ServiceFault):
             await h.execution().execute(record, attempt)

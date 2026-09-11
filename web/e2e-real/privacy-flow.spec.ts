@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
+import { completeLocalOcrReview, requiresOcrReview } from "./ocr-review-helper";
 import type {
   ServiceResult,
   TaskListView,
@@ -59,7 +60,7 @@ function observeHttp(page: Page) {
 test("real local privacy review explicitly confirms, transfers and restores exact bytes", async ({
   page,
 }) => {
-  test.setTimeout(240_000);
+  test.setTimeout(1_200_000);
   observeHttp(page);
   const path = process.env["PRIVACY_BROWSER_FIXTURE"];
   if (!path) throw new Error("PRIVACY_BROWSER_FIXTURE must name the private real bridge manifest");
@@ -83,13 +84,31 @@ test("real local privacy review explicitly confirms, transfers and restores exac
   });
   const count = (suffix: string) =>
     requests.filter((r) => r.method === "POST" && r.path.endsWith(suffix)).length;
-  async function clickResponse(name: string, suffix: string) {
+  async function clickResponse(
+    name: string,
+    suffix: string,
+    visualReview?: { resultId: string; jobId: string; publishedHash: string },
+  ) {
     const pending = page.waitForResponse(
       (response) =>
         response.url() === `${prefix}${suffix}` && response.request().method() === "POST",
+      { timeout: suffix.startsWith("/restore/") ? 125_000 : 15_000 },
     );
     await page.getByRole("button", { name, exact: true }).click();
-    const response = await pending;
+    let response = await pending;
+    if (visualReview && (await requiresOcrReview(response))) {
+      response = await completeLocalOcrReview(
+        page,
+        {
+          ...fixture,
+          restore_result_id: visualReview.resultId,
+          completed_job_id: visualReview.jobId,
+        },
+        response,
+        visualReview.publishedHash,
+        true,
+      );
+    }
     if (!response.ok()) {
       const diagnosticDeadline = new Error("diagnostic_deadline_exceeded");
       let diagnosticTimer: ReturnType<typeof setTimeout> | undefined;
@@ -111,6 +130,7 @@ test("real local privacy review explicitly confirms, transfers and restores exac
       const failure = {
         status: response.status(),
         path: new URL(response.url()).pathname,
+        request_id: response.headers()["x-privacy-request-id"],
         body_sha256:
           responseBody === undefined
             ? undefined
@@ -418,12 +438,14 @@ test("real local privacy review explicitly confirms, transfers and restores exac
   }
   expect(confirmedSides.size).toBe(4);
   expect(originalConfidences).toContain(0);
+  expect(originalConfidences).toEqual([0, 0, 0, 0]);
   console.info(
     JSON.stringify({
       checkpoint: "four_current_sides_confirmed",
       job_id: jobId,
       count: confirmedSides.size,
       zero_confidence_preserved: originalConfidences.includes(0),
+      zero_confidence_count: originalConfidences.filter((confidence) => confidence === 0).length,
     }),
   );
   await expect
@@ -484,8 +506,19 @@ test("real local privacy review explicitly confirms, transfers and restores exac
   const restored = await clickResponse(
     "Restore result through local bridge",
     `/restore/${handoff.restore_result_id!}`,
+    { resultId: handoff.restore_result_id!, jobId, publishedHash: artifact.content_hash },
   );
-  const restoration = (await restored.json()) as { manifest: { final_digest: string } };
+  const restoration = (await restored.json()) as {
+    manifest: { final_digest: string };
+    ocr_review_receipts: { stage: string; business_authority: string }[];
+  };
+  expect(restoration.ocr_review_receipts.map((receipt) => receipt.stage)).toEqual([
+    "published",
+    "restored",
+  ]);
+  expect(
+    restoration.ocr_review_receipts.every((receipt) => receipt.business_authority === "unchanged"),
+  ).toBe(true);
   const downloaded = page.waitForEvent("download");
   await page.getByRole("link", { name: "Save restored PDF locally" }).click();
   const download = await downloaded;

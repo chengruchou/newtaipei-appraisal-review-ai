@@ -35,6 +35,11 @@ from appraisal_review.ports.document_extraction import (
     AuthorizedSanitizedSnapshot,
     ExtractionBoundaryError,
 )
+from appraisal_review.ports.model_dispatch import (
+    DispatchGuard,
+    dispatch_guard,
+    inherited_dispatch_authority,
+)
 
 
 class SnapshotRenderer(Protocol):
@@ -107,11 +112,23 @@ class BedrockSnapshotBackend:
                 async with self._preflight_lock:
                     if self.ledger.stopped or self.ledger.remaining <= 0:
                         raise ExtractionBoundaryError("budget_exhausted")
-                    future = asyncio.get_running_loop().run_in_executor(
-                        None, preflight, self.clients, policy
+                    authority = inherited_dispatch_authority()
+                    guard = DispatchGuard(
+                        deadline=time.monotonic() + self.ledger.remaining,
+                        authority=lambda: authority() and not self.ledger.stopped,
                     )
+
+                    def prepare() -> Any:
+                        with dispatch_guard(guard):
+                            return preflight(self.clients, policy)
+
+                    future = asyncio.get_running_loop().run_in_executor(None, prepare)
                     future.add_done_callback(lambda f: None if f.cancelled() else f.exception())
-                    return await asyncio.shield(future)
+                    try:
+                        return await asyncio.shield(future)
+                    except BaseException:
+                        guard.cancelled.set()
+                        raise
 
             client = await asyncio.wait_for(checked_client(), self.ledger.remaining)
             extractor = BedrockDocumentExtractor(client, config)

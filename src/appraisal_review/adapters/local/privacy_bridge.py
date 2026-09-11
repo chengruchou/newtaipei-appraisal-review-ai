@@ -12,10 +12,11 @@ import stat
 import time
 from collections.abc import Callable, Mapping
 from contextlib import suppress
+from contextvars import ContextVar
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import ParamSpec, Protocol, TypeVar
+from typing import Literal, ParamSpec, Protocol, TypeVar
 from urllib.parse import urlsplit
 from uuid import UUID, uuid4
 
@@ -36,7 +37,12 @@ from appraisal_review.application.privacy_export import (
 )
 from appraisal_review.application.privacy_guards import PrivacyFault
 from appraisal_review.application.privacy_mapping import LocalMappingService
-from appraisal_review.application.privacy_refill import LocalPrivacyRefillExecutor, validate_refill
+from appraisal_review.application.privacy_refill import (
+    LocalPrivacyRefillExecutor,
+    RefillOCRFailure,
+    validate_refill,
+)
+from appraisal_review.application.privacy_refill_review import LocalRefillReview
 from appraisal_review.application.privacy_review import LocalPrivacyReviewService
 from appraisal_review.domain.privacy_bundle import SanitizedBundle
 from appraisal_review.domain.privacy_export import PrivacyExportPayload
@@ -49,7 +55,8 @@ from appraisal_review.domain.privacy_models import (
     privacy_review_digest,
     public_manifest_json,
 )
-from appraisal_review.domain.privacy_refill import PublishedRefillArtifact
+from appraisal_review.domain.privacy_refill import FinalLocalArtifact, PublishedRefillArtifact
+from appraisal_review.domain.privacy_refill_review import OCRReviewConfirmation
 from appraisal_review.domain.privacy_review import (
     AddPrivacyRegion,
     ConfirmPrivacyReview,
@@ -58,6 +65,7 @@ from appraisal_review.domain.privacy_review import (
     RemovePrivacyRegion,
     ReviewPrivacyPage,
 )
+from appraisal_review.ports.competition_data import CompetitionDataAdmission
 from appraisal_review.ports.privacy import (
     LocalSnapshotReader,
     PrivacyOutputOCR,
@@ -65,6 +73,13 @@ from appraisal_review.ports.privacy import (
 )
 from appraisal_review.ports.privacy_export import PrivacyExportConfirmation, PrivacyExportSink
 from appraisal_review.ports.privacy_refill import PrivacyRefillProcessor, PrivacyRefillPublisher
+
+_REQUEST_ID: ContextVar[str | None] = ContextVar("privacy_request_id", default=None)
+
+
+def privacy_request_id() -> str | None:
+    """Server-created correlation for local private diagnostics, never caller input."""
+    return _REQUEST_ID.get()
 
 
 @dataclass(frozen=True, repr=False)
@@ -84,6 +99,7 @@ class PrivacyBridgeConfig:
     sources: Mapping[UUID, PrivacyBridgeSource]
     max_body_bytes: int = 65536
     preview_lifetime_seconds: int = 300
+    diagnostic: Callable[[dict[str, object]], None] | None = None
 
 
 class BridgeReviewConfirmation:
@@ -108,6 +124,7 @@ class PrivacyBridgeRestore:
     processor: PrivacyRefillProcessor
     ocr: PrivacyOutputOCR
     download_path: Path
+    ocr_identity: Callable[[], str] | None = None
 
 
 class PrivacyBridgeResultResolver(Protocol):
@@ -126,6 +143,14 @@ class _RestoredDownload:
     plan: RehydrationPlan
     path: Path
     digest: str
+    review_id: UUID | None = None
+
+
+@dataclass(frozen=True, repr=False)
+class _OCRReviewContext:
+    result_id: UUID
+    destination_id: UUID
+    review: LocalRefillReview
 
 
 @dataclass(repr=False)
@@ -141,12 +166,18 @@ class PrivacyBridgeSession:
     sink: PrivacyExportSink | CloudExportSink
     sources: LocalSnapshotReader
     results: PrivacyBridgeResultResolver
+    competition_admission: CompetitionDataAdmission | None = None
     _lock: asyncio.Lock = field(default_factory=asyncio.Lock, init=False)
     _source_id: UUID | None = field(default=None, init=False)
     _approval: LocalPrivacyApproval | None = field(default=None, init=False)
     _preview: _Preview | None = field(default=None, init=False)
     _maps: dict[UUID, LocalMappingHandle] = field(default_factory=dict, init=False)
+    # Only successful transfers bind an exact public manifest to local evidence.
+    # Failed handles remain in _maps for reconciliation, never automatic selection.
+    _exported_maps: dict[str, UUID] = field(default_factory=dict, init=False)
     _restored: dict[UUID, _RestoredDownload] = field(default_factory=dict, init=False)
+    _ocr_reviews: dict[UUID, _OCRReviewContext] = field(default_factory=dict, init=False)
+    _result_reviews: dict[UUID, UUID] = field(default_factory=dict, init=False)
 
 
 @dataclass(repr=False)
@@ -254,6 +285,9 @@ class _Boundary:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
+        request_id = str(uuid4())
+        correlation = _REQUEST_ID.set(request_id)
+        scope.setdefault("state", {})["privacy_request_id"] = request_id
         headers: dict[bytes, list[bytes]] = {}
         for key, value in scope["headers"]:
             headers.setdefault(key.lower(), []).append(value)
@@ -275,7 +309,11 @@ class _Boundary:
                     (b"content-security-policy", b"default-src 'none'; frame-ancestors 'none'"),
                     (b"access-control-allow-origin", self.config.origin.encode()),
                     (b"vary", b"Origin"),
-                    (b"access-control-expose-headers", b"X-Privacy-Review-Digest"),
+                    (b"x-privacy-request-id", request_id.encode("ascii")),
+                    (
+                        b"access-control-expose-headers",
+                        b"X-Privacy-Review-Digest, X-Privacy-Request-Id",
+                    ),
                 ]
             await send(message)
 
@@ -353,6 +391,8 @@ class _Boundary:
             await _problem(400)(scope, receive, guarded_send)
         except Exception:
             await _problem(409)(scope, receive, guarded_send)
+        finally:
+            _REQUEST_ID.reset(correlation)
 
 
 class _ExactBuilder(LocalSanitizedBundleBuilder):
@@ -419,6 +459,14 @@ def _read_restored(
         validate_refill(mapping, entry.plan, artifact)
         if not _PinnedPublisher(result, workspace, artifact).permits(entry.plan, artifact):
             raise _BridgeFault()
+        if entry.review_id is not None:
+            context = session._ocr_reviews.get(entry.review_id)
+            if (
+                context is None
+                or context.result_id != entry.result_id
+                or not context.review.permits_completed(entry.digest)
+            ):
+                raise _BridgeFault()
 
     require_current()
     data = _read_bound(entry.path, workspace, entry.digest)
@@ -426,9 +474,9 @@ def _read_restored(
     return data
 
 
-def _save_new(workspace: Path, data: bytes) -> tuple[UUID, Path]:
+def _save_new(workspace: Path, data: bytes, identifier: UUID | None = None) -> tuple[UUID, Path]:
     _private_directory(workspace, workspace)
-    identifier = uuid4()
+    identifier = identifier or uuid4()
     container = f"restored-{identifier}"
     root = os.open(workspace, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
     try:
@@ -464,6 +512,52 @@ def _save_new(workspace: Path, data: bytes) -> tuple[UUID, Path]:
         # Only the unpredictable temporary file created by this invocation is removable.
         with suppress(FileNotFoundError):
             os.unlink(temporary, dir_fd=directory)
+        os.close(directory)
+
+
+def _archive_review(workspace: Path, review: LocalRefillReview) -> None:
+    _private_directory(workspace, workspace)
+    evidence, images = review.archive_evidence()
+    payloads = {**images, "evidence.json": json.dumps(evidence, sort_keys=True).encode()}
+    if sum(len(data) for data in payloads.values()) > 64 * 1024 * 1024:
+        raise _BridgeFault()
+    root = os.open(workspace, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    try:
+        for slot in range(4):
+            container = f"ocr-review-archive-{slot}"
+            try:
+                os.mkdir(container, mode=0o700, dir_fd=root)
+                break
+            except FileExistsError:
+                continue
+        else:
+            raise _BridgeFault()
+        directory = os.open(container, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=root)
+        os.fsync(root)
+    finally:
+        os.close(root)
+    try:
+        for name, data in payloads.items():
+            descriptor = os.open(
+                name,
+                os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+                0o600,
+                dir_fd=directory,
+            )
+            with os.fdopen(descriptor, "wb") as stream:
+                stream.write(data)
+                stream.flush()
+                os.fsync(stream.fileno())
+            if (
+                _read_bound(
+                    workspace / container / name, workspace, hashlib.sha256(data).hexdigest()
+                )
+                != data
+            ):
+                raise _BridgeFault()
+        os.fsync(directory)
+        review.revoke_after_archive()
+    finally:
         os.close(directory)
 
 
@@ -554,6 +648,16 @@ def create_privacy_bridge(
         )
 
     async def rejected(request: Request, error: Exception) -> JSONResponse:
+        if isinstance(error, RefillOCRFailure) and config.diagnostic is not None:
+            record = {
+                "request_id": request.state.privacy_request_id,
+                "status": 409,
+                "code": error.problem.code.value,
+                **error.diagnostic,
+            }
+            # Observability cannot authorize a rejected request or expose its exception.
+            with suppress(Exception):
+                config.diagnostic(record)
         return _problem(error.status if isinstance(error, _BridgeFault) else 409)
 
     for error_type in (
@@ -775,6 +879,7 @@ def create_privacy_bridge(
                 sink=sink,
                 mapping_service=session.mappings,
                 key_reference=session.key_reference,
+                competition_admission=session.competition_admission,
             )
             try:
                 manifest = await _run_sync(
@@ -786,6 +891,14 @@ def create_privacy_bridge(
             finally:
                 if gate.mapping_handle is not None:
                     session._maps[gate.mapping_handle.map_id] = gate.mapping_handle
+            handle = gate.mapping_handle
+            if handle is None or manifest != preview.bundle.manifest:
+                raise _BridgeFault()
+            manifest_key = public_manifest_json(manifest)
+            existing = session._exported_maps.get(manifest_key)
+            if existing is not None and existing != handle.map_id:
+                raise _BridgeFault()
+            session._exported_maps[manifest_key] = handle.map_id
             return {"manifest": manifest, "state": "transferred"}
 
     @app.post("/local-privacy/restore/{result_id}")
@@ -793,6 +906,8 @@ def create_privacy_bridge(
         await _object(request, set())
         session = session_for(request)
         async with session._lock:
+            if result_id not in session._result_reviews and len(session._ocr_reviews) >= 2:
+                raise _BridgeFault()
             source = selected(session)
             result = session.results.resolve(session.principal_id, result_id)
             handle = session._maps.get(result.plan.map_id)
@@ -813,18 +928,145 @@ def create_privacy_bridge(
                 processor=result.processor,
                 ocr=result.ocr,
             )
-            final = await _run_sync(executor.execute, handle, result.plan)
+            review_id = session._result_reviews.get(result_id)
+            context = session._ocr_reviews.get(review_id) if review_id is not None else None
+            final: FinalLocalArtifact | None
+            if context is None:
+                try:
+                    final = await _run_sync(executor.execute, handle, result.plan)
+                except RefillOCRFailure as error:
+                    if result.ocr_identity is None:
+                        raise
+                    identity = result.ocr_identity
+                    await rejected(request, error)
+                    destination_id = uuid4()
+                    original = session.sources.read(mapping.command.source)
+
+                    def authorize_review() -> None:
+                        if selected(session).snapshot != mapping.command.source:
+                            raise _BridgeFault()
+                        current = session.results.resolve(session.principal_id, result_id)
+                        if (
+                            current.plan != result.plan
+                            or current.ocr_identity is None
+                            or current.ocr_identity() != identity()
+                            or current.authority.permits(result.plan) is not True
+                            or session._maps.get(handle.map_id) != handle
+                            or session.mappings.read(handle) != mapping
+                            or session.sources.read(mapping.command.source) != original
+                            or current.publisher.current(result.plan) != artifact
+                            or not _PinnedPublisher(current, config.workspace, artifact).permits(
+                                result.plan, artifact
+                            )
+                        ):
+                            raise _BridgeFault()
+
+                    review = await _run_sync(
+                        LocalRefillReview,
+                        principal_id=session.principal_id,
+                        mapping=mapping,
+                        plan=result.plan,
+                        artifact=artifact,
+                        original=original,
+                        processor=result.processor,
+                        ocr=result.ocr,
+                        engine_identity=identity,
+                        authorize=authorize_review,
+                        destination=str(
+                            config.workspace / f"restored-{destination_id}" / "final-local.pdf"
+                        ),
+                    )
+                    context = _OCRReviewContext(result_id, destination_id, review)
+                    session._ocr_reviews[review.review_id] = context
+                    session._result_reviews[result_id] = review.review_id
+                    return JSONResponse(
+                        {
+                            "code": "local_privacy_review_required",
+                            "review_id": str(review.review_id),
+                        },
+                        status_code=409,
+                    )
+            else:
+                final = await _run_sync(context.review.advance)
+                if final is None:
+                    return JSONResponse(
+                        {
+                            "code": "local_privacy_review_required",
+                            "review_id": str(context.review.review_id),
+                        },
+                        status_code=409,
+                    )
             selected(session)
             if not publisher.permits(result.plan, artifact):
                 raise _BridgeFault()
-            identifier, path = _save_new(config.workspace, final.pdf)
+            prior = session._restored.get(context.destination_id) if context is not None else None
+            if prior is not None and context is not None:
+                if (
+                    prior.result_id != result_id
+                    or prior.digest != final.manifest.final_digest
+                    or await _run_sync(_read_restored, session, prior, config.workspace)
+                    != final.pdf
+                ):
+                    raise _BridgeFault()
+                identifier, path = context.destination_id, prior.path
+            else:
+                identifier, path = _save_new(
+                    config.workspace,
+                    final.pdf,
+                    context.destination_id if context is not None else None,
+                )
             session._restored[identifier] = _RestoredDownload(
                 result_id,
                 RehydrationPlan.model_validate_json(result.plan.model_dump_json()),
                 path,
                 final.manifest.final_digest,
+                context.review.review_id if context is not None else None,
             )
-            return {"local_id": str(identifier), "manifest": final.manifest}
+            response: dict[str, object] = {"local_id": str(identifier), "manifest": final.manifest}
+            if context is not None:
+                response["ocr_review_receipts"] = context.review.view().receipts
+            return response
+
+    @app.get("/local-privacy/restore-reviews/{review_id}")
+    async def ocr_review(review_id: UUID, request: Request) -> object:
+        session = session_for(request)
+        async with session._lock:
+            return await _run_sync(session._ocr_reviews[review_id].review.view)
+
+    @app.post("/local-privacy/restore-reviews/{review_id}/restart")
+    async def ocr_review_restart(review_id: UUID, request: Request) -> object:
+        await _object(request, set())
+        session = session_for(request)
+        async with session._lock:
+            context = session._ocr_reviews[review_id]
+            if session._result_reviews.get(context.result_id) != review_id:
+                raise _BridgeFault()
+            await _run_sync(_archive_review, config.workspace, context.review)
+            del session._result_reviews[context.result_id]
+            del session._ocr_reviews[review_id]
+            return {"state": "restarted", "result_id": str(context.result_id)}
+
+    @app.get("/local-privacy/restore-reviews/{review_id}/stages/{stage}")
+    async def ocr_review_history(
+        review_id: UUID, stage: Literal["published", "restored"], request: Request
+    ) -> object:
+        session = session_for(request)
+        async with session._lock:
+            return await _run_sync(session._ocr_reviews[review_id].review.history, stage)
+
+    @app.get("/local-privacy/restore-reviews/{review_id}/pages/{page}")
+    async def ocr_review_image(review_id: UUID, page: int, request: Request) -> Response:
+        session = session_for(request)
+        async with session._lock:
+            data = await _run_sync(session._ocr_reviews[review_id].review.image, page)
+            return Response(data, media_type="image/png")
+
+    @app.post("/local-privacy/restore-reviews/{review_id}/items/{item_id}/confirm")
+    async def ocr_review_confirm(review_id: UUID, item_id: UUID, request: Request) -> object:
+        command = await _model(request, OCRReviewConfirmation)
+        session = session_for(request)
+        async with session._lock:
+            return await _run_sync(session._ocr_reviews[review_id].review.confirm, item_id, command)
 
     @app.get("/local-privacy/restored/{local_id}")
     async def restored(local_id: UUID, request: Request) -> Response:

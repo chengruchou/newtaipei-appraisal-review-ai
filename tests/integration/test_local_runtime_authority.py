@@ -6,6 +6,7 @@ import asyncio
 import importlib
 import json
 import sqlite3
+from contextlib import closing
 from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
@@ -213,7 +214,7 @@ def test_trace_exact_replay_causal_cross_kind_and_reopen(scene):
     )
     assert asyncio.run(reopened.read(scene.run_id)) == (child,)
     assert asyncio.run(reopened.read_failures(scene.run_id)) == (parent,)
-    with sqlite3.connect(scene.store.path) as connection:
+    with closing(sqlite3.connect(scene.store.path)) as connection, connection:
         assert connection.execute("SELECT count(*) FROM workflow_trace").fetchone()[0] == 2
     with pytest.raises(ServiceFault):
         asyncio.run(trace.append(child.model_copy(update={"reviewer_summary": "changed"})))
@@ -258,7 +259,7 @@ def test_trace_read_rejects_tampered_index_binding_and_causality(scene, damage):
         payload["event_id"] = str(uuid4())
     else:
         payload["parent_event_ids"] = [str(uuid4())]
-    with sqlite3.connect(scene.store.path) as connection:
+    with closing(sqlite3.connect(scene.store.path)) as connection, connection:
         connection.execute("UPDATE workflow_trace SET payload=?", (json.dumps(payload),))
     with pytest.raises(ServiceFault):
         asyncio.run(SQLiteDecisionTrace(scene.store).read_failures(scene.run_id))
@@ -286,7 +287,7 @@ def test_reviews_read_rechecks_stored_case_binding(scene):
     review = AgentReviewRun(case_id=scene.record.case_id, status=WorkflowStatus.NEEDS_REVIEW)
     asyncio.run(reviews.put(scene.record.current_run, review))
     changed = review.model_copy(update={"case_id": str(uuid4())})
-    with sqlite3.connect(scene.store.path) as connection:
+    with closing(sqlite3.connect(scene.store.path)) as connection, connection:
         connection.execute("UPDATE workflow_reviews SET review=?", (changed.model_dump_json(),))
     with pytest.raises(ServiceFault):
         asyncio.run(reviews.read(scene.record.current_run))
@@ -613,7 +614,7 @@ def test_queue_duplicate_replay_different_payload_and_stored_token_binding(scene
     assert queue.pending() == (message,)
     with pytest.raises(ServiceFault):
         asyncio.run(queue.send(replace(message, job_id=uuid4())))
-    with sqlite3.connect(scene.store.path) as connection:
+    with closing(sqlite3.connect(scene.store.path)) as connection, connection:
         payload = json.loads(
             connection.execute("SELECT payload FROM local_dispatch_queue").fetchone()[0]
         )

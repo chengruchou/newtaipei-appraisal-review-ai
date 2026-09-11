@@ -1120,6 +1120,11 @@ export interface components {
       kind: string;
       /** Observed */
       observed?: string | null;
+      /**
+       * Originating Field Ids
+       * @description Exact source-evidence blocker IDs from this review's inventory, sorted and unique.
+       */
+      originating_field_ids?: string[];
       /** Rule Id */
       rule_id?: string | null;
       /** Rule Version */

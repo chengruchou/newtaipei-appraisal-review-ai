@@ -3,6 +3,8 @@
 !src/appraisal_review/
 !src/appraisal_review/**/
 !src/appraisal_review/**/*.py
+!src/appraisal_review/data/competition/services-20260722.json
+!src/appraisal_review/data/competition/quotas-20260722.json
 !infra/
 !infra/runtime/
 !infra/runtime/requirements.lock

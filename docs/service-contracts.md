@@ -251,3 +251,21 @@ quality and formal human approval remain separate acceptance gates. `rehearsal-v
 validates independently bound observations; synthetic signatures or a consistent
 attestation do not prove that collectors ran or that raw observations are complete.
 See [cloud acceptance](cloud-acceptance.md) and [ADR 0031](adr/0031-rehearsal-evidence.md).
+
+## Originating source-field diagnostics
+
+`ReviewFinding.originating_field_ids` is optional and defaults to an empty list.
+Non-empty values identify the current inventory fields whose source evidence
+requires review, sorted and unique; they never authorize a fill. Case-wide
+`needs_review` and every original calculation/confidence remain unchanged.
+The canonical result API exposes the list and the browser links to the relevant
+source-binding findings. Raw observation text is not part of the diagnostic.
+IDs preserve the existing inventory string contract, including separators and
+Unicode; the list is bounded by the current inventory. Legacy traces JSON-quote
+these IDs to escape control characters, and browser links use numeric anchors.
+
+Empty lists are omitted on serialization to preserve historical result digests.
+Legacy synchronous HTTP/invocation keep their previous finding property set and
+carry the same locations through the existing trace text. See
+[ADR 0044](adr/0044-originating-source-field-diagnostics.md) for derivation,
+compatibility, privacy boundaries and regression evidence.

@@ -113,24 +113,40 @@ def verify_occurrences(
     require_all: bool,
 ) -> None:
     """Check identifiers, counts and positions; never infer authority from OCR text."""
+    checked = tuple(TextObservation.model_validate(value) for value in observations)
+    verify_text_regions(
+        tuple((value.text, value.region) for value in checked),
+        targets,
+        pages,
+        require_all=require_all,
+    )
+
+
+def verify_text_regions(
+    readings: tuple[tuple[str, PrivacyRegion], ...],
+    targets: tuple[RefillTarget, ...],
+    pages: tuple[PrivacyPage, ...],
+    *,
+    require_all: bool,
+) -> None:
+    """Shared deterministic inventory check for measured or separately reviewed readings."""
     seen = set()
-    for observation in observations:
-        observation = TextObservation.model_validate(observation)
-        validate_region(observation.region, pages)
-        text = unicodedata.normalize("NFKC", observation.text)
+    for raw_text, region in readings:
+        validate_region(region, pages)
+        text = unicodedata.normalize("NFKC", raw_text)
         matches = list(TOKEN.finditer(text))
         if text.casefold().count("pt_") != len(matches):
             raise ValueError("Malformed placeholder")
         for match in matches:
             possible = []
             for target in targets:
-                a, b = target.region.bbox, observation.region.bbox
+                a, b = target.region.bbox, region.bbox
                 if (
                     target.present
                     and target.occurrence_id not in seen
                     and (
                         placeholder_text(target.entity_id).casefold() == match.group().casefold()
-                        and target.region.page == observation.region.page
+                        and target.region.page == region.page
                         and a[0] <= b[0] < b[2] <= a[2]
                         and a[1] <= b[1] < b[3] <= a[3]
                     )

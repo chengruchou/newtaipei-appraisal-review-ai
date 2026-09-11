@@ -137,7 +137,13 @@ def verify_local_image(tag: str, directory: Path) -> dict[str, object]:
 def build_context(directory: Path) -> None:
     """Send only source modules and hash-locked dependencies, never the working tree."""
     source = ROOT / "src" / "appraisal_review"
-    for path in sorted(source.rglob("*.py")):
+    package_data = [
+        source / "data" / "competition" / name
+        for name in ("services-20260722.json", "quotas-20260722.json")
+    ]
+    # The competition checker loads these installed package resources. Keep the
+    # allowlist explicit: local reviews, receipts and arbitrary JSON stay out.
+    for path in sorted([*source.rglob("*.py"), *package_data]):
         if path.is_symlink() or source not in path.resolve().parents:
             raise ValueError("Source context contains a symlink outside the package")
         destination = directory / path.relative_to(ROOT)

@@ -4,6 +4,7 @@ import asyncio
 import importlib
 import json
 import sqlite3
+from contextlib import closing
 from dataclasses import asdict, replace
 from pathlib import Path
 from types import SimpleNamespace
@@ -74,14 +75,14 @@ def make_scene(tmp_path, monkeypatch, *, approved=True, sink_failure=False):
     delegate = LocalPDFWriter(
         render_config=config.writer.render, template_policy=config.writer.template_policy
     )
-    with sqlite3.connect(store.path) as connection:
+    with closing(sqlite3.connect(store.path)) as connection, connection:
         connection.execute("CREATE TABLE evidence_test(run_id TEXT PRIMARY KEY, payload TEXT)")
 
     def capture(evidence):
         if sink_failure:
             raise OSError("Evidence persistence failed")
         assert evidence.destination.exists()
-        with sqlite3.connect(store.path) as connection:
+        with closing(sqlite3.connect(store.path)) as connection, connection:
             connection.execute(
                 "INSERT INTO evidence_test VALUES (?,?)",
                 (str(run_id), json.dumps(asdict(evidence), default=str)),
@@ -179,7 +180,7 @@ def test_actual_two_context_pdf_commits_and_authenticated_bytes_match(tmp_path, 
     assert "cases/" not in manifest.model_dump_json() and "file:" not in manifest.model_dump_json()
     # Durable evidence can be restored into a freshly composed non-revealing writer.
     restored = PublicationEvidenceWriter(scene.delegate, scene.config.writer)
-    with sqlite3.connect(scene.store.path) as connection:
+    with closing(sqlite3.connect(scene.store.path)) as connection, connection:
         saved = json.loads(connection.execute("SELECT payload FROM evidence_test").fetchone()[0])
     restored.run_id = UUID(saved["run_id"])
     restored.evidence = LocalArtifactEvidence(
@@ -281,7 +282,7 @@ def test_evidence_sink_failure_prevents_completed_controller_result(tmp_path, mo
     result = asyncio.run(scene.projection(scene.record, scene.attempt, scene.review))
     assert result.business_status == WorkflowStatus.FAILED and not result.artifacts
     assert not scene.approvals
-    with sqlite3.connect(scene.store.path) as connection:
+    with closing(sqlite3.connect(scene.store.path)) as connection, connection:
         assert connection.execute("SELECT count(*) FROM evidence_test").fetchone()[0] == 0
         assert connection.execute("SELECT count(*) FROM publication_manifests").fetchone()[0] == 0
     scene.delegate.write_pdf.assert_not_awaited()

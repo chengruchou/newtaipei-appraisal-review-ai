@@ -10,9 +10,18 @@ from typing import Any
 
 from pydantic import Field
 
+from appraisal_review.adapters.aws.bedrock_dispatch import require_bedrock_dispatch
 from appraisal_review.adapters.aws.extraction_preflight import WorkstationClients
+from appraisal_review.application.model_dispatch import SharedModelDispatcher
 from appraisal_review.domain.extraction_contracts import ContractModel
+from appraisal_review.ports.competition_data import CompetitionDataAdmission
 from appraisal_review.ports.document_extraction import ExtractionBoundaryError
+from appraisal_review.ports.model_dispatch import (
+    DispatchDenied,
+    DispatchGuard,
+    current_dispatch_guard,
+    dispatch_guard,
+)
 
 
 class ProbePricing(ContractModel):
@@ -40,6 +49,7 @@ class ProbePricing(ContractModel):
 
 class PricedRuntime:
     def __init__(self, client: Any, pricing: ProbePricing, can_invoke: Callable[[], bool]) -> None:
+        require_bedrock_dispatch(client)
         self.client, self.pricing, self.meta = client, pricing, client.meta
         self.count_calls = self.converse_calls = 0
         self.lock = Lock()
@@ -58,7 +68,7 @@ class PricedRuntime:
         # Count the exact authorized system/messages/images before every paid retry.
         with self.lock:
             self.count_calls += 1
-        counted = self.client.count_tokens(
+        counted = self._count_tokens(
             modelId=self.pricing.model_id,
             input={
                 "converse": {
@@ -78,10 +88,31 @@ class PricedRuntime:
         response: dict[str, Any] = self.client.converse(**kwargs)
         return response
 
+    def _count_tokens(self, **kwargs: Any) -> dict[str, Any]:
+        try:
+            parent = current_dispatch_guard()
+        except DispatchDenied:
+            # A real installed transport will reject missing guards before network I/O.
+            result: dict[str, Any] = self.client.count_tokens(**kwargs)
+            return result
+        child = DispatchGuard(parent.deadline, parent.authority, parent.cancelled, max_sends=1)
+        with dispatch_guard(child):
+            result = self.client.count_tokens(**kwargs)
+        return result
+
 
 class PricedClients(WorkstationClients):
-    def __init__(self, *, profile: str, pricing: ProbePricing) -> None:
-        super().__init__(profile=profile)
+    def __init__(
+        self,
+        *,
+        profile: str,
+        pricing: ProbePricing,
+        dispatcher: SharedModelDispatcher | None = None,
+        competition_admission: CompetitionDataAdmission | None = None,
+    ) -> None:
+        super().__init__(
+            profile=profile, dispatcher=dispatcher, competition_admission=competition_admission
+        )
         self.pricing = pricing
         self.runtimes: list[PricedRuntime] = []
         self.can_invoke: Callable[[], bool] = lambda: False

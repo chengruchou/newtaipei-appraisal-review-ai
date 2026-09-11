@@ -24,4 +24,7 @@ async def invoke(
         result = await execute_review(request, controller_factory)
     except EntryError as error:
         return error.problem.response()
-    return result.model_dump(mode="json")
+    return result.model_dump(
+        mode="json",
+        exclude={"case_review": {"findings": {"__all__": {"originating_field_ids"}}}},
+    )

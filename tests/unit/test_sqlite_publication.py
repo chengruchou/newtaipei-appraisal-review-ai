@@ -4,6 +4,7 @@ import asyncio
 import hashlib
 import json
 import sqlite3
+from contextlib import closing
 from dataclasses import replace
 from io import BytesIO
 from uuid import uuid4
@@ -162,7 +163,7 @@ def test_approval_is_disabled_by_default_and_models_cannot_approve(scene):
 def test_current_authority_is_reread_in_manifest_transaction(scene, change):
     h = scene
     h["manifests"].approve_exact(h["candidate"], h["person"])
-    with sqlite3.connect(h["store"].path) as connection:
+    with closing(sqlite3.connect(h["store"].path)) as connection, connection:
         state = json.loads(
             connection.execute("SELECT payload FROM review_state WHERE singleton=1").fetchone()[0]
         )
@@ -187,7 +188,7 @@ def test_current_authority_is_reread_in_manifest_transaction(scene, change):
         connection.execute("UPDATE review_state SET payload=?", (json.dumps(state),))
     with pytest.raises(PublicationError):
         publish(h)
-    with sqlite3.connect(h["store"].path) as connection:
+    with closing(sqlite3.connect(h["store"].path)) as connection, connection:
         assert connection.execute("SELECT count(*) FROM publication_manifests").fetchone()[0] == 0
 
 
@@ -251,7 +252,7 @@ def test_callback_runs_outside_transaction_and_racing_mutation_is_rechecked(scen
         elif mutation == "cancel":
             asyncio.run(h["store"].cancel(job_id=h["attempt"].job_id, now=h["clock"].now))
         else:
-            with sqlite3.connect(h["store"].path, timeout=0.1) as connection:
+            with closing(sqlite3.connect(h["store"].path, timeout=0.1)) as connection, connection:
                 payload = json.loads(
                     connection.execute("SELECT payload FROM review_state").fetchone()[0]
                 )
@@ -261,7 +262,7 @@ def test_callback_runs_outside_transaction_and_racing_mutation_is_rechecked(scen
     h["manifests"].source_authorizer = interleave
     with pytest.raises(PublicationError):
         publish(h)
-    with sqlite3.connect(h["store"].path) as connection:
+    with closing(sqlite3.connect(h["store"].path)) as connection, connection:
         assert connection.execute("SELECT count(*) FROM publication_manifests").fetchone()[0] == 0
 
 
@@ -272,7 +273,7 @@ def test_approval_revoked_during_its_source_callback_cannot_regrant(scene):
     )
     with pytest.raises(PublicationError, match="stale_publication"):
         h["manifests"].approve_exact(h["candidate"], h["person"])
-    with sqlite3.connect(h["store"].path) as connection:
+    with closing(sqlite3.connect(h["store"].path)) as connection, connection:
         assert connection.execute("SELECT count(*) FROM publication_grants").fetchone()[0] == 0
 
 
@@ -322,7 +323,7 @@ def test_same_token_changed_manifest_and_expired_grants_fail(scene):
             principal=h["person"],
             attempt=h["attempt"],
         )
-    with sqlite3.connect(h["store"].path) as connection:
+    with closing(sqlite3.connect(h["store"].path)) as connection, connection:
         assert (
             connection.execute("SELECT digest FROM publication_manifests").fetchone()[0]
             == committed.manifest_digest
@@ -369,7 +370,7 @@ def test_completed_job_remains_downloadable_only_with_bound_result_reference(sce
         )[1]
         == h["data"]
     )
-    with sqlite3.connect(h["store"].path) as connection:
+    with closing(sqlite3.connect(h["store"].path)) as connection, connection:
         state = json.loads(connection.execute("SELECT payload FROM review_state").fetchone()[0])
         state["results"][0]["artifact_ids"] = []
         connection.execute("UPDATE review_state SET payload=?", (json.dumps(state),))
@@ -486,7 +487,7 @@ def test_actual_process_crash_recovers_atomic_manifest_and_verified_download(
     h["manifests"].approve_exact(h["candidate"], h["person"])
     child = subprocess.run(child_command(h, action), capture_output=True, text=True, timeout=15)
     assert child.returncode == exit_code, child.stderr
-    with sqlite3.connect(h["store"].path) as connection:
+    with closing(sqlite3.connect(h["store"].path)) as connection, connection:
         count = connection.execute("SELECT count(*) FROM publication_manifests").fetchone()[0]
     assert count == (0 if action == "crash_before_commit" else 1)
     committed = publish(h)
@@ -509,7 +510,7 @@ def test_two_processes_replay_one_durable_manifest(scene):
     for child in children:
         _, errors = child.communicate(timeout=15)
         assert child.returncode == 0, errors
-    with sqlite3.connect(h["store"].path) as connection:
+    with closing(sqlite3.connect(h["store"].path)) as connection, connection:
         assert connection.execute("SELECT count(*) FROM publication_manifests").fetchone()[0] == 1
     assert publish(h).candidate == h["candidate"]
 
@@ -533,7 +534,7 @@ def test_real_store_lease_takeover_blocks_old_attempt_before_new_manifest(scene)
     assert newer.fencing_token == h["claim"].fencing_token + 1
     with pytest.raises(PublicationError, match="stale_publication"):
         publish(h)
-    with sqlite3.connect(h["store"].path) as connection:
+    with closing(sqlite3.connect(h["store"].path)) as connection, connection:
         assert connection.execute("SELECT count(*) FROM publication_manifests").fetchone()[0] == 0
 
 

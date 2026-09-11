@@ -25,6 +25,7 @@ from appraisal_review.domain.service_contracts import (
     ServiceErrorCode,
 )
 from appraisal_review.ports.jobs import ClaimedAttempt, JobRecord
+from appraisal_review.ports.model_dispatch import dispatch_async_authority
 
 
 class RevisionLookup(Protocol):
@@ -124,6 +125,7 @@ class SnapshotBoundExecution:
 
     async def execute(self, record: JobRecord, attempt: ClaimedAttempt) -> ExecutedReview:
         await self._require(record)
-        result = await self.execution.execute(record, attempt)
+        with dispatch_async_authority(lambda: self._require(record)):
+            result = await self.execution.execute(record, attempt)
         await self._require(record)
         return result

@@ -2,6 +2,7 @@ import Ajv2020 from "ajv/dist/2020";
 import addFormats from "ajv-formats";
 import contracts from "./contracts.json";
 import type { components } from "./schema";
+import { LocalOcrReviewClient, OcrReviewRequired, requiredOcrReview } from "./ocr-review-client";
 
 export type ReviewView = components["schemas"]["PrivacyReviewView"];
 export type Selection = components["schemas"]["ReviewSelection"];
@@ -57,6 +58,7 @@ export class BridgeError extends Error {
 
 export class LocalPrivacyClient {
   readonly baseUrl: string;
+  readonly ocrReviews: LocalOcrReviewClient;
   constructor(
     private readonly options: {
       baseUrl: string;
@@ -77,15 +79,20 @@ export class LocalPrivacyClient {
     )
       throw new Error("Configure a separate loopback HTTP privacy bridge.");
     this.baseUrl = base.origin;
+    this.ocrReviews = new LocalOcrReviewClient((path, read, body) =>
+      this.request(path, read, body),
+    );
   }
 
   private async request<T>(
     path: string,
     read: (response: Response) => Promise<T>,
     body?: unknown,
+    allowOcrReview = false,
   ): Promise<T> {
     const controller = new AbortController();
-    const duration = this.options.timeoutMs ?? 30_000;
+    // Restoration can render and inspect every page before returning its review stage.
+    const duration = this.options.timeoutMs ?? (allowOcrReview ? 120_000 : 30_000);
     const deadline = Date.now() + duration;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const timeout = new Promise<never>((_resolve, reject) => {
@@ -112,7 +119,13 @@ export class LocalPrivacyClient {
               redirect: "error",
             },
           );
-          if (!response.ok) throw new BridgeError(false);
+          if (!response.ok) {
+            if (allowOcrReview && response.status === 409) {
+              const required = requiredOcrReview(await response.json());
+              if (required) throw required;
+            }
+            throw new BridgeError(false);
+          }
           return await read(response);
         })(),
         timeout,
@@ -123,7 +136,9 @@ export class LocalPrivacyClient {
       }
       return value;
     } catch (error) {
-      throw error instanceof BridgeError ? error : new BridgeError(true);
+      throw error instanceof BridgeError || error instanceof OcrReviewRequired
+        ? error
+        : new BridgeError(true);
     } finally {
       clearTimeout(timer);
     }
@@ -273,6 +288,7 @@ export class LocalPrivacyClient {
         return value as unknown as RestoreResult;
       },
       {},
+      true,
     );
   }
 }

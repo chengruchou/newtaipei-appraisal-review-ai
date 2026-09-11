@@ -9,6 +9,7 @@ from datetime import UTC, datetime
 from threading import RLock
 from uuid import UUID
 
+from appraisal_review.application.competition_data import privacy_export_parts
 from appraisal_review.application.privacy_bundle import (
     LocalSanitizedBundleBuilder,
     LocalSanitizedVerifier,
@@ -25,6 +26,7 @@ from appraisal_review.domain.privacy_models import (
     placeholder_text,
     public_manifest_json,
 )
+from appraisal_review.ports.competition_data import CompetitionDataAdmission
 from appraisal_review.ports.privacy import PrivacyApprovalAuthority
 from appraisal_review.ports.privacy_export import PrivacyExportConfirmation, PrivacyExportSink
 
@@ -96,6 +98,7 @@ class LocalPrivacyExportGate:
         sink: PrivacyExportSink,
         mapping_service: LocalMappingService,
         key_reference: UUID,
+        competition_admission: CompetitionDataAdmission | None = None,
     ) -> None:
         self._builder = builder
         self._verifier = verifier
@@ -104,6 +107,7 @@ class LocalPrivacyExportGate:
         self._sink = sink
         self._mapping_service = mapping_service
         self._key_reference = key_reference
+        self._competition_admission = competition_admission
         self._mapping_handle: LocalMappingHandle | None = None
         self._lock = RLock()
 
@@ -154,6 +158,8 @@ class LocalPrivacyExportGate:
                         approval_authority=self._authority,
                         artifact_verifier=self._verifier,
                     )
+                    if self._competition_admission is not None:
+                        self._competition_admission.check(privacy_export_parts(payload))
 
                 admit()
                 handle = self._mapping_service.create(

@@ -8,6 +8,7 @@ from typing import Any, Protocol
 
 from pydantic import Field, ValidationError
 
+from appraisal_review.adapters.aws.bedrock_dispatch import require_bedrock_dispatch
 from appraisal_review.adapters.aws.extraction_errors import ExtractionError as ExtractionError
 from appraisal_review.adapters.aws.extraction_execution import execute
 from appraisal_review.adapters.local.png_validation import validate_png
@@ -126,6 +127,7 @@ PROMPT_DIGEST = hashlib.sha256(_SYSTEM.encode("utf-8")).hexdigest()
 
 class BedrockDocumentExtractor:
     def __init__(self, client: ConverseClient, config: ExtractionConfig) -> None:
+        require_bedrock_dispatch(client)
         self.client, self.config = client, config
 
     async def extract_page(

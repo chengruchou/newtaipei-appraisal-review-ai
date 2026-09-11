@@ -3,14 +3,28 @@
 from __future__ import annotations
 
 import re
+import time
 from typing import Any, Literal, Protocol
 
 from pydantic import Field, model_validator
 
+from appraisal_review.adapters.aws.bedrock_dispatch import (
+    install_bedrock_dispatch,
+    require_bedrock_dispatch,
+)
 from appraisal_review.adapters.aws.extraction_errors import provider_failure
+from appraisal_review.application.model_dispatch import SharedModelDispatcher
 from appraisal_review.domain.document_models import Digest
 from appraisal_review.domain.extraction_contracts import ContractModel, PositiveCount
+from appraisal_review.ports.competition_data import CompetitionDataAdmission
 from appraisal_review.ports.document_extraction import ExtractionBoundaryError
+from appraisal_review.ports.model_dispatch import (
+    DispatchDenied,
+    DispatchGuard,
+    current_dispatch_guard,
+    dispatch_guard,
+    inherited_dispatch_authority,
+)
 
 
 class BedrockAccessPolicy(ContractModel):
@@ -65,19 +79,29 @@ class AWSClients(Protocol):
 class WorkstationClients:
     """No SDK import until explicitly requested after source validation."""
 
-    def __init__(self, *, profile: str) -> None:
+    def __init__(
+        self,
+        *,
+        profile: str,
+        dispatcher: SharedModelDispatcher | None = None,
+        competition_admission: CompetitionDataAdmission | None = None,
+    ) -> None:
         if not profile.strip() or profile != profile.strip() or profile == "default":
             raise ExtractionBoundaryError("configuration_error")
         self.profile = profile
+        self.dispatcher = dispatcher
+        self.competition_admission = competition_admission
         self._session: Any = None
 
     def client(self, service: str, region: str, timeout: float) -> Any:
         import boto3
         from botocore.config import Config
 
+        if service in {"bedrock", "bedrock-runtime"} and self.dispatcher is None:
+            raise ExtractionBoundaryError("configuration_error")
         if self._session is None:
             self._session = boto3.Session(profile_name=self.profile, region_name=region)
-        return self._session.client(
+        client = self._session.client(
             service,
             region_name=region,
             config=Config(
@@ -86,6 +110,11 @@ class WorkstationClients:
                 retries={"total_max_attempts": 1},
             ),
         )
+        if service in {"bedrock", "bedrock-runtime"} and self.dispatcher is not None:
+            return install_bedrock_dispatch(
+                client, self.dispatcher, competition_admission=self.competition_admission
+            )
+        return client
 
 
 def _foundation(arn: str) -> tuple[str, str]:
@@ -103,11 +132,28 @@ def preflight(clients: AWSClients, policy: BedrockAccessPolicy) -> Any:
     """
     try:
         policy = BedrockAccessPolicy.model_validate(policy)
+        deadline = time.monotonic() + policy.timeout_seconds
+        try:
+            inherited = current_dispatch_guard()
+        except DispatchDenied:
+            inherited = None
+        if inherited is not None:
+            deadline = min(deadline, inherited.deadline)
+
+        def metadata(call: Any, **kwargs: Any) -> Any:
+            guard = DispatchGuard(deadline, inherited_dispatch_authority())
+            if inherited is not None:
+                guard.authority = inherited.authority
+                guard.cancelled = inherited.cancelled
+            with dispatch_guard(guard):
+                return call(**kwargs)
 
         def client(service: str, region: str) -> Any:
             result = clients.client(service, region, policy.timeout_seconds)
             if result.meta.region_name != region:
                 raise ExtractionBoundaryError("configuration_error")
+            if service in {"bedrock", "bedrock-runtime"}:
+                require_bedrock_dispatch(result)
             return result
 
         caller = client("sts", policy.region).get_caller_identity()
@@ -125,7 +171,9 @@ def preflight(clients: AWSClients, policy: BedrockAccessPolicy) -> Any:
             else:
                 models = [(policy.region, policy.model_id)]
         else:
-            profile = control.get_inference_profile(inferenceProfileIdentifier=policy.model_id)
+            profile = metadata(
+                control.get_inference_profile, inferenceProfileIdentifier=policy.model_id
+            )
             kind = "SYSTEM_DEFINED" if policy.model_kind == "system_profile" else "APPLICATION"
             resource = (
                 "inference-profile" if kind == "SYSTEM_DEFINED" else "application-inference-profile"
@@ -156,9 +204,9 @@ def preflight(clients: AWSClients, policy: BedrockAccessPolicy) -> Any:
         ):
             raise ExtractionBoundaryError("unsupported_capability")
         for region, model in models:
-            details = client("bedrock", region).get_foundation_model(modelIdentifier=model)[
-                "modelDetails"
-            ]
+            details = metadata(
+                client("bedrock", region).get_foundation_model, modelIdentifier=model
+            )["modelDetails"]
             if (
                 details["modelId"] != model
                 or _foundation(details["modelArn"]) != (region, model)

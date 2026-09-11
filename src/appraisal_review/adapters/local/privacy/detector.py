@@ -22,6 +22,10 @@ _FORMAT_PATTERNS = (
     (SensitiveCategory.IDENTITY_NUMBER, r"(?<![A-Za-z0-9])[A-Z][12][0-9]{8}(?![0-9])"),
     (SensitiveCategory.BUSINESS_NUMBER, r"(?<![0-9])[0-9]{8}(?![0-9])"),
     (SensitiveCategory.PHONE, r"(?<![0-9])0[0-9]{1,3}[ -]?[0-9]{3,4}[ -]?[0-9]{3,4}(?![0-9])"),
+    (
+        SensitiveCategory.OWNERSHIP_FINANCIAL,
+        r"(?:NT\$|US\$|\$|USD|TWD|NTD|EUR|CNY|RMB|新臺幣|新台幣)\s*[0-9][0-9,.]*",
+    ),
 )
 _LABELS = (
     (SensitiveCategory.NAME, r"姓名|所有權人|聯絡人|\bName\b|\bOwner\b"),
@@ -31,7 +35,11 @@ _LABELS = (
     (SensitiveCategory.IDENTITY_NUMBER, r"身分證字號|身份證字號|證件號碼|\bID\b"),
     (SensitiveCategory.CASE_CONTACT, r"案件聯絡資訊|\bContact\b"),
     (SensitiveCategory.PARCEL, r"地號|\bParcel\b"),
-    (SensitiveCategory.OWNERSHIP_FINANCIAL, r"產權|持分|\bOwnership\b"),
+    (
+        SensitiveCategory.OWNERSHIP_FINANCIAL,
+        r"產權|持分|金額|單價|總價|價額|地價|補償費|貸款|餘額|稅額|"
+        r"\b(?:Ownership|Amount|Price|Valuation|Compensation|Balance|Loan)\b",
+    ),
 )
 _PATTERNS = tuple(
     (category, re.compile(pattern, re.IGNORECASE))

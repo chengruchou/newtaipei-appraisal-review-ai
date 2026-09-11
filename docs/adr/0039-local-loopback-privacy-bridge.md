@@ -24,6 +24,15 @@ and reads back before catalog registration. It rejects unsupported optional text
 rather than losing a confirmed field. Retained in-process receipts/maps support
 unknown-outcome reconciliation, but are not a transaction across these stores.
 
+A successful transfer also records a session-local binding from the complete
+canonical public manifest to the exact encrypted mapping handle. Failed
+transfer handles remain retained separately for reconciliation and cannot enter
+automatic restoration selection. Selecting the bound handle precedes decryption;
+an unreadable unrelated map cannot block the authorized artifact. Missing,
+corrupted, expired, revoked or mismatched selected evidence still denies access.
+No HTTP input can supply or replace this index, and no persistent session-recovery
+authority is implied by this in-memory binding.
+
 Local refill accepts only a server-resolved authorized published result and plan.
 It uses existing mapping/refill APIs and writes a new confined private file,
 protecting both original and downloaded artifacts. No restored artifact returns

@@ -13,6 +13,8 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 from appraisal_review.adapters.local.document_authority import Ed25519ExportVerifier
 from appraisal_review.adapters.local.document_export import ConfirmedDocumentExport
+from appraisal_review.adapters.local.document_storage import SQLiteDocumentStorage
+from appraisal_review.application.competition_data import privacy_export_parts
 from appraisal_review.application.document_transfer import DocumentTransferService
 from appraisal_review.application.service_guards import Principal
 from appraisal_review.domain.document_transfer import (
@@ -24,6 +26,7 @@ from appraisal_review.domain.document_transfer import (
 )
 from appraisal_review.domain.privacy_export import PrivacyExportPayload
 from appraisal_review.domain.privacy_models import PrivacyManifest, public_manifest_json
+from appraisal_review.ports.competition_data import CompetitionDataAdmission
 from appraisal_review.ports.privacy_export import PrivacyExportConfirmation
 
 
@@ -46,11 +49,23 @@ class CloudExportSink:
         *,
         on_admitted: Callable[[DocumentMetadata], None],
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
+        competition_admission: CompetitionDataAdmission | None = None,
+        local_rehearsal: bool = False,
     ) -> None:
         self._ingestion, self._principal = ingestion, principal
         self._private_key, self._key_id = private_key, key_id
         self._purposes = dict(purposes)
         self._on_admitted, self._clock = on_admitted, clock
+        self._competition_admission = competition_admission
+        self._local_rehearsal = local_rehearsal
+        if type(local_rehearsal) is not bool or (
+            local_rehearsal
+            and (
+                type(ingestion.storage) is not SQLiteDocumentStorage
+                or ingestion.audit is not ingestion.storage
+            )
+        ):
+            raise DocumentFault(DocumentErrorCode.PRIVACY)
         self._lock = Lock()
         self._receipts: list[DocumentMetadata] = []
         if (
@@ -101,6 +116,13 @@ class CloudExportSink:
 
     def _purpose(self, payload: PrivacyExportPayload) -> Purpose:
         try:
+            if self._local_rehearsal and (
+                type(self._ingestion.storage) is not SQLiteDocumentStorage
+                or self._ingestion.audit is not self._ingestion.storage
+            ):
+                raise DocumentFault(DocumentErrorCode.PRIVACY)
+            if not self._local_rehearsal and self._competition_admission is None:
+                raise DocumentFault(DocumentErrorCode.PRIVACY)
             if (
                 type(payload) is not PrivacyExportPayload
                 or type(payload.pdf) is not bytes
@@ -119,6 +141,8 @@ class CloudExportSink:
             purpose = self._purposes.get((manifest.case_id, manifest.document_id))
             if purpose is None:
                 raise ValueError("Unknown source purpose")
+            if self._competition_admission is not None:
+                self._competition_admission.check(privacy_export_parts(payload))
             # Parse the actual immutable bytes before signing. The privacy verifier,
             # not this parser, proves redaction/content-surface requirements.
             with pymupdf.open(stream=payload.pdf, filetype="pdf") as pdf:  # type: ignore[no-untyped-call]

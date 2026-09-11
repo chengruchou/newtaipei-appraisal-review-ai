@@ -29,7 +29,7 @@ from appraisal_review.adapters.local.privacy.ocr import TesseractConfig, Tessera
 from appraisal_review.adapters.local.privacy.pdf_worker import ScanLimits
 from appraisal_review.adapters.local.privacy.refill import IsolatedPrivacyRefillProcessor
 from appraisal_review.adapters.local.privacy.sanitize import TesseractPrivacyOutputOCR
-from appraisal_review.adapters.local.privacy_bridge import PrivacyBridgeRestore
+from appraisal_review.adapters.local.privacy_bridge import PrivacyBridgeRestore, privacy_request_id
 from appraisal_review.adapters.local.privacy_restore_resolver import (
     LocalRestoreCoordinator,
     RestorePublication,
@@ -61,6 +61,7 @@ class RecordedOCR:
     ) -> tuple[TextObservation, ...]:
         target = self.directory / f"ocr-{uuid4()}.json"
         record: dict[str, Any] = {
+            "request_id": privacy_request_id(),
             "page": page.model_dump(mode="json"),
             "input_sha256": hashlib.sha256(preview.png).hexdigest(),
             "width": preview.width,
@@ -337,6 +338,9 @@ async def create_rehearsal(
     def on_ready(snapshot: RevisionSnapshot) -> None:
         asyncio.run_coroutine_threadsafe(register(snapshot), loop).result(timeout=120)
 
+    def diagnostic(record: dict[str, object]) -> None:
+        _private_json(root / f"restore-diagnostic-{uuid4()}.json", record)
+
     bridge = create_privacy_rehearsal(
         root / "privacy",
         authority=f"127.0.0.1:{privacy_port}",
@@ -348,6 +352,7 @@ async def create_rehearsal(
         case_id=case,
         on_ready=on_ready,
         raster_dpi=raster_dpi,
+        diagnostic=diagnostic,
     )
 
     def forms(case_id: str) -> DocumentMetadata:
@@ -361,13 +366,15 @@ async def create_rehearsal(
     await asyncio.to_thread(ocr.preflight, timeout=5)
     evidence_directory = bridge.config.workspace / "private-evidence"
     evidence_directory.mkdir(mode=0o700)
+    output_ocr = TesseractPrivacyOutputOCR(ocr, dpi=ocr_dpi)
     coordinator = LocalRestoreCoordinator(
         workspace=bridge.config.workspace,
         session=bridge.session,
         documents=documents,
         publication=results,
         processor=IsolatedPrivacyRefillProcessor(bridge.config.workspace, limits=render_limits),
-        ocr=RecordedOCR(TesseractPrivacyOutputOCR(ocr, dpi=ocr_dpi), evidence_directory),
+        ocr=RecordedOCR(output_ocr, evidence_directory),
+        ocr_identity=output_ocr.identity,
     )
     bridge.session.results = RecordedRestoreResolver(coordinator, evidence_directory)
     private_fixture = bridge.config.workspace / "browser-private.json"
