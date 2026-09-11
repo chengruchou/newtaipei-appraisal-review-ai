@@ -57,5 +57,9 @@ directly without a public signed URL. Existing local files are never overwritten
   catalog or infer current source access from old hashes.
 - Version-pinned artifacts require retention of referenced versions; generic
   noncurrent-version expiration cannot establish safe artifact retention.
+  The result bucket therefore disables automatic expiration of completed object
+  versions. Only incomplete multipart uploads are aborted after seven days.
+  Unreferenced-version cleanup requires a trusted reconciliation decision and is
+  not implemented by this lifecycle rule; storage can grow until that exists.
 - No live account/model calls, deployment or formal business approval are covered
   by offline Moto/Stubber and real local PDF tests.

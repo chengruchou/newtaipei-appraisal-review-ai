@@ -22,6 +22,24 @@ cdk synth
 Do not place credentials, account IDs, or fixed globally unique bucket names in
 this directory.
 
+The result bucket retains every completed version because committed manifests
+pin exact version IDs, including versions made noncurrent by a later upload to
+the same key. The lifecycle rule only aborts incomplete multipart uploads after
+seven days. There is no automatic completed-version deletion until trusted
+reconciliation can prove that no committed manifest references a version.
+Stopping compute or triggers must not delete retained evidence.
+
+Run the local synthesized-template regression after installing the CDK and
+project dev requirements, from the repository root:
+
+```bash
+PYTHONPATH=.:src python -m pytest infra/cdk/tests/test_artifact_retention.py
+```
+
+This checks retention, versioning, encryption, public access blocking and TLS
+denial on the generated result bucket. Offline synthesis is not live deployment
+or proof of the competition role's permissions.
+
 ## M0 handoff to D
 
 The current Cases table is a baseline definition, not the job/task/outbox/lease
