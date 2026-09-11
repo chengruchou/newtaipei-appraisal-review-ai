@@ -142,6 +142,9 @@ class BoundedWorkflowRunner:
         except WorkflowRunUnavailable:
             raise ServiceFault(ServiceErrorCode.CONFLICT) from None
         if isinstance(owner, BoundedWorkflowResult):
+            recorded = await self._coordinator.prior_decisions(run)
+            if recorded and owner.events != recorded:
+                raise ServiceFault(ServiceErrorCode.CONFLICT)
             return owner
         try:
             result = await self._run(run, evidence=evidence, owner=owner)
@@ -166,23 +169,43 @@ class BoundedWorkflowRunner:
     ) -> BoundedWorkflowResult:
         budget = await self._coordinator.ledger.remaining(owner)
         snapshot = await self._current(run, budget=budget)
-        events: list[DecisionEvent] = []
+        events = list(await self._coordinator.prior_decisions(run))
         seen_failures: set[str] = set()
         selection_retry_count = 0
         retry_charge = 0
 
-        previous = await self._coordinator.prior_decisions(run)
+        previous = events
         if previous and previous[-1].disposition != "executed" and self._terminal(snapshot):
             return self._handoff_result(
                 run,
-                [previous[-1]],
-                previous[-1].budget_after,
+                events,
+                budget,
                 snapshot,
                 WorkflowTermination.PERMANENT_FAILURE,
                 classify_event_failure(previous[-1])
                 or FailureCategory.DETERMINISTIC_REVIEW_BLOCKER,
                 "failed-terminal-transition",
             )
+
+        # Direct decisions share the same invocation history and retry allowance.
+        for prior in previous:
+            category = classify_event_failure(prior)
+            if prior.disposition != "executed" and category is not None:
+                seen_failures.add(no_progress_fingerprint(prior, snapshot, category))
+        if previous and previous[-1].disposition != "executed":
+            category = classify_event_failure(previous[-1])
+            if category != FailureCategory.RETRYABLE_PROVIDER_TOOL:
+                return self._handoff_result(
+                    run,
+                    events,
+                    budget,
+                    snapshot,
+                    WorkflowTermination.PERMANENT_FAILURE,
+                    category or FailureCategory.DETERMINISTIC_REVIEW_BLOCKER,
+                    "workflow-permanent-failure",
+                )
+            retry_charge = 1
+            budget = await self._backoff(budget, len(seen_failures))
 
         while True:
             await self._coordinator.ledger.checkpoint(owner, budget)
