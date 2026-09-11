@@ -268,7 +268,10 @@ def _public_allow(statement: dict[str, Any]) -> bool:
 
 def _bucket_tls(resources: dict[str, Any], name: str, bucket: dict[str, Any]) -> bool:
     bucket_arns: list[Any] = [{"Fn::GetAtt": [name, "Arn"]}]
-    object_arns: list[Any] = [{"Fn::Sub": f"${{{name}.Arn}}/*"}]
+    object_arns: list[Any] = [
+        {"Fn::Sub": f"${{{name}.Arn}}/*"},
+        {"Fn::Join": ["", [{"Fn::GetAtt": [name, "Arn"]}, "/*"]]},
+    ]
     bucket_name = bucket.get("BucketName")
     if isinstance(bucket_name, str):
         bucket_arns.append(f"arn:aws:s3:::{bucket_name}")

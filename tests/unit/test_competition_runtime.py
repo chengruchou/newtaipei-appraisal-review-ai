@@ -13,7 +13,7 @@ import sqlite3
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
-from contextlib import contextmanager
+from contextlib import closing, contextmanager
 from datetime import UTC, datetime, timedelta
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -799,7 +799,7 @@ def test_actual_async_snapshot_authority_reads_guarded_s3_without_recursion(tmp_
     run = pages[0].run
     namespace = uuid4()
     prefix = f"sanitized/{namespace}/"
-    with sqlite3.connect(local.storage.database) as connection:
+    with closing(sqlite3.connect(local.storage.database)) as connection, connection:
         objects = {
             f"/synthetic-evidence/{prefix}{key}": (version, content)
             for key, version, content in connection.execute(

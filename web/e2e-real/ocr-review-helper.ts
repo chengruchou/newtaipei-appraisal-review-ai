@@ -1,7 +1,13 @@
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { expect, type Page, type Response } from "@playwright/test";
+import {
+  expect,
+  type Page,
+  type Response,
+  type APIRequestContext,
+  type APIResponse,
+} from "@playwright/test";
 import type { OcrReviewView, OcrReceipt } from "../src/privacy/ocr-review-client";
 
 export interface OcrFixture {
@@ -20,6 +26,37 @@ interface ReadingPlan {
   readings: { item_id: string; page_image_sha256: string; reading: string }[];
 }
 const sha = (bytes: Buffer) => createHash("sha256").update(bytes).digest("hex");
+
+async function localPrivacyRequest(
+  request: APIRequestContext,
+  method: "GET" | "POST",
+  url: string,
+  headers: Record<string, string>,
+): Promise<APIResponse> {
+  try {
+    return method === "GET"
+      ? await request.get(url, { headers, timeout: 35_000 })
+      : await request.post(url, { headers, data: {}, timeout: 35_000 });
+  } catch {
+    throw new Error(
+      "The bounded local privacy request failed. Inspect the private server diagnostic.",
+    );
+  }
+}
+export function localPrivacyGet(
+  request: APIRequestContext,
+  url: string,
+  headers: Record<string, string>,
+) {
+  return localPrivacyRequest(request, "GET", url, headers);
+}
+export function localPrivacyPost(
+  request: APIRequestContext,
+  url: string,
+  headers: Record<string, string>,
+) {
+  return localPrivacyRequest(request, "POST", url, headers);
+}
 
 export async function requiresOcrReview(response: Response): Promise<boolean> {
   if (response.status() !== 409) return false;
@@ -85,7 +122,11 @@ export async function completeLocalOcrReview(
   for (let stageNumber = 0; stageNumber < 2 && outcome.response.status() === 409; stageNumber++) {
     expect(await requiresOcrReview(outcome.response)).toBe(true);
     const { review_id: reviewId } = outcome.body as { review_id: string };
-    const response = await page.request.get(`${prefix}/restore-reviews/${reviewId}`, { headers });
+    const response = await localPrivacyGet(
+      page.request,
+      `${prefix}/restore-reviews/${reviewId}`,
+      headers,
+    );
     expect(response.ok()).toBe(true);
     let view = (await response.json()) as OcrReviewView;
     expect(stages).not.toContain(view.stage);
@@ -111,7 +152,9 @@ export async function completeLocalOcrReview(
     await expect(page.getByRole("link", { name: "Save restored PDF locally" })).toHaveCount(0);
     if (view.items.some((item) => item.confirmed_reading === null))
       await expect(restoreButton).toBeDisabled();
-    for (const item of view.items) {
+    const orderedItems = [...view.items].sort((left, right) => left.page - right.page);
+    const pageBytes = new Map<number, Buffer>();
+    for (const item of orderedItems) {
       await page.getByLabel("OCR review page", { exact: true }).selectOption(String(item.page));
       await page.getByLabel("Required OCR item", { exact: true }).selectOption(item.item_id);
       const image = page.getByRole("img", {
@@ -127,12 +170,22 @@ export async function completeLocalOcrReview(
           { timeout: 30_000 },
         )
         .toBe(true);
-      const png = await page.request.get(
-        `${prefix}/restore-reviews/${reviewId}/pages/${item.page}`,
-        { headers },
-      );
-      const bytes = await png.body();
-      expect(png.ok()).toBe(true);
+      if (!pageBytes.has(item.page)) {
+        let captured: number[];
+        try {
+          captured = await image.evaluate(async (element: HTMLImageElement) => {
+            if (!element.currentSrc.startsWith("blob:"))
+              throw new Error("Expected the verified local page blob.");
+            const response = await fetch(element.currentSrc);
+            if (!response.ok) throw new Error("The displayed local page bytes are unavailable.");
+            return Array.from(new Uint8Array(await response.arrayBuffer()));
+          });
+        } catch {
+          throw new Error("The exact displayed local page bytes could not be read.");
+        }
+        pageBytes.set(item.page, Buffer.from(captured));
+      }
+      const bytes = pageBytes.get(item.page)!;
       expect(sha(bytes)).toBe(view.pages.find((entry) => entry.number === item.page)!.image_sha256);
       writeFileSync(join(root, `${view.stage}-page-${item.page}.png`), bytes, { mode: 0o600 });
       await page
@@ -166,7 +219,7 @@ export async function completeLocalOcrReview(
     expect(plan.readings.map((reading) => reading.item_id).sort()).toEqual(
       view.items.map((item) => item.item_id).sort(),
     );
-    for (const item of original.items) {
+    for (const item of orderedItems) {
       const reading = plan.readings.find((entry) => entry.item_id === item.item_id)!;
       expect(reading.page_image_sha256).toBe(
         view.pages.find((entry) => entry.number === item.page)!.image_sha256,

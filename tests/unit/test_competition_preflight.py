@@ -635,3 +635,64 @@ def test_exact_parameter_is_still_checked_against_approved_model_scope() -> None
             approved_model_arns=frozenset({MODEL}),
         )
     }
+
+
+def cdk_tls_template() -> dict[str, Any]:
+    template = bucket_template()
+    statement = template["Resources"]["TLS"]["Properties"]["PolicyDocument"]["Statement"][0]
+    statement["Principal"] = {"AWS": "*"}
+    statement["Resource"][1] = {"Fn::Join": ["", [{"Fn::GetAtt": ["Evidence", "Arn"]}, "/*"]]}
+    return template
+
+
+def test_cdk_tls_exact_join_object_arn_passes() -> None:
+    assert check_template(cdk_tls_template()) == ()
+
+
+@pytest.mark.parametrize(
+    "target",
+    [
+        {"Fn::Join": ["", [{"Fn::GetAtt": ["OtherBucket", "Arn"]}, "/*"]]},
+        {"Fn::Join": ["/", [{"Fn::GetAtt": ["Evidence", "Arn"]}, "/*"]]},
+        {"Fn::Join": ["", [{"Fn::GetAtt": ["Evidence", "Arn"]}, "/"]]},
+        {"Fn::Join": ["", [{"Fn::GetAtt": ["Evidence", "Arn"]}, "/*", "suffix"]]},
+        {"Fn::Join": ["", [{"Fn::GetAtt": ["Evidence", "DomainName"]}, "/*"]]},
+        {"Fn::Join": ["", [{"Ref": "Evidence"}, "/*"]]},
+        {"Fn::Join": ["", [{"Fn::GetAtt": ["Evidence", "Arn"]}]]},
+        {"Fn::Join": ["", "Evidence/*"]},
+        {"Fn::Join": "Evidence/*"},
+        {"Fn::Join": ["", [{"Fn::GetAtt": ["Evidence", "Arn"]}, "/*"]], "Unexpected": True},
+    ],
+)
+def test_cdk_tls_malformed_or_wrong_object_arn_denies(target: Any) -> None:
+    template = cdk_tls_template()
+    statement = template["Resources"]["TLS"]["Properties"]["PolicyDocument"]["Statement"][0]
+    statement["Resource"][1] = target
+    assert "s3_tls_deny_required" in template_codes(template)
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        "wrong-bucket-arn",
+        "object-only",
+        "restricted-principal",
+        "extra-condition",
+        "conditional-policy",
+    ],
+)
+def test_cdk_tls_join_preserves_existing_guard_requirements(change: str) -> None:
+    template = cdk_tls_template()
+    policy = template["Resources"]["TLS"]
+    statement = policy["Properties"]["PolicyDocument"]["Statement"][0]
+    if change == "wrong-bucket-arn":
+        statement["Resource"][0] = {"Fn::GetAtt": ["OtherBucket", "Arn"]}
+    elif change == "object-only":
+        statement["Resource"] = statement["Resource"][1:]
+    elif change == "restricted-principal":
+        statement["Principal"] = {"AWS": ROLE}
+    elif change == "extra-condition":
+        statement["Condition"]["StringEquals"] = {"aws:PrincipalArn": ROLE}
+    else:
+        policy["Condition"] = "OptionalPolicy"
+    assert "s3_tls_deny_required" in template_codes(template)

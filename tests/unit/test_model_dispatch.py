@@ -8,7 +8,7 @@ import sys
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
-from contextlib import contextmanager
+from contextlib import ExitStack, closing, contextmanager
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from itertools import pairwise
 
@@ -17,6 +17,7 @@ import pytest
 from botocore import UNSIGNED
 from botocore.config import Config
 from moto import mock_aws
+from moto.core.botocore_stubber import BotocoreStubber
 
 from appraisal_review.adapters.aws.bedrock_dispatch import (
     install_bedrock_dispatch,
@@ -282,35 +283,92 @@ def test_slow_authority_check_cannot_cross_deadline():
         DispatchGuard(time.monotonic() + 0.02, authority=slow).check()
 
 
+@pytest.fixture
+def atomic_moto_updates(monkeypatch):
+    # Moto does not support concurrent access (https://docs.getmoto.org/en/latest/docs/faq.html).
+    # Its UpdateItem condition check and mutation are separate, unlocked steps.
+    # Serialize only the emulator's transport handling, preserving concurrent SDK callers
+    # and Moto's real condition evaluation. This lock cannot make unconditional writes exclusive.
+    lock = threading.Lock()
+    requests = []
+    process_request = BotocoreStubber.process_request
+
+    def process(stubber, request):
+        target = request.headers.get("X-Amz-Target", "")
+        if isinstance(target, bytes):
+            target = target.decode("ascii")
+        if target != "DynamoDB_20120810.UpdateItem":
+            return process_request(stubber, request)
+        with lock:
+            requests.append(json.loads(request.body))
+            return process_request(stubber, request)
+
+    monkeypatch.setattr(BotocoreStubber, "process_request", process)
+    return requests
+
+
 @mock_aws
-def test_dynamodb_central_conditional_owner_and_release_are_fenced():
-    sdk = boto3.client("dynamodb", region_name="us-east-1")
-    sdk.create_table(
-        TableName="synthetic-dispatch",
-        KeySchema=[{"AttributeName": "pk", "KeyType": "HASH"}],
-        AttributeDefinitions=[{"AttributeName": "pk", "AttributeType": "S"}],
-        BillingMode="PAY_PER_REQUEST",
-    )
-    stores = [DynamoDBModelDispatchStore(sdk, table_name="synthetic-dispatch") for _ in range(6)]
-    barrier = threading.Barrier(6)
+def test_dynamodb_central_conditional_owner_and_release_are_fenced(atomic_moto_updates):
+    with ExitStack() as stack:
+        clients = [
+            stack.enter_context(closing(boto3.client("dynamodb", region_name="us-east-1")))
+            for _ in range(6)
+        ]
+        assert len({id(sdk) for sdk in clients}) == 6
+        clients[0].create_table(
+            TableName="synthetic-dispatch",
+            KeySchema=[{"AttributeName": "pk", "KeyType": "HASH"}],
+            AttributeDefinitions=[{"AttributeName": "pk", "AttributeType": "S"}],
+            BillingMode="PAY_PER_REQUEST",
+        )
+        stores = [
+            DynamoDBModelDispatchStore(sdk, table_name="synthetic-dispatch") for sdk in clients
+        ]
+        barrier = threading.Barrier(6)
 
-    def acquire(i):
-        barrier.wait(timeout=5)
-        return stores[i].try_acquire("team-wide", str(i))
+        def acquire(i):
+            barrier.wait(timeout=5)
+            return stores[i].try_acquire("team-wide", str(i))
 
-    with ThreadPoolExecutor(max_workers=6) as pool:
-        outcomes = list(pool.map(acquire, range(6)))
-    assert outcomes.count(True) == 1
-    winner = str(outcomes.index(True))
-    fresh = DynamoDBModelDispatchStore(sdk, table_name="synthetic-dispatch")
-    with pytest.raises(DispatchDenied):
-        fresh.release("team-wide", "stale")
-    assert not fresh.try_acquire("team-wide", "restart")
-    fresh.release("team-wide", winner)
-    assert fresh.try_acquire("team-wide", "restart")
-    with pytest.raises(DispatchDenied):
-        stores[0].release("team-wide", winner)
-    sdk.close()
+        with ThreadPoolExecutor(max_workers=6) as pool:
+            outcomes = list(pool.map(acquire, range(6)))
+        assert outcomes.count(True) == 1
+        winner = str(outcomes.index(True))
+        restarted_sdk = stack.enter_context(
+            closing(boto3.client("dynamodb", region_name="us-east-1"))
+        )
+        fresh = DynamoDBModelDispatchStore(restarted_sdk, table_name="synthetic-dispatch")
+        with pytest.raises(DispatchDenied, match="dispatch_owner_fenced"):
+            fresh.release("team-wide", "stale")
+        assert not fresh.try_acquire("team-wide", "restart")
+        fresh.release("team-wide", winner)
+        assert fresh.try_acquire("team-wide", "restart")
+        with pytest.raises(DispatchDenied, match="dispatch_owner_fenced"):
+            stores[0].release("team-wide", winner)
+
+        def expected(owner, *, release=False):
+            return {
+                "TableName": "synthetic-dispatch",
+                "Key": {"pk": {"S": "model-dispatch:team-wide"}},
+                "UpdateExpression": "REMOVE #owner" if release else "SET #owner = :owner",
+                "ConditionExpression": "#owner = :owner"
+                if release
+                else "attribute_not_exists(#owner)",
+                "ExpressionAttributeNames": {"#owner": "owner"},
+                "ExpressionAttributeValues": {":owner": {"S": owner}},
+            }
+
+        assert sorted(
+            atomic_moto_updates[:6],
+            key=lambda body: body["ExpressionAttributeValues"][":owner"]["S"],
+        ) == [expected(str(i)) for i in range(6)]
+        assert atomic_moto_updates[6:] == [
+            expected("stale", release=True),
+            expected("restart"),
+            expected(winner, release=True),
+            expected("restart"),
+            expected(winner, release=True),
+        ]
 
 
 def test_unwrapped_real_client_and_missing_guard_are_denied(tmp_path):
@@ -534,7 +592,7 @@ def test_selector_cancellation_and_fence_revoke_waiting_sdk_send(tmp_path):
 
 
 @mock_aws
-def test_central_dynamodb_store_serializes_actual_sdk_transports(tmp_path):
+def test_central_dynamodb_store_serializes_actual_sdk_transports(tmp_path, atomic_moto_updates):
     sdk = boto3.client("dynamodb", region_name="us-east-1")
     sdk.create_table(
         TableName="synthetic-transport-dispatch",

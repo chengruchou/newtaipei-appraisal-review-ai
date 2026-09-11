@@ -3,7 +3,7 @@ import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { expect, test } from "@playwright/test";
 import type { OcrReviewView } from "../src/privacy/ocr-review-client";
-import type { OcrFixture } from "./ocr-review-helper";
+import { localPrivacyGet, localPrivacyPost, type OcrFixture } from "./ocr-review-helper";
 
 /** Run against the full positive flow's pending stage before any reading plan is supplied. */
 test("automatic OCR refusal preserves exact measurements and cannot resume without confirmations", async ({
@@ -41,14 +41,18 @@ test("automatic OCR refusal preserves exact measurements and cannot resume witho
   );
   const prefix = `${new URL(fixture.bridge_url).origin}/local-privacy`;
   const headers = { Authorization: `Bearer ${fixture.token}`, Origin: fixture.origin };
-  const refusal = await request.post(`${prefix}/restore/${fixture.restore_result_id}`, {
+  const refusal = await localPrivacyPost(
+    request,
+    `${prefix}/restore/${fixture.restore_result_id}`,
     headers,
-    data: {},
-    timeout: 120_000,
-  });
+  );
   expect(refusal.status()).toBe(409);
   expect(await refusal.json()).toEqual(initial.body);
-  const response = await request.get(`${prefix}/restore-reviews/${before.review_id}`, { headers });
+  const response = await localPrivacyGet(
+    request,
+    `${prefix}/restore-reviews/${before.review_id}`,
+    headers,
+  );
   expect(response.ok()).toBe(true);
   const after = (await response.json()) as OcrReviewView;
   expect(after).toEqual(before);

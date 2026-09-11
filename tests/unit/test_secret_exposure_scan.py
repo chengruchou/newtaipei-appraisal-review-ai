@@ -4,6 +4,7 @@ import gzip
 import io
 import json
 import subprocess
+import sys
 import tarfile
 import zipfile
 from pathlib import Path
@@ -140,3 +141,33 @@ def test_clean_scope_is_only_reported_as_no_pattern_matches(tmp_path: Path):
     scan.path(path)
     assert scan.report()["status"] == "no_pattern_matches"
     assert scan.report()["scanned_items"] == 1
+
+
+@pytest.mark.parametrize("json_header", [False, True])
+def test_cli_detects_bearer_headers_without_echoing_the_synthetic_value(tmp_path, json_header):
+    value = "synthetic-session-" + "Z" * 32
+    payload = (
+        json.dumps({"Authorization": "bEaReR " + value})
+        if json_header
+        else "  - Authorization: Bearer " + value + "\n"
+    )
+    log = tmp_path / "browser.log"
+    log.write_text(payload)
+    report = tmp_path / "report.json"
+    completed = subprocess.run(
+        [sys.executable, scanner.__file__, "--path", str(log), "--report", str(report)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert completed.returncode != 0
+    content = report.read_text()
+    assert value not in content
+    assert value not in completed.stdout + completed.stderr
+    assert json.loads(content)["finding_paths"] == [str(log)]
+
+
+def test_documented_bearer_placeholder_is_not_a_credential():
+    scan = scanner.Scan()
+    scan.content("instructions", b"Set Authorization: Bearer <runtime-token> at runtime.")
+    assert scan.report()["status"] == "no_pattern_matches"

@@ -26,6 +26,8 @@ PATTERNS = tuple(
         rb"\b(?:gh[pousr]_[A-Za-z0-9]{30,255}|github_pat_[A-Za-z0-9_]{30,255})\b",
         rb"\bxox[baprs]-[A-Za-z0-9-]{20,255}\b",
         rb"\bAIza[A-Za-z0-9_-]{35}\b",
+        rb"(?i)\bauthorization[\"' ]{0,4}[:=][ \t\"']{0,5}bearer[ \t]+"
+        rb"[A-Za-z0-9._~+/=-]{16,2048}",
         rb"(?i)(?:aws_secret_access_key|aws_session_token|api_key|client_secret|"
         rb"password|access_token|refresh_token)[\"' ]{0,4}[:=][ \t]{0,4}"
         rb"[\"'][A-Za-z0-9_+/.=-]{16,1024}[\"']",
