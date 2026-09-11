@@ -77,6 +77,13 @@ class PDFPreflightValidator:
     def validate(self, request: PDFWriteRequest, source_path: Path) -> PDFPreflightPlan:
         reader, source_sha256 = self._read_source(source_path)
         self._validate_template(request, len(reader.pages), source_sha256)
+        if self.render_config.approved_font_sha256 is None and (
+            request.additional_results
+            or any(field.placeholder_token is not None for field in request.field_map.fields)
+        ):
+            raise PDFFontError(
+                "Multi-context or placeholder output requires an approved font digest"
+            )
         font, font_bytes = self._load_font()
         prepared: list[PreparedPDFField] = []
         seen_boxes: dict[int, list[BoundingBox]] = {}
