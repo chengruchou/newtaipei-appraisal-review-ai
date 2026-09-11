@@ -3,7 +3,7 @@
  * guessing. The cases worth pinning are the ones where guessing is tempting: a timeout,
  * where the outcome is genuinely unknown, and an error body that is missing or malformed.
  */
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ReviewClient } from "@/api/client";
 import { ServiceError, TransportError } from "@/api/problems";
@@ -26,6 +26,11 @@ function jsonResponse(status: number, body: unknown): Response {
 }
 
 describe("ReviewClient", () => {
+  // Auth/shape assertions must not race cold schema compilation or parallel worker load.
+  // Advance the fake clock explicitly in the deadline test below.
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
   it("sends the bearer token but never puts identity in the body", async () => {
     const fetchImpl = vi.fn().mockResolvedValue(jsonResponse(200, view()));
     await clientWith(fetchImpl).readTask("t1");
@@ -74,9 +79,11 @@ describe("ReviewClient", () => {
         }),
     );
 
-    const failure = await clientWith(fetchImpl as unknown as typeof fetch, 10)
+    const pending = clientWith(fetchImpl as unknown as typeof fetch, 10)
       .readTask("t1")
       .catch((error: unknown) => error);
+    await vi.advanceTimersByTimeAsync(11);
+    const failure = await pending;
 
     // A ServiceError here would tell the UI the service decided something. It did not.
     expect(failure).toBeInstanceOf(TransportError);
