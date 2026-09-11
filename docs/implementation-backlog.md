@@ -12,6 +12,14 @@ local restoration diagnostics and explicit synthetic container composition.
 Their PR evidence identifies the new source/image checkpoints. The baseline
 counts above must not be reused as validation of these additions.
 
+The current remote main snapshot is `f241e7a479d3135e81bb47bcf9a94f2685492fdf`.
+Follow-ups #52 and #53 are integrated into `feat/local-validation-stack` at
+executable checkpoint `add3c0e23dc978dff082450d6475ace1e599261c`.
+[Current local evidence](followup-local-validation-record.md) includes full tests,
+the installed wheel, actual image core, a complete original synthetic privacy
+flow and a separate paused/automatic/resume flow. The 176-finding image OS gate
+and exact-head hosted CI remain separate blockers.
+
 The local integrated core is usable for verification. One complete synthetic OCR
 restoration was reported successful; repeatability remains work. Cloud deployment,
 designated-model quality and formal business approval remain unaccepted. The
@@ -21,7 +29,7 @@ table below tracks remaining work rather than recreating completed components.
 
 | Issue | Remaining deliverable | Start condition / dependency |
 | --- | --- | --- |
-| [#48](https://github.com/chengruchou/newtaipei-appraisal-review-ai/issues/48) | Explicit synthetic frontend/API/worker container and host-companion mode implemented; final integrated and supported-platform acceptance remains | Follow the [local validation stack](local-validation-stack.md); coordinate #22/#25 production provisioning. Existing AWS Docker default remains unconfigured |
+| [#48](https://github.com/chengruchou/newtaipei-appraisal-review-ai/issues/48) | Explicit synthetic container and separate host companion implemented and exercised at the recorded checkpoint; independent review, supported-platform and production acceptance remain | Follow the [local validation stack](local-validation-stack.md); coordinate #22/#25 production provisioning. Existing AWS Docker default remains unconfigured |
 | [#25](https://github.com/chengruchou/newtaipei-appraisal-review-ai/issues/25) | Browser onboarding, trusted local file import, case/job creation and listing, session lifecycle and complete operator workflow | Build against current local contracts; coordinate deployed identity/transactions with #24 and #30 |
 | [#47](https://github.com/chengruchou/newtaipei-appraisal-review-ai/issues/47) | Fresh routing discovery now binds each requested model's exact approved destination set in the guarded composition | Local SDK/HTTP regressions implemented; independent review, hosted CI and real invocation acceptance pending; see ADR 0048 |
 | [#49](https://github.com/chengruchou/newtaipei-appraisal-review-ai/issues/49) | Obtain actual exact-commit hosted verification; current inspected jobs never started | GitHub reports payment or spending-limit restrictions; account-owner remediation is required before separately authorized CI execution |

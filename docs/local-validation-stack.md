@@ -198,14 +198,25 @@ shutdown; retain private state and review expiry, not a copied old receipt, on r
 
 ## Security and remaining acceptance
 
+The [follow-up validation record](followup-local-validation-record.md) records
+the clean executable checkpoint, exact Linux ARM64 image, four core browser
+scenarios and lifecycle verification. The separate native host pairing passed
+the complete original synthetic privacy flow and a fresh paused/automatic/resume
+sequence using byte-identical image-exported UI assets. Original and placeholder
+PDFs stayed unchanged; independent checks cover three exact source crops, eight
+appraisal fields and every non-restoration pixel. This is local synthetic
+acceptance only. Other host platforms, repeated OCR reliability, production
+provisioning and real approvals remain open.
+
 Runtime logs and Docker log collection are disabled. Request bodies, sessions and
 private PDFs are never logged by this packaging. Build contexts contain only
 allowlisted code, locked dependency inputs and built UI assets. No runtime
 configuration, originals, mapping keys or final PDFs enter an image layer.
 
 The pinned base is the existing reviewed input, **not an OS vulnerability fix**.
-The historical scan reported unresolved Debian findings, including Critical and High
-findings; #50 owns remediation. That historical count is not a current scan result.
+The fresh exact-image scan reported 176 Debian findings, including 3 Critical and
+51 High; #50 owns remediation. No finding lists a fixed version in that scanned
+database, which is not a universal upstream-fix claim or risk acceptance.
 After integrating source changes, rebuild the exact final head and run Trivy with a
 fresh database against its saved final filesystem, with no ignores and a nonzero
 severity gate. Independently scan every exported image layer for credential
