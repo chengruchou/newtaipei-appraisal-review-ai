@@ -2,12 +2,15 @@
 
 ## Current integration boundary
 
-Reviewed components are joined in a configured local service. Seven real core
-browser scenarios passed. **Complete privacy restoration, AWS deployment, live
-model quality and formal human/business approval are not accepted.** This matrix
-supports the single status recorded in [project progress](project-progress.md).
-It does not turn component tests, source inspection or synthetic signatures into
-complete acceptance.
+The reviewed integration is merged through
+[PR #45](https://github.com/chengruchou/newtaipei-appraisal-review-ai/pull/45):
+`main` at `d148422a` has the same source tree as `fd22e683`. Seven real core
+browser scenarios passed, and the final delivery reports one complete local
+privacy restoration/download. **Repeated OCR reliability, AWS deployment, hosted
+CI, image security, live model quality and formal human/business approval remain
+open.** This matrix supports [project progress](project-progress.md) and
+[the implementation backlog](implementation-backlog.md). Component tests, source
+inspection and synthetic signatures do not establish complete deployment acceptance.
 
 Earlier SHA, PR, CI, test-count and real-document subset observations are retained
 in the [historical traceability snapshot](history/2026-09-11-pre-convergence/delivery-traceability.md).
@@ -30,18 +33,20 @@ that job did not run tests; it is not evidence about a different head's CI.
 | Truthful extraction cost | Extraction page outcomes and smoke evaluator | Extraction/evaluation regression scope | Known input/output usage contributes independently; unknown totals remain unknown |
 | Complete multi-context PDF | Registry, LocalPDFWriter, protected sources/font snapshots | `test_pdf_output_protection.py`, `test_template_registry.py`, actual reopen and backfill | Actual service artifact covers primary plus every additional context, all fields, exact writer/assets and this run |
 | Authorized publication/download | Restored publication core, current-attempt/grant repositories and local SQLite composition | Publication condition and source/grant regression suites | Manifest and result are current, bytes match, every download reauthorizes, revocation prevents replay |
-| Safe local restore | Local privacy refill and placeholder backfill | Actual synthetic PDF reopen and source-byte equality | Another local revealed PDF is created; original/template/downloaded placeholder bytes remain unchanged |
+| Safe local restore | Local privacy refill, placeholder backfill and exact two-stage visual OCR review | Final delivery reports one complete restored download, 99/108 retained raw stage observations, 11 individual readings and two local receipts | Repeat complete runs; diagnose 409/timeouts; retain original/download bytes, raw scores, stage receipts and final output checks |
 | Runtime success and deadlines | RuntimeWorker and configured factory/packaging | Storage/worker regressions; fail-closed unconfigured path | Actual configured package executes success; deadline/cancellation blocks late publication even during heartbeat I/O |
+| Competition data and model dispatch | Pinned profile/catalogs, trusted data admission, guarded clients, shared dispatcher and budget ledger | Profile/data/runtime/dispatch regressions, actual SDK localhost requests and persistent-store tests | Close per-model routing binding; verify approved account, effective permissions, complete destinations, physical request spacing and budgets in the authorized environment |
 | Independent acceptance evidence | rehearsal-v1 validator and collectors | Strict source/trust/signature/hash/dedup/scenario tests | Actual observer traces bind case/revision/run/attempt/head/configuration; synthetic attestation remains synthetic |
 | Submission integrity | Existing full-snapshot/metadata/branch/publication checker | Dedicated checker subprocess suite and per-delivery gates | Exact outgoing history, index, working files and actual publication text inspected before submission |
 
 These test names identify relevant regression coverage, not a claim that every
-listed suite has been rerun on the final merged checkout. The integration owner
-records the exact final commands and results after the complete delivery gate.
+listed suite was rerun during this documentation update. The
+[validation record](local-validation-record.md) separates owner-reported final
+gates, independent review checks, dependency qualifications and earlier runs.
 No skipped/relaxed assertion, confidence increase or fabricated success is an
 acceptable substitute for a missing observation.
 
-## Repair-round observations with bounded scope
+## Historical repair-round observations with bounded scope
 
 | Checkpoint | Observed result | Scope limit |
 | --- | --- | --- |
@@ -80,13 +85,14 @@ contexts. This needs actual producer/service/reader validation,
 not just a writer regression. Changed signed content requires explicit migration
 and reapproval, not silent re-signing. See [the full migration](service-contracts.md).
 
-## Evidence record required at final local rehearsal
+## Evidence required for subsequent local rehearsals
 
 A final record must identify its tested code revision, configuration digest,
 source/case/revision/run/attempt identities, actual command, time and observer.
-Keep observations and conclusions separate. The final code revision and startup
-commands are supplied by the integration owner after assembly; an evolving
-working-tree result must not be relabeled as that release.
+Keep observations and conclusions separate. Use the merged local baseline and
+the [integrated runbook](integrated-local-runbook.md), recording the actual tested
+revision after each change. An evolving working-tree result must not be relabeled
+as an earlier validated release.
 
 | Scenario | Required observation |
 | --- | --- |

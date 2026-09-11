@@ -1,6 +1,9 @@
 # ADR 0015: Durable review jobs, outbox dispatch and lease fencing
 
-Status: proposed on the `feat/durable-review-jobs` branch for #29; not merged.
+Original branch status: proposed on `feat/durable-review-jobs` for #29.
+Current integration: included in main through PR #45. Local durable behavior is
+implemented; deployed composition and recovery remain in #30 and #31. The context
+below describes the original M0 baseline.
 Supersedes the reserved job duties described in
 [ADR 0003](0003-entry-and-cloud-job-boundaries.md) and
 [ADR 0013](0013-service-foundation.md) by giving them an implementation.

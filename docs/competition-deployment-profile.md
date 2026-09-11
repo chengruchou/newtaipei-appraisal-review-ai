@@ -1,5 +1,18 @@
 # Competition deployment profile and offline checks
 
+Current integration baseline: main
+`d148422adb18190bada93b8588a4e34d73e3c2e4`, after merged
+[PR #45](https://github.com/chengruchou/newtaipei-appraisal-review-ai/pull/45),
+2026-09-11. The guarded factories and offline checks are implemented. The default
+Runtime application still has no configured worker and returns 503; no AWS
+deployment acceptance is claimed. Exact model/routing binding remains a code
+follow-up in [#47](https://github.com/chengruchou/newtaipei-appraisal-review-ai/issues/47).
+Runtime bootstrap and approved operator/profile inputs are tracked in
+[#30](https://github.com/chengruchou/newtaipei-appraisal-review-ai/issues/30),
+followed by live acceptance in
+[#31](https://github.com/chengruchou/newtaipei-appraisal-review-ai/issues/31).
+See the [implementation backlog](implementation-backlog.md) for the complete scope.
+
 The checked-in `config/competition-profile.pending.json` deliberately remains
 unapproved. It chooses `us-east-1` as the single primary deployment region;
 `us-west-2` is the other permitted primary choice. It creates no resources,
@@ -35,17 +48,17 @@ not a claim that later announcements or live account quotas were checked.
 | Original location | Requirement | Implemented check / evidence |
 | --- | --- | --- |
 | PDF p1 general 1 | No public S3 bucket | `check_template`: strict four Block Public Access flags, private ACL, encryption, TLS, versioning, retained evidence |
-| PDF p1 general 2 | Thirteen prohibited data categories | Separate competition data-admission policy owns all outgoing surfaces; `check_profile` requires its digest to equal a trusted server pin |
+| PDF p1 general 2 | Thirteen prohibited data categories | Separate competition data-admission policy guards outgoing calls through the competition composition; `check_profile` requires its digest to equal a trusted server pin; generic legacy factories are not approved competition entrypoints |
 | PDF p1 general 3-4 | No fully open EC2 security group or public RDS/EMR | `check_template`: IPv4/IPv6 and conditional ingress; public/unresolved RDS fails; EMR needs private-subnet evidence, not `VisibleToAllUsers` |
 | PDF p1 general 5 | Necessary resources only | Unique resource inventory, existing-ARN reuse and kind-specific stop verification; no additional model-hosting/training path |
-| PDF p1 general 6 | Designated primary regions | Exactly one primary `us-east-1` or `us-west-2`; cross-region/global disabled until separately approved |
+| PDF p1 general 6 | Designated primary regions | Profile validation permits exactly one primary `us-east-1` or `us-west-2`; cross-region/global requires separate approval; per-model runtime destination binding remains #47 |
 | PDF p1 general 7; Services List A:B | Supported services/action ceiling | Digest-pinned selected project namespace catalog; unknown namespace/action fails; actual role permission evidence remains mandatory |
 | Services List row 46 | Bedrock | `InvokeModel`, `InvokeModelWithResponseStream`, `CountTokens`, `GetFoundationModel`, `GetInferenceProfile`; no fabricated Converse IAM action |
 | Services List row 47 | AgentCore | Runtime architecture retained; `InvokeAgentRuntime`; network mode is distinct from authentication |
 | Services List rows 59,65,106,108,111,128,152,176,181,246,253,258,274,277,288 | Existing project services | CloudFormation, CloudWatch, DynamoDB, EC2, ECR, EventBridge, IAM, Lambda, Logs, S3, SageMaker, Scheduler, SNS, SQS, STS ceilings recorded, not granted |
 | PDF p1 general 8-9 | No public credentials; authentic Kiro records if used | Existing submission/build/image/log review remains required; no blanket `.kiro` ignore or invented usage record |
 | PDF p1 Bedrock 1 | Below one request per second | Team scope and central store required; all entrypoints plus CountTokens/control plane included until clarified; **1.1 seconds is the conservative implementation setting** |
-| PDF p1 Bedrock 2-3 | Only necessary model access; review/revoke unused access | Exact purpose, complete destination snapshot, review interval and stop method per model; no automatic enablement/quota changes |
+| PDF p1 Bedrock 2-3 | Only necessary model access; review/revoke unused access | Profile records purpose, complete destination snapshot, review interval and stop method per model; #47 must bind fresh routing observations to the actual runtime request; no automatic enablement/quota changes |
 | EC2 rows 4,8 | G/VT and P quota zero | `check_template` rejects those EC2 instance/launch-template families |
 | SageMaker AI rows 118,120 vs 1749,1753 | Endpoint and training are distinct | `endpoint/ml.g5.2xlarge` and `endpoint/ml.g5.xlarge` are 2; matching `training-job/...` quotas are 0; exact key+region lookup and endpoint variant count checks |
 | PDF pp1-2 EC2/SageMaker; p2 notices | Avoid large training; live limits authoritative | No new training route; unknown quotas remain unverified; deployment still needs environment evidence |
@@ -69,9 +82,17 @@ configuration; the digest by itself is not proof of operator approval.
 
 `check_profile` also requires actual role-permission and invocation-auth evidence
 digests. A local test fixture is not such evidence for the competition account.
-`check_model_destinations` compares the whole freshly discovered destination set
-against every approved use of the model. Keep the existing extraction preflight
-checks for account, role, all routing destinations and model capabilities.
+`check_model_destinations` is a helper that compares a supplied complete
+destination set against every approved use of the model. At this baseline it
+has no production call site. The guarded client separately checks the requested
+model identifier and a profile-wide set of allowed regional endpoints; those
+checks do not establish the exact model/region/destination relationship or
+freshly discovered profile routing for the actual invocation. Do not claim that
+this runtime boundary is complete because the helper's unit tests pass.
+[#47](https://github.com/chengruchou/newtaipei-appraisal-review-ai/issues/47)
+owns the request-bound composition and negative regression cases. Keep the
+existing extraction preflight checks for account, role, all routing destinations
+and model capabilities; they do not replace that missing runtime binding.
 
 The shared dispatcher consumes `scope`, `interval_seconds` and the central store
 binding. SQLite proves only host-local coordination; a team-wide claim needs the
@@ -208,7 +229,8 @@ snapshot authority, shared DynamoDB budget reservations, independent processes,
 worker restart, cap drift and unknown-result retention. Test endpoints and the
 Moto ledger are explicit local seams; they establish no real AWS acceptance.
 
-Remaining gates include organizer clarification on synthetic financial material
+Remaining gates include the exact model/routing repair in #47; organizer
+clarification on synthetic financial material
 and request-counting scope; approved account/role and effective permissions;
 fresh complete routing metadata and model quality; central dispatcher coverage
 and enforced budgets; actual invocation authorization; formal assets; hosted CI;

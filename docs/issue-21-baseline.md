@@ -1,5 +1,16 @@
 # Issue 21 Phase 0 baseline
 
+Current integration note, 2026-09-11: extraction implementation is now included
+in merged [PR #45](https://github.com/chengruchou/newtaipei-appraisal-review-ai/pull/45),
+main `d148422adb18190bada93b8588a4e34d73e3c2e4`.
+This document preserves the inventory before those changes; its absent-module,
+unmerged-branch and provisional ADR statements are historical observations.
+[#21](https://github.com/chengruchou/newtaipei-appraisal-review-ai/issues/21)
+retains designated-model quality acceptance. See the
+[implementation backlog](implementation-backlog.md) for current dependencies.
+
+## Historical baseline checkpoint
+
 Status: inventory completed on 2026-09-10; extraction implementation and live
 acceptance remain pending. This note records the baseline before code changes.
 The local implementation plan remains unchanged and outside the deliverable.

@@ -1,7 +1,10 @@
 # ADR 0016: Authenticated human tasks and transactional revision submission
 
-Status: proposed on the `feat/human-task-api` branch for #24; not merged. Stacked on
+Original branch status: proposed on `feat/human-task-api` for #24, stacked on
 `feat/durable-review-jobs` (#32), whose job identity and transport this builds on.
+Current integration: included in main through PR #45, including the durable local
+SQLite composition. #24 now tracks the remaining cloud transaction implementation;
+#30 tracks its deployment composition.
 
 Gives an implementation to the human-task duties reserved by
 [ADR 0013](0013-service-foundation.md), and consumes the resume seam introduced by the

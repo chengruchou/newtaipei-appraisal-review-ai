@@ -1,5 +1,19 @@
 # Issue 31: Integrated acceptance-evidence delivery
 
+Current integration note, 2026-09-11: this evidence framework and the component
+integration are included in merged
+[PR #45](https://github.com/chengruchou/newtaipei-appraisal-review-ai/pull/45),
+main `d148422adb18190bada93b8588a4e34d73e3c2e4`. Real local browser/API validation
+has been recorded; deployed AWS rehearsal remains incomplete.
+[#31](https://github.com/chengruchou/newtaipei-appraisal-review-ai/issues/31)
+is the current integrated cloud-acceptance issue. The missing integrations,
+stacked review order and Draft statements below describe the original component
+checkpoint. They are not current PR status or a substitute for live evidence.
+Use [local validation](local-validation-record.md) and the
+[implementation backlog](implementation-backlog.md) for the current split.
+
+## Historical delivery checkpoint
+
 Status: Draft. Related to #31; the actual browser/AWS rehearsal is not complete.
 
 Direct base is PR #43 at 32c5028e17ac4ada86eb9ac911a3d41bb724e203, on top of

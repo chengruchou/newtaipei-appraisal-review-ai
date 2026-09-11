@@ -1,5 +1,19 @@
 # Issue 22 local acceptance and dependency handoff
 
+Current integration note, 2026-09-11: the privacy workflow and its browser/API
+integration are included in merged
+[PR #45](https://github.com/chengruchou/newtaipei-appraisal-review-ai/pull/45),
+main `d148422adb18190bada93b8588a4e34d73e3c2e4`. A complete local OCR restoration
+success is reported at the integrated head; this does not establish repeatable
+restoration or cloud acceptance. The platform blocks and pending work below
+describe the original checkpoint. They are preserved rather than relabeled as
+new results. [#22](https://github.com/chengruchou/newtaipei-appraisal-review-ai/issues/22)
+retains OCR stability, diagnosis and privacy operations. See
+[local validation](local-validation-record.md) and the
+[implementation backlog](implementation-backlog.md).
+
+## Historical acceptance checkpoint
+
 This is the pre-commit acceptance snapshot. Dated statements about uncommitted
 work and pending commit permission describe that checkpoint. Subsequent commit
 packaging does not establish additional runtime acceptance or authorize a push.

@@ -9,6 +9,12 @@ or deployment. Use [project progress](../project-progress.md) for current status
 and [service contracts](../service-contracts.md) for the selected task/manifest
 migration and ownership.
 
+As of 2026-09-11, this registry and the component implementations are included in
+merged PR #45 (`main` at `d148422adb18190bada93b8588a4e34d73e3c2e4`).
+Original branch proposal labels below describe provenance; they do not imply that
+those branches still need integration. Remaining implementation and deployment
+work is tracked in [the backlog](../implementation-backlog.md).
+
 ## Decisions
 
 | ID | Decision |

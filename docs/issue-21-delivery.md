@@ -1,5 +1,17 @@
 # Issue 21 integration delivery
 
+Current integration note, 2026-09-11: this component is included in merged
+[PR #45](https://github.com/chengruchou/newtaipei-appraisal-review-ai/pull/45),
+main `d148422adb18190bada93b8588a4e34d73e3c2e4`.
+[#21](https://github.com/chengruchou/newtaipei-appraisal-review-ai/issues/21)
+now tracks designated-model quality and evaluation acceptance. The dependency
+heads and unresolved component findings below describe this historical delivery,
+not the merged integration's current status. Use the
+[implementation backlog](implementation-backlog.md) for remaining work and
+[project progress](project-progress.md) for current evidence.
+
+## Historical delivery checkpoint
+
 This preserves `feat/model-extraction-evaluation` at
 `6043aaae897475659f8fff5e7d8249fd4c7a0295` and merges reviewed main
 `c132e4ee4b1797098bd22676245cdfc01a26ffdb` without rewriting history.

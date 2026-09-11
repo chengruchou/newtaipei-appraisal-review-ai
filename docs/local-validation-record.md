@@ -3,9 +3,148 @@
 This record separates actual local execution, regression doubles, packaging and
 hosted/cloud acceptance. [Project progress](project-progress.md) remains the
 current status authority. Original repair heads and discussion links are in
-[the repair record](integration-repair-delivery.md).
+[the repair record](integration-repair-delivery.md). Current follow-up work is in
+[the implementation backlog](implementation-backlog.md).
 
-## Source boundaries
+## Current merged baseline: 2026-09-11
+
+[PR #45](https://github.com/chengruchou/newtaipei-appraisal-review-ai/pull/45)
+was merged into `main` as
+`d148422adb18190bada93b8588a4e34d73e3c2e4`. Its tracked tree matches the reviewed
+head `fd22e68321bad6b58f06068dfef1db67fdb1c269`. The repository owner accepted
+this as a locally verifiable integration baseline with later OCR stability,
+hosted CI, security and deployment acceptance still outstanding. The PR's earlier
+keep-Draft wording is historical; the merge does not constitute AWS deployment or
+production acceptance.
+
+The following current results come from the
+[author's final PR delivery](https://github.com/chengruchou/newtaipei-appraisal-review-ai/pull/45).
+The independent review below has its own narrower scope. This documentation update
+does not rerun either set of checks or turn private local logs into published
+artifacts.
+
+| Scope | Reported execution at the current checkpoint | Boundary |
+| --- | --- | --- |
+| Python | 3,223 passed, zero failures, ten Linux-specific skips; 88% coverage | Exact `fd22e683`; all prior 3,233 Python test identities retained |
+| Cloud tests | 12 passed | Separate local test scope; no live AWS acceptance |
+| Python and contract gates | Ruff, format, mypy (208 files), 14 goldens, ten exporters/82 contract files without drift, OpenAPI, HTTP/invocation and configured local-service smoke passed | Reported for the same clean checkpoint |
+| Frontend | 150 tests; type, lint, format, build and generated-client checks passed | Author's declared-dependency run |
+| Actual Chromium | Core 7/7; committed-before-gateway recovery 1/1; original automatic OCR refusal 1/1; complete original privacy flow 1/1 | Real API routes, synthetic materials and injected model output; no real operator or model-quality acceptance |
+| Infrastructure | Six static CloudFormation templates, actual five-resource CDK assembly and retention regression passed | Unapproved competition profile deliberately remains blocked |
+
+Counts belong to their own executions and are not added to the historical counts
+below. The complete run eliminated the earlier SQLite ResourceWarnings. Six
+upstream deprecations remain: five SWIG and one Starlette/AnyIO alias. No global
+warning suppression was introduced.
+
+### Current complete local OCR restoration
+
+The reported successful original privacy sequence retains all 99 published and
+108 candidate OCR observations, four material confidence values of 0, eleven
+individual visual confirmations and two exact local OCR receipts. The downloaded
+restored PDF reopens with three original crops, two pages and eight review fields;
+all non-target pixels match. Original and published input bytes remain unchanged.
+The restored PDF SHA-256 is:
+
+```text
+2489bae87b1ea91d79435b27aecab19c2e5e632deff397f43b82492cd4f54982
+```
+
+The final authorized PDF GET took 14.318 seconds with fresh authority checks and
+remaining review lifetime. No timeout, confidence threshold or authority check
+was relaxed. Individual visual readings supplement retained raw OCR evidence;
+they do not inflate OCR confidence or approve business material automatically.
+See [the local OCR review instructions](local-privacy-ocr-review.md).
+
+The earlier 15-second browser failure, later direct HTTP 409, and older failed
+restoration attempts below remain negative evidence. The later 409's exact cause
+was not established. One successful original-flow run does not establish
+repeated-run latency reliability, arbitrary-document OCR quality or real operator
+acceptance. The independent merge review did not repeat this full browser flow.
+
+### Current package and container evidence
+
+The author built a fresh noneditable wheel and Linux ARM64 image from exact
+`754e7059105ea762ac7c12cd600600666a50fffe`. The wheel passed 55 installed
+protection tests. Both packages completed real configured HTTP execution, PDF
+reopen/download, unauthorized rejection, identical receipt replay and restart.
+All 210 package files match. The only subsequent change at `fd22e683` is the Moto
+budget test transport; runtime, frontend, lock, schema and build inputs are
+byte-identical. This comparison is not relabeled as another package execution.
+
+| Artifact | SHA-256 |
+| --- | --- |
+| Noneditable wheel | `383cba5059dd982d592363332e989f3a78b8fe9899160d7747e18f5743b70c12` |
+| Linux ARM64 image | `61cee8dd4224793b9476078a71cb7c4817de1c9b3124ff4451eda6a6624118ed` |
+
+Configured local-factory success does not make the default AWS Docker application
+a complete deployment: its execution dependencies are still unconfigured and it
+returns 503. The image does not include a complete frontend hosting composition.
+Use [the integrated local runbook](integrated-local-runbook.md) for the current
+local validation path.
+
+### Independent merge review
+
+The [review at exact `fd22e683`](https://github.com/chengruchou/newtaipei-appraisal-review-ai/pull/45#pullrequestreview-5176654554)
+verified all 735 tracked blobs against their Git object hashes, and checked both
+competition attachments and the packaged service/quota catalogs against their
+pinned hashes. It independently executed these separate scopes:
+
+| Scope | Result and limitation |
+| --- | --- |
+| Core workflow/publication/PDF | 289 focused tests passed |
+| Competition/admission/export | 273 focused tests passed |
+| Privacy/review/restoration | 83 focused tests passed; available PyMuPDF 1.26.6 is below the newly declared minimum |
+| Supplemental frontend | 150 tests across 21 files passed using an older Vitest/Vite/Router environment with compatibility setup; this does not verify the updated lockfile |
+| Real local HTTP | Launcher prepared synthetic scenarios and reopened durable state; published-result retrieval and PDF download returned 200, bytes matched the manifest hash, and unauthenticated download returned 403 |
+| Real SDK transport against localhost | Four probes covered concurrent processes plus restart (minimum send gap 1.104568 seconds), a charged SDK retry, refusal of an unreserved retry, and zero sends after authority revocation while waiting |
+
+These scopes are not combined into a complete-suite count. Moto and CDK-dependent
+checks, fresh declared-dependency/container execution and the reported complete
+browser OCR restoration were not independently rerun. No AWS call was made.
+
+Prepublication inspection covered all 91 outgoing commit metadata records, 89
+complete unique trees and 1,164 historical blob/suffix pairs with the unchanged
+submission-checker functions and hash-verified bytes. Branch and publication text
+were inspected. This source-snapshot inspection did not execute the Git CLI gate
+or recheck a local Git identity/index; it is separate from the author's reported
+submission gate.
+
+### Current open verification and deployment work
+
+- The remaining [P2 per-model routing finding](https://github.com/chengruchou/newtaipei-appraisal-review-ai/pull/45#discussion_r3987437471)
+  requires exact per-model discovery snapshots to be bound to runtime preflight
+  before cloud enablement. The demonstrated drift remained inside the overall
+  approved destination union; the pending competition profile still rejects cloud
+  composition.
+- The author's fresh advisory queries reported zero known vulnerabilities in 80
+  public validation packages, 69 installed-wheel dependencies and full/production
+  npm inventories. Those results supersede the older npm audit count for that
+  inventory and query date, but are not independent fresh audits in this review.
+- The fresh image scan still exited 1 with **174 OS findings: 3 Critical, 51 High,
+  57 Medium, 57 Low and 6 Unknown**. No finding listed a fixed version in the
+  scanned Debian trixie suite. Critical Perl fixes in newer suites are not a
+  validated replacement image; no severity waiver or distribution migration was
+  applied.
+- [Head CI run 34579247155](https://github.com/chengruchou/newtaipei-appraisal-review-ai/actions/runs/34579247155)
+  failed with both job step lists empty and zero artifacts. Its detailed failure
+  cause was not verified in the merge review; an older run's billing annotation
+  does not establish this run's cause. Hosted CI is not replaced by local results.
+- The post-merge [main CI run 34580935446](https://github.com/chengruchou/newtaipei-appraisal-review-ai/actions/runs/34580935446)
+  also failed at `d148422adb18190bada93b8588a4e34d73e3c2e4`. Python job
+  `103204057435` and web job `103204057775` both have empty step lists, with zero
+  workflow artifacts. Its exact failure cause remains unverified; neither job is
+  evidence of a hosted test pass.
+- Organizer data/request-scope clarification, approved account/role/model/routing/
+  budget, designated-model evaluation, formal source/rule/font/template/map
+  authorization and authorized deployment/stop acceptance remain outstanding.
+
+See [the implementation backlog](implementation-backlog.md) for current
+dependencies and acceptance work. The sections that follow preserve earlier
+checkpoint evidence, including failures. Their uses of "final" and their test,
+warning, audit and artifact counts refer only to those dated executions.
+
+## Historical source boundaries through `71419453`
 
 The complete integration code checkpoint is
 `71419453e36a6111dae267699a087051c934867d`. Later launcher and browser
@@ -89,7 +228,7 @@ lost after real commit followed by the identical command/key. The separate full
 privacy scenario failed at real restoration, as detailed below. Hosted CI remains
 separate: none of these local checks substitutes for a pushed-head workflow run.
 
-## Installed package and Linux image
+## Historical installed package and Linux image
 
 The new noneditable wheel and ARM64 image were built from the exact
 `71419453e36a6111dae267699a087051c934867d` checkpoint. All 214 declared build
@@ -121,7 +260,7 @@ locks. Full build/smoke/provenance logs remain under ignored
 network-disabled failure and subsequent success remain historical in
 `artifacts/final-package-validation-3pu3_hs6/`; they are not this build's results.
 
-## Image security remains a deployment gate
+## Historical image scan and unresolved deployment gate
 
 Actual Trivy 0.74.0 scanning of that new image exited 1: 174 findings comprising
 3 Critical, 51 High, 57 Medium, 57 Low and 6 Unknown. The cached database is dated
@@ -138,7 +277,7 @@ replacement pins for this stable image. No distribution-suite migration or
 severity waiver was applied. Package findings do not by themselves establish
 exploitability; the scanner limitations and all findings remain recorded.
 
-## Browser and privacy evidence
+## Historical browser and failed privacy evidence
 
 The final complete privacy browser attempt used the actual production frontend
 and real loopback API/bridge. Both source payloads were previewed, explicitly
@@ -198,7 +337,7 @@ A report binds observed files/state but does not authenticate capture producers,
 prove full raw-trace coverage or grant business authority. Real AWS, designated
 model evaluation, formal assets and independent human approval remain open.
 
-## Subsequent focused changes
+## Historical subsequent focused changes
 
 Commit `94fcfb9f30dda82eeed78bd8bb42cb968e4dabc6` prevents the private launcher
 poller from terminating both services when an existing publication access grant

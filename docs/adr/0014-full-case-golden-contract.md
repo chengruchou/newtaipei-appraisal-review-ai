@@ -1,6 +1,8 @@
 # ADR 0014: Full-case goldens are authored, re-derivable expectations
 
-Status: proposed on the golden acceptance branch, 2026-09-10; not merged.
+Original branch status: proposed on the golden acceptance branch, 2026-09-10.
+Current integration: included in main through PR #45; formal reviewer acceptance
+remains separate under #26 and #31. The context below records the original decision.
 Delivery: #23 (B1); follow-up to #7 and #8; consumed by #21, #24, #25, #26 and #31.
 
 ## Context

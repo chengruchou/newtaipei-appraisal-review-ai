@@ -1,12 +1,14 @@
 # Service contract authority and migration
 
 This document defines the integration ownership and compatibility rules for the
-current source union. **The local composition is being integrated; a complete
-consumer migration and deployed release are not accepted.** The Python/Pydantic
+current source union. **The local composition and coordinated canonical consumers
+were integrated through merged PR #45; deployment and external-client upgrades
+remain separate acceptance work.** The Python/Pydantic
 models are validation authority. JSON Schema, OpenAPI, fixtures, generated clients
 and Runtime adapters must be generated or checked against that same model set.
 Earlier conflicting M0/branch claims are preserved in the
 [historical contract snapshot](history/2026-09-11-pre-convergence/service-contracts.md).
+Current remaining implementation is tracked in [the backlog](implementation-backlog.md).
 
 ## Ownership and consumers
 

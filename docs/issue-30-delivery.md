@@ -1,5 +1,23 @@
 # Issue 30: Durable Runtime delivery
 
+Current integration note, 2026-09-11: the Runtime adapters and guarded competition
+factories are included in merged
+[PR #45](https://github.com/chengruchou/newtaipei-appraisal-review-ai/pull/45),
+main `d148422adb18190bada93b8588a4e34d73e3c2e4`. The default Runtime application
+still has no configured worker and returns 503.
+[#30](https://github.com/chengruchou/newtaipei-appraisal-review-ai/issues/30)
+retains production bootstrap, approved profile/operator inputs and deployment
+composition; [#24](https://github.com/chengruchou/newtaipei-appraisal-review-ai/issues/24)
+owns cloud human transactions and
+[#31](https://github.com/chengruchou/newtaipei-appraisal-review-ai/issues/31)
+owns live acceptance. The stacked branches and component review findings below
+describe the original delivery, not current unmerged dependencies. Follow the
+[implementation backlog](implementation-backlog.md) and
+[competition deployment profile](competition-deployment-profile.md), including
+resource reuse, for new work.
+
+## Historical delivery checkpoint
+
 Status: Draft. Related to #30; does not close #29 or imply cloud acceptance.
 
 This branch continues main c132e4ee4b1797098bd22676245cdfc01a26ffdb and normally

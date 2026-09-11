@@ -1,14 +1,87 @@
 # Review repair delivery and integration evidence
 
-This is the dated 2026-09-11 component repair record. Current integration acceptance
-is reported in [project progress](project-progress.md). Counts below belong to the
-specified component trees and are not summed or presented as the integration suite.
-All original pull requests remain open for independent review. No approval, merge,
-Issue mutation, branch deletion, history rewrite or live AWS/model operation occurred.
+This record was consolidated on 2026-09-11 after
+[PR #45](https://github.com/chengruchou/newtaipei-appraisal-review-ai/pull/45)
+merged into `main` as `d148422adb18190bada93b8588a4e34d73e3c2e4`, with the same
+tracked tree as reviewed head `fd22e68321bad6b58f06068dfef1db67fdb1c269`.
+The merged code is the local integration validation baseline. Current acceptance
+is reported in [project progress](project-progress.md), exact evidence boundaries
+in [the validation record](local-validation-record.md), and remaining work in
+[the implementation backlog](implementation-backlog.md).
 
-## Original PR repairs
+Component counts below belong to the specified historical trees. They are not
+summed or presented as the integrated suite. Source PR lifecycle state is separate
+from whether its work reached `main`; the original repair table and discussions
+are retained as provenance, rather than instructions to merge the old stacks
+again. No live AWS/model acceptance is implied.
 
-| PR | Finding and repair | Source files (under `src/appraisal_review/` unless stated) | Scoped regression evidence | Latest full head | CI |
+GitHub already records #34–#38, #42 and #46 as merged. The latest heads of #39,
+#43 and #44 are also ancestors of merged `main`, with no remaining head commits
+outside `main`; their redundant stacked PR records are closed as incorporated
+through #45. That disposition is distinct from a separate GitHub merge
+of each PR. The implementation backlog tracks remaining work instead of reopening
+the historical stacks.
+
+## Repairs included in the merged baseline
+
+The final round fixes the additional findings raised after the original repair
+table. Normal merge commits preserve the component histories and dependency order
+#34 → #35, #38 → #39 and #42 → #43 → #44.
+
+| Finding | Merged correction | Source commit |
+| --- | --- | --- |
+| #34 trusted font approval | New PDF paths reject absent trusted font approval and validate/render the same immutable font bytes; legacy scope remains | `8c29f9d038c05bc4eee91e33d5b0b7e7bac4d8df` |
+| #35 PDF synchronization | Retains alias/inode protection, immutable font bytes and literal-True capability checks, including installed-wheel behavior | `eb834038c607cac19f4c4ae9365e0e9fad6ea57a` |
+| #35/#45 pinned object versions | Removes blanket noncurrent-version expiration so a newer version does not invalidate the manifest's pinned older version | `1de33cc0228563ccd049a54e7e355fc3f4ebfbae` |
+| #36 direct-to-bounded handoff | Retains causal history, consumed budget, open tasks and terminal replay for the reproduced direct handoff | `17679772ab2fac162f0c519fe23d02e3e473afef` |
+| #39/#45 uncertain gateway outcome | Preserves frozen command/key after noncanonical 502/504 or body loss; real committed-before-failure recovery yields one receipt without another revision | `774ff6cba719e0235d95a103972f80293d46fdf3` |
+| #45 exact restoration mapping | Selects the successful manifest's exact mapping without turning unrelated retained failed exports into authority dependencies; invalid selected mappings still fail closed | `3bcf43ac0207ea0ab50e05c0a792cc50fded5d15` |
+| #46 originating field diagnostics | API/UI expose original missing-evidence field IDs while retaining whole-case fill denial, calculated values and raw confidence; generated contracts agree | `3bcf43ac0207ea0ab50e05c0a792cc50fded5d15` |
+
+The same integration adds versioned competition data admission, persistent shared
+physical-dispatch limiting and aggregate budgets, exact profile preflight, and
+two-stage local OCR review. Canonical ADRs 0024, 0028 and 0035 remain unique and
+all 47 ADRs are indexed. Commit
+`754e7059105ea762ac7c12cd600600666a50fffe` repairs CDK TLS-policy recognition,
+scanner coverage and validation issues. Final commit
+`fd22e68321bad6b58f06068dfef1db67fdb1c269` only adjusts the Moto budget test
+transport to emulate atomic UpdateItem; production concurrency is unchanged.
+
+The author reports 3,223 Python tests, a separate 12 cloud tests and 150 frontend
+tests passed, plus real Chromium core 7/7, gateway recovery 1/1, automatic OCR
+refusal 1/1 and complete original privacy restoration 1/1. Independent merge
+review passed separate core 289, competition/admission/export 273 and privacy 83
+focused scopes. Its supplemental frontend 150 used an older dependency environment
+and its privacy environment used PyMuPDF below the declared minimum; Moto/CDK and
+full browser OCR were not independently repeated. These scopes are not added or
+substituted for the author's full declared-environment execution.
+
+The restored PDF SHA-256 is
+`2489bae87b1ea91d79435b27aecab19c2e5e632deff397f43b82492cd4f54982`.
+One reported complete success supersedes the old statement that no restoration
+had succeeded; it does not erase earlier HTTP 409/timeout failures or establish
+repeated-run reliability. See the validation record for the 99/108 retained OCR
+observations, eleven visual confirmations, two exact receipts, retained confidence
+zero, and current package/image digests.
+
+The [merge review](https://github.com/chengruchou/newtaipei-appraisal-review-ai/pull/45#pullrequestreview-5176654554)
+accepted the requested local baseline while retaining the
+[P2 exact per-model routing/preflight finding](https://github.com/chengruchou/newtaipei-appraisal-review-ai/pull/45#discussion_r3987437471)
+for repair before cloud enablement. CI, 174 OS image findings (including 3 Critical
+and 51 High), OCR repeatability, configured deployment and formal/model acceptance
+remain open. Fresh dependency advisory results are scoped separately from the
+unresolved image scan. The default AWS Docker entry point is still unconfigured
+and returns 503.
+
+The post-merge
+[main CI run 34580935446](https://github.com/chengruchou/newtaipei-appraisal-review-ai/actions/runs/34580935446)
+failed with empty Python and web step lists and zero artifacts. Its precise cause
+has not been verified. This is separate from the earlier head CI failure and is
+not a hosted test pass.
+
+## Historical original PR repairs
+
+| PR | Finding and repair | Source files (under `src/appraisal_review/` unless stated) | Scoped regression evidence | Head at this historical repair round | CI at that head |
 | --- | --- | --- | --- | --- | --- |
 | [#34](https://github.com/chengruchou/newtaipei-appraisal-review-ai/pull/34) | PDF alias/inode protection; immutable measured/embedded font buffer; literal-True multi-context delegation | `adapters/local/placeholder_backfill.py`, `adapters/local/pdf_preflight.py`, `adapters/local/pdf_render.py`, `adapters/aws/pdf/s3_pdf_writer.py` | 10 failures before; 21 focused and 686 repo tests after | `c8f739ff936b772200dda9d8e09d18049df03cfc` | [Run 34531027934](https://github.com/chengruchou/newtaipei-appraisal-review-ai/actions/runs/34531027934): failure |
 | [#35](https://github.com/chengruchou/newtaipei-appraisal-review-ai/pull/35) | Restore ignored source package; current attempt/lease/fence/grant transaction; immutable versions and reauthorized download | `adapters/aws/artifacts/`, `adapters/local/artifact_publication.py`, `.gitignore` | Original import failed; clean snapshot 705 tests; installed wheel 36 publication tests | `0971b9d8e6e7472c957bb2e0e236c4d2ff8634ae` | [Run 34531028880](https://github.com/chengruchou/newtaipei-appraisal-review-ai/actions/runs/34531028880): failure |
@@ -25,11 +98,12 @@ payment/spending-limit configuration. Other fetched failing runs expose no execu
 steps; no test success is inferred. No billing setting was changed and no remote
 rerun was requested. Head-specific local evidence is not a substitute for remote CI.
 
-The stacked bases remain #39 → #38 and #42 → #43 → #44. Normal merge commits retain
-the original histories. The integration branch joins those exact reviewed heads;
-a local Git merge is not a GitHub PR approval or merge.
+At this earlier round the dependency order was #38 → #39 and #42 → #43 → #44.
+The listed commits were subsequently joined with the additional repairs above in
+PR #45. These earlier local Git merges were distinct from the later GitHub merge
+of #45 into `main`.
 
-## Original review replies
+## Historical original review replies
 
 - [PR #34 review reply](https://github.com/chengruchou/newtaipei-appraisal-review-ai/pull/34#discussion_r3983654700) preserves the original discussion and links the repair.
 - [PR #34 review reply](https://github.com/chengruchou/newtaipei-appraisal-review-ai/pull/34#discussion_r3983654879) preserves the original discussion and links the repair.

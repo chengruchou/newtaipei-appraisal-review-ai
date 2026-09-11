@@ -1,6 +1,7 @@
 # ADR 0027: Reference-only Runtime with durable execution authority
 
-Status: implemented for offline integration; deployment remains Draft.
+Status: included in merged PR #45 for local/offline integration; deployment remains
+unaccepted. Remaining composition is tracked in #24 and #30, live acceptance in #31.
 
 ## Decision
 
@@ -38,11 +39,13 @@ HTTP app has no bundle and returns sanitized 503, including /ping. It never
 falls back to synthetic adapters, fake writers or an in-memory durable store.
 Runtime configuration is not an implementation of the missing bundle.
 
-The unmerged #34-#39 lines own formal PDF, publication, action policy, privacy,
-human-task/revision and workbench behavior. Their current findings and missing
-publication module prevent complete assembly. The unchanged JobStore port also
-cannot atomically enlist an external task/revision transaction on human resume.
-These are integration blockers, not completed work hidden behind mocks.
+The #34-#39 lines, incorporated through PR #45, provide formal PDF, publication,
+action policy, privacy, human-task/revision and workbench behavior. The earlier
+missing publication package was repaired, and the local assembly uses a durable
+combined SQLite store. Cloud task/revision/receipt transactions still require the
+implementation tracked in #24; #30 must compose those providers with the deployed
+API, worker and current authority. Independent cloud writes do not inherit the
+local store's atomicity merely by implementing the same JobStore port.
 
 ## Deployment boundary and validation
 

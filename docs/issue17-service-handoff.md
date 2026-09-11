@@ -1,5 +1,18 @@
 # Issue #17 service-boundary handoff
 
+Current integration note, 2026-09-11: controlled execution, the human API,
+SQLite persistence and browser integration are included in merged
+[PR #45](https://github.com/chengruchou/newtaipei-appraisal-review-ai/pull/45),
+main `d148422adb18190bada93b8588a4e34d73e3c2e4`. Issue #17's implemented scope is
+historical; remaining cloud human transactions belong to
+[#24](https://github.com/chengruchou/newtaipei-appraisal-review-ai/issues/24),
+Runtime bootstrap to [#30](https://github.com/chengruchou/newtaipei-appraisal-review-ai/issues/30),
+and deployed acceptance to
+[#31](https://github.com/chengruchou/newtaipei-appraisal-review-ai/issues/31).
+The earlier phase restrictions and issue ownership tables below preserve their
+original scope. Use the [implementation backlog](implementation-backlog.md) for
+current work rather than reopening completed component deliveries.
+
 Integration scope note: this document records the controlled local reference
 workflow and its originating delivery. Its human service now lives in
 `application/workflow_tasks.py`; the authenticated API service is separately

@@ -6,23 +6,27 @@ code calculates grades, correction rates and totals, verifies evidence, and gate
 PDF output. Reviewers inspect findings and explicitly authorize exact material.
 PDF filling is one output of case review.
 
-**Current delivery: the configured local core is integrated and its seven real
-Chromium scenarios passed. The complete privacy/restoration workflow is not yet
-accepted. AWS deployment, live model quality and formal business acceptance are
-not accepted.** [Project progress](docs/project-progress.md) is the current status
-authority; [repair evidence](docs/integration-repair-delivery.md) records exact
-component heads and [traceability](docs/delivery-traceability.md) separates scopes.
+**Current delivery: [PR #45](https://github.com/chengruchou/newtaipei-appraisal-review-ai/pull/45)
+is merged. `main` at `d148422a` is the local validation baseline, with the same
+source tree as reviewed head `fd22e683`.** Core browser/API flows passed, and the
+final delivery reports one complete local OCR restoration and download. Repeated
+OCR reliability, hosted CI, image security, AWS deployment, live model quality
+and formal business acceptance remain open. [Project progress](docs/project-progress.md)
+records current status; [validation evidence](docs/local-validation-record.md)
+separates checkpoints, and [the implementation backlog](docs/implementation-backlog.md)
+tracks remaining work.
 
 ## Integrated boundaries
 
 | Boundary | Implemented and integrated locally | Remaining acceptance |
 | --- | --- | --- |
-| Local privacy | Restricted Origin/session bridge, exact reviewed export, encrypted mapping readback and sanitized C2 admission | Complete actual OCR restoration; production desktop distribution |
+| Local privacy | Restricted Origin/session bridge, exact export/mapping readback, two-stage visual OCR review and one complete synthetic restoration/download | Repeated OCR reliability and diagnosis; production desktop distribution |
 | Documents and extraction | Authorized immutable snapshots, actual PDF parser, source checks for resumed runs, production SDK adapter with injected model responses in rehearsal | Measured model quality and real cloud authorization |
 | Jobs and human tasks | SQLite job/task/revision/outbox/receipt transactions, durable dispatch queue, actual authenticated API | Production identity and cloud transaction composition |
 | Controlled actions | Canonical response adapter, trusted allowed actions, persisted run reservations, failed/unknown-effect quarantine | Designated model and operator evaluation |
-| PDF and publication | Two-context/eight-field actual writer, immutable font bytes, reopen, exact fenced publication and reauthorized download | Complete OCR backfill; formal assets and business grants |
-| Workbench and Runtime | Regenerated canonical client, seven actual browser core scenarios, installed wheel and isolated container configured success | Final image/security gate and AWS operation |
+| PDF and publication | Two-context/eight-field writer, immutable font bytes, reopen, fenced publication, reauthorized download and separate local restored output | Formal assets and business grants; cloud recovery |
+| Workbench and Runtime | Canonical client, seven core browser scenarios, configured wheel/container local success | Complete Docker service entry, production login, image security and AWS operation |
+| Competition controls | Pinned rule/service catalogs, explicit data admission, guarded clients, shared physical-dispatch reservations and conservative budget ledger | Per-model routing binding, trusted account/profile approval and live verification |
 
 There is one canonical #36/#38 service/task union and regenerated #39 consumer.
 The undeployed strict consumers migrate together; frozen commands and legacy
@@ -59,8 +63,15 @@ The [integrated local runbook](docs/integrated-local-runbook.md) provides the
 repository-local installation, core service, separate privacy bridge and actual
 Chromium commands. Use its fresh synthetic workspace and hash-pinned local OCR
 configuration; it makes no AWS or paid model calls. The exact acceptance status
-and unresolved restoration or deployment gates remain in
+and remaining OCR stability or deployment gates remain in
 [project progress](docs/project-progress.md).
+
+The workbench opens existing job IDs and uses a manually supplied session token.
+It supports task review, publication/download and local privacy/OCR review; a
+production login, job list and general upload/create flow are not implemented.
+The default AWS Docker entry has no configured execution worker and returns 503.
+The successful configured local container rehearsal does not supply a complete
+frontend/API/worker deployment. See [architecture](docs/architecture.md).
 
 ## Run the existing local reference service
 
@@ -89,8 +100,9 @@ creates no PDF.
 
 The configured `create_integrated_service` composition has a separate reproducible
 [runbook](docs/integrated-local-runbook.md). Its evidence distinguishes the accepted
-local core scenarios from unresolved full privacy and cloud acceptance. [Architecture](docs/architecture.md) separates the
-local composition from the AWS target.
+local core scenarios, the single completed privacy run and open cloud acceptance.
+[Architecture](docs/architecture.md) separates the local composition from the AWS
+target.
 
 ## Verification and delivery
 
