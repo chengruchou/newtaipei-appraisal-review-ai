@@ -1,4 +1,5 @@
 import type { components } from "./schema";
+import { validateResponse } from "./validation";
 
 export type ServiceProblem = components["schemas"]["ServiceProblem"];
 export type ServiceErrorCode = ServiceProblem["code"];
@@ -20,7 +21,7 @@ export class ServiceError extends Error {
   }
 }
 
-/** A request that never reached the service, so the caller cannot know if it applied. */
+/** No trustworthy outcome was received; the service may already have committed. */
 export class TransportError extends Error {
   readonly retryable = true;
 
@@ -39,10 +40,23 @@ const FALLBACK: Record<number, ServiceErrorCode> = {
   503: "capability_unavailable",
 };
 
-export function problemFromResponse(status: number, body: unknown): ServiceError {
+export function problemFromResponse(
+  status: number,
+  body: unknown,
+  requireCanonical = false,
+): ServiceError | TransportError {
+  // A proxy status or an arbitrary code-shaped body cannot prove a write was rejected.
+  // Read requests retain their status fallback because they cannot commit a command.
+  if (
+    requireCanonical &&
+    (!validateResponse("ServiceProblem", body) ||
+      (body as ServiceProblem).code !== FALLBACK[status])
+  ) {
+    return new TransportError("The service did not return a validated submission outcome.");
+  }
   const code = (body as ServiceProblem | null)?.code;
   const known: ServiceErrorCode | undefined =
-    code !== undefined && code in EXPLANATIONS ? code : FALLBACK[status];
+    code !== undefined && Object.hasOwn(EXPLANATIONS, code) ? code : FALLBACK[status];
   return new ServiceError(known ?? "execution_failed", status);
 }
 

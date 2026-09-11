@@ -171,7 +171,7 @@ export class ReviewClient {
         if (response.ok) throw error;
         payload = null;
       }
-      if (!response.ok) throw problemFromResponse(response.status, payload);
+      if (!response.ok) throw problemFromResponse(response.status, payload, method !== "GET");
       if (!validateResponse(schema, payload)) throw new Error("Invalid service response");
       return payload as T;
     });
