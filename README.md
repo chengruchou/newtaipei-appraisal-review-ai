@@ -21,6 +21,116 @@ restoration diagnostics and an explicit [local validation stack](docs/local-vali
 These additions require their own exact-commit validation; the historical
 baseline above is not acceptance of the follow-up image or OCR reliability.
 
+## Deploy and run with Docker
+
+This branch packages the reviewer workbench as containers. Everything below runs
+on one machine with Docker alone: no Python, Node, AWS account or model
+credential, and no step calls a paid API or reaches a real case document.
+
+**Requirements.** Docker Engine with the Compose plugin; check with
+`docker compose version`. The first build pulls `python:3.12-slim` and
+`node:22-bookworm-slim` and takes a few minutes.
+
+### 1. Get the branch and start it
+
+```sh
+git clone https://github.com/chengruchou/newtaipei-appraisal-review-ai.git
+cd newtaipei-appraisal-review-ai
+git checkout feat/docker-deployment
+docker compose up -d --build
+```
+
+The workbench is the default service, so no profile flag is needed. Wait for it
+to report healthy:
+
+```sh
+docker compose ps
+# workbench   Up (healthy)   127.0.0.1:4174->8080/tcp
+```
+
+### 2. Read the sign-in manifest
+
+On first start the launcher builds a synthetic workspace inside the container's
+volume and issues its own session token. Print it:
+
+```sh
+docker compose exec workbench workbench-entrypoint fixture
+```
+
+```json
+{
+  "session_token": "rk_...",
+  "empty_job_id": "...",
+  "completed_job_id": "...",
+  "tasks": { "confirm": "...", "correct": "...", "reject": "..." }
+}
+```
+
+That manifest is local authentication configuration for synthetic fixtures. Keep
+it out of Git and out of any evidence report.
+
+### 3. Sign in and open a job
+
+Open http://127.0.0.1:4174 and paste `session_token` on the sign-in screen. Then
+paste a job identifier:
+
+- `completed_job_id` opens a finished job: status, findings with their cited
+  source regions, independent verification and a PDF download that is
+  reauthorized and hash-checked on every request.
+- `empty_job_id` opens a job with no open tasks.
+- The `tasks` identifiers open individual review questions directly at
+  `/tasks/<id>`, each with its evidence and response form.
+
+There is no job list and no upload or create flow; the workbench opens
+identifiers you supply.
+
+### 4. Confirm it is really serving
+
+```sh
+curl -o /dev/null -w '%{http_code}\n' http://127.0.0.1:4174/
+curl -o /dev/null -w '%{http_code}\n' \
+  http://127.0.0.1:4174/v1/review-jobs/00000000-0000-0000-0000-000000000000
+```
+
+The first is `200`. The second is `403`, which is the correct answer: the API
+responds through the proxy and refuses an unauthorized read. To exercise it with
+the issued token:
+
+```sh
+TOKEN=$(docker compose exec -T workbench workbench-entrypoint fixture \
+  | sed -n 's/.*"session_token": "\([^"]*\)".*/\1/p')
+curl -H "Authorization: Bearer $TOKEN" \
+  http://127.0.0.1:4174/v1/review-jobs/<completed_job_id>
+```
+
+### 5. Stop, reset or rebuild
+
+```sh
+docker compose stop workbench        # keep the workspace
+docker compose down                  # remove the container, keep the volume
+docker compose down -v               # discard the workspace and start clean
+docker compose up -d --build         # rebuild after changing the tree
+```
+
+Response scenarios consume tasks, so the entrypoint reopens durable state rather
+than resetting it. Use `down -v` to replay every scenario from the start.
+
+### What this deployment is not
+
+Only the frontend origin is published, on loopback. The API keeps its numeric
+loopback bind and authority inside the container and is never reachable from the
+host or the Docker network; the frontend is built with no `VITE_API_BASE_URL` and
+reaches it through a same-origin proxy.
+
+The images carry synthetic fixtures only. This is not the AWS entry, not
+production login, and not business acceptance, and a healthy container is not
+evidence of real-case accuracy. The `/privacy` route does not work here: it needs
+a separate local bridge plus an operator-owned OCR executable and language assets
+pinned by hash, which must be chosen on the host and never baked into an image.
+
+The optional demo and check profiles, the image layout and the reasoning behind
+the single-container design are in [the container runbook](deploy/README.md).
+
 ## Integrated boundaries
 
 | Boundary | Implemented and integrated locally | Remaining acceptance |
@@ -91,17 +201,9 @@ deployment. See [architecture](docs/architecture.md).
 
 ### Containers
 
-`docker compose up --build` serves that same workbench from one container on
-http://127.0.0.1:4174: the built frontend, the synthetic integrated API and its
-execution worker. The API keeps its numeric loopback bind and authority inside the
-container and is never published; the frontend is built with no `VITE_API_BASE_URL`
-and reaches it through a same-origin proxy. Read the session token the launcher
-issued with `docker compose exec workbench workbench-entrypoint fixture`, then sign
-in at that address and open a job ID from the same manifest.
-
-This is the local synthetic rehearsal in a container. It is not the AWS entry, not
-production login, and it carries no OCR assets, so the privacy and restoration
-route is unavailable in it. See the [container runbook](deploy/README.md).
+The same workbench runs from one container; see
+[Deploy and run with Docker](#deploy-and-run-with-docker) above for the steps and
+[the container runbook](deploy/README.md) for the image layout and its limits.
 
 ## Run the existing local reference service
 
