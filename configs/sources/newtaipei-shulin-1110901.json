@@ -1,0 +1,208 @@
+{
+  "schema_version": "case-source-manifest-v1",
+  "manifest_id": "newtaipei-shulin-1110901",
+  "case": {
+    "case_label": "Case number 1110901-99-XXX as printed on brief page 6",
+    "district": "Shulin District, New Taipei City",
+    "land_use_description": "Ordinary residential land, as printed in every brief table header",
+    "effective_date": "2022-09-01",
+    "effective_date_as_written": "1110901 (Republic of China calendar), confirmed present on all six brief pages",
+    "subjects": [
+      {
+        "label": "P001",
+        "role": "subject",
+        "brief_page": 4,
+        "note": "Comparison base, printed as P001-00 on brief page 4. The brief presents it last; the role comes from the organizer's designation, never from page order. Its zoning description mentions both a mass-transit development area and a residential district, which a reviewer must resolve before any zoning-dependent rule is selected."
+      },
+      {
+        "label": "P002",
+        "role": "comparable",
+        "brief_page": 1,
+        "note": "Printed as P002-00 on brief page 1, and as comparable 1 on brief pages 5 and 6."
+      },
+      {
+        "label": "P003",
+        "role": "comparable",
+        "brief_page": 2,
+        "note": "Printed as P003-00 on brief page 2, and as comparable 2 on brief pages 5 and 6."
+      },
+      {
+        "label": "P004",
+        "role": "comparable",
+        "brief_page": 3,
+        "note": "Printed as P004-00 on brief page 3, and as comparable 3 on brief pages 5 and 6."
+      }
+    ]
+  },
+  "sources": [
+    {
+      "source_id": "brief-case",
+      "title": "Competition problem brief carrying the case values",
+      "medium": "pdf",
+      "usage": "case_source",
+      "registry_role": "forms",
+      "purposes": ["case"],
+      "handling": "direct_non_sensitive",
+      "handling_reference": "Reviewer decision 2026-09-12: this batch is a standard-form document set and needs no privacy processing",
+      "content_sha256": "11702e63ddb40ca9390cbab149e7b549e292fa09e834d43119a56043da15f16d",
+      "byte_size": 569971,
+      "page_count": 6,
+      "native_text_expected": true,
+      "notes": [
+        "One case with four properties, not four cases.",
+        "Every page carries a native text layer and no embedded image, so no page needs OCR.",
+        "Page 6 is landscape; the other five pages are portrait A4.",
+        "Pages 1 to 4 are four table 3 section survey sheets, one per section, in the order P002, P003, P004, P001.",
+        "Page 5 is the table 5-1 regional factor analysis sheet for ordinary residential land, listing the three comparables.",
+        "Page 6 is the table 4 comparison sheet and already prints difference and adjustment percentages, so it is a worked example to review against, never an input to copy.",
+        "Parsed with the native parser: 6 pages, 6 tables, 1558 table cells, 480 text blocks and 512 selection marks.",
+        "Preserve the original observation and its confidence, including a confidence of zero."
+      ]
+    },
+    {
+      "source_id": "evaluation-basis",
+      "title": "Sample evaluation-basis document",
+      "medium": "pdf",
+      "usage": "rule_source",
+      "registry_role": "criteria",
+      "purposes": ["rule"],
+      "handling": "direct_non_sensitive",
+      "handling_reference": "Reviewer decision 2026-09-12: this batch is a standard-form document set and needs no privacy processing",
+      "content_sha256": "a7574aaf56b546737df8b3b34459e764523be77ae4af25490d617a41a33ed09c",
+      "byte_size": 249392,
+      "page_count": 9,
+      "native_text_expected": true,
+      "notes": [
+        "Rule candidates may cite only this document.",
+        "Every page carries a native text layer and no embedded image, so no page needs OCR.",
+        "An example basis is not universal policy; applicability is bound to district, land use and effective date.",
+        "Matrix orientation, interval bands and grade labels must be read from this document, never inferred from a model's summary.",
+        "Pages 1 to 5 are the regional factor basis for Shulin ordinary residential land; its axes are printed as base section against target section.",
+        "Pages 6 to 9 are the individual factor basis for Shulin residential land; its axes are printed as comparable property against base parcel.",
+        "Parsed with the native parser: 9 pages, 9 tables, 2007 table cells and 908 text blocks.",
+        "The document spells the base-parcel term with a variant character on pages 6 to 9, so text matching must not assume the standard spelling."
+      ]
+    },
+    {
+      "source_id": "form-table-3",
+      "title": "Official table 3 workbook",
+      "medium": "workbook",
+      "usage": "output_template",
+      "handling": "direct_non_sensitive",
+      "handling_reference": "Reviewer decision 2026-09-12: this batch is a standard-form document set and needs no privacy processing",
+      "content_sha256": "f85bc407857d2a0072f9a64db1a2edffe224a242ff3d6bc87aa649cc2317342b",
+      "byte_size": 228897,
+      "sheet_count": 24,
+      "hidden_sheet_count": 23,
+      "visible_worksheet": "表3區段勘查表",
+      "native_text_expected": true,
+      "notes": [
+        "Read-only original. Output is written to a copy through the reviewed cell allowlist.",
+        "The 23 hidden worksheets hold earlier examples, formulas and external links, and are not this case's values.",
+        "The package contains external links and a calculation chain; neither is refreshed and the workbook is not recalculated."
+      ]
+    },
+    {
+      "source_id": "form-table-5",
+      "title": "Official table 5 workbook",
+      "medium": "workbook",
+      "usage": "output_template",
+      "handling": "direct_non_sensitive",
+      "handling_reference": "Reviewer decision 2026-09-12: this batch is a standard-form document set and needs no privacy processing",
+      "content_sha256": "d2ab663222fbd401c639be02e6bace069dc8f76f4331f8347a2b858e36d15b39",
+      "byte_size": 222971,
+      "sheet_count": 24,
+      "hidden_sheet_count": 23,
+      "visible_worksheet": "表5-1區域因素明細表(住)",
+      "native_text_expected": true,
+      "notes": [
+        "Percentage points are written as written: five percentage points is 5 here.",
+        "The package contains external links and a calculation chain; neither is refreshed and the workbook is not recalculated.",
+        "Zoning, building coverage and floor area ratio must not be counted in both the regional and the individual factor sections."
+      ]
+    },
+    {
+      "source_id": "form-table-4",
+      "title": "Official table 4 workbook",
+      "medium": "workbook",
+      "usage": "output_template",
+      "handling": "direct_non_sensitive",
+      "handling_reference": "Reviewer decision 2026-09-12: this batch is a standard-form document set and needs no privacy processing",
+      "content_sha256": "c5f767e8ab6b759b5f31d321f24707bd4bb0d2d503ce8a24bc7b7872c8bf82a8",
+      "byte_size": 224890,
+      "sheet_count": 24,
+      "hidden_sheet_count": 23,
+      "visible_worksheet": "表4比較法調查估價表",
+      "native_text_expected": true,
+      "notes": [
+        "Percentage cells are written as a fraction: five percentage points is 0.05 here.",
+        "A37 sits outside the original print range; how a derived copy handles it must be recorded.",
+        "The package contains external links and a calculation chain; neither is refreshed and the workbook is not recalculated."
+      ]
+    }
+  ],
+  "open_questions": [
+    {
+      "question_id": "p001-zoning-conflict",
+      "topic": "Statutory zoning versus actual use",
+      "question": "P001 is described with both a mass-transit development area and a residential district. Which statutory zoning, which actual use and which rule-facing land-use category apply on the effective date?",
+      "owner": "reviewer",
+      "blocks": "rule_selection",
+      "source_id": "brief-case"
+    },
+    {
+      "question_id": "missing-individual-factors",
+      "topic": "Individual factor inputs",
+      "question": "Parcel area, width and depth, road frontage and distances to facilities are not present for every property. Which values does the organizer supply, and which stay missing? A missing value is not zero, and a section road is not a substitute for a parcel's own frontage.",
+      "owner": "organizer",
+      "blocks": "calculation",
+      "source_id": "brief-case"
+    },
+    {
+      "question_id": "factor-weights",
+      "topic": "Weighting",
+      "question": "The complete factor weights are not stated. Equal weighting must not be assumed. Which weights apply, and from which passage of the evaluation basis?",
+      "owner": "reviewer",
+      "blocks": "calculation",
+      "source_id": "evaluation-basis"
+    },
+    {
+      "question_id": "matrix-axis-orientation",
+      "topic": "Correction matrix orientation",
+      "question": "The regional basis prints its axes as base section against target section, and the individual basis prints comparable property against base parcel. Which axis is the row and which is the column in each, and does the sign convention read from the comparable towards the base or the reverse? Reversing this inverts every correction, so it must be confirmed against the printed table rather than inferred.",
+      "owner": "reviewer",
+      "blocks": "calculation",
+      "source_id": "evaluation-basis"
+    },
+    {
+      "question_id": "worked-example-status",
+      "topic": "Brief page 6 printed percentages",
+      "question": "Brief page 6 already prints difference and adjustment percentages. Are these the organizer's expected answer to reproduce, or an example whose values the review must derive independently and then compare?",
+      "owner": "organizer",
+      "blocks": "calculation",
+      "source_id": "brief-case"
+    },
+    {
+      "question_id": "floor-area-ratio-basis",
+      "topic": "Floor area ratio difference",
+      "question": "A floor area ratio difference belongs to a land development analysis. The correction must not be guessed from a ratio of the two figures. Which method and which passage govern it?",
+      "owner": "reviewer",
+      "blocks": "calculation",
+      "source_id": "evaluation-basis"
+    },
+    {
+      "question_id": "workbook-delivery-shape",
+      "topic": "Submitted workbook shape",
+      "question": "How many files does the organizer expect, under which names, and must the hidden worksheets and external links be retained in the submitted copies?",
+      "owner": "organizer",
+      "blocks": "output"
+    },
+    {
+      "question_id": "case-data-cloud-admission",
+      "topic": "Data admission",
+      "question": "The case contains valuation amounts, which fall under the prohibited financial-information category. Is any part of this material admitted for transmission to a cloud model, and in what exact form?",
+      "owner": "organizer",
+      "blocks": "none"
+    }
+  ]
+}
