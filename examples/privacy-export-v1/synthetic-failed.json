@@ -1,0 +1,72 @@
+{
+  "schema_version": "privacy-leak-report-v1",
+  "scope": "python_hooks",
+  "checks": [
+    {
+      "surface": "bundle_bytes",
+      "inspected": true,
+      "hits": []
+    },
+    {
+      "surface": "pdf_streams",
+      "inspected": true,
+      "hits": []
+    },
+    {
+      "surface": "pdf_text",
+      "inspected": true,
+      "hits": []
+    },
+    {
+      "surface": "pdf_images",
+      "inspected": true,
+      "hits": [
+        {
+          "canary_id": "c01",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "surface": "stdout",
+      "inspected": true,
+      "hits": []
+    },
+    {
+      "surface": "stderr",
+      "inspected": true,
+      "hits": []
+    },
+    {
+      "surface": "log",
+      "inspected": true,
+      "hits": []
+    },
+    {
+      "surface": "exception",
+      "inspected": true,
+      "hits": []
+    },
+    {
+      "surface": "serializer",
+      "inspected": true,
+      "hits": []
+    },
+    {
+      "surface": "http",
+      "inspected": true,
+      "hits": []
+    },
+    {
+      "surface": "sdk",
+      "inspected": true,
+      "hits": []
+    },
+    {
+      "surface": "telemetry",
+      "inspected": true,
+      "hits": []
+    }
+  ],
+  "status": "failed"
+}

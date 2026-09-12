@@ -629,12 +629,10 @@ class SQLiteJobStore:
         with self.database.transaction() as tx:
             expired = []
             for job in tx.rows(_Job, "job"):
+                if job.record.status != JobStatus.RUNNING:
+                    continue
                 run = _run(tx, job)
-                if (
-                    job.record.status == JobStatus.RUNNING
-                    and run.lease_expires_at is not None
-                    and run.lease_expires_at <= now
-                ):
+                if run.lease_expires_at is not None and run.lease_expires_at <= now:
                     expired.append(
                         ExpiredLease(
                             job.record.job_id, run.run_id, run.fencing_token, run.lease_expires_at

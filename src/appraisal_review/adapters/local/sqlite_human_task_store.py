@@ -217,9 +217,12 @@ class SQLiteHumanTaskStore:
             results = []
             for reference in tx.rows(RevisionReference, "revision_chain", str(job_id)):
                 stored = tx.get(_Snapshot, "material", reference.case_id, reference.revision_id)
-                if stored is None or stored.snapshot().revision.reference != reference:
+                if stored is None:
                     raise ServiceFault(ServiceErrorCode.EXECUTION)
-                results.append(stored.snapshot().revision)
+                snapshot = stored.snapshot()
+                if snapshot.revision.reference != reference:
+                    raise ServiceFault(ServiceErrorCode.EXECUTION)
+                results.append(snapshot.revision)
             return tuple(results)
 
     async def read_receipt(self, *, principal_id: str, key: str) -> StoredReceipt | None:

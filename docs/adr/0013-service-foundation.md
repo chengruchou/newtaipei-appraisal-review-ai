@@ -1,12 +1,14 @@
 # ADR 0013: Shared service contracts and explicit local composition
 
-Status: proposed on the M0 working branch, 2026-09-07; not merged.
+Status: accepted in PR #20, merged at `c3687e0cfe16cee0d38fcb4c1780a6092565aaeb`
+on 2026-09-07.
 
 ## Context
 
-Main includes source-bound review (#15), extraction/local reviewer controls (#16)
-and the real local writer/injected S3 wrapper (#19). Five workstreams need stable
-service identities and handoffs. The public synchronous review API already has a
+Main at the time of this decision included source-bound review (#15),
+extraction/local reviewer controls (#16) and the real local writer/injected S3
+wrapper (#19). Five workstreams needed stable service identities and handoffs.
+The public synchronous review API already had a
 compatible result and error contract. No durable jobs or multi-user human service
 exists; the Runtime smoke stores only session-local state.
 
@@ -56,9 +58,9 @@ ends before case_review. Preserve status and ordered critical/warning diagnostic
 with finite codes and fixed public messages; unknown internal reasons receive
 generic diagnostics, never raw text or paths. Keep execution success separate from
 business failure and leave ServiceProblem for entry/execution errors. Update the
-proposed, unmerged service-v1 schema and its consumer fixtures together; existing
-HTTP/invocation payloads and their OpenAPI remain unchanged. This pre-merge change
-requires coordinated B/C/D consumer adoption because service models forbid extras.
+service-v1 schema and its consumer fixtures together; existing HTTP/invocation payloads
+and their OpenAPI remain unchanged. This coordinated change requires B/C/D consumer
+adoption because service models forbid extras.
 
 Keep existing single-context completion limits. A manifest projects actual reopened
 output bytes and exact field/context coverage; it is not proof of full-case template

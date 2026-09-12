@@ -1,0 +1,440 @@
+{
+  "$defs": {
+    "FinalLocalManifest": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "local-privacy-v1",
+          "default": "local-privacy-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "case_id": {
+          "format": "uuid4",
+          "title": "Case Id",
+          "type": "string"
+        },
+        "document_id": {
+          "format": "uuid4",
+          "title": "Document Id",
+          "type": "string"
+        },
+        "map_id": {
+          "format": "uuid4",
+          "title": "Map Id",
+          "type": "string"
+        },
+        "run_id": {
+          "format": "uuid4",
+          "title": "Run Id",
+          "type": "string"
+        },
+        "revision_id": {
+          "format": "uuid4",
+          "title": "Revision Id",
+          "type": "string"
+        },
+        "input_artifact_digest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Input Artifact Digest",
+          "type": "string"
+        },
+        "final_digest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Final Digest",
+          "type": "string"
+        },
+        "byte_size": {
+          "exclusiveMinimum": 0,
+          "title": "Byte Size",
+          "type": "integer"
+        },
+        "filename": {
+          "const": "final-local.pdf",
+          "default": "final-local.pdf",
+          "title": "Filename",
+          "type": "string"
+        },
+        "state": {
+          "const": "refilled_local",
+          "default": "refilled_local",
+          "title": "State",
+          "type": "string"
+        },
+        "business_authority": {
+          "const": "unchanged",
+          "default": "unchanged",
+          "title": "Business Authority",
+          "type": "string"
+        },
+        "signature_effect": {
+          "const": "visual_only_no_digital_signature",
+          "default": "visual_only_no_digital_signature",
+          "title": "Signature Effect",
+          "type": "string"
+        },
+        "restored_fields": {
+          "items": {
+            "format": "uuid4",
+            "type": "string"
+          },
+          "title": "Restored Fields",
+          "type": "array"
+        },
+        "omitted_fields": {
+          "items": {
+            "format": "uuid4",
+            "type": "string"
+          },
+          "title": "Omitted Fields",
+          "type": "array"
+        }
+      },
+      "required": [
+        "case_id",
+        "document_id",
+        "map_id",
+        "run_id",
+        "revision_id",
+        "input_artifact_digest",
+        "final_digest",
+        "byte_size",
+        "restored_fields",
+        "omitted_fields"
+      ],
+      "title": "FinalLocalManifest",
+      "type": "object"
+    },
+    "PrivacyPage": {
+      "additionalProperties": false,
+      "properties": {
+        "number": {
+          "minimum": 1,
+          "title": "Number",
+          "type": "integer"
+        },
+        "width": {
+          "exclusiveMinimum": 0,
+          "title": "Width",
+          "type": "number"
+        },
+        "height": {
+          "exclusiveMinimum": 0,
+          "title": "Height",
+          "type": "number"
+        },
+        "coordinate_system": {
+          "const": "pdf_bottom_left",
+          "default": "pdf_bottom_left",
+          "title": "Coordinate System",
+          "type": "string"
+        },
+        "page_space": {
+          "const": "unrotated_crop_box",
+          "default": "unrotated_crop_box",
+          "title": "Page Space",
+          "type": "string"
+        }
+      },
+      "required": [
+        "number",
+        "width",
+        "height"
+      ],
+      "title": "PrivacyPage",
+      "type": "object"
+    },
+    "PrivacyRegion": {
+      "additionalProperties": false,
+      "properties": {
+        "page": {
+          "minimum": 1,
+          "title": "Page",
+          "type": "integer"
+        },
+        "bbox": {
+          "maxItems": 4,
+          "minItems": 4,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Bbox",
+          "type": "array"
+        }
+      },
+      "required": [
+        "page",
+        "bbox"
+      ],
+      "title": "PrivacyRegion",
+      "type": "object"
+    },
+    "PublishedRefillDescriptor": {
+      "additionalProperties": false,
+      "description": "Proposed #26/#28 publisher contract, authenticated by a separately trusted port.",
+      "properties": {
+        "schema_version": {
+          "const": "local-privacy-v1",
+          "default": "local-privacy-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "case_id": {
+          "format": "uuid4",
+          "title": "Case Id",
+          "type": "string"
+        },
+        "document_id": {
+          "format": "uuid4",
+          "title": "Document Id",
+          "type": "string"
+        },
+        "run_id": {
+          "format": "uuid4",
+          "title": "Run Id",
+          "type": "string"
+        },
+        "revision_id": {
+          "format": "uuid4",
+          "title": "Revision Id",
+          "type": "string"
+        },
+        "artifact_digest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Artifact Digest",
+          "type": "string"
+        },
+        "base_sanitized_digest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Base Sanitized Digest",
+          "type": "string"
+        },
+        "template_digest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Template Digest",
+          "type": "string"
+        },
+        "pages": {
+          "items": {
+            "$ref": "#/$defs/PrivacyPage"
+          },
+          "minItems": 1,
+          "title": "Pages",
+          "type": "array"
+        },
+        "targets": {
+          "items": {
+            "$ref": "#/$defs/RefillTarget"
+          },
+          "maxItems": 1000,
+          "title": "Targets",
+          "type": "array"
+        }
+      },
+      "required": [
+        "case_id",
+        "document_id",
+        "run_id",
+        "revision_id",
+        "artifact_digest",
+        "base_sanitized_digest",
+        "template_digest",
+        "pages",
+        "targets"
+      ],
+      "title": "PublishedRefillDescriptor",
+      "type": "object"
+    },
+    "RefillTarget": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "local-privacy-v1",
+          "default": "local-privacy-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "occurrence_id": {
+          "format": "uuid4",
+          "title": "Occurrence Id",
+          "type": "string"
+        },
+        "entity_id": {
+          "format": "uuid4",
+          "title": "Entity Id",
+          "type": "string"
+        },
+        "output_field_id": {
+          "format": "uuid4",
+          "title": "Output Field Id",
+          "type": "string"
+        },
+        "region": {
+          "$ref": "#/$defs/PrivacyRegion"
+        },
+        "present": {
+          "default": true,
+          "title": "Present",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "occurrence_id",
+        "entity_id",
+        "output_field_id",
+        "region"
+      ],
+      "title": "RefillTarget",
+      "type": "object"
+    },
+    "RehydrationField": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "local-privacy-v1",
+          "default": "local-privacy-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "occurrence_id": {
+          "format": "uuid4",
+          "title": "Occurrence Id",
+          "type": "string"
+        },
+        "entity_id": {
+          "format": "uuid4",
+          "title": "Entity Id",
+          "type": "string"
+        },
+        "output_field_id": {
+          "format": "uuid4",
+          "title": "Output Field Id",
+          "type": "string"
+        },
+        "destination": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PrivacyRegion"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "operation": {
+          "enum": [
+            "restore_text",
+            "restore_original_crop",
+            "omit"
+          ],
+          "title": "Operation",
+          "type": "string"
+        }
+      },
+      "required": [
+        "occurrence_id",
+        "entity_id",
+        "output_field_id",
+        "destination",
+        "operation"
+      ],
+      "title": "RehydrationField",
+      "type": "object"
+    },
+    "RehydrationPlan": {
+      "additionalProperties": false,
+      "description": "Proposed local output plan; trusted publisher/writer authorization required.",
+      "properties": {
+        "schema_version": {
+          "const": "local-privacy-v1",
+          "default": "local-privacy-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "case_id": {
+          "format": "uuid4",
+          "title": "Case Id",
+          "type": "string"
+        },
+        "document_id": {
+          "format": "uuid4",
+          "title": "Document Id",
+          "type": "string"
+        },
+        "map_id": {
+          "format": "uuid4",
+          "title": "Map Id",
+          "type": "string"
+        },
+        "run_id": {
+          "format": "uuid4",
+          "title": "Run Id",
+          "type": "string"
+        },
+        "revision_id": {
+          "format": "uuid4",
+          "title": "Revision Id",
+          "type": "string"
+        },
+        "artifact_digest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Artifact Digest",
+          "type": "string"
+        },
+        "template_digest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Template Digest",
+          "type": "string"
+        },
+        "writer_contract": {
+          "const": "privacy-refill-v1",
+          "default": "privacy-refill-v1",
+          "title": "Writer Contract",
+          "type": "string"
+        },
+        "pages": {
+          "items": {
+            "$ref": "#/$defs/PrivacyPage"
+          },
+          "minItems": 1,
+          "title": "Pages",
+          "type": "array"
+        },
+        "fields": {
+          "items": {
+            "$ref": "#/$defs/RehydrationField"
+          },
+          "minItems": 1,
+          "title": "Fields",
+          "type": "array"
+        }
+      },
+      "required": [
+        "case_id",
+        "document_id",
+        "map_id",
+        "run_id",
+        "revision_id",
+        "artifact_digest",
+        "template_digest",
+        "pages",
+        "fields"
+      ],
+      "title": "RehydrationPlan",
+      "type": "object"
+    }
+  },
+  "title": "local-privacy-refill-v1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}

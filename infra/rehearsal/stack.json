@@ -1,0 +1,1035 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Independent rehearsal dashboard, aggregate query and notification alarms for exact campaign and deployment metrics.",
+  "Metadata": {
+    "com.aws.cloudformation.Context": {
+      "ref": [
+        "../../docs/cloud-acceptance.md"
+      ],
+      "must": [
+        "Deploy only to the authorized sandbox.",
+        "This stack does not create evidence or install metric publishers."
+      ]
+    }
+  },
+  "Parameters": {
+    "CampaignId": {
+      "Type": "String",
+      "AllowedPattern": "^r-[a-f0-9]{32}$",
+      "Description": "Pinned rehearsal CampaignId. No private labels."
+    },
+    "CodeCommit": {
+      "Type": "String",
+      "AllowedPattern": "^[a-f0-9]{40}$",
+      "Description": "Pinned rehearsal CodeCommit. No private labels."
+    },
+    "ImageDigest": {
+      "Type": "String",
+      "AllowedPattern": "^[a-f0-9]{64}$",
+      "Description": "Pinned rehearsal ImageDigest. No private labels."
+    },
+    "PullRequestNumber": {
+      "Type": "Number",
+      "MinValue": 1,
+      "MaxValue": 1000000000,
+      "Description": "Pinned rehearsal PullRequestNumber. No private labels."
+    },
+    "OwnerAlias": {
+      "Type": "String",
+      "AllowedPattern": "^r-[a-f0-9]{32}$",
+      "Description": "Pinned rehearsal OwnerAlias. No private labels."
+    },
+    "ExpiryEpoch": {
+      "Type": "Number",
+      "MinValue": 1,
+      "Description": "Pinned rehearsal ExpiryEpoch. No private labels."
+    },
+    "WorkQueueName": {
+      "Type": "String",
+      "AllowedPattern": "^[A-Za-z0-9_-]{1,80}$",
+      "Description": "Exact owned standard work queue from the deployment inventory."
+    },
+    "DeadLetterQueueName": {
+      "Type": "String",
+      "AllowedPattern": "^[A-Za-z0-9_-]{1,80}$",
+      "Description": "Exact owned standard dead-letter queue from the deployment inventory."
+    },
+    "RuntimeLogGroupName": {
+      "Type": "String",
+      "AllowedPattern": "^[./A-Za-z0-9_-]{1,512}$",
+      "Description": "Existing value-free structured operational log group. Retention is managed by deployment."
+    },
+    "AlarmTopicArn": {
+      "Type": "String",
+      "AllowedPattern": "^arn:(aws|aws-us-gov|aws-cn):sns:[a-z0-9-]+:[0-9]{12}:[A-Za-z0-9_-]+$",
+      "Description": "Existing approved notification topic in the selected account and Region."
+    },
+    "QueueAgeSeconds": {
+      "Type": "Number",
+      "Default": 120,
+      "MinValue": 1,
+      "MaxValue": 86400,
+      "Description": "Pinned rehearsal QueueAgeSeconds. No private labels."
+    },
+    "JobLatencySeconds": {
+      "Type": "Number",
+      "Default": 300,
+      "MinValue": 1,
+      "MaxValue": 86400,
+      "Description": "Pinned rehearsal JobLatencySeconds. No private labels."
+    },
+    "ModelLatencyMilliseconds": {
+      "Type": "Number",
+      "Default": 30000,
+      "MinValue": 1,
+      "MaxValue": 3600000,
+      "Description": "Pinned rehearsal ModelLatencyMilliseconds. No private labels."
+    },
+    "WaitingTaskThreshold": {
+      "Type": "Number",
+      "Default": 5,
+      "MinValue": 1,
+      "MaxValue": 1000,
+      "Description": "Pinned rehearsal WaitingTaskThreshold. No private labels."
+    }
+  },
+  "Resources": {
+    "QueueAgeAlarm": {
+      "Type": "AWS::CloudWatch::Alarm",
+      "Properties": {
+        "AlarmName": {
+          "Fn::Sub": "${AWS::StackName}-QueueAgeAlarm"
+        },
+        "AlarmDescription": {
+          "Fn::Sub": "Owner ${OwnerAlias}; follow docs/cloud-acceptance.md#alarm-response; campaign ${CampaignId}."
+        },
+        "Namespace": "AWS/SQS",
+        "MetricName": "ApproximateAgeOfOldestMessage",
+        "Dimensions": [
+          {
+            "Name": "QueueName",
+            "Value": {
+              "Ref": "WorkQueueName"
+            }
+          }
+        ],
+        "Period": 60,
+        "EvaluationPeriods": 3,
+        "DatapointsToAlarm": 2,
+        "Threshold": {
+          "Ref": "QueueAgeSeconds"
+        },
+        "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+        "TreatMissingData": "missing",
+        "AlarmActions": [
+          {
+            "Ref": "AlarmTopicArn"
+          }
+        ],
+        "OKActions": [
+          {
+            "Ref": "AlarmTopicArn"
+          }
+        ],
+        "InsufficientDataActions": [
+          {
+            "Ref": "AlarmTopicArn"
+          }
+        ],
+        "ActionsEnabled": true,
+        "Tags": [
+          {
+            "Key": "project",
+            "Value": "appraisal-review"
+          },
+          {
+            "Key": "environment",
+            "Value": "rehearsal"
+          },
+          {
+            "Key": "owner",
+            "Value": {
+              "Ref": "OwnerAlias"
+            }
+          },
+          {
+            "Key": "expiry",
+            "Value": {
+              "Ref": "ExpiryEpoch"
+            }
+          },
+          {
+            "Key": "campaign",
+            "Value": {
+              "Ref": "CampaignId"
+            }
+          },
+          {
+            "Key": "pull-request",
+            "Value": {
+              "Ref": "PullRequestNumber"
+            }
+          }
+        ],
+        "Statistic": "Maximum"
+      },
+      "Metadata": {
+        "com.aws.cloudformation.Context": {
+          "why": "Detect rehearsal regression with bounded notification only.",
+          "must": [
+            "Missing observations cannot establish acceptance.",
+            "No automatic redrive, deletion or rollback action."
+          ]
+        }
+      }
+    },
+    "DeadLetterAlarm": {
+      "Type": "AWS::CloudWatch::Alarm",
+      "Properties": {
+        "AlarmName": {
+          "Fn::Sub": "${AWS::StackName}-DeadLetterAlarm"
+        },
+        "AlarmDescription": {
+          "Fn::Sub": "Owner ${OwnerAlias}; follow docs/cloud-acceptance.md#alarm-response; campaign ${CampaignId}."
+        },
+        "Namespace": "AWS/SQS",
+        "MetricName": "ApproximateNumberOfMessagesVisible",
+        "Dimensions": [
+          {
+            "Name": "QueueName",
+            "Value": {
+              "Ref": "DeadLetterQueueName"
+            }
+          }
+        ],
+        "Period": 60,
+        "EvaluationPeriods": 3,
+        "DatapointsToAlarm": 2,
+        "Threshold": 1,
+        "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+        "TreatMissingData": "missing",
+        "AlarmActions": [
+          {
+            "Ref": "AlarmTopicArn"
+          }
+        ],
+        "OKActions": [
+          {
+            "Ref": "AlarmTopicArn"
+          }
+        ],
+        "InsufficientDataActions": [
+          {
+            "Ref": "AlarmTopicArn"
+          }
+        ],
+        "ActionsEnabled": true,
+        "Tags": [
+          {
+            "Key": "project",
+            "Value": "appraisal-review"
+          },
+          {
+            "Key": "environment",
+            "Value": "rehearsal"
+          },
+          {
+            "Key": "owner",
+            "Value": {
+              "Ref": "OwnerAlias"
+            }
+          },
+          {
+            "Key": "expiry",
+            "Value": {
+              "Ref": "ExpiryEpoch"
+            }
+          },
+          {
+            "Key": "campaign",
+            "Value": {
+              "Ref": "CampaignId"
+            }
+          },
+          {
+            "Key": "pull-request",
+            "Value": {
+              "Ref": "PullRequestNumber"
+            }
+          }
+        ],
+        "Statistic": "Maximum"
+      },
+      "Metadata": {
+        "com.aws.cloudformation.Context": {
+          "why": "Detect rehearsal regression with bounded notification only.",
+          "must": [
+            "Missing observations cannot establish acceptance.",
+            "No automatic redrive, deletion or rollback action."
+          ]
+        }
+      }
+    },
+    "ExpiredLeaseAlarm": {
+      "Type": "AWS::CloudWatch::Alarm",
+      "Properties": {
+        "AlarmName": {
+          "Fn::Sub": "${AWS::StackName}-ExpiredLeaseAlarm"
+        },
+        "AlarmDescription": {
+          "Fn::Sub": "Owner ${OwnerAlias}; follow docs/cloud-acceptance.md#alarm-response; campaign ${CampaignId}."
+        },
+        "Namespace": "AppraisalReview/Rehearsal",
+        "MetricName": "ExpiredLeases",
+        "Dimensions": [
+          {
+            "Name": "CampaignId",
+            "Value": {
+              "Ref": "CampaignId"
+            }
+          },
+          {
+            "Name": "CodeCommit",
+            "Value": {
+              "Ref": "CodeCommit"
+            }
+          },
+          {
+            "Name": "ImageDigest",
+            "Value": {
+              "Ref": "ImageDigest"
+            }
+          }
+        ],
+        "Period": 60,
+        "EvaluationPeriods": 3,
+        "DatapointsToAlarm": 2,
+        "Threshold": 1,
+        "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+        "TreatMissingData": "missing",
+        "AlarmActions": [
+          {
+            "Ref": "AlarmTopicArn"
+          }
+        ],
+        "OKActions": [
+          {
+            "Ref": "AlarmTopicArn"
+          }
+        ],
+        "InsufficientDataActions": [
+          {
+            "Ref": "AlarmTopicArn"
+          }
+        ],
+        "ActionsEnabled": true,
+        "Tags": [
+          {
+            "Key": "project",
+            "Value": "appraisal-review"
+          },
+          {
+            "Key": "environment",
+            "Value": "rehearsal"
+          },
+          {
+            "Key": "owner",
+            "Value": {
+              "Ref": "OwnerAlias"
+            }
+          },
+          {
+            "Key": "expiry",
+            "Value": {
+              "Ref": "ExpiryEpoch"
+            }
+          },
+          {
+            "Key": "campaign",
+            "Value": {
+              "Ref": "CampaignId"
+            }
+          },
+          {
+            "Key": "pull-request",
+            "Value": {
+              "Ref": "PullRequestNumber"
+            }
+          }
+        ],
+        "Statistic": "Maximum"
+      },
+      "Metadata": {
+        "com.aws.cloudformation.Context": {
+          "why": "Detect rehearsal regression with bounded notification only.",
+          "must": [
+            "Missing observations cannot establish acceptance.",
+            "No automatic redrive, deletion or rollback action."
+          ]
+        }
+      }
+    },
+    "RetryAlarm": {
+      "Type": "AWS::CloudWatch::Alarm",
+      "Properties": {
+        "AlarmName": {
+          "Fn::Sub": "${AWS::StackName}-RetryAlarm"
+        },
+        "AlarmDescription": {
+          "Fn::Sub": "Owner ${OwnerAlias}; follow docs/cloud-acceptance.md#alarm-response; campaign ${CampaignId}."
+        },
+        "Namespace": "AppraisalReview/Rehearsal",
+        "MetricName": "Retries",
+        "Dimensions": [
+          {
+            "Name": "CampaignId",
+            "Value": {
+              "Ref": "CampaignId"
+            }
+          },
+          {
+            "Name": "CodeCommit",
+            "Value": {
+              "Ref": "CodeCommit"
+            }
+          },
+          {
+            "Name": "ImageDigest",
+            "Value": {
+              "Ref": "ImageDigest"
+            }
+          }
+        ],
+        "Period": 60,
+        "EvaluationPeriods": 3,
+        "DatapointsToAlarm": 2,
+        "Threshold": 1,
+        "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+        "TreatMissingData": "missing",
+        "AlarmActions": [
+          {
+            "Ref": "AlarmTopicArn"
+          }
+        ],
+        "OKActions": [
+          {
+            "Ref": "AlarmTopicArn"
+          }
+        ],
+        "InsufficientDataActions": [
+          {
+            "Ref": "AlarmTopicArn"
+          }
+        ],
+        "ActionsEnabled": true,
+        "Tags": [
+          {
+            "Key": "project",
+            "Value": "appraisal-review"
+          },
+          {
+            "Key": "environment",
+            "Value": "rehearsal"
+          },
+          {
+            "Key": "owner",
+            "Value": {
+              "Ref": "OwnerAlias"
+            }
+          },
+          {
+            "Key": "expiry",
+            "Value": {
+              "Ref": "ExpiryEpoch"
+            }
+          },
+          {
+            "Key": "campaign",
+            "Value": {
+              "Ref": "CampaignId"
+            }
+          },
+          {
+            "Key": "pull-request",
+            "Value": {
+              "Ref": "PullRequestNumber"
+            }
+          }
+        ],
+        "Statistic": "Sum"
+      },
+      "Metadata": {
+        "com.aws.cloudformation.Context": {
+          "why": "Detect rehearsal regression with bounded notification only.",
+          "must": [
+            "Missing observations cannot establish acceptance.",
+            "No automatic redrive, deletion or rollback action."
+          ]
+        }
+      }
+    },
+    "FailureAlarm": {
+      "Type": "AWS::CloudWatch::Alarm",
+      "Properties": {
+        "AlarmName": {
+          "Fn::Sub": "${AWS::StackName}-FailureAlarm"
+        },
+        "AlarmDescription": {
+          "Fn::Sub": "Owner ${OwnerAlias}; follow docs/cloud-acceptance.md#alarm-response; campaign ${CampaignId}."
+        },
+        "Namespace": "AppraisalReview/Rehearsal",
+        "MetricName": "FailedJobs",
+        "Dimensions": [
+          {
+            "Name": "CampaignId",
+            "Value": {
+              "Ref": "CampaignId"
+            }
+          },
+          {
+            "Name": "CodeCommit",
+            "Value": {
+              "Ref": "CodeCommit"
+            }
+          },
+          {
+            "Name": "ImageDigest",
+            "Value": {
+              "Ref": "ImageDigest"
+            }
+          }
+        ],
+        "Period": 60,
+        "EvaluationPeriods": 3,
+        "DatapointsToAlarm": 2,
+        "Threshold": 1,
+        "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+        "TreatMissingData": "missing",
+        "AlarmActions": [
+          {
+            "Ref": "AlarmTopicArn"
+          }
+        ],
+        "OKActions": [
+          {
+            "Ref": "AlarmTopicArn"
+          }
+        ],
+        "InsufficientDataActions": [
+          {
+            "Ref": "AlarmTopicArn"
+          }
+        ],
+        "ActionsEnabled": true,
+        "Tags": [
+          {
+            "Key": "project",
+            "Value": "appraisal-review"
+          },
+          {
+            "Key": "environment",
+            "Value": "rehearsal"
+          },
+          {
+            "Key": "owner",
+            "Value": {
+              "Ref": "OwnerAlias"
+            }
+          },
+          {
+            "Key": "expiry",
+            "Value": {
+              "Ref": "ExpiryEpoch"
+            }
+          },
+          {
+            "Key": "campaign",
+            "Value": {
+              "Ref": "CampaignId"
+            }
+          },
+          {
+            "Key": "pull-request",
+            "Value": {
+              "Ref": "PullRequestNumber"
+            }
+          }
+        ],
+        "Statistic": "Sum"
+      },
+      "Metadata": {
+        "com.aws.cloudformation.Context": {
+          "why": "Detect rehearsal regression with bounded notification only.",
+          "must": [
+            "Missing observations cannot establish acceptance.",
+            "No automatic redrive, deletion or rollback action."
+          ]
+        }
+      }
+    },
+    "WaitingTaskAlarm": {
+      "Type": "AWS::CloudWatch::Alarm",
+      "Properties": {
+        "AlarmName": {
+          "Fn::Sub": "${AWS::StackName}-WaitingTaskAlarm"
+        },
+        "AlarmDescription": {
+          "Fn::Sub": "Owner ${OwnerAlias}; follow docs/cloud-acceptance.md#alarm-response; campaign ${CampaignId}."
+        },
+        "Namespace": "AppraisalReview/Rehearsal",
+        "MetricName": "WaitingTasks",
+        "Dimensions": [
+          {
+            "Name": "CampaignId",
+            "Value": {
+              "Ref": "CampaignId"
+            }
+          },
+          {
+            "Name": "CodeCommit",
+            "Value": {
+              "Ref": "CodeCommit"
+            }
+          },
+          {
+            "Name": "ImageDigest",
+            "Value": {
+              "Ref": "ImageDigest"
+            }
+          }
+        ],
+        "Period": 60,
+        "EvaluationPeriods": 3,
+        "DatapointsToAlarm": 2,
+        "Threshold": {
+          "Ref": "WaitingTaskThreshold"
+        },
+        "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+        "TreatMissingData": "missing",
+        "AlarmActions": [
+          {
+            "Ref": "AlarmTopicArn"
+          }
+        ],
+        "OKActions": [
+          {
+            "Ref": "AlarmTopicArn"
+          }
+        ],
+        "InsufficientDataActions": [
+          {
+            "Ref": "AlarmTopicArn"
+          }
+        ],
+        "ActionsEnabled": true,
+        "Tags": [
+          {
+            "Key": "project",
+            "Value": "appraisal-review"
+          },
+          {
+            "Key": "environment",
+            "Value": "rehearsal"
+          },
+          {
+            "Key": "owner",
+            "Value": {
+              "Ref": "OwnerAlias"
+            }
+          },
+          {
+            "Key": "expiry",
+            "Value": {
+              "Ref": "ExpiryEpoch"
+            }
+          },
+          {
+            "Key": "campaign",
+            "Value": {
+              "Ref": "CampaignId"
+            }
+          },
+          {
+            "Key": "pull-request",
+            "Value": {
+              "Ref": "PullRequestNumber"
+            }
+          }
+        ],
+        "Statistic": "Maximum"
+      },
+      "Metadata": {
+        "com.aws.cloudformation.Context": {
+          "why": "Detect rehearsal regression with bounded notification only.",
+          "must": [
+            "Missing observations cannot establish acceptance.",
+            "No automatic redrive, deletion or rollback action."
+          ]
+        }
+      }
+    },
+    "JobLatencyAlarm": {
+      "Type": "AWS::CloudWatch::Alarm",
+      "Properties": {
+        "AlarmName": {
+          "Fn::Sub": "${AWS::StackName}-JobLatencyAlarm"
+        },
+        "AlarmDescription": {
+          "Fn::Sub": "Owner ${OwnerAlias}; follow docs/cloud-acceptance.md#alarm-response; campaign ${CampaignId}."
+        },
+        "Namespace": "AppraisalReview/Rehearsal",
+        "MetricName": "JobLatency",
+        "Dimensions": [
+          {
+            "Name": "CampaignId",
+            "Value": {
+              "Ref": "CampaignId"
+            }
+          },
+          {
+            "Name": "CodeCommit",
+            "Value": {
+              "Ref": "CodeCommit"
+            }
+          },
+          {
+            "Name": "ImageDigest",
+            "Value": {
+              "Ref": "ImageDigest"
+            }
+          }
+        ],
+        "Period": 60,
+        "EvaluationPeriods": 3,
+        "DatapointsToAlarm": 2,
+        "Threshold": {
+          "Ref": "JobLatencySeconds"
+        },
+        "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+        "TreatMissingData": "missing",
+        "AlarmActions": [
+          {
+            "Ref": "AlarmTopicArn"
+          }
+        ],
+        "OKActions": [
+          {
+            "Ref": "AlarmTopicArn"
+          }
+        ],
+        "InsufficientDataActions": [
+          {
+            "Ref": "AlarmTopicArn"
+          }
+        ],
+        "ActionsEnabled": true,
+        "Tags": [
+          {
+            "Key": "project",
+            "Value": "appraisal-review"
+          },
+          {
+            "Key": "environment",
+            "Value": "rehearsal"
+          },
+          {
+            "Key": "owner",
+            "Value": {
+              "Ref": "OwnerAlias"
+            }
+          },
+          {
+            "Key": "expiry",
+            "Value": {
+              "Ref": "ExpiryEpoch"
+            }
+          },
+          {
+            "Key": "campaign",
+            "Value": {
+              "Ref": "CampaignId"
+            }
+          },
+          {
+            "Key": "pull-request",
+            "Value": {
+              "Ref": "PullRequestNumber"
+            }
+          }
+        ],
+        "ExtendedStatistic": "p99"
+      },
+      "Metadata": {
+        "com.aws.cloudformation.Context": {
+          "why": "Detect rehearsal regression with bounded notification only.",
+          "must": [
+            "Missing observations cannot establish acceptance.",
+            "No automatic redrive, deletion or rollback action."
+          ]
+        }
+      }
+    },
+    "ModelLatencyAlarm": {
+      "Type": "AWS::CloudWatch::Alarm",
+      "Properties": {
+        "AlarmName": {
+          "Fn::Sub": "${AWS::StackName}-ModelLatencyAlarm"
+        },
+        "AlarmDescription": {
+          "Fn::Sub": "Owner ${OwnerAlias}; follow docs/cloud-acceptance.md#alarm-response; campaign ${CampaignId}."
+        },
+        "Namespace": "AppraisalReview/Rehearsal",
+        "MetricName": "ModelLatency",
+        "Dimensions": [
+          {
+            "Name": "CampaignId",
+            "Value": {
+              "Ref": "CampaignId"
+            }
+          },
+          {
+            "Name": "CodeCommit",
+            "Value": {
+              "Ref": "CodeCommit"
+            }
+          },
+          {
+            "Name": "ImageDigest",
+            "Value": {
+              "Ref": "ImageDigest"
+            }
+          }
+        ],
+        "Period": 60,
+        "EvaluationPeriods": 3,
+        "DatapointsToAlarm": 2,
+        "Threshold": {
+          "Ref": "ModelLatencyMilliseconds"
+        },
+        "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+        "TreatMissingData": "missing",
+        "AlarmActions": [
+          {
+            "Ref": "AlarmTopicArn"
+          }
+        ],
+        "OKActions": [
+          {
+            "Ref": "AlarmTopicArn"
+          }
+        ],
+        "InsufficientDataActions": [
+          {
+            "Ref": "AlarmTopicArn"
+          }
+        ],
+        "ActionsEnabled": true,
+        "Tags": [
+          {
+            "Key": "project",
+            "Value": "appraisal-review"
+          },
+          {
+            "Key": "environment",
+            "Value": "rehearsal"
+          },
+          {
+            "Key": "owner",
+            "Value": {
+              "Ref": "OwnerAlias"
+            }
+          },
+          {
+            "Key": "expiry",
+            "Value": {
+              "Ref": "ExpiryEpoch"
+            }
+          },
+          {
+            "Key": "campaign",
+            "Value": {
+              "Ref": "CampaignId"
+            }
+          },
+          {
+            "Key": "pull-request",
+            "Value": {
+              "Ref": "PullRequestNumber"
+            }
+          }
+        ],
+        "ExtendedStatistic": "p99"
+      },
+      "Metadata": {
+        "com.aws.cloudformation.Context": {
+          "why": "Detect rehearsal regression with bounded notification only.",
+          "must": [
+            "Missing observations cannot establish acceptance.",
+            "No automatic redrive, deletion or rollback action."
+          ]
+        }
+      }
+    },
+    "CollectorHeartbeatAlarm": {
+      "Type": "AWS::CloudWatch::Alarm",
+      "Properties": {
+        "AlarmName": {
+          "Fn::Sub": "${AWS::StackName}-CollectorHeartbeatAlarm"
+        },
+        "AlarmDescription": {
+          "Fn::Sub": "Owner ${OwnerAlias}; follow docs/cloud-acceptance.md#alarm-response; campaign ${CampaignId}."
+        },
+        "Namespace": "AppraisalReview/Rehearsal",
+        "MetricName": "CollectorHeartbeat",
+        "Dimensions": [
+          {
+            "Name": "CampaignId",
+            "Value": {
+              "Ref": "CampaignId"
+            }
+          },
+          {
+            "Name": "CodeCommit",
+            "Value": {
+              "Ref": "CodeCommit"
+            }
+          },
+          {
+            "Name": "ImageDigest",
+            "Value": {
+              "Ref": "ImageDigest"
+            }
+          }
+        ],
+        "Period": 60,
+        "EvaluationPeriods": 3,
+        "DatapointsToAlarm": 2,
+        "Threshold": 1,
+        "ComparisonOperator": "LessThanThreshold",
+        "TreatMissingData": "breaching",
+        "AlarmActions": [
+          {
+            "Ref": "AlarmTopicArn"
+          }
+        ],
+        "OKActions": [
+          {
+            "Ref": "AlarmTopicArn"
+          }
+        ],
+        "InsufficientDataActions": [
+          {
+            "Ref": "AlarmTopicArn"
+          }
+        ],
+        "ActionsEnabled": true,
+        "Tags": [
+          {
+            "Key": "project",
+            "Value": "appraisal-review"
+          },
+          {
+            "Key": "environment",
+            "Value": "rehearsal"
+          },
+          {
+            "Key": "owner",
+            "Value": {
+              "Ref": "OwnerAlias"
+            }
+          },
+          {
+            "Key": "expiry",
+            "Value": {
+              "Ref": "ExpiryEpoch"
+            }
+          },
+          {
+            "Key": "campaign",
+            "Value": {
+              "Ref": "CampaignId"
+            }
+          },
+          {
+            "Key": "pull-request",
+            "Value": {
+              "Ref": "PullRequestNumber"
+            }
+          }
+        ],
+        "Statistic": "Minimum"
+      },
+      "Metadata": {
+        "com.aws.cloudformation.Context": {
+          "why": "Detect rehearsal regression with bounded notification only.",
+          "must": [
+            "Missing observations cannot establish acceptance.",
+            "No automatic redrive, deletion or rollback action."
+          ]
+        }
+      }
+    },
+    "RehearsalDashboard": {
+      "Type": "AWS::CloudWatch::Dashboard",
+      "Properties": {
+        "DashboardName": {
+          "Fn::Sub": "${AWS::StackName}-rehearsal"
+        },
+        "DashboardBody": {
+          "Fn::Sub": "{\"start\":\"-PT3H\",\"periodOverride\":\"inherit\",\"widgets\":[{\"type\":\"alarm\",\"x\":0,\"y\":0,\"width\":24,\"height\":3,\"properties\":{\"title\":\"Rehearsal alarms\",\"alarms\":[\"${QueueAgeAlarm.Arn}\",\"${DeadLetterAlarm.Arn}\",\"${ExpiredLeaseAlarm.Arn}\",\"${RetryAlarm.Arn}\",\"${FailureAlarm.Arn}\",\"${WaitingTaskAlarm.Arn}\",\"${JobLatencyAlarm.Arn}\",\"${ModelLatencyAlarm.Arn}\",\"${CollectorHeartbeatAlarm.Arn}\"]}},{\"type\":\"metric\",\"x\":0,\"y\":3,\"width\":12,\"height\":6,\"properties\":{\"title\":\"Queue pressure\",\"view\":\"timeSeries\",\"region\":\"${AWS::Region}\",\"period\":60,\"stat\":\"Maximum\",\"metrics\":[[\"AWS/SQS\",\"ApproximateAgeOfOldestMessage\",\"QueueName\",\"${WorkQueueName}\"],[\"AWS/SQS\",\"ApproximateNumberOfMessagesVisible\",\"QueueName\",\"${DeadLetterQueueName}\"]]}},{\"type\":\"metric\",\"x\":12,\"y\":3,\"width\":12,\"height\":6,\"properties\":{\"title\":\"Job outcomes\",\"view\":\"timeSeries\",\"region\":\"${AWS::Region}\",\"period\":60,\"stat\":\"Sum\",\"metrics\":[[\"AppraisalReview/Rehearsal\",\"SucceededJobs\",\"CampaignId\",\"${CampaignId}\",\"CodeCommit\",\"${CodeCommit}\",\"ImageDigest\",\"${ImageDigest}\"],[\"AppraisalReview/Rehearsal\",\"FailedJobs\",\"CampaignId\",\"${CampaignId}\",\"CodeCommit\",\"${CodeCommit}\",\"ImageDigest\",\"${ImageDigest}\"],[\"AppraisalReview/Rehearsal\",\"Retries\",\"CampaignId\",\"${CampaignId}\",\"CodeCommit\",\"${CodeCommit}\",\"ImageDigest\",\"${ImageDigest}\"]]}},{\"type\":\"metric\",\"x\":0,\"y\":9,\"width\":12,\"height\":6,\"properties\":{\"title\":\"Waiting and expired leases\",\"view\":\"timeSeries\",\"region\":\"${AWS::Region}\",\"period\":60,\"stat\":\"Maximum\",\"metrics\":[[\"AppraisalReview/Rehearsal\",\"WaitingTasks\",\"CampaignId\",\"${CampaignId}\",\"CodeCommit\",\"${CodeCommit}\",\"ImageDigest\",\"${ImageDigest}\"],[\"AppraisalReview/Rehearsal\",\"ExpiredLeases\",\"CampaignId\",\"${CampaignId}\",\"CodeCommit\",\"${CodeCommit}\",\"ImageDigest\",\"${ImageDigest}\"],[\"AppraisalReview/Rehearsal\",\"CollectorHeartbeat\",\"CampaignId\",\"${CampaignId}\",\"CodeCommit\",\"${CodeCommit}\",\"ImageDigest\",\"${ImageDigest}\"]]}},{\"type\":\"metric\",\"x\":12,\"y\":9,\"width\":12,\"height\":6,\"properties\":{\"title\":\"Latency\",\"view\":\"timeSeries\",\"region\":\"${AWS::Region}\",\"period\":60,\"stat\":\"p99\",\"metrics\":[[\"AppraisalReview/Rehearsal\",\"JobLatency\",\"CampaignId\",\"${CampaignId}\",\"CodeCommit\",\"${CodeCommit}\",\"ImageDigest\",\"${ImageDigest}\"],[\"AppraisalReview/Rehearsal\",\"ModelLatency\",\"CampaignId\",\"${CampaignId}\",\"CodeCommit\",\"${CodeCommit}\",\"ImageDigest\",\"${ImageDigest}\"]]}},{\"type\":\"metric\",\"x\":0,\"y\":15,\"width\":12,\"height\":6,\"properties\":{\"title\":\"Model usage and cost proxy\",\"view\":\"timeSeries\",\"region\":\"${AWS::Region}\",\"period\":60,\"stat\":\"Sum\",\"metrics\":[[\"AppraisalReview/Rehearsal\",\"InputTokens\",\"CampaignId\",\"${CampaignId}\",\"CodeCommit\",\"${CodeCommit}\",\"ImageDigest\",\"${ImageDigest}\"],[\"AppraisalReview/Rehearsal\",\"OutputTokens\",\"CampaignId\",\"${CampaignId}\",\"CodeCommit\",\"${CodeCommit}\",\"ImageDigest\",\"${ImageDigest}\"],[\"AppraisalReview/Rehearsal\",\"EstimatedCostMicrounits\",\"CampaignId\",\"${CampaignId}\",\"CodeCommit\",\"${CodeCommit}\",\"ImageDigest\",\"${ImageDigest}\"]]}},{\"type\":\"log\",\"x\":0,\"y\":21,\"width\":24,\"height\":6,\"properties\":{\"title\":\"Bounded operational event counts\",\"region\":\"${AWS::Region}\",\"view\":\"table\",\"query\":\"SOURCE '${RuntimeLogGroupName}' | filter campaign_id = '${CampaignId}' and code_commit = '${CodeCommit}' and image_digest = '${ImageDigest}' | stats count(*) as event_count by event_kind, outcome | sort event_count desc\"}}]}"
+        }
+      },
+      "Metadata": {
+        "com.aws.cloudformation.Context": {
+          "why": "Compare native queue health and exact-deployment custom metrics.",
+          "must": [
+            "Do not publish or share raw logs.",
+            "Publisher must emit the documented exact dimension set."
+          ]
+        }
+      }
+    },
+    "RehearsalQuery": {
+      "Type": "AWS::Logs::QueryDefinition",
+      "Properties": {
+        "Name": {
+          "Fn::Sub": "${AWS::StackName}/rehearsal-counts"
+        },
+        "LogGroupNames": [
+          {
+            "Ref": "RuntimeLogGroupName"
+          }
+        ],
+        "QueryString": {
+          "Fn::Sub": "filter campaign_id = '${CampaignId}' and code_commit = '${CodeCommit}' and image_digest = '${ImageDigest}' | stats count(*) as event_count by event_kind, outcome | sort event_count desc"
+        }
+      },
+      "Metadata": {
+        "com.aws.cloudformation.Context": {
+          "why": "Retain a repeatable aggregate query for the pinned campaign.",
+          "must": [
+            "No raw message, document text, account identifier or signed URL projection."
+          ]
+        }
+      }
+    }
+  },
+  "Outputs": {
+    "MetricNamespace": {
+      "Description": "Publisher namespace; exact dimensions are required.",
+      "Value": "AppraisalReview/Rehearsal"
+    },
+    "DashboardName": {
+      "Description": "Private rehearsal dashboard name.",
+      "Value": {
+        "Ref": "RehearsalDashboard"
+      }
+    },
+    "QueryDefinitionId": {
+      "Description": "Aggregate operational query identifier.",
+      "Value": {
+        "Ref": "RehearsalQuery"
+      }
+    }
+  }
+}

@@ -62,3 +62,14 @@ is restored. HTTP regressions assert 403 followed by the unchanged receipt when
 permission is restored. Confidence regressions cover zero, low and high stored
 scores against absent, lower and higher proposal scores, while checking original
 evidence, change ledger, parent snapshots and cleared confirmation.
+
+## Integration clarification: evidence supply
+
+When integrating the later SUPPLY_EVIDENCE action, preserve the same raw-confidence
+rule. Its pinned-registry citation validation and evidence replacement remain
+active; generated EvidenceRef records retain observation confidence rather than a
+proposal score. Both the observation and its newly attached evidence retain 0.5
+when a responder proposes 0.0 against raw 0.5. Original zero remains zero, and the
+proposal's value remains auditable in the change ledger. Evidence supply does not
+replace the next confirmation or exact-material approval. See the
+[PR 56 repair record](../pr-56-review-repair.md) for the combined regression matrix.

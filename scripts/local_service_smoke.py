@@ -160,7 +160,17 @@ def smoke(directory: Path) -> dict:
         (directory / "http-written.json").write_text(json.dumps(written.json(), indent=2) + "\n")
         pdf = PdfReader(directory / "output/completed.pdf")
         assert len(pdf.pages) == 1 and "+5.00%" in pdf.pages[0].extract_text()
-        for route in ("/v1/review-jobs", "/v1/human-tasks", "/v1/artifacts"):
+        # #32 mounts jobs, but this local assembly provides no authenticated durable plane.
+        assert client.get("/v1/review-jobs").status_code == 405
+        submission = json.loads(
+            (
+                Path(__file__).resolve().parents[1] / "examples/service-v1/submission.json"
+            ).read_text()
+        )
+        unavailable = client.post("/v1/review-jobs", json=submission)
+        assert unavailable.status_code == 503
+        assert unavailable.json()["code"] == "capability_unavailable"
+        for route in ("/v1/human-tasks", "/v1/artifacts"):
             assert client.get(route).status_code == 404
     # New envelope is a separate local boundary; use a new output to avoid overwriting.
     write["output_pdf_uri"] = (directory / "output/manifest.pdf").as_uri()

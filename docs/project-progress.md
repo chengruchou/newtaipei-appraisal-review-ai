@@ -1,100 +1,148 @@
-# Project progress, 2026-09-10
+# Project progress
 
-## Re-established baseline
+## Current status
 
-The competition requires valuation case review. PDF completion is an output of
-an evidence-bound, deterministic review, not the entire application. The reviewed
-baseline is main `463880af3a6dc6aad2bfa6fdfc3bc267afc4d4a5`, the merge of
-[PR #33](https://github.com/chengruchou/newtaipei-appraisal-review-ai/pull/33).
-It includes #15/#16/#19 and the M0 foundation and follow-up fixes in #20.
+The local KPI1 candidate is recorded separately in
+[the delivery record](kpi1-delivery.md). It adds a real-original workbench on top
+of Draft #54, with actual local parsing, source selection and fact-response
+receipt/recovery evidence. Necessary case-condition operations, applicable-rule
+confirmation and designated-template output are incomplete. This is a partial
+delivery, not KPI1 acceptance, and it does not change the historical validation
+or cloud status below.
 
-The implemented core parses authorized local documents, preserves source evidence
-and measured confidence, prepares proposed rules/facts, admits explicit human
-confirmation and exact material approval, calculates grades/corrections/totals,
-and verifies original cells and derived fields. A configured local service uses
-the actual parser, controller and optional PDF writer. The writer preserves the
-source and creates a separately verified output. HTTP/invocation compatibility
-and structured preflight diagnostics are present.
+The latest inspected remote `main` is
+`f241e7a479d3135e81bb47bcf9a94f2685492fdf`. The follow-up stack is under
+review after #52 and #53; its clean executable checkpoint is
+`add3c0e23dc978dff082450d6475ace1e599261c`. The
+[follow-up validation record](followup-local-validation-record.md) separates
+current local evidence from the merged baseline below and from hosted CI.
 
-The #20 revision fix preserves native status only across unchanged native sides.
-Legitimate explicit human confirmation, including confidence zero, remains valid
-and separate from precise material approval. An original receipt applies only to
-its unchanged original material; a revised material cannot reuse a confirmation
-or approval that does not match the required exact binding.
+[PR #45](https://github.com/chengruchou/newtaipei-appraisal-review-ai/pull/45)
+was merged into `main` at `d148422adb18190bada93b8588a4e34d73e3c2e4`.
+Its source tree matches the reviewed integration head
+`fd22e68321bad6b58f06068dfef1db67fdb1c269`. This is a **configured local validation
+baseline**, including the browser, API, durable local jobs, human review, PDF
+publication/download and local privacy restoration.
 
-#33 adds independently derived full-case goldens and reviewer protocol: 13
-case/revision manifests plus an index. Candidate rules still need business approval;
-golden success does not establish accuracy on real cases or complete formal CJK
-output. The main commit's workflow lookup returned no runs during this refresh;
-neither a PR-body test count nor historical CI is treated as fresh local evidence.
+The final delivery reports one complete successful OCR restoration/download.
+Earlier HTTP 409 and timeout observations remain historical failures; the later
+success does not explain their causes or establish repeated OCR reliability.
+**AWS deployment, hosted CI, image security, production identity, designated
+model quality and formal business acceptance remain open.** Merge is not
+deployment approval, and no test count is a completion percentage.
 
-## Open work and integration order
+This is the current status authority. [The implementation backlog](implementation-backlog.md)
+defines remaining work and its issue mapping. Superseded component PRs and earlier
+milestone issues are delivery history, not an instruction to merge old branches
+again. Earlier source/main/CI snapshots remain in
+[history](history/2026-09-11-pre-convergence/README.md).
 
-These statuses describe inspected implementation and issue scope, not estimates
-of teammates' completion or approval. Open issues can contain merged partial work.
+## Follow-up candidate after the baseline
 
-| Issue | Work line and current boundary |
-| --- | --- |
-| #17 | Controlled model action selection, trace and human handoff; active branch separate from main |
-| #21 | Real Chinese extraction/evaluation; consumes authorized sanitized page inputs |
-| #22 | Local privacy processing, original/map isolation, exact export confirmation and local rehydration; active branch |
-| #23 | Full-case goldens merged through #33; formal business/reviewer acceptance remains |
-| #24 | Authenticated persisted human tasks, revisions and precise approvals; a new work branch is published |
-| #25 | Browser private upload, review workbench and result flow |
-| #26 | Formal CJK and multiple-context PDF output; a new work branch is published |
-| **#27** | **This branch: controlled sanitized ingestion, authorized document versions and immutable run sources** |
-| #28 | Fenced artifact publication and authorized downloads; a new work branch is published |
-| #29 | Durable jobs, outbox, leases and recovery; active branch |
-| #30 | Full AgentCore Runtime assembly and deployment |
-| #31 | Full AWS and browser/privacy rehearsal |
+The current candidate includes exact per-model routing proofs (ADR 0048), finite
+request-local restoration diagnostics and isolated OCR browser configurations
+(ADR 0049), and an explicit synthetic local container composition (ADR 0050).
+The container serves the built UI and configured API/worker with durable private
+state; host-companion mode retains original documents and mapping authority on
+the host. See the [local validation stack](local-validation-stack.md).
 
-Older #5/#7/#8/#9 remain broader PDF/extraction/review/cloud tracking issues. They
-do not mean the corresponding local core is absent. #27 does not take over these
-work lines or approve their real rules or materials.
+These are additions under review, not a claim that the baseline CI or image
+validated them. Their PRs record exact new source/image checkpoints, failed and
+successful browser runs, and advisory results. Full OCR corpus reliability,
+legitimate operator provisioning, supported-platform acceptance and all real
+approval/deployment gates remain open. The historical evidence below is retained
+without being relabelled as validation of the follow-up candidate.
 
-Read-only coordination used these published branch snapshots:
+At the clean executable checkpoint, 3,307 repository tests, 12 local cloud tests,
+230 frontend tests, 101 installed-wheel regressions, quality/contracts and six
+CloudFormation checks passed. The actual image core passed four browser scenarios
+and lifecycle checks. The original synthetic full privacy flow and a separate
+paused/automatic-refusal/resume sequence passed using the exact image-exported UI
+and native host companion. Both downloaded PDFs passed independent source-crop,
+eight-field and non-restoration-pixel checks; all raw confidence values remain.
+The final documentation commit does not alter runtime or package/image build
+inputs and is not a claim that the full suite ran at a different SHA.
 
-| Branch | Inspected head | Relevant interface |
+The fresh image still fails its OS gate: 176 findings, including 3 Critical and
+51 High. Fresh Python/npm advisory checks do not clear that result. The exact
+heads of #52 and #53 had hosted jobs blocked before tests by payment/spending-limit
+annotations; the final stack head requires its own CI readback. See the
+[current record](followup-local-validation-record.md) for hashes, retained failed
+attempts, warnings and pending production/operator work.
+
+## Implemented and integrated baseline work
+
+| Work line | Current integrated behavior | Remaining work or acceptance |
 | --- | --- | --- |
-| feat/local-privacy-pipeline | 6131957d8859ddf47c71cab8eb4130614efeeb77 | PrivacyManifest, PrivacyExportPayload, confirmation/sink and phase-7 gate |
-| feat/model-extraction-evaluation | 6043aaae897475659f8fff5e7d8249fd4c7a0295 | SanitizedSourceReference, PageRequest, AuthorizedSanitizedSnapshot |
-| feat/durable-review-jobs | 644a34ff5d9c3d728ddaf3dfaf3e55dc09f54438 | Durable run/revision admission and worker assembly |
-| feat/controlled_model_selection | 98c7f34efe70955ca37f0955a175db31373cd24a | Bounded policy decisions over shared contracts |
+| PDF and publication (#34, #35) | Protected source/download paths, immutable font bytes, complete two-context/eight-field writer/reopen/manifest; authoritative attempt/lease/fence/grant and authorized download | Formal font/template/map approval; live DynamoDB/S3 composition and recovery |
+| Controlled workflow (#36) | Invalid receipts retain failure/quarantine traces; same-run reservations persist; canonical committed human-response adapter | Designated model evaluation and operational recovery |
+| Privacy and OCR (#37, #45) | Exact encrypted mapping readback before one-use transfer; restricted local bridge; page-bound individual readings and two-stage OCR receipts; one successful complete restoration | Repeated reliability, retained failure diagnostics and local application distribution |
+| Human tasks (#38) | Applied corrections, raw zero confidence, owned empty jobs and atomic task/revision/job/outbox/receipt transitions | Production identity and equivalent durable cloud composition |
+| Local persistence | Real SQLite transactions, durable dispatch, restart and publication authority | Distributed/cloud recovery is a separate guarantee |
+| Workbench (#39) | Canonical client, located PDF/units, frozen confirmed commands and retries, all-page preview, local OCR review | Production login; job discovery/upload/create flow; deployment packaging |
+| Extraction (#42) | Actual source/parser/SDK paths; known input/output usage counted independently | Real designated model quality, effective authorization and measured costs |
+| Runtime (#43) | Deadline guards; configured wheel/container local success; non-login UID 10001 | Default AWS entry composition, complete Docker stack, image security and live deployment |
+| Acceptance (#44) | Local evidence collector, real browser scenarios and strict attestation validators | Independent live AWS observations and authenticated collector provenance |
+| Competition controls | Pinned rule/service/quota catalogs, data-admission checks, guarded clients, shared physical dispatch and conservative persistent budget reservations | Per-model routing/destination binding, approved private profile, live role/quota/budget/stop evidence |
 
-A final fetch preserved main at the same baseline and found additional published
-branches: `feat/human-task-api` at `4911c2b6ce70ffe7f4191cee6d6d9b30c76f8ef0`,
-`feat/formal-pdf-output` at `ca4149439ce65dbf8176043aadad13b5d76ba0f9`, and
-`feat/artifact-publication` at `debf034b60e2c50f62aa9dc58b7006d13285280d`.
-Their publication does not establish integration or acceptance here. D1's updated
-head was checked for contract changes; its outbox/recovery changes preserve the
-DocumentReference boundary. No teammate branch was modified or incorporated wholesale.
+Use [the integrated local runbook](integrated-local-runbook.md) to reproduce the
+configured synthetic flow. [The validation record](local-validation-record.md)
+retains exact checkpoints and evidence limits; [traceability](delivery-traceability.md)
+maps requirements to their implementations. No real material is approved by a
+synthetic confirmation or a local test.
 
-The practical sequence is A3 exact local export, C2 document admission, D1 pinned
-run admission, A2 authorized extraction, human review and deterministic checking,
-C1 output, C3 publication, then D2/D3 cloud assembly and acceptance. Independent
-contract work may proceed in parallel. The integration has not been demonstrated
-end to end merely because the individual branch interfaces exist.
+## Evidence for the merged baseline
 
-## Publication refresh, 2026-09-11
+| Evidence | Result and scope |
+| --- | --- |
+| Integration owner's final report at `fd22e683` | Python 3,223 passed, 10 platform skips; cloud 12 passed; frontend 150 passed. These are reported delivery gates, not rerun counts from this documentation update. |
+| Reported actual Chromium runs | Core 7/7, gateway recovery 1/1, automatic OCR refusal 1/1 and full privacy 1/1. Synthetic confirmations do not approve real material. |
+| Independent pre-merge focused review | Core 289, competition/data-admission 273 and privacy 83 passed in separate scopes. Counts may overlap and are not an integration total. Privacy used PyMuPDF 1.26.6, below the declared minimum 1.28.2. |
+| Independent frontend supplement | 150 tests passed with Vitest 2.1.9, Vite 5.4.21, Router 6.30.6 and compatibility setup; this does not reproduce the locked Vitest 4.1.11, Vite 6.4.3 and Router 7.18.3 gate. |
+| Independent configured service observation | Result read, PDF download/hash equality and restart succeeded; unauthorized download returned 403. |
+| Final restored PDF | SHA-256 `2489bae87b1ea91d79435b27aecab19c2e5e632deff397f43b82492cd4f54982`; two pages/eight fields, three crop checks and non-target pixel equality reported. |
+| OCR evidence retained | 99 published-stage and 108 candidate-stage raw observations; four material confidences stay 0.0; 11 individual visual readings and two exact local OCR receipts. |
+| Restore latency and prior failures | Final download took 14.318 seconds. An earlier 15-second browser failure and later HTTP 409 remain separate unresolved observations. One success is not a latency/reliability guarantee. |
+| Packaging | Final wheel/image gates were built at `754e7059`; the later `fd22e683` change only adjusts a budget test's transport seam. Package-source equivalence is documented; the build must not be relabeled as having run at another commit. |
+| Dependency and image security | Final delivery reports zero Python/npm audit findings. The image still has 174 OS findings: 3 Critical, 51 High, 57 Medium, 57 Low and 6 Unknown. A clean package audit does not clear image security. |
 
-Remote main is now `b0917732cb0bd4597cb7a098421a2dd19a4cea28`, following
-[PR #32](https://github.com/chengruchou/newtaipei-appraisal-review-ai/pull/32).
-It adds review-job state/recovery and mounted routes with an injected store; its
-reference store is in memory, not evidence of deployed durable infrastructure.
-This branch remains based on the earlier #33 snapshot above. The PR targets main;
-GitHub CI checks the proposed merge independently of the local branch tests.
-A3 advanced to `ec8367a`; its three adopted shared files still match the pinned
-contract byte-for-byte. Published teammate updates were preserved.
+Both the integration-head [CI run 34579247155](https://github.com/chengruchou/newtaipei-appraisal-review-ai/actions/runs/34579247155)
+and merged-main [CI run 34580935446](https://github.com/chengruchou/newtaipei-appraisal-review-ai/actions/runs/34580935446)
+failed with no test steps or artifacts. The exact cause of the current-main
+failure is unconfirmed. Investigation and a successful rerun belong to the
+backlog; local evidence and merge state do not substitute for hosted CI.
 
-## This branch
+## Composition and contract ownership
 
-`feat/versioned-document-transfer` starts from the above main, in an isolated
-repository-local worktree. The older working checkout and its untracked
-`cloud_tests/` copy were preserved. [The C2 contract](document-transfer.md),
-[ADR 0024](adr/0024-versioned-document-transfer.md) and
-[storage runbook](../infra/documents/README.md) record scope and remaining acceptance.
+The integration owner maintains one canonical model set and composition root.
+`domain/service_contracts.py` combines the workflow/task union;
+`domain/task_contracts.py` defines API projections. `controlled-action-v1`
+remains separate. Strict undeployed consumers and the frontend regenerate
+together; frozen commands and legacy HTTP/invocation success remain compatibility
+obligations. See [the migration matrix](service-contracts.md#canonical-36-and-38-migration).
 
-The implementation offers the controlled ingestion service alternative allowed
-by #27. It does not yet mount browser upload routes or wire the A3/D1
-applications. No AWS account, real source material, model call, business approval
-or deployment is required for its local checks.
+`FencedArtifactManifest` (`artifact-manifest-v2`) binds primary and complete
+contexts, review scope, publication identity, digest, font and writer. Legacy
+`ArtifactManifest` is unchanged. The service and current consumer accept the
+versioned union; old strict consumers require an explicit upgrade.
+
+The local review store owns job/task/revision/outbox/receipt transactions. The
+publication adapter owns manifest/grant/object authority; document admission owns
+current C2 authorization and revision snapshots. Workflow reservations do not
+share their transaction merely because all stores use SQLite.
+
+Canonical decision IDs remain [ADR 0024](adr/0024-versioned-document-transfer.md)
+for transfer, [ADR 0028](adr/0028-controlled-execution-failure-boundaries.md) for
+controlled execution, and [ADR 0035](adr/0035-raster-privacy-bundles.md) for raster
+privacy. The [ADR registry](adr/README.md) includes the later competition and OCR
+decisions without changing their approval status.
+
+## Next implementation boundary
+
+Review the functional follow-up branches in dependency order; do not re-merge
+the superseded integration branches. The [backlog](implementation-backlog.md)
+separates the candidate's routing/diagnostic/local-container changes from missing
+frontend/operator workflows, OCR reliability, CI/security and authorized
+cloud/model acceptance. Preserve raw confidence,
+exact individual confirmation, independent material/publication authority,
+source bytes and failed observations while completing those items.

@@ -364,6 +364,151 @@
         "title": "CanonicalCase",
         "type": "object"
       },
+      "CaseConditionCandidate": {
+        "additionalProperties": false,
+        "description": "A source-backed proposed condition, never an assertion of applicability.",
+        "properties": {
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/SourceCitation"
+            },
+            "minItems": 1,
+            "title": "Evidence",
+            "type": "array"
+          },
+          "field": {
+            "enum": [
+              "case_id",
+              "district",
+              "zone",
+              "land_use_category",
+              "effective_date",
+              "current_use",
+              "regulatory_zone",
+              "target_id",
+              "comparable_id"
+            ],
+            "title": "Field",
+            "type": "string"
+          },
+          "interpretation": {
+            "minLength": 1,
+            "title": "Interpretation",
+            "type": "string"
+          },
+          "method": {
+            "default": "manual_proposed",
+            "enum": [
+              "native_proposed",
+              "manual_proposed"
+            ],
+            "title": "Method",
+            "type": "string"
+          },
+          "value": {
+            "minLength": 1,
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "field",
+          "value",
+          "evidence",
+          "interpretation"
+        ],
+        "title": "CaseConditionCandidate",
+        "type": "object"
+      },
+      "CaseContextView": {
+        "additionalProperties": false,
+        "description": "Exact current material metadata; selection is not confirmation or approval.\n\nThe exact semantic snapshot is required. No source path, raw material payload,\nprincipal roster or future deployment region is exposed. Document purposes are\npreserved, not inferred as general rules, district prices or report templates.",
+        "properties": {
+          "documents": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/DocumentReference"
+            },
+            "title": "Documents",
+            "type": "array"
+          },
+          "identity": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CaseIdentity"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "job": {
+            "$ref": "#/components/schemas/JobReference"
+          },
+          "observations": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/CaseObservationView"
+            },
+            "title": "Observations",
+            "type": "array"
+          },
+          "revision": {
+            "$ref": "#/components/schemas/RevisionReference"
+          },
+          "rule_bundle": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RuleBundleView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "rule_bundle_id": {
+            "anyOf": [
+              {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rule Bundle Id"
+          },
+          "rules": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/PinnedRuleView"
+            },
+            "title": "Rules",
+            "type": "array"
+          },
+          "schema_version": {
+            "const": "service-v1",
+            "default": "service-v1",
+            "title": "Schema Version",
+            "type": "string"
+          },
+          "selections": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/RuleSelectionView"
+            },
+            "title": "Selections",
+            "type": "array"
+          }
+        },
+        "required": [
+          "job",
+          "revision",
+          "identity"
+        ],
+        "title": "CaseContextView",
+        "type": "object"
+      },
       "CaseIdentity": {
         "additionalProperties": false,
         "properties": {
@@ -402,6 +547,29 @@
           "effective_date"
         ],
         "title": "CaseIdentity",
+        "type": "object"
+      },
+      "CaseObservationView": {
+        "additionalProperties": false,
+        "properties": {
+          "observation": {
+            "$ref": "#/components/schemas/PublicValue-Output"
+          },
+          "schema_version": {
+            "const": "service-v1",
+            "default": "service-v1",
+            "title": "Schema Version",
+            "type": "string"
+          },
+          "side": {
+            "$ref": "#/components/schemas/FactSideReference"
+          }
+        },
+        "required": [
+          "side",
+          "observation"
+        ],
+        "title": "CaseObservationView",
         "type": "object"
       },
       "CaseReviewResult": {
@@ -445,6 +613,155 @@
           "status"
         ],
         "title": "CaseReviewResult",
+        "type": "object"
+      },
+      "CatalogRuleSource": {
+        "additionalProperties": false,
+        "properties": {
+          "content_hash": {
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Content Hash",
+            "type": "string"
+          },
+          "district": {
+            "minLength": 1,
+            "title": "District",
+            "type": "string"
+          },
+          "document_id": {
+            "minLength": 1,
+            "title": "Document Id",
+            "type": "string"
+          },
+          "effective_from": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effective From"
+          },
+          "effective_to": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effective To"
+          },
+          "entry_id": {
+            "minLength": 1,
+            "title": "Entry Id",
+            "type": "string"
+          },
+          "entry_version": {
+            "minLength": 1,
+            "title": "Entry Version",
+            "type": "string"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/SourceCitation"
+            },
+            "minItems": 1,
+            "title": "Evidence",
+            "type": "array"
+          },
+          "land_use_category": {
+            "minLength": 1,
+            "title": "Land Use Category",
+            "type": "string"
+          },
+          "pages": {
+            "items": {
+              "minimum": 1.0,
+              "type": "integer"
+            },
+            "minItems": 1,
+            "title": "Pages",
+            "type": "array"
+          },
+          "review_status": {
+            "default": "candidate",
+            "enum": [
+              "candidate",
+              "reviewed"
+            ],
+            "title": "Review Status",
+            "type": "string"
+          },
+          "role": {
+            "enum": [
+              "general_rules",
+              "district_basis"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "scopes": {
+            "items": {
+              "enum": [
+                "regional",
+                "individual"
+              ],
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Scopes",
+            "type": "array"
+          },
+          "unresolved": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Unresolved",
+            "type": "array"
+          },
+          "use": {
+            "enum": [
+              "factor_rules",
+              "procedure"
+            ],
+            "title": "Use",
+            "type": "string"
+          },
+          "version": {
+            "minLength": 1,
+            "title": "Version",
+            "type": "string"
+          },
+          "zone": {
+            "minLength": 1,
+            "title": "Zone",
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id",
+          "version",
+          "content_hash",
+          "pages",
+          "entry_id",
+          "entry_version",
+          "role",
+          "use",
+          "district",
+          "zone",
+          "land_use_category",
+          "scopes",
+          "effective_from",
+          "effective_to",
+          "evidence"
+        ],
+        "title": "CatalogRuleSource",
         "type": "object"
       },
       "CheckStatus": {
@@ -969,6 +1286,116 @@
         "title": "FactorReviewResult",
         "type": "object"
       },
+      "FencedArtifactManifest": {
+        "additionalProperties": false,
+        "description": "Versioned public projection of a committed, possibly multi-context PDF.\n\nThe original service-v1 local-only artifact remains unchanged. A consumer\nmust explicitly support this version before accepting a fenced publication.",
+        "properties": {
+          "artifact_id": {
+            "format": "uuid",
+            "title": "Artifact Id",
+            "type": "string"
+          },
+          "content_hash": {
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Content Hash",
+            "type": "string"
+          },
+          "context": {
+            "$ref": "#/components/schemas/ComparisonContext"
+          },
+          "contexts": {
+            "items": {
+              "$ref": "#/components/schemas/ComparisonContext"
+            },
+            "minItems": 1,
+            "title": "Contexts",
+            "type": "array"
+          },
+          "field_ids": {
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Field Ids",
+            "type": "array"
+          },
+          "field_map_hash": {
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Field Map Hash",
+            "type": "string"
+          },
+          "font_hash": {
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Font Hash",
+            "type": "string"
+          },
+          "manifest_digest": {
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Manifest Digest",
+            "type": "string"
+          },
+          "media_type": {
+            "const": "application/pdf",
+            "default": "application/pdf",
+            "title": "Media Type",
+            "type": "string"
+          },
+          "page_count": {
+            "minimum": 1.0,
+            "title": "Page Count",
+            "type": "integer"
+          },
+          "publication": {
+            "const": "fenced",
+            "default": "fenced",
+            "title": "Publication",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": "artifact-manifest-v2",
+            "default": "artifact-manifest-v2",
+            "title": "Schema Version",
+            "type": "string"
+          },
+          "scope": {
+            "const": "review_contexts",
+            "default": "review_contexts",
+            "title": "Scope",
+            "type": "string"
+          },
+          "template_hash": {
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Template Hash",
+            "type": "string"
+          },
+          "verification": {
+            "const": "local_writer_reopened",
+            "default": "local_writer_reopened",
+            "title": "Verification",
+            "type": "string"
+          },
+          "writer_version": {
+            "minLength": 1,
+            "title": "Writer Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "artifact_id",
+          "content_hash",
+          "context",
+          "contexts",
+          "field_ids",
+          "page_count",
+          "template_hash",
+          "field_map_hash",
+          "font_hash",
+          "writer_version",
+          "manifest_digest"
+        ],
+        "title": "FencedArtifactManifest",
+        "type": "object"
+      },
       "Finding": {
         "additionalProperties": false,
         "properties": {
@@ -1123,6 +1550,15 @@
       "HumanTask": {
         "additionalProperties": false,
         "properties": {
+          "affected_subject_ids": {
+            "default": [],
+            "items": {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+              "type": "string"
+            },
+            "title": "Affected Subject Ids",
+            "type": "array"
+          },
           "allowed_responses": {
             "items": {
               "$ref": "#/components/schemas/ResponseAction"
@@ -1154,6 +1590,18 @@
             "minLength": 1,
             "title": "Question",
             "type": "string"
+          },
+          "reason_code": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason Code"
           },
           "required_permission": {
             "$ref": "#/components/schemas/Permission"
@@ -1370,8 +1818,11 @@
         "additionalProperties": false,
         "properties": {
           "canonicalization": {
-            "const": "review-material-json-v1",
             "default": "review-material-json-v1",
+            "enum": [
+              "review-material-json-v1",
+              "source-documents-json-v1"
+            ],
             "title": "Canonicalization",
             "type": "string"
           },
@@ -1405,10 +1856,10 @@
             "$ref": "#/components/schemas/RevisionReference"
           },
           "rules": {
+            "default": [],
             "items": {
               "$ref": "#/components/schemas/RuleReference"
             },
-            "minItems": 1,
             "title": "Rules",
             "type": "array"
           },
@@ -1421,8 +1872,7 @@
         },
         "required": [
           "reference",
-          "documents",
-          "rules"
+          "documents"
         ],
         "title": "MaterialRevision",
         "type": "object"
@@ -1540,6 +1990,18 @@
             "minimum": 1.0,
             "title": "Page",
             "type": "integer"
+          },
+          "placeholder_token": {
+            "anyOf": [
+              {
+                "pattern": "^APR-PH-[A-Z0-9][A-Z0-9-]{7,62}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Placeholder Token"
           },
           "value_ref": {
             "anyOf": [
@@ -1717,6 +2179,59 @@
         "title": "PDFWriteResult",
         "type": "object"
       },
+      "PausedReviewView": {
+        "additionalProperties": false,
+        "description": "An exact stored human-handoff assessment, never a committed or published result.",
+        "properties": {
+          "coverage": {
+            "$ref": "#/components/schemas/Coverage"
+          },
+          "findings": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewFinding"
+            },
+            "title": "Findings",
+            "type": "array"
+          },
+          "run": {
+            "$ref": "#/components/schemas/RunReference"
+          },
+          "schema_version": {
+            "const": "service-v1",
+            "default": "service-v1",
+            "title": "Schema Version",
+            "type": "string"
+          },
+          "scope": {
+            "const": "paused_review",
+            "default": "paused_review",
+            "title": "Scope",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/EvaluationStatus"
+          },
+          "verification": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ServiceVerification"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "run",
+          "status",
+          "findings",
+          "coverage",
+          "verification"
+        ],
+        "title": "PausedReviewView",
+        "type": "object"
+      },
       "Permission": {
         "enum": [
           "review",
@@ -1728,6 +2243,52 @@
         ],
         "title": "Permission",
         "type": "string"
+      },
+      "PinnedRuleView": {
+        "additionalProperties": false,
+        "properties": {
+          "applicability": {
+            "$ref": "#/components/schemas/RuleApplicability"
+          },
+          "declared_status": {
+            "enum": [
+              "candidate",
+              "approved",
+              "rejected"
+            ],
+            "title": "Declared Status",
+            "type": "string"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/SourceCitation"
+            },
+            "title": "Evidence",
+            "type": "array"
+          },
+          "reference": {
+            "$ref": "#/components/schemas/RuleReference"
+          },
+          "schema_version": {
+            "const": "service-v1",
+            "default": "service-v1",
+            "title": "Schema Version",
+            "type": "string"
+          },
+          "zone": {
+            "title": "Zone",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reference",
+          "applicability",
+          "zone",
+          "declared_status",
+          "evidence"
+        ],
+        "title": "PinnedRuleView",
+        "type": "object"
       },
       "PublicValue-Input": {
         "additionalProperties": false,
@@ -1904,7 +2465,8 @@
           "correct",
           "reject",
           "approve",
-          "authorize_publication"
+          "authorize_publication",
+          "supply_evidence"
         ],
         "title": "ResponseAction",
         "type": "string"
@@ -2045,6 +2607,14 @@
             ],
             "title": "Observed"
           },
+          "originating_field_ids": {
+            "description": "Exact source-evidence blocker IDs from this review's inventory, sorted and unique.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Originating Field Ids",
+            "type": "array"
+          },
           "rule_id": {
             "anyOf": [
               {
@@ -2120,6 +2690,44 @@
           "findings"
         ],
         "title": "ReviewResult",
+        "type": "object"
+      },
+      "ReviewSessionView": {
+        "additionalProperties": false,
+        "description": "The currently authenticated actor, not a registration or permission grant.",
+        "properties": {
+          "actor": {
+            "$ref": "#/components/schemas/ActorReference"
+          },
+          "configured_jobs": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/JobReference"
+            },
+            "title": "Configured Jobs",
+            "type": "array"
+          },
+          "data_mode": {
+            "default": "unspecified",
+            "enum": [
+              "unspecified",
+              "synthetic",
+              "local_original"
+            ],
+            "title": "Data Mode",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": "service-v1",
+            "default": "service-v1",
+            "title": "Schema Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "actor"
+        ],
+        "title": "ReviewSessionView",
         "type": "object"
       },
       "ReviewSubmission": {
@@ -2218,6 +2826,107 @@
         "title": "RevisionReference",
         "type": "object"
       },
+      "RuleApplicability": {
+        "additionalProperties": false,
+        "properties": {
+          "effective_from": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effective From"
+          },
+          "effective_to": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effective To"
+          },
+          "jurisdiction": {
+            "title": "Jurisdiction",
+            "type": "string"
+          },
+          "land_use_category": {
+            "title": "Land Use Category",
+            "type": "string"
+          }
+        },
+        "required": [
+          "jurisdiction",
+          "land_use_category"
+        ],
+        "title": "RuleApplicability",
+        "type": "object"
+      },
+      "RuleBundleView": {
+        "additionalProperties": false,
+        "description": "Selected, authorized sources only; the full internal catalog stays private.",
+        "properties": {
+          "catalog_digest": {
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Catalog Digest",
+            "type": "string"
+          },
+          "catalog_version": {
+            "title": "Catalog Version",
+            "type": "string"
+          },
+          "condition_candidates": {
+            "items": {
+              "$ref": "#/components/schemas/CaseConditionCandidate"
+            },
+            "title": "Condition Candidates",
+            "type": "array"
+          },
+          "conditions_confirmed": {
+            "title": "Conditions Confirmed",
+            "type": "boolean"
+          },
+          "contexts": {
+            "items": {
+              "$ref": "#/components/schemas/ComparisonContext"
+            },
+            "title": "Contexts",
+            "type": "array"
+          },
+          "identity": {
+            "$ref": "#/components/schemas/CaseIdentity"
+          },
+          "primary_criteria_document_id": {
+            "title": "Primary Criteria Document Id",
+            "type": "string"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogRuleSource"
+            },
+            "title": "Sources",
+            "type": "array"
+          }
+        },
+        "required": [
+          "catalog_version",
+          "catalog_digest",
+          "primary_criteria_document_id",
+          "identity",
+          "contexts",
+          "sources",
+          "conditions_confirmed"
+        ],
+        "title": "RuleBundleView",
+        "type": "object"
+      },
       "RuleDefinition": {
         "additionalProperties": false,
         "description": "A versioned deterministic validation rule.",
@@ -2312,6 +3021,43 @@
           "content_hash"
         ],
         "title": "RuleReference",
+        "type": "object"
+      },
+      "RuleSelectionView": {
+        "additionalProperties": false,
+        "properties": {
+          "context": {
+            "$ref": "#/components/schemas/ComparisonContext"
+          },
+          "matches": {
+            "items": {
+              "$ref": "#/components/schemas/RuleReference"
+            },
+            "title": "Matches",
+            "type": "array"
+          },
+          "schema_version": {
+            "const": "service-v1",
+            "default": "service-v1",
+            "title": "Schema Version",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "unique",
+              "missing",
+              "ambiguous"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "context",
+          "status",
+          "matches"
+        ],
+        "title": "RuleSelectionView",
         "type": "object"
       },
       "RuleSet": {
@@ -2445,7 +3191,14 @@
           "artifacts": {
             "default": [],
             "items": {
-              "$ref": "#/components/schemas/ArtifactManifest"
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/ArtifactManifest"
+                },
+                {
+                  "$ref": "#/components/schemas/FencedArtifactManifest"
+                }
+              ]
             },
             "maxItems": 1,
             "title": "Artifacts",
@@ -2624,7 +3377,8 @@
           "material_correction",
           "rule_approval",
           "material_approval",
-          "publication_authorization"
+          "publication_authorization",
+          "evidence_supply"
         ],
         "title": "TaskKind",
         "type": "string"
@@ -3207,6 +3961,89 @@
         ]
       }
     },
+    "/v1/review-jobs/{job_id}/assessment": {
+      "get": {
+        "operationId": "read_paused_assessment_v1_review_jobs__job_id__assessment_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PausedReviewView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceProblem"
+                }
+              }
+            },
+            "description": "The principal lacks the case permission"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceProblem"
+                }
+              }
+            },
+            "description": "No such task or job for this principal"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceProblem"
+                }
+              }
+            },
+            "description": "The task or revision moved first"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceProblem"
+                }
+              }
+            },
+            "description": "Invalid response"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceProblem"
+                }
+              }
+            },
+            "description": "No human-task store is configured"
+          }
+        },
+        "summary": "Read Paused Assessment",
+        "tags": [
+          "human-tasks"
+        ]
+      }
+    },
     "/v1/review-jobs/{job_id}/cancel": {
       "post": {
         "description": "A running attempt is asked to stop cooperatively, never killed mid-write.",
@@ -3288,6 +4125,89 @@
         "summary": "Cancel Review Job",
         "tags": [
           "review-jobs"
+        ]
+      }
+    },
+    "/v1/review-jobs/{job_id}/context": {
+      "get": {
+        "operationId": "read_case_context_v1_review_jobs__job_id__context_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaseContextView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceProblem"
+                }
+              }
+            },
+            "description": "The principal lacks the case permission"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceProblem"
+                }
+              }
+            },
+            "description": "No such task or job for this principal"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceProblem"
+                }
+              }
+            },
+            "description": "The task or revision moved first"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceProblem"
+                }
+              }
+            },
+            "description": "Invalid response"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceProblem"
+                }
+              }
+            },
+            "description": "No human-task store is configured"
+          }
+        },
+        "summary": "Read Case Context",
+        "tags": [
+          "human-tasks"
         ]
       }
     },
@@ -3542,6 +4462,77 @@
         ]
       }
     },
+    "/v1/review-session": {
+      "get": {
+        "operationId": "read_review_session_v1_review_session_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewSessionView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceProblem"
+                }
+              }
+            },
+            "description": "The principal lacks the case permission"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceProblem"
+                }
+              }
+            },
+            "description": "No such task or job for this principal"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceProblem"
+                }
+              }
+            },
+            "description": "The task or revision moved first"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceProblem"
+                }
+              }
+            },
+            "description": "Invalid response"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceProblem"
+                }
+              }
+            },
+            "description": "No human-task store is configured"
+          }
+        },
+        "summary": "Read Review Session",
+        "tags": [
+          "human-tasks"
+        ]
+      }
+    },
     "/v1/review-tasks/{task_id}": {
       "get": {
         "description": "Carries the subject name of its own side, so no client re-derives a canonical key.",
@@ -3715,6 +4706,99 @@
           }
         },
         "summary": "Submit Task Response",
+        "tags": [
+          "human-tasks"
+        ]
+      }
+    },
+    "/v1/review-tasks/{task_id}/responses/{key}": {
+      "get": {
+        "operationId": "read_task_response_v1_review_tasks__task_id__responses__key__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Task Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+              "title": "Key",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponseReceipt"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceProblem"
+                }
+              }
+            },
+            "description": "The principal lacks the case permission"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceProblem"
+                }
+              }
+            },
+            "description": "No such task or job for this principal"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceProblem"
+                }
+              }
+            },
+            "description": "The task or revision moved first"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceProblem"
+                }
+              }
+            },
+            "description": "Invalid response"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceProblem"
+                }
+              }
+            },
+            "description": "No human-task store is configured"
+          }
+        },
+        "summary": "Read Task Response",
         "tags": [
           "human-tasks"
         ]

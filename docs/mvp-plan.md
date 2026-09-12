@@ -1,66 +1,85 @@
 # Delivery plan and ownership
 
-Baseline: main `ea55043d90aa21e6f0a7e3fe05aa34ef8a3553d3`, rechecked 2026-09-07.
-PRs #15/#16/#19 are merged. M0 on `feat/shared-service-contracts` is local working
-code pending independent review and merge. The historical parent #3 remains closed, not an
-active catch-all milestone. No role below implies a GitHub assignee.
+Current integration baseline: main
+`d148422adb18190bada93b8588a4e34d73e3c2e4`, reviewed on 2026-09-11.
+[PR #45](https://github.com/chengruchou/newtaipei-appraisal-review-ai/pull/45)
+is merged; its source tree matches reviewed head
+`fd22e68321bad6b58f06068dfef1db67fdb1c269`. The integrated local application is
+available for user validation. Production deployment and competition acceptance
+remain separate deliverables. Start new work from current main.
 
-## Five workstreams
+The [implementation backlog](implementation-backlog.md) is the current issue
+index. Historical phase reports retain their original evidence and dates; their
+unmerged-branch and process-local-only descriptions do not describe this baseline.
+No role below implies a GitHub assignee.
 
-| Steward | First concrete delivery | Start from / provides | Dependencies and acceptance |
-| --- | --- | --- | --- |
-| A: project lead | Bounded model action selector with actual execution/rejection records and real-model comparison plan | AllowedAction, ActionProposal, DecisionEvent, Budget; produces trusted execution events and evaluated model/prompt versions | Use E's independently reviewed goldens; reject invalid actions with zero effects, preserve gates, report actual calls/source accuracy/latency/cost when measured |
-| B | Authenticated local task/response API that appends a new revision and reruns review | HumanTask/Response, PrincipalResolver, RevisionSnapshot/Repository, HumanTaskRepository; provides identity/permission and application assembly | Reuse M0 factory/core; transactionally reject stale/task/side conflicts and invalidate old authority; coordinate storage guarantees with D |
-| C | Fixture-backed workbench, then real B task API integration | service-v1 schema, public citations/values, findings, task permissions and manifests | Display original/proposed/corrected values and honest statuses; authorized page navigation; require B actual command endpoints before claiming a human-review loop |
-| D | Authorized document resolver and local transaction tests for job/outbox/task store, then Runtime wiring | DocumentReference/Resolver, ReviewSubmission, JobRepository, RunReference, JobStore/JobStatusView | Check case access before URI lookup; principal idempotency, leases/fencing/recovery and manifest-only results; consume B human transitions and E output scope. The job state machine, in-memory store, dispatch/reconcile passes and review-jobs routes are implemented (#29 local phase); DynamoDB, SQS, DLQ and alarms are not |
-| E | Formal template/font/map preflight plus independent full-case golden inventory | Existing PDF contract, ArtifactManifest context/field coverage; provides human standard answers and versioned output contract | Coordinate multiple-context migration with B/D/C; preserve original sources, evidence/tolerance/cross-form assertions; no live accuracy claim from small native subsets |
+## Delivered integration
 
-A owns model strategy and comparisons; E owns independent goldens, formal PDF and
-complete-case acceptance. B owns human backend and app composition; D owns durable
-jobs/documents/deployment; C consumes agreed APIs. Shared contract stewardship and
-provider/consumer detail is authoritative in [service contracts](service-contracts.md).
-
-## Milestones
-
-| Milestone | Deliverable and dependencies | Exit evidence |
+| Area | Available on main | Remaining boundary |
 | --- | --- | --- |
-| M0: foundation | Reuse merged review/extraction/writer; shared v1 models/ports/fixtures and real local factory | Roundtrips/digests, permission/version rejection, real parser -> writer -> reopen, actual HTTP/invoke, blocked zero writes and unchanged old API; formal template/account/model tests are subsequent owner work |
-| M1: local human loop | B actual task/identity/revision API, C workbench, D local transactional repository adapter | Browser -> task -> response -> new immutable revision -> obsolete approval denied -> explicit new authority -> subsequent review; concurrency, duplicate-conflict and source-access tests |
-| M2: real document/output acceptance | A controlled model trials using E goldens, complete required fields/rules/cross-form review, E formal font/map and reviewed multiple-context contract | Per-field and source accuracy, wrong/missing/blank comparisons, human corrections and full-case outcomes; insufficient inputs remain needs_review |
-| M3: AWS integration | D uploads/IDs/jobs/outbox/queues/Runtime/recovery, B durable human handoff, E validated outputs and A bounded policy | Authorized upload -> fixed job -> Runtime -> persisted human wait -> new run -> fenced manifest/query/download; duplicate, interruption, stale version/attempt and cleanup evidence |
+| Deterministic review and controlled execution | Versioned rules, evidence checks, bounded decisions, execution traces, completion gates and legacy HTTP/invocation compatibility | Designated-model quality and independent full-case acceptance |
+| Human review | Canonical task/response contracts, authenticated API, immutable revisions, receipt replay and SQLite persistence | Atomic cloud human/revision/run transitions and production identity integration |
+| Reviewer workbench | Real API task/response flow, source citations, PDF preview, result download and local privacy/OCR review | Complete case creation, document onboarding, identity/session experience and broader product acceptance |
+| Privacy | Local sanitization, explicit export authority, encrypted mapping, exact output binding and reviewed OCR refill workflow | Repeatable OCR restoration, diagnostics, key lifecycle and operational recovery |
+| PDF and publication | Multiple-context manifests, approved font/template checks, immutable output, authorized publication and download adapters | Formal approved assets, complete-case goldens and live cloud publication evidence |
+| Jobs and Runtime | Durable local service, DynamoDB/S3/SQS adapters, leases/fencing, outbox/recovery logic and guarded competition factories | Configured production worker bootstrap, effective IAM and deployed recovery evidence |
+| Competition controls | Source-pinned service/quota catalogs, data-admission policy, profile checks, shared dispatch limiter and budget reservations | Exact model/routing binding repair, approved live profile and independently observed enforcement |
 
-M1 can begin from fixtures while D designs durable persistence. It is not complete
-until C talks to B's actual API. M2 needs explicit model access and human goldens,
-not just mocked Converse. M3 needs designated profile/SSO, Region and expected
-account/role, explicit deployment authorization and real cloud evidence. No M0 AWS
-call is needed. An attempt ends while awaiting a human; response never revives its
-old session/lease. The current single-context writer refuses multiple-context
-output until E's contract migration is reviewed and all consumers are updated.
+The integrated local runbook provides the current validation entrypoint. Real
+browser/API checks and local restart/download checks have been recorded. One
+complete OCR restoration success is reported for the integrated head; this is
+not a stability claim. Earlier failed attempts remain relevant evidence.
+See [project progress](project-progress.md),
+[local validation](local-validation-record.md) and the
+[integrated local runbook](integrated-local-runbook.md) for their exact scopes.
 
-## Issue handoff prepared locally
+The default Runtime application still has no configured worker and returns 503.
+The existing Runtime Docker image does not by itself provide a complete browser,
+API and persistence installation. Local Docker packaging and cloud bootstrap are
+distinct remaining tasks. The latest pre-merge hosted CI failed without executing
+test steps; reported local results do not make that run pass.
 
-Read-only search found #5/#7/#8/#9/#17 open, with no separate frontend or formal-PDF
-follow-up issue. Prepared, unpublished update drafts are kept under ignored
-`artifacts/m0/publication/`. They carry no fabricated issue numbers or assignees.
+## Remaining workstreams
 
-- #5: record merged #19 local writer/S3 wrapper evidence. Keep open pending the
-  owner's original acceptance review; formal CJK/maps/multiple-context/snapshot
-  and live S3/Runtime work needs explicit follow-up ownership, not automatic closure.
-- #7: A/E actual model, complete field/citation and accuracy acceptance after merged
-  extraction; do not repeat the historical claim that #16 is awaiting merge.
-- #8: E full-case goldens, applicability/cross-form and human acceptance; B integrates
-  the unchanged deterministic gate into revision reruns.
-- #9: D document access, job/persistence/outbox, Runtime/recovery/publication subwork;
-  reuse M0 contracts and coordinate B task transactions.
-- #17: A owns model policy/actual decisions; separate B human backend work. Both
-  depend on this foundation. No complete selector or human API is claimed here.
-- New drafts: B authenticated human backend, C workbench, E formal PDF/goldens
-  integration. Search again before creating them to prevent duplicate work.
+| Workstream | Current issue | Next concrete delivery and exit evidence |
+| --- | --- | --- |
+| Model strategy and quality | [#21](https://github.com/chengruchou/newtaipei-appraisal-review-ai/issues/21) | Run the designated model against independently reviewed labels; record field/source accuracy, missing or wrong values, latency, actual usage and unknown costs without granting authority to model output |
+| Privacy operations | [#22](https://github.com/chengruchou/newtaipei-appraisal-review-ai/issues/22) | Reproduce restoration across repeated supported inputs, retain bounded error diagnostics, and verify mapping/key recovery without changing raw confidence or weakening confirmation gates |
+| Cloud human transitions | [#24](https://github.com/chengruchou/newtaipei-appraisal-review-ai/issues/24) | Compose authenticated task, revision, receipt and next-run changes into the cloud transaction boundary; prove duplicate, conflict, stale-version and partial-failure behavior |
+| Product workbench | [#25](https://github.com/chengruchou/newtaipei-appraisal-review-ai/issues/25) | Add case/document onboarding and identity/session handling around the existing review UI; verify real API flows and unauthorized access |
+| Formal outputs and independent goldens | [#26](https://github.com/chengruchou/newtaipei-appraisal-review-ai/issues/26) | Pin approved template/font/map assets and independently reviewed complete-case expectations; reopen outputs and verify required fields, geometry and unchanged sources |
+| Cloud Runtime composition | [#30](https://github.com/chengruchou/newtaipei-appraisal-review-ai/issues/30) | Configure the guarded execution/provider bundle in the actual Runtime entrypoint, with truthful readiness, persistent stores and one reviewed deployment inventory |
+| Deployed acceptance | [#31](https://github.com/chengruchou/newtaipei-appraisal-review-ai/issues/31) | Exercise the integrated browser-to-cloud path, human wait/resume, authorized PDF download, fault recovery, alarms, rollback and evidence-preserving stop |
 
-Publish Issue updates/new issues separately after the shared contract review
-converges; recheck current issue bodies and duplicates before those later writes.
-Publication requires separate approval under AGENTS.md. No issue checkboxes,
-assignees, PRs, CI runs or remote state are changed by preparing drafts.
+Local Docker packaging is tracked in
+[#48](https://github.com/chengruchou/newtaipei-appraisal-review-ai/issues/48),
+hosted CI in [#49](https://github.com/chengruchou/newtaipei-appraisal-review-ai/issues/49),
+image security in [#50](https://github.com/chengruchou/newtaipei-appraisal-review-ai/issues/50),
+and exact model routing in
+[#47](https://github.com/chengruchou/newtaipei-appraisal-review-ai/issues/47).
+Their dependencies are recorded in the [implementation backlog](implementation-backlog.md).
+Keep their acceptance evidence distinct from the historical component test counts.
+Completed or superseded component issues are reference history; do not recreate
+their implemented scope under a new umbrella issue.
+
+## Delivery sequence
+
+| Stage | Work and dependencies | Exit evidence |
+| --- | --- | --- |
+| 1. Reproducible local validation | Use merged main and the configured local workbench; package the browser, API and durable state for Docker | A clean installation opens the UI, completes an authorized review, downloads the result and retains state after restart; unconfigured services remain unavailable |
+| 2. Close deployment code gaps | Repair exact model/routing binding; complete cloud human transactions and Runtime bootstrap; resolve CI and reviewed security findings | Focused negative cases plus current integrated checks, configured image health and documented disposition of remaining scan findings |
+| 3. Validate designated data and assets | Run model-quality work and formal-asset acceptance; continue privacy/OCR stability work | Independent labels, explicit authority, complete output coverage, reproducible restoration results and retained failure evidence |
+| 4. Rehearse one authorized cloud deployment | Consume the preceding deliverables under an approved competition profile and resource inventory | Actual role allow/deny evidence, complete browser/cloud outcomes, bounded recovery, joined telemetry, rollback and verified stop |
+
+Stages can overlap where their inputs are independent. A local validation result
+does not authorize cloud transfer or deployment. Competition work must retain the
+thirteen-category data-admission rules, conservative shared physical-dispatch
+limits and budget reservations. The pending profile is deliberately unapproved;
+see [competition deployment](competition-deployment-profile.md).
+
+An attempt ends while awaiting a human. A response creates a new authorized run;
+it does not revive the old session or lease. Neither human review nor OCR
+correction may manufacture confidence or bypass deterministic completion checks.
 
 ## Historical source observations
 
@@ -69,12 +88,11 @@ modification. Criteria had 9 pages; forms 6 pages with portrait/landscape A4 and
 landscape A3 and no AcroForm widgets. Regional main road 18m -> normal; individual
 front road 18m versus 6m -> +5% under their respective source rules. Regional totals
 are copied into the comparison form; blank comparable columns stay blank. A mixed
-unit interval remains unresolved. These earlier observations are not new M0 source
+unit interval remains unresolved. These earlier observations are not new source
 or model validation, universal rules or authorization to approve a real case.
 
 Preserve boundary, reverse-matrix, blank-column, contradictory-unit and mixed-page
 regressions. See [traceability](delivery-traceability.md),
-[architecture](architecture.md), [local runbook](local-service-runbook.md) and
-[cloud smoke plan](aws-smoke-plan.md). Historical delivery/branch migration remains
-in [PR migration](pr-migration.md); new work starts from current main and functional
-branches without rewriting published history.
+[architecture](architecture.md), [service contracts](service-contracts.md) and
+[cloud smoke plan](aws-smoke-plan.md). Historical branch migration remains in
+[PR migration](pr-migration.md); do not rewrite published history.

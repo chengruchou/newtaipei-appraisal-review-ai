@@ -3,6 +3,7 @@
 import os
 import sqlite3
 import stat
+from contextlib import closing
 from pathlib import Path
 from uuid import uuid4
 
@@ -31,7 +32,7 @@ class SQLiteDocumentStorage:
         finally:
             os.close(descriptor)
         self.database = database
-        with self._connect() as connection:
+        with closing(self._connect()) as connection, connection:
             connection.executescript("""
                 CREATE TABLE IF NOT EXISTS documents (
                     key TEXT PRIMARY KEY, version TEXT NOT NULL,
@@ -52,7 +53,7 @@ class SQLiteDocumentStorage:
             raise DocumentFault(DocumentErrorCode.INTEGRITY)
         version = str(uuid4())
         try:
-            with self._connect() as connection:
+            with closing(self._connect()) as connection, connection:
                 connection.execute(
                     "INSERT INTO documents VALUES (?, ?, ?, ?)",
                     (key.relative_key(), version, content, canonical_bytes(labels)),
@@ -66,7 +67,7 @@ class SQLiteDocumentStorage:
     def read(self, key: ObjectKey, *, version: str | None, limit: int) -> StoredBytes:
         key = ObjectKey.model_validate_json(key.model_dump_json())
         try:
-            with self._connect() as connection:
+            with closing(self._connect()) as connection, connection:
                 row = connection.execute(
                     "SELECT version, length(content), labels FROM documents WHERE key = ?",
                     (key.relative_key(),),
@@ -87,7 +88,7 @@ class SQLiteDocumentStorage:
 
     def append(self, event: DocumentAuditEvent) -> None:
         event = DocumentAuditEvent.model_validate_json(event.model_dump_json())
-        with self._connect() as connection:
+        with closing(self._connect()) as connection, connection:
             connection.execute(
                 "INSERT INTO document_audit VALUES (?, ?)",
                 (str(event.event_id), canonical_bytes(event)),

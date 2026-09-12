@@ -1,0 +1,282 @@
+{
+  "schema_version": "controlled-action-v1",
+  "pause_id": "00000000-0000-0000-0000-0000001cfde9",
+  "result": {
+    "schema_version": "controlled-action-v1",
+    "run": {
+      "schema_version": "service-v1",
+      "run_id": "00000000-0000-0000-0000-0000001cfde0",
+      "revision": {
+        "schema_version": "service-v1",
+        "case_id": "synthetic-case",
+        "revision_id": "workbench-r1",
+        "material_digest": "66132edd117ff2b00bdaa074f2116b20d83962df98f79f081f10dd5ba40862c7"
+      },
+      "attempt_id": null,
+      "runtime_session_id": null
+    },
+    "termination": "waiting_for_human",
+    "events": [
+      {
+        "schema_version": "controlled-action-v1",
+        "event_id": "00000000-0000-0000-0000-0000001cfde4",
+        "parent_event_ids": [],
+        "proposal": {
+          "schema_version": "controlled-action-v1",
+          "proposal_id": "00000000-0000-0000-0000-0000001cfde1",
+          "run": {
+            "schema_version": "service-v1",
+            "run_id": "00000000-0000-0000-0000-0000001cfde0",
+            "revision": {
+              "schema_version": "service-v1",
+              "case_id": "synthetic-case",
+              "revision_id": "workbench-r1",
+              "material_digest": "66132edd117ff2b00bdaa074f2116b20d83962df98f79f081f10dd5ba40862c7"
+            },
+            "attempt_id": null,
+            "runtime_session_id": null
+          },
+          "action_id": "deterministic-review",
+          "action": "deterministic_review",
+          "policy_version": "controlled-action-policy-v1-system",
+          "snapshot_digest": "b54c2a942ec73b51bb2442af6644104c8de98446391193384af573f3efbbac7a",
+          "proposer": {
+            "schema_version": "service-v1",
+            "actor_id": "deterministic-action-selector",
+            "kind": "system"
+          },
+          "model_id": null,
+          "prompt_version": null,
+          "input_tokens": null,
+          "output_tokens": null,
+          "latency_ms": null,
+          "attempt_count": null,
+          "arguments": {
+            "schema_version": "controlled-action-v1",
+            "kind": "deterministic_review",
+            "revision": {
+              "schema_version": "service-v1",
+              "case_id": "synthetic-case",
+              "revision_id": "workbench-r1",
+              "material_digest": "66132edd117ff2b00bdaa074f2116b20d83962df98f79f081f10dd5ba40862c7"
+            },
+            "rules": [
+              {
+                "schema_version": "service-v1",
+                "rule_set_id": "synthetic-road-v1",
+                "version": "1.0.0",
+                "context": {
+                  "scope": "regional",
+                  "target_id": "synthetic-target",
+                  "comparable_id": "synthetic-comparable"
+                },
+                "content_hash": "de88c988c7b7a2ad0274f5df2013181307c98dc2f82cc689822fff04d46c5183"
+              }
+            ]
+          },
+          "proposer_rationale": "Deterministic baseline selected the sole allowed action."
+        },
+        "executor": {
+          "schema_version": "service-v1",
+          "actor_id": "synthetic-workbench-executor",
+          "kind": "system"
+        },
+        "policy_version": "controlled-action-policy-v1-system",
+        "state_before": "material_ready",
+        "state_after": "evidence_needs_review",
+        "disposition": "executed",
+        "executed_action": "deterministic_review",
+        "checked_prerequisites": [
+          "forms_parsed",
+          "rules_approved",
+          "critical_evidence_available",
+          "material_complete"
+        ],
+        "reason_code": "deterministic-review-result",
+        "reviewer_summary": "The existing case reviewer produced this exact result.",
+        "affected_subject_ids": [
+          "road-target",
+          "material"
+        ],
+        "evidence": [],
+        "tool_result": {
+          "schema_version": "service-v1",
+          "outcome": "succeeded",
+          "result_digest": "4d858704977031e33f87afdd42ccfb0c2f7263b5ba79d54ef32882ba61efff90",
+          "problem": null
+        },
+        "remaining_blockers": [
+          "all-review-findings"
+        ],
+        "linked_task_id": null,
+        "linked_response_key": null,
+        "budget_before": {
+          "schema_version": "service-v1",
+          "steps_remaining": 3,
+          "model_calls_remaining": 0,
+          "retries_remaining": 0,
+          "time_remaining_ms": 5000
+        },
+        "budget_after": {
+          "schema_version": "service-v1",
+          "steps_remaining": 2,
+          "model_calls_remaining": 0,
+          "retries_remaining": 0,
+          "time_remaining_ms": 5000
+        },
+        "budget_consumed": {
+          "schema_version": "controlled-action-v1",
+          "steps": 1,
+          "model_calls": 0,
+          "retries": 0,
+          "elapsed_ms": 0
+        }
+      },
+      {
+        "schema_version": "controlled-action-v1",
+        "event_id": "00000000-0000-0000-0000-0000001cfde8",
+        "parent_event_ids": [
+          "00000000-0000-0000-0000-0000001cfde4"
+        ],
+        "proposal": {
+          "schema_version": "controlled-action-v1",
+          "proposal_id": "00000000-0000-0000-0000-0000001cfde5",
+          "run": {
+            "schema_version": "service-v1",
+            "run_id": "00000000-0000-0000-0000-0000001cfde0",
+            "revision": {
+              "schema_version": "service-v1",
+              "case_id": "synthetic-case",
+              "revision_id": "workbench-r1",
+              "material_digest": "66132edd117ff2b00bdaa074f2116b20d83962df98f79f081f10dd5ba40862c7"
+            },
+            "attempt_id": null,
+            "runtime_session_id": null
+          },
+          "action_id": "request-evidence-review",
+          "action": "request_human_review",
+          "policy_version": "controlled-action-policy-v1-system",
+          "snapshot_digest": "3a29412c2a98b1cf39e5f16d98afb2f690f10ce9b18108888b83000214b0e30a",
+          "proposer": {
+            "schema_version": "service-v1",
+            "actor_id": "deterministic-action-selector",
+            "kind": "system"
+          },
+          "model_id": null,
+          "prompt_version": null,
+          "input_tokens": null,
+          "output_tokens": null,
+          "latency_ms": null,
+          "attempt_count": null,
+          "arguments": {
+            "schema_version": "controlled-action-v1",
+            "kind": "request_human_review",
+            "reason_code": "review-findings",
+            "question": "Review the unresolved review-findings blocker.",
+            "affected_subject_ids": [
+              "road-target",
+              "material"
+            ],
+            "evidence": [
+              {
+                "document_id": "synthetic-forms",
+                "content_hash": "37f1b0a1872d76a68cd0a482eb4aeb0ce4f3dae564f5e23340b470cef41835ab",
+                "version": "1",
+                "page": 1,
+                "region_id": "body",
+                "bbox": [
+                  1.0,
+                  2.0,
+                  90.0,
+                  40.0
+                ],
+                "excerpt": "Synthetic target 10 m; comparable 9 m; rate 5"
+              }
+            ]
+          },
+          "proposer_rationale": "Deterministic baseline selected the sole allowed action."
+        },
+        "executor": {
+          "schema_version": "service-v1",
+          "actor_id": "synthetic-workbench-executor",
+          "kind": "system"
+        },
+        "policy_version": "controlled-action-policy-v1-system",
+        "state_before": "evidence_needs_review",
+        "state_after": "waiting_for_human",
+        "disposition": "executed",
+        "executed_action": "request_human_review",
+        "checked_prerequisites": [
+          "forms_parsed"
+        ],
+        "reason_code": "human-task-batch-created",
+        "reviewer_summary": "All findings were retained in the authorized local task batch.",
+        "affected_subject_ids": [
+          "road-target",
+          "material"
+        ],
+        "evidence": [
+          {
+            "document_id": "synthetic-forms",
+            "content_hash": "37f1b0a1872d76a68cd0a482eb4aeb0ce4f3dae564f5e23340b470cef41835ab",
+            "version": "1",
+            "page": 1,
+            "region_id": "body",
+            "bbox": [
+              1.0,
+              2.0,
+              90.0,
+              40.0
+            ],
+            "excerpt": "Synthetic target 10 m; comparable 9 m; rate 5"
+          }
+        ],
+        "tool_result": {
+          "schema_version": "service-v1",
+          "outcome": "succeeded",
+          "result_digest": "0c7f3ab631e5995c29d7d46b848976559a2f7246e31c007e78513f1dc74a61b0",
+          "problem": null
+        },
+        "remaining_blockers": [
+          "all-review-findings"
+        ],
+        "linked_task_id": "00000000-0000-0000-0000-0000001cfde6",
+        "linked_response_key": null,
+        "budget_before": {
+          "schema_version": "service-v1",
+          "steps_remaining": 2,
+          "model_calls_remaining": 0,
+          "retries_remaining": 0,
+          "time_remaining_ms": 5000
+        },
+        "budget_after": {
+          "schema_version": "service-v1",
+          "steps_remaining": 1,
+          "model_calls_remaining": 0,
+          "retries_remaining": 0,
+          "time_remaining_ms": 5000
+        },
+        "budget_consumed": {
+          "schema_version": "controlled-action-v1",
+          "steps": 1,
+          "model_calls": 0,
+          "retries": 0,
+          "elapsed_ms": 0
+        }
+      }
+    ],
+    "selection_failures": [],
+    "final_budget": {
+      "schema_version": "service-v1",
+      "steps_remaining": 1,
+      "model_calls_remaining": 0,
+      "retries_remaining": 0,
+      "time_remaining_ms": 5000
+    },
+    "handoff": null
+  },
+  "task_ids": [
+    "00000000-0000-0000-0000-0000001cfde6",
+    "00000000-0000-0000-0000-0000001cfde7"
+  ]
+}

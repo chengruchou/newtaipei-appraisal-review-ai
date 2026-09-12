@@ -189,31 +189,36 @@ The native candidate report includes source locations, intervals, matrices and
 unresolved interpretations. It never grants approval. Golden files must contain
 independent manually checked expectations, not the model's own output.
 
-For live extraction, supply project identifiers after validating account access.
-The following shell variables must be explicitly set by the operator. No bucket
-or jobs table is needed. --page-limit is a hard per-run budget; start with the
-representative pages, then explicitly cover the rest of the criteria/forms set.
+Issue 21 Phase 2 closes the legacy raw-manifest `extract` command before any
+file read or SDK discovery. Its result is `privacy_unavailable`, exit 2. The
+legacy explanation and unversioned Textract entrypoints are also closed. No model
+has been selected for real-document use.
+
+Use the offline request-plan command with the versioned contracts:
 
 ```bash
-python -m appraisal_review.document_cli extract --manifest artifacts/input-manifest.json --output artifacts/live-01 --profile "$PROJECT_PROFILE" --region "$PROJECT_REGION" --expected-account "$PROJECT_ACCOUNT" --expected-role "$PROJECT_ROLE" --model-id "$PROJECT_MODEL" --pages criteria:2,7 forms:1,3 --page-limit 4 --attempts 2 --max-output-tokens 12000
+python -m appraisal_review.document_cli extract-plan --request examples/extraction-v1/request.json --configuration artifacts/provider-configuration.json --budget artifacts/extraction-budget.json
+```
+
+The configuration and budget files contain the corresponding `configuration`
+and `budget` objects from the synthetic evaluation fixture when testing locally.
+The command requires no AWS profile or PDF. It reports `ready_for_live=false`,
+privacy integration unavailable and model access unchecked; this is not a
+privacy-certified preview of document contents.
+
+The programmatic `AuthorizedExtractionService` requires a trusted principal and
+the actual #22/#27 snapshot resolver. It has no production default resolver.
+Its configured Bedrock backend renders only snapshot bytes, projects closed
+context, validates inputs, and then runs explicit identity/routing/capability
+preflight. See [the extraction preflight runbook](extraction-preflight.md).
+Actual live execution still requires approved model, source, route and budget.
+
+Existing saved candidates can still be assembled and inspected locally:
+
+```bash
 python -m appraisal_review.document_cli assemble --manifest artifacts/input-manifest.json --extractions artifacts/live-complete --output artifacts/candidate-01
 python -m appraisal_review.document_cli inspect --material artifacts/candidate-01/material.json --output artifacts/candidate-01/review-copy.md
 ```
-
-Add --allow-cross-region only when the chosen inference profile and its data
-routing have been explicitly selected for this project. The provisional model
-capability reference is Claude Sonnet 4.5; no account/model selection is finalized
-without the designated account. AWS documents a 200K context and 64K maximum output
-for that model; this runner uses smaller bounded page inputs and output limits.
-Converse image inputs are bounded to 3.75 MB and 8000 pixels. PDFs are parsed and
-rendered locally, so native PDF model payload support is not assumed. Sources:
-[AWS model card](https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-anthropic-claude-sonnet-4-5.html),
-[Converse](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_Converse.html),
-[image/document limits](https://docs.aws.amazon.com/cli/latest/reference/bedrock-runtime/converse.html).
-Textract and BDA document language lists do not include Chinese; audio language
-lists do not establish document support. Their official limits are linked in
-architecture.md. Account availability and actual Chinese table quality remain
-live-test requirements.
 
 A human reviewer inspects source pages, matrix cells, applicability, complete
 inventory, unknown shapes, original values and all normalized facts. Edit candidate

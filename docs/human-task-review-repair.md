@@ -40,8 +40,11 @@ task_id, exact revision, server subject_id, stored PublicValue observation,
 required_type, required_unit and unit_required. It is read from the exact task
 snapshot after job authorization and side-digest validation. Numeric corrections
 without an authoritative unit are blocked; the UI must never guess from a name.
-The existing TaskView, response receipt, legacy review HTTP and invocation shapes
-are preserved. Consumers opt in to this new endpoint and generated schema.
+TaskView retains its outer task/subject shape and TaskSubjectView stays separate.
+The integrated undeployed service-v1 union adds nested HumanTask fields from #36;
+all strict consumers must regenerate even when old inputs still parse. Legacy
+frozen commands and baseline HTTP/invocation success remain compatibility
+obligations. See [canonical migration](service-contracts.md) for the current policy.
 
 ## Regression evidence
 

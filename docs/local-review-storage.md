@@ -131,3 +131,13 @@ immutable result bodies, source bindings, stale attempts, full response rollback
 fresh adapter/application instances, and real subprocess exits/races. Synthetic
 HTTP tests may require the same unrestricted local test environment used for the
 existing API suite. This is not real-case, cloud or deployed-runtime acceptance.
+
+## Review follow-up before runtime enablement
+
+The optional adapter retains synchronous transactions and the rollback journal.
+Task/dispatch/retry scans remain namespace-wide. Do not advertise bounded scan
+capacity or event-loop responsiveness from the configured lock timeout. Before
+runtime enablement, converge with the target's existing SQLiteReviewStore and
+address indexing, transaction offloading/cancellation and journal-mode/sidecar
+handling. See the [PR 56 repair record](pr-56-review-repair.md) for the reviewed
+items, limited optimizations and retained integration constraints.

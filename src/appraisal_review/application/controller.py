@@ -204,7 +204,17 @@ class ReviewAgentController:
                 current: SourceDocument | None
                 if len(matches) == 1:
                     current = matches[0]
-                elif not matches and registered.role in {"reference", "brief"}:
+                elif not matches and (
+                    registered.role in {"reference", "brief"}
+                    or (
+                        registered.role == "criteria"
+                        and rule_set.rule_bundle is not None
+                        and any(
+                            s.document_id == registered.document_id
+                            for s in rule_set.rule_bundle.sources
+                        )
+                    )
+                ):
                     current = (await self._parse(registered.uri, registered.role)).source
                 else:
                     raise SourceBindingError
@@ -331,7 +341,39 @@ class ReviewAgentController:
                 verification=verification,
                 audit_events=events,
             )
-        if result is None:
+        multiple_contexts = list(case_review.comparisons) if case_review is not None else []
+        # The capability must be the literal True; a mock or truthy stand-in is
+        # not an explicit declaration and keeps multiple contexts unsupported.
+        writer_supports_multiple = (
+            getattr(self.pdf_writer, "supports_multiple_contexts", False) is True
+        )
+        mapped_context_keys = (
+            {
+                (f.value_ref.scope, f.value_ref.target_id, f.value_ref.comparable_id)
+                for f in request.field_map.fields
+                if f.value_ref is not None
+            }
+            if request.field_map is not None
+            else set()
+        )
+        complete_multiple_map = all(
+            comparison.context is not None
+            and (
+                comparison.context.scope,
+                comparison.context.target_id,
+                comparison.context.comparable_id,
+            )
+            in mapped_context_keys
+            for comparison in multiple_contexts
+        )
+        if result is None and not (
+            request.output_pdf_uri is not None
+            and len(multiple_contexts) > 1
+            and writer_supports_multiple
+            and complete_multiple_map
+        ):
+            # Without an explicitly capable writer, a multiple-context request
+            # stays unsupported; it is never written as a partial first context.
             return AgentReviewRun(
                 case_id=request.case_id,
                 status=WorkflowStatus.VERIFIED,
@@ -402,7 +444,8 @@ class ReviewAgentController:
                 source_uri=request.pdf_template_uri,
                 destination_uri=request.output_pdf_uri,
                 protected_source_uris=protected_source_uris,
-                result=result,
+                result=result if result is not None else multiple_contexts[0],
+                additional_results=[] if result is not None else multiple_contexts[1:],
                 field_map=request.field_map,
             )
         except ValidationError as error:
@@ -470,7 +513,7 @@ class ReviewAgentController:
     async def _pdf_failed(
         self,
         case_id: str,
-        result: FactorReviewResult,
+        result: FactorReviewResult | None,
         verification: VerificationReport,
         events: list[AuditEvent],
         code: PDFErrorCode,

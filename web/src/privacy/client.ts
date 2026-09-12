@@ -2,6 +2,8 @@ import Ajv2020 from "ajv/dist/2020";
 import addFormats from "ajv-formats";
 import contracts from "./contracts.json";
 import type { components } from "./schema";
+import { LocalOcrReviewClient, OcrReviewRequired, requiredOcrReview } from "./ocr-review-client";
+import { responseDiagnostic, transportDiagnostic, type PrivacyDiagnostic } from "./diagnostics";
 
 export type ReviewView = components["schemas"]["PrivacyReviewView"];
 export type Selection = components["schemas"]["ReviewSelection"];
@@ -46,7 +48,10 @@ function object(value: unknown): value is Record<string, unknown> {
 }
 
 export class BridgeError extends Error {
-  constructor(readonly unknownOutcome: boolean) {
+  constructor(
+    readonly unknownOutcome: boolean,
+    readonly diagnostic?: PrivacyDiagnostic,
+  ) {
     super(
       unknownOutcome
         ? "The local operation's outcome is unknown. Reconcile it before continuing; do not resend a transfer."
@@ -57,6 +62,7 @@ export class BridgeError extends Error {
 
 export class LocalPrivacyClient {
   readonly baseUrl: string;
+  readonly ocrReviews: LocalOcrReviewClient;
   constructor(
     private readonly options: {
       baseUrl: string;
@@ -77,23 +83,31 @@ export class LocalPrivacyClient {
     )
       throw new Error("Configure a separate loopback HTTP privacy bridge.");
     this.baseUrl = base.origin;
+    this.ocrReviews = new LocalOcrReviewClient((path, read, body) =>
+      this.request(path, read, body),
+    );
   }
 
   private async request<T>(
     path: string,
     read: (response: Response) => Promise<T>,
     body?: unknown,
+    allowOcrReview = false,
   ): Promise<T> {
     const controller = new AbortController();
+    // Restoration can render and inspect every page before returning its review stage.
+    const duration = this.options.timeoutMs ?? (allowOcrReview ? 120_000 : 30_000);
+    const deadline = Date.now() + duration;
+    let observed: PrivacyDiagnostic | undefined;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const timeout = new Promise<never>((_resolve, reject) => {
       timer = setTimeout(() => {
         controller.abort();
-        reject(new BridgeError(true));
-      }, this.options.timeoutMs ?? 30_000);
+        reject(new BridgeError(true, transportDiagnostic(observed, "deadline_exceeded")));
+      }, duration);
     });
     try {
-      return await Promise.race([
+      const value = await Promise.race([
         (async () => {
           const response = await (this.options.fetch ?? globalThis.fetch)(
             `${this.baseUrl}/local-privacy${path}`,
@@ -110,13 +124,37 @@ export class LocalPrivacyClient {
               redirect: "error",
             },
           );
-          if (!response.ok) throw new BridgeError(false);
+          observed = responseDiagnostic(response.status, response.headers);
+          if (!response.ok) {
+            if (allowOcrReview && response.status === 409) {
+              const required = requiredOcrReview(await response.json());
+              if (required) throw required;
+            }
+            throw new BridgeError(false, observed);
+          }
           return await read(response);
         })(),
         timeout,
       ]);
+      if (Date.now() >= deadline) {
+        controller.abort();
+        throw new BridgeError(true, transportDiagnostic(observed, "deadline_exceeded"));
+      }
+      return value;
     } catch (error) {
-      throw error instanceof BridgeError ? error : new BridgeError(true);
+      if (error instanceof OcrReviewRequired) throw error;
+      if (error instanceof BridgeError && error.diagnostic) throw error;
+      throw new BridgeError(
+        error instanceof BridgeError ? error.unknownOutcome : true,
+        transportDiagnostic(
+          observed,
+          controller.signal.aborted
+            ? "deadline_exceeded"
+            : observed
+              ? "response_unusable"
+              : "request_failed",
+        ),
+      );
     } finally {
       clearTimeout(timer);
     }
@@ -266,6 +304,7 @@ export class LocalPrivacyClient {
         return value as unknown as RestoreResult;
       },
       {},
+      true,
     );
   }
 }

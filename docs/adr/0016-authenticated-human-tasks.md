@@ -1,16 +1,20 @@
 # ADR 0016: Authenticated human tasks and transactional revision submission
 
-Status: proposed on the `feat/human-task-api` branch for #24; not merged. Stacked on
+Original branch status: proposed on `feat/human-task-api` for #24, stacked on
 `feat/durable-review-jobs` (#32), whose job identity and transport this builds on.
+Current integration: included in main through PR #45, including the durable local
+SQLite composition. #24 now tracks the remaining cloud transaction implementation;
+#30 tracks its deployment composition.
 
 Gives an implementation to the human-task duties reserved by
 [ADR 0013](0013-service-foundation.md), and consumes the resume seam introduced by the
 durable-jobs ADR on that branch.
 
-Numbering note: `main` already carries ADR 0014 (full-case golden contract) and the
-durable-jobs branch independently numbered its own ADR 0014. That collision is real and
-belongs to whichever branch merges second; this ADR takes 0016 so that renaming the
-durable-jobs ADR to 0015 resolves it without touching this file.
+Registry note: [the consolidated index](README.md) preserves main's full-case
+golden decision as 0014 and durable jobs as 0015. This decision remains 0016;
+other independently allocated branch IDs were moved to unique numbers. The
+originating-branch status above is retained as decision provenance, not a claim
+about the current integration worktree or deployed approval.
 
 ## Context
 

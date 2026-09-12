@@ -1,0 +1,83 @@
+{
+  "schema_version": "extraction-v1",
+  "request": {
+    "schema_version": "extraction-v1",
+    "run": {
+      "schema_version": "service-v1",
+      "run_id": "00000000-0000-0000-0000-000000000001",
+      "revision": {
+        "schema_version": "service-v1",
+        "case_id": "synthetic-case",
+        "revision_id": "r1",
+        "material_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "attempt_id": null,
+      "runtime_session_id": null
+    },
+    "source": {
+      "schema_version": "extraction-v1",
+      "document": {
+        "schema_version": "service-v1",
+        "case_id": "synthetic-case",
+        "document_id": "synthetic-forms",
+        "version": "v1",
+        "content_hash": "0a5d3bef47afd27b9a4ad381a2f40c82f42b25e247d4368027b463e0b1d7c39b",
+        "purpose": "forms"
+      },
+      "privacy_contract_version": "privacy-v1",
+      "privacy_manifest_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "page_count": 2
+    },
+    "page": 1,
+    "context": {
+      "schema_version": "extraction-v1",
+      "language": "zh-Hant",
+      "task": "propose_case"
+    }
+  },
+  "status": "candidate",
+  "proposal": {
+    "accounted_table_ids": [],
+    "rules": [],
+    "contexts": [],
+    "pairs": [],
+    "observed": [],
+    "slots": [],
+    "checks": [],
+    "empty_columns": [],
+    "unresolved": [],
+    "unsupported": []
+  },
+  "failure": null,
+  "telemetry": {
+    "schema_version": "extraction-v1",
+    "configuration": {
+      "schema_version": "extraction-v1",
+      "provider": "synthetic",
+      "model_id": "synthetic-model",
+      "region": "synthetic-region",
+      "api": "synthetic-api",
+      "routing_regions": [
+        "synthetic-region"
+      ],
+      "temperature": 0.0,
+      "max_output_tokens": 1000
+    },
+    "prompt_version": "synthetic-prompt-v1",
+    "prompt_digest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "attempts": [
+      {
+        "schema_version": "extraction-v1",
+        "attempt": 1,
+        "completion": "returned",
+        "failure": null,
+        "input_tokens": null,
+        "output_tokens": null,
+        "elapsed_seconds": 0.5,
+        "backoff_seconds": 0.0
+      }
+    ],
+    "elapsed_seconds": 0.5
+  },
+  "handoffs": []
+}

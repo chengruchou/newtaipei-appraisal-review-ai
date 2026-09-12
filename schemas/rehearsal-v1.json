@@ -1,0 +1,1074 @@
+{
+  "$defs": {
+    "RehearsalBinding": {
+      "additionalProperties": false,
+      "properties": {
+        "approval_digest": {
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Approval Digest",
+          "type": "string"
+        },
+        "confirmation_digest": {
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Confirmation Digest",
+          "type": "string"
+        },
+        "correlation": {
+          "$ref": "#/$defs/RehearsalCorrelation"
+        },
+        "decision_digest": {
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Decision Digest",
+          "type": "string"
+        },
+        "field_map_digest": {
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Field Map Digest",
+          "type": "string"
+        },
+        "golden_digest": {
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Golden Digest",
+          "type": "string"
+        },
+        "input_digest": {
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Input Digest",
+          "type": "string"
+        },
+        "material_digest": {
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Material Digest",
+          "type": "string"
+        },
+        "output": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RehearsalOutput"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "privacy_attestation_digest": {
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Privacy Attestation Digest",
+          "type": "string"
+        },
+        "revision_digest": {
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Revision Digest",
+          "type": "string"
+        },
+        "rules_digest": {
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Rules Digest",
+          "type": "string"
+        },
+        "source_digest": {
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Source Digest",
+          "type": "string"
+        },
+        "source_snapshot_digest": {
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Source Snapshot Digest",
+          "type": "string"
+        },
+        "source_version_digest": {
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Source Version Digest",
+          "type": "string"
+        },
+        "template_digest": {
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Template Digest",
+          "type": "string"
+        }
+      },
+      "required": [
+        "correlation",
+        "source_digest",
+        "source_version_digest",
+        "source_snapshot_digest",
+        "privacy_attestation_digest",
+        "input_digest",
+        "decision_digest",
+        "revision_digest",
+        "material_digest",
+        "confirmation_digest",
+        "approval_digest",
+        "rules_digest",
+        "template_digest",
+        "field_map_digest",
+        "golden_digest",
+        "output"
+      ],
+      "title": "RehearsalBinding",
+      "type": "object"
+    },
+    "RehearsalCollector": {
+      "additionalProperties": false,
+      "properties": {
+        "key_id": {
+          "maxLength": 34,
+          "pattern": "^r-[a-f0-9]{32}$",
+          "title": "Key Id",
+          "type": "string"
+        },
+        "mode": {
+          "enum": [
+            "synthetic",
+            "live_sandbox"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "public_key": {
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Public Key",
+          "type": "string"
+        },
+        "revoked": {
+          "title": "Revoked",
+          "type": "boolean"
+        },
+        "source": {
+          "enum": [
+            "browser",
+            "network",
+            "aws",
+            "local",
+            "ci",
+            "human"
+          ],
+          "title": "Source",
+          "type": "string"
+        },
+        "valid_from": {
+          "exclusiveMinimum": 0,
+          "title": "Valid From",
+          "type": "integer"
+        },
+        "valid_until": {
+          "exclusiveMinimum": 0,
+          "title": "Valid Until",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "key_id",
+        "public_key",
+        "source",
+        "mode",
+        "valid_from",
+        "valid_until",
+        "revoked"
+      ],
+      "title": "RehearsalCollector",
+      "type": "object"
+    },
+    "RehearsalCorrelation": {
+      "additionalProperties": false,
+      "properties": {
+        "attempt_id": {
+          "maxLength": 34,
+          "pattern": "^r-[a-f0-9]{32}$",
+          "title": "Attempt Id",
+          "type": "string"
+        },
+        "case_id": {
+          "maxLength": 34,
+          "pattern": "^r-[a-f0-9]{32}$",
+          "title": "Case Id",
+          "type": "string"
+        },
+        "job_id": {
+          "maxLength": 34,
+          "pattern": "^r-[a-f0-9]{32}$",
+          "title": "Job Id",
+          "type": "string"
+        },
+        "revision_id": {
+          "maxLength": 34,
+          "pattern": "^r-[a-f0-9]{32}$",
+          "title": "Revision Id",
+          "type": "string"
+        },
+        "run_id": {
+          "maxLength": 34,
+          "pattern": "^r-[a-f0-9]{32}$",
+          "title": "Run Id",
+          "type": "string"
+        },
+        "trace_id": {
+          "maxLength": 34,
+          "pattern": "^r-[a-f0-9]{32}$",
+          "title": "Trace Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "case_id",
+        "job_id",
+        "run_id",
+        "attempt_id",
+        "trace_id",
+        "revision_id"
+      ],
+      "title": "RehearsalCorrelation",
+      "type": "object"
+    },
+    "RehearsalEvidenceRef": {
+      "additionalProperties": false,
+      "properties": {
+        "check": {
+          "enum": [
+            "happy.authenticated_login",
+            "happy.local_export_confirmation",
+            "happy.authorized_download",
+            "happy.sanitized_upload",
+            "happy.asynchronous_202",
+            "happy.runtime_model",
+            "happy.deterministic_review",
+            "happy.pdf_written",
+            "happy.fenced_manifest",
+            "human.waiting_persisted",
+            "human.attempt_released",
+            "human.recomputed",
+            "human.published",
+            "human.exact_source_and_sides",
+            "human.raw_confidence_preserved",
+            "human.response_new_revision",
+            "human.authenticated_response",
+            "human.stale_confirmation_rejected",
+            "idempotency.same_key_same_payload",
+            "idempotency.same_key_changed_payload_rejected",
+            "idempotency.timeout_resends_confirmed_command",
+            "idempotency.one_job_one_completion",
+            "worker_recovery.heartbeat_stopped",
+            "worker_recovery.lease_expired",
+            "worker_recovery.new_worker",
+            "worker_recovery.old_attempt_fenced",
+            "worker_recovery.recovered_result",
+            "outbox_recovery.committed_unsent",
+            "outbox_recovery.restart_reconciled",
+            "outbox_recovery.single_completion",
+            "outbox_recovery.recovered_result",
+            "failure.invalid_pdf",
+            "failure.model_timeout",
+            "failure.model_throttle",
+            "failure.runtime_error",
+            "failure.pdf_gate",
+            "failure.max_attempts",
+            "failure.no_output",
+            "failure.findings_retained",
+            "failure.no_completed_form",
+            "dlq.message_arrived",
+            "dlq.alarm_fired",
+            "dlq.bounded_redrive_or_termination",
+            "dlq.terminal_state",
+            "authorization.cross_principal",
+            "authorization.cross_case",
+            "authorization.cross_job",
+            "authorization.cross_document",
+            "authorization.cross_task",
+            "authorization.cross_artifact",
+            "authorization.old_revision",
+            "authorization.revoked_grant",
+            "authorization.replaced_source_version",
+            "authorization.runtime_cross_resource_denied",
+            "privacy.canary_in_original",
+            "privacy.canary_in_filename",
+            "privacy.canary_in_mapping",
+            "privacy.canary_in_key",
+            "privacy.canary_in_rehydrated_pdf",
+            "privacy.rehydration_only_local",
+            "privacy.capture_complete",
+            "privacy.original_absent",
+            "privacy.filename_absent",
+            "privacy.mapping_absent",
+            "privacy.key_absent",
+            "privacy.rehydrated_absent",
+            "privacy.inventory_complete",
+            "privacy.s3_clean",
+            "privacy.dynamodb_clean",
+            "privacy.sqs_clean",
+            "privacy.dlq_clean",
+            "privacy.logs_clean",
+            "privacy.model_request_clean",
+            "output.download_reopened",
+            "output.formal_template_golden",
+            "output.field_map_complete",
+            "output.original_unchanged",
+            "output.downloaded_hash_size_version",
+            "output.manifest_run_version_link",
+            "rollback.preflight_identity_owned",
+            "rollback.previous_image_restored",
+            "rollback.health_and_invoke",
+            "rollback.restored_flow",
+            "cleanup.exact_inventory",
+            "cleanup.scoped_deletion",
+            "cleanup.no_unexpected_survivors",
+            "cleanup.retained_audit",
+            "observability.dashboard_queries",
+            "observability.queue_age",
+            "observability.job_latency",
+            "observability.success_failure",
+            "observability.retry",
+            "observability.waiting_tasks",
+            "observability.expired_leases",
+            "observability.dlq_depth",
+            "observability.model_latency",
+            "observability.usage_cost_proxy",
+            "observability.alarm_owner_threshold_runbook",
+            "observability.alarm_test",
+            "integrations.pr34",
+            "integrations.pr35",
+            "integrations.pr36",
+            "integrations.pr37",
+            "integrations.pr38",
+            "integrations.pr39",
+            "integrations.production_composition",
+            "ci.branch_policy",
+            "ci.lint",
+            "ci.format",
+            "ci.types",
+            "ci.tests",
+            "ci.goldens",
+            "ci.offline_cloud",
+            "ci.iac",
+            "ci.schema",
+            "ci.http_smoke",
+            "ci.invocation_smoke",
+            "ci.container_arm64",
+            "ci.image_scan",
+            "ci.dependency_scan",
+            "ci.frontend",
+            "human_acceptance.independent_reviewer"
+          ],
+          "title": "Check",
+          "type": "string"
+        },
+        "digest": {
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Digest",
+          "type": "string"
+        },
+        "size_bytes": {
+          "exclusiveMinimum": 0,
+          "maximum": 1048576,
+          "title": "Size Bytes",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "check",
+        "digest",
+        "size_bytes"
+      ],
+      "title": "RehearsalEvidenceRef",
+      "type": "object"
+    },
+    "RehearsalObservation": {
+      "additionalProperties": false,
+      "properties": {
+        "campaign_id": {
+          "maxLength": 34,
+          "pattern": "^r-[a-f0-9]{32}$",
+          "title": "Campaign Id",
+          "type": "string"
+        },
+        "capture_digest": {
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Capture Digest",
+          "type": "string"
+        },
+        "capture_size_bytes": {
+          "exclusiveMinimum": 0,
+          "maximum": 1073741824,
+          "title": "Capture Size Bytes",
+          "type": "integer"
+        },
+        "capture_version_digest": {
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Capture Version Digest",
+          "type": "string"
+        },
+        "check": {
+          "enum": [
+            "happy.authenticated_login",
+            "happy.local_export_confirmation",
+            "happy.authorized_download",
+            "happy.sanitized_upload",
+            "happy.asynchronous_202",
+            "happy.runtime_model",
+            "happy.deterministic_review",
+            "happy.pdf_written",
+            "happy.fenced_manifest",
+            "human.waiting_persisted",
+            "human.attempt_released",
+            "human.recomputed",
+            "human.published",
+            "human.exact_source_and_sides",
+            "human.raw_confidence_preserved",
+            "human.response_new_revision",
+            "human.authenticated_response",
+            "human.stale_confirmation_rejected",
+            "idempotency.same_key_same_payload",
+            "idempotency.same_key_changed_payload_rejected",
+            "idempotency.timeout_resends_confirmed_command",
+            "idempotency.one_job_one_completion",
+            "worker_recovery.heartbeat_stopped",
+            "worker_recovery.lease_expired",
+            "worker_recovery.new_worker",
+            "worker_recovery.old_attempt_fenced",
+            "worker_recovery.recovered_result",
+            "outbox_recovery.committed_unsent",
+            "outbox_recovery.restart_reconciled",
+            "outbox_recovery.single_completion",
+            "outbox_recovery.recovered_result",
+            "failure.invalid_pdf",
+            "failure.model_timeout",
+            "failure.model_throttle",
+            "failure.runtime_error",
+            "failure.pdf_gate",
+            "failure.max_attempts",
+            "failure.no_output",
+            "failure.findings_retained",
+            "failure.no_completed_form",
+            "dlq.message_arrived",
+            "dlq.alarm_fired",
+            "dlq.bounded_redrive_or_termination",
+            "dlq.terminal_state",
+            "authorization.cross_principal",
+            "authorization.cross_case",
+            "authorization.cross_job",
+            "authorization.cross_document",
+            "authorization.cross_task",
+            "authorization.cross_artifact",
+            "authorization.old_revision",
+            "authorization.revoked_grant",
+            "authorization.replaced_source_version",
+            "authorization.runtime_cross_resource_denied",
+            "privacy.canary_in_original",
+            "privacy.canary_in_filename",
+            "privacy.canary_in_mapping",
+            "privacy.canary_in_key",
+            "privacy.canary_in_rehydrated_pdf",
+            "privacy.rehydration_only_local",
+            "privacy.capture_complete",
+            "privacy.original_absent",
+            "privacy.filename_absent",
+            "privacy.mapping_absent",
+            "privacy.key_absent",
+            "privacy.rehydrated_absent",
+            "privacy.inventory_complete",
+            "privacy.s3_clean",
+            "privacy.dynamodb_clean",
+            "privacy.sqs_clean",
+            "privacy.dlq_clean",
+            "privacy.logs_clean",
+            "privacy.model_request_clean",
+            "output.download_reopened",
+            "output.formal_template_golden",
+            "output.field_map_complete",
+            "output.original_unchanged",
+            "output.downloaded_hash_size_version",
+            "output.manifest_run_version_link",
+            "rollback.preflight_identity_owned",
+            "rollback.previous_image_restored",
+            "rollback.health_and_invoke",
+            "rollback.restored_flow",
+            "cleanup.exact_inventory",
+            "cleanup.scoped_deletion",
+            "cleanup.no_unexpected_survivors",
+            "cleanup.retained_audit",
+            "observability.dashboard_queries",
+            "observability.queue_age",
+            "observability.job_latency",
+            "observability.success_failure",
+            "observability.retry",
+            "observability.waiting_tasks",
+            "observability.expired_leases",
+            "observability.dlq_depth",
+            "observability.model_latency",
+            "observability.usage_cost_proxy",
+            "observability.alarm_owner_threshold_runbook",
+            "observability.alarm_test",
+            "integrations.pr34",
+            "integrations.pr35",
+            "integrations.pr36",
+            "integrations.pr37",
+            "integrations.pr38",
+            "integrations.pr39",
+            "integrations.production_composition",
+            "ci.branch_policy",
+            "ci.lint",
+            "ci.format",
+            "ci.types",
+            "ci.tests",
+            "ci.goldens",
+            "ci.offline_cloud",
+            "ci.iac",
+            "ci.schema",
+            "ci.http_smoke",
+            "ci.invocation_smoke",
+            "ci.container_arm64",
+            "ci.image_scan",
+            "ci.dependency_scan",
+            "ci.frontend",
+            "human_acceptance.independent_reviewer"
+          ],
+          "title": "Check",
+          "type": "string"
+        },
+        "context_digest": {
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Context Digest",
+          "type": "string"
+        },
+        "correlation": {
+          "$ref": "#/$defs/RehearsalCorrelation"
+        },
+        "mode": {
+          "enum": [
+            "synthetic",
+            "live_sandbox"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "observed": {
+          "maximum": 1000000000,
+          "minimum": 0,
+          "title": "Observed",
+          "type": "integer"
+        },
+        "observed_at": {
+          "exclusiveMinimum": 0,
+          "title": "Observed At",
+          "type": "integer"
+        },
+        "output": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RehearsalOutput"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sample_count": {
+          "exclusiveMinimum": 0,
+          "maximum": 1000000000,
+          "title": "Sample Count",
+          "type": "integer"
+        },
+        "schema_version": {
+          "const": "rehearsal-observation-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "source": {
+          "enum": [
+            "browser",
+            "network",
+            "aws",
+            "local",
+            "ci",
+            "human"
+          ],
+          "title": "Source",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "passed",
+            "failed",
+            "skipped",
+            "not_run",
+            "unknown"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "target_digest": {
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Target Digest",
+          "type": "string"
+        },
+        "violations": {
+          "maximum": 1000000000,
+          "minimum": 0,
+          "title": "Violations",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "schema_version",
+        "campaign_id",
+        "mode",
+        "check",
+        "source",
+        "target_digest",
+        "context_digest",
+        "correlation",
+        "observed_at",
+        "status",
+        "observed",
+        "sample_count",
+        "violations",
+        "capture_digest",
+        "capture_size_bytes",
+        "capture_version_digest",
+        "output"
+      ],
+      "title": "RehearsalObservation",
+      "type": "object"
+    },
+    "RehearsalOutput": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact_id": {
+          "maxLength": 34,
+          "pattern": "^r-[a-f0-9]{32}$",
+          "title": "Artifact Id",
+          "type": "string"
+        },
+        "attempt_id": {
+          "maxLength": 34,
+          "pattern": "^r-[a-f0-9]{32}$",
+          "title": "Attempt Id",
+          "type": "string"
+        },
+        "content_digest": {
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Content Digest",
+          "type": "string"
+        },
+        "field_map_digest": {
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Field Map Digest",
+          "type": "string"
+        },
+        "manifest_digest": {
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Manifest Digest",
+          "type": "string"
+        },
+        "manifest_version": {
+          "exclusiveMinimum": 0,
+          "title": "Manifest Version",
+          "type": "integer"
+        },
+        "object_version_digest": {
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Object Version Digest",
+          "type": "string"
+        },
+        "revision_digest": {
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Revision Digest",
+          "type": "string"
+        },
+        "run_id": {
+          "maxLength": 34,
+          "pattern": "^r-[a-f0-9]{32}$",
+          "title": "Run Id",
+          "type": "string"
+        },
+        "size_bytes": {
+          "exclusiveMinimum": 0,
+          "maximum": 1073741824,
+          "title": "Size Bytes",
+          "type": "integer"
+        },
+        "template_digest": {
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Template Digest",
+          "type": "string"
+        }
+      },
+      "required": [
+        "artifact_id",
+        "content_digest",
+        "size_bytes",
+        "object_version_digest",
+        "manifest_digest",
+        "manifest_version",
+        "run_id",
+        "attempt_id",
+        "revision_digest",
+        "template_digest",
+        "field_map_digest"
+      ],
+      "title": "RehearsalOutput",
+      "type": "object"
+    },
+    "RehearsalReceipt": {
+      "additionalProperties": false,
+      "properties": {
+        "key_id": {
+          "maxLength": 34,
+          "pattern": "^r-[a-f0-9]{32}$",
+          "title": "Key Id",
+          "type": "string"
+        },
+        "observation": {
+          "$ref": "#/$defs/RehearsalObservation"
+        },
+        "signature": {
+          "maxLength": 128,
+          "pattern": "^[a-f0-9]{128}$",
+          "title": "Signature",
+          "type": "string"
+        }
+      },
+      "required": [
+        "key_id",
+        "observation",
+        "signature"
+      ],
+      "title": "RehearsalReceipt",
+      "type": "object"
+    },
+    "RehearsalScenario": {
+      "additionalProperties": false,
+      "properties": {
+        "binding": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RehearsalBinding"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/RehearsalEvidenceRef"
+          },
+          "maxItems": 200,
+          "title": "Evidence",
+          "type": "array"
+        },
+        "name": {
+          "enum": [
+            "happy",
+            "human",
+            "idempotency",
+            "worker_recovery",
+            "outbox_recovery",
+            "failure",
+            "dlq",
+            "authorization",
+            "privacy",
+            "output",
+            "rollback",
+            "cleanup",
+            "observability",
+            "integrations",
+            "ci",
+            "human_acceptance"
+          ],
+          "title": "Name",
+          "type": "string"
+        },
+        "previous": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RehearsalBinding"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "rollback_image_digest": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "pattern": "^[a-f0-9]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rollback Image Digest"
+        },
+        "status": {
+          "enum": [
+            "passed",
+            "failed",
+            "skipped",
+            "not_run",
+            "unknown"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "task_id": {
+          "anyOf": [
+            {
+              "maxLength": 34,
+              "pattern": "^r-[a-f0-9]{32}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Task Id"
+        }
+      },
+      "required": [
+        "name",
+        "status",
+        "binding",
+        "evidence"
+      ],
+      "title": "RehearsalScenario",
+      "type": "object"
+    },
+    "RehearsalTarget": {
+      "additionalProperties": false,
+      "properties": {
+        "ci_namespace": {
+          "const": "issue31-exact-revision-v1",
+          "title": "Ci Namespace",
+          "type": "string"
+        },
+        "ci_run_attempt": {
+          "exclusiveMinimum": 0,
+          "maximum": 1000000,
+          "title": "Ci Run Attempt",
+          "type": "integer"
+        },
+        "ci_run_digest": {
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Ci Run Digest",
+          "type": "string"
+        },
+        "ci_tested_commit": {
+          "maxLength": 40,
+          "pattern": "^[a-f0-9]{40}$",
+          "title": "Ci Tested Commit",
+          "type": "string"
+        },
+        "ci_workflow_digest": {
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Ci Workflow Digest",
+          "type": "string"
+        },
+        "code_commit": {
+          "maxLength": 40,
+          "pattern": "^[a-f0-9]{40}$",
+          "title": "Code Commit",
+          "type": "string"
+        },
+        "config_digest": {
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Config Digest",
+          "type": "string"
+        },
+        "deployment_digest": {
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Deployment Digest",
+          "type": "string"
+        },
+        "image_digest": {
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Image Digest",
+          "type": "string"
+        },
+        "model_digest": {
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Model Digest",
+          "type": "string"
+        },
+        "normalizer_digest": {
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Normalizer Digest",
+          "type": "string"
+        },
+        "parser_digest": {
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Parser Digest",
+          "type": "string"
+        },
+        "pr_base_commit": {
+          "maxLength": 40,
+          "pattern": "^[a-f0-9]{40}$",
+          "title": "Pr Base Commit",
+          "type": "string"
+        },
+        "pr_head_commit": {
+          "maxLength": 40,
+          "pattern": "^[a-f0-9]{40}$",
+          "title": "Pr Head Commit",
+          "type": "string"
+        },
+        "prompt_digest": {
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Prompt Digest",
+          "type": "string"
+        },
+        "pull_request_number": {
+          "exclusiveMinimum": 0,
+          "maximum": 1000000000,
+          "title": "Pull Request Number",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "code_commit",
+        "pr_head_commit",
+        "pr_base_commit",
+        "pull_request_number",
+        "ci_tested_commit",
+        "ci_namespace",
+        "ci_run_digest",
+        "ci_run_attempt",
+        "image_digest",
+        "model_digest",
+        "prompt_digest",
+        "deployment_digest",
+        "config_digest",
+        "parser_digest",
+        "normalizer_digest",
+        "ci_workflow_digest"
+      ],
+      "title": "RehearsalTarget",
+      "type": "object"
+    },
+    "RehearsalTrust": {
+      "additionalProperties": false,
+      "properties": {
+        "collectors": {
+          "items": {
+            "$ref": "#/$defs/RehearsalCollector"
+          },
+          "maxItems": 32,
+          "minItems": 1,
+          "title": "Collectors",
+          "type": "array"
+        },
+        "schema_version": {
+          "const": "rehearsal-trust-v1",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "collectors"
+      ],
+      "title": "RehearsalTrust",
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "campaign_id": {
+      "maxLength": 34,
+      "pattern": "^r-[a-f0-9]{32}$",
+      "title": "Campaign Id",
+      "type": "string"
+    },
+    "data_classification": {
+      "const": "synthetic_cases_only",
+      "title": "Data Classification",
+      "type": "string"
+    },
+    "finished_at": {
+      "exclusiveMinimum": 0,
+      "title": "Finished At",
+      "type": "integer"
+    },
+    "mode": {
+      "enum": [
+        "synthetic",
+        "live_sandbox"
+      ],
+      "title": "Mode",
+      "type": "string"
+    },
+    "scenarios": {
+      "items": {
+        "$ref": "#/$defs/RehearsalScenario"
+      },
+      "maxItems": 16,
+      "title": "Scenarios",
+      "type": "array"
+    },
+    "schema_version": {
+      "const": "rehearsal-v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "started_at": {
+      "exclusiveMinimum": 0,
+      "title": "Started At",
+      "type": "integer"
+    },
+    "target": {
+      "$ref": "#/$defs/RehearsalTarget"
+    }
+  },
+  "required": [
+    "schema_version",
+    "data_classification",
+    "mode",
+    "campaign_id",
+    "started_at",
+    "finished_at",
+    "target",
+    "scenarios"
+  ],
+  "title": "RehearsalManifest",
+  "type": "object"
+}

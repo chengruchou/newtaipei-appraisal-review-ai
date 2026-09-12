@@ -6,9 +6,16 @@ import hashlib
 import json
 from datetime import date
 from decimal import Decimal
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import (
+    BaseModel,
+    Field,
+    SerializerFunctionWrapHandler,
+    StringConstraints,
+    model_serializer,
+    model_validator,
+)
 
 from appraisal_review.domain.document_models import (
     Digest,
@@ -116,9 +123,18 @@ class Reliability(DocumentModel):
     producer: str | None = Field(default=None, min_length=1)
     confirmation: FactConfirmation | None = None
     model_confidence: float | None = Field(default=None, ge=0, le=1)
-    method: Literal["native_numeric", "reviewer_confirmed", "model_proposed"]
+    method: Literal[
+        "native_numeric",
+        "reviewer_confirmed",
+        "model_proposed",
+        "native_proposed",
+        "manual_proposed",
+    ]
     selection: Literal["checked", "unchecked", "ambiguous", "not_applicable"]
     unresolved: list[str] = Field(default_factory=list)
+
+
+OriginatingFieldID = Annotated[str, StringConstraints(strict=True)]
 
 
 class ReviewFinding(DocumentModel):
@@ -133,6 +149,28 @@ class ReviewFinding(DocumentModel):
     expected: str | None = None
     evidence: list[SourceCitation] = Field(default_factory=list)
     trace: str
+    originating_field_ids: list[OriginatingFieldID] = Field(
+        default_factory=list,
+        description=(
+            "Exact source-evidence blocker IDs from this review's inventory, sorted and unique."
+        ),
+    )
+
+    @model_validator(mode="after")
+    def canonical_originating_fields(self) -> ReviewFinding:
+        if self.originating_field_ids != sorted(set(self.originating_field_ids)):
+            raise ValueError("Originating field IDs must be sorted and unique")
+        return self
+
+    # No return annotation: Pydantic otherwise replaces this model's generated
+    # serialization schema with the serializer's generic dict schema. Keep the
+    # complete finding schema and support the declared Pydantic 2.11 baseline.
+    @model_serializer(mode="wrap")
+    def serialize_origins(self, handler: SerializerFunctionWrapHandler):  # type: ignore[no-untyped-def]
+        data = handler(self)
+        if not self.originating_field_ids:
+            data.pop("originating_field_ids", None)
+        return data
 
 
 class Coverage(DocumentModel):

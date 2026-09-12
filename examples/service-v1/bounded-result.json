@@ -1,0 +1,137 @@
+{
+  "schema_version": "controlled-action-v1",
+  "run": {
+    "schema_version": "service-v1",
+    "run_id": "00000000-0000-0000-0000-000000000006",
+    "revision": {
+      "schema_version": "service-v1",
+      "case_id": "synthetic-case",
+      "revision_id": "fixture-r1",
+      "material_digest": "0445917fd60f720359309b58c8edff03c93c929c7270f4ebfde304545595c124"
+    },
+    "attempt_id": null,
+    "runtime_session_id": null
+  },
+  "termination": "verified",
+  "events": [
+    {
+      "schema_version": "controlled-action-v1",
+      "event_id": "00000000-0000-0000-0000-000000000008",
+      "parent_event_ids": [],
+      "proposal": {
+        "schema_version": "controlled-action-v1",
+        "proposal_id": "00000000-0000-0000-0000-000000000007",
+        "run": {
+          "schema_version": "service-v1",
+          "run_id": "00000000-0000-0000-0000-000000000006",
+          "revision": {
+            "schema_version": "service-v1",
+            "case_id": "synthetic-case",
+            "revision_id": "fixture-r1",
+            "material_digest": "0445917fd60f720359309b58c8edff03c93c929c7270f4ebfde304545595c124"
+          },
+          "attempt_id": null,
+          "runtime_session_id": null
+        },
+        "action_id": "deterministic-review",
+        "action": "deterministic_review",
+        "policy_version": "controlled-action-policy-v1-system",
+        "snapshot_digest": "9d4d581a8eb100ff7543dd5b2a75f7396d22f50ac555cf6080feac880cde0236",
+        "proposer": {
+          "schema_version": "service-v1",
+          "actor_id": "deterministic-action-selector",
+          "kind": "system"
+        },
+        "model_id": null,
+        "prompt_version": null,
+        "input_tokens": null,
+        "output_tokens": null,
+        "latency_ms": null,
+        "attempt_count": null,
+        "arguments": {
+          "schema_version": "controlled-action-v1",
+          "kind": "deterministic_review",
+          "revision": {
+            "schema_version": "service-v1",
+            "case_id": "synthetic-case",
+            "revision_id": "fixture-r1",
+            "material_digest": "0445917fd60f720359309b58c8edff03c93c929c7270f4ebfde304545595c124"
+          },
+          "rules": [
+            {
+              "schema_version": "service-v1",
+              "rule_set_id": "synthetic-road-v1",
+              "version": "1.0.0",
+              "context": {
+                "scope": "regional",
+                "target_id": "synthetic-target",
+                "comparable_id": "synthetic-comparable"
+              },
+              "content_hash": "4e0c14fac50957b7652d7095c44a3637803396e44546b725e611f4909272b495"
+            }
+          ]
+        },
+        "proposer_rationale": "Deterministic baseline selected the sole allowed action."
+      },
+      "executor": {
+        "schema_version": "service-v1",
+        "actor_id": "fixture-controlled-executor",
+        "kind": "system"
+      },
+      "policy_version": "controlled-action-policy-v1-system",
+      "state_before": "material_ready",
+      "state_after": "verified",
+      "disposition": "executed",
+      "executed_action": "deterministic_review",
+      "checked_prerequisites": [
+        "forms_parsed",
+        "rules_approved",
+        "critical_evidence_available",
+        "material_complete"
+      ],
+      "reason_code": "deterministic-review-succeeded",
+      "reviewer_summary": "The deterministic review returned a validated result.",
+      "affected_subject_ids": [],
+      "evidence": [],
+      "tool_result": {
+        "schema_version": "service-v1",
+        "outcome": "succeeded",
+        "result_digest": "6321ff46286aa90d3fa78bccfedeb86385718274121573a2fd9e608bf0710bb3",
+        "problem": null
+      },
+      "remaining_blockers": [],
+      "linked_task_id": null,
+      "linked_response_key": null,
+      "budget_before": {
+        "schema_version": "service-v1",
+        "steps_remaining": 2,
+        "model_calls_remaining": 0,
+        "retries_remaining": 0,
+        "time_remaining_ms": 5000
+      },
+      "budget_after": {
+        "schema_version": "service-v1",
+        "steps_remaining": 1,
+        "model_calls_remaining": 0,
+        "retries_remaining": 0,
+        "time_remaining_ms": 5000
+      },
+      "budget_consumed": {
+        "schema_version": "controlled-action-v1",
+        "steps": 1,
+        "model_calls": 0,
+        "retries": 0,
+        "elapsed_ms": 0
+      }
+    }
+  ],
+  "selection_failures": [],
+  "final_budget": {
+    "schema_version": "service-v1",
+    "steps_remaining": 1,
+    "model_calls_remaining": 0,
+    "retries_remaining": 0,
+    "time_remaining_ms": 5000
+  },
+  "handoff": null
+}

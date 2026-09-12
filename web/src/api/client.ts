@@ -2,6 +2,10 @@ import { validateResponse } from "./validation";
 import { canonicalProblem, ServiceError, TransportError, UNKNOWN_OUTCOME } from "./problems";
 import type { components } from "./schema";
 
+export type ReviewSessionView = components["schemas"]["ReviewSessionView"];
+export type CaseContextView = components["schemas"]["CaseContextView"];
+export type PausedReviewView = components["schemas"]["PausedReviewView"];
+
 export type HumanTask = components["schemas"]["HumanTask"];
 export type TaskSubjectView = components["schemas"]["TaskSubjectView"];
 export type TaskView = components["schemas"]["TaskView"];
@@ -14,7 +18,7 @@ export type ResponseReceipt = components["schemas"]["ResponseReceipt"];
 export type JobStatusView = components["schemas"]["JobStatusView"];
 export type ServiceResult = components["schemas"]["ServiceResult"];
 export type MaterialRevision = components["schemas"]["MaterialRevision"];
-export type ArtifactManifest = components["schemas"]["ArtifactManifest"];
+export type ArtifactManifest = ServiceResult["artifacts"][number];
 export type SourceCitation = components["schemas"]["SourceCitation"];
 
 export interface ClientOptions {
@@ -27,15 +31,82 @@ export interface ClientOptions {
   token: () => Promise<string | null>;
   fetch?: typeof globalThis.fetch;
   timeoutMs?: number;
+  onUnauthorized?: () => void;
+  localOriginalPreview?: { baseUrl: string; pairingToken: string };
 }
 
 const DEFAULT_TIMEOUT_MS = 15_000;
 
 export class ReviewClient {
   private readonly options: ClientOptions;
+  private readonly active = new Set<AbortController>();
+  private disposed = false;
+  private sourceMode: ReviewSessionView["data_mode"] = "unspecified";
 
   constructor(options: ClientOptions) {
-    this.options = options;
+    if (options.localOriginalPreview) {
+      const base = new URL(options.localOriginalPreview.baseUrl);
+      if (
+        base.protocol !== "http:" ||
+        base.hostname !== "127.0.0.1" ||
+        !base.port ||
+        base.username ||
+        base.password ||
+        base.pathname !== "/" ||
+        base.search ||
+        base.hash
+      )
+        throw new Error("Original preview requires a configured numeric loopback origin");
+    }
+    this.options = options.localOriginalPreview
+      ? {
+          ...options,
+          localOriginalPreview: {
+            ...options.localOriginalPreview,
+            baseUrl: new URL(options.localOriginalPreview.baseUrl).origin,
+          },
+        }
+      : options;
+  }
+
+  dispose(): void {
+    this.disposed = true;
+    this.active.forEach((controller) => controller.abort());
+    this.active.clear();
+  }
+
+  async readSession(): Promise<ReviewSessionView> {
+    const session = await this.request<ReviewSessionView>(
+      "ReviewSessionView",
+      "GET",
+      "/v1/review-session",
+    );
+    this.sourceMode = session.data_mode;
+    return session;
+  }
+
+  async readCaseContext(jobId: string): Promise<CaseContextView> {
+    return this.request<CaseContextView>(
+      "CaseContextView",
+      "GET",
+      `/v1/review-jobs/${encode(jobId)}/context`,
+    );
+  }
+
+  async readAssessment(jobId: string): Promise<PausedReviewView> {
+    return this.request<PausedReviewView>(
+      "PausedReviewView",
+      "GET",
+      `/v1/review-jobs/${encode(jobId)}/assessment`,
+    );
+  }
+
+  async readResponse(taskId: string, key: string): Promise<ResponseReceipt> {
+    return this.request<ResponseReceipt>(
+      "ResponseReceipt",
+      "GET",
+      `/v1/review-tasks/${encode(taskId)}/responses/${encode(key)}`,
+    );
   }
 
   async listJobTasks(jobId: string): Promise<TaskListView> {
@@ -97,6 +168,15 @@ export class ReviewClient {
       version: citation.version,
       content_hash: citation.content_hash,
     });
+    if (this.sourceMode === "local_original") {
+      const preview = this.options.localOriginalPreview;
+      if (!preview?.pairingToken) throw new ServiceError("capability_unavailable", 503);
+      return this.readPdf(
+        `/local-original/documents/${encode(citation.document_id)}?${query}`,
+        citation.content_hash,
+        preview,
+      );
+    }
     return this.readPdf(
       `/v1/documents/${encode(citation.document_id)}/content?${query}`,
       citation.content_hash,
@@ -110,16 +190,30 @@ export class ReviewClient {
     );
   }
 
-  private async readPdf(path: string, expectedHash: string): Promise<ArrayBuffer> {
+  private async readPdf(
+    path: string,
+    expectedHash: string,
+    preview?: ClientOptions["localOriginalPreview"],
+  ): Promise<ArrayBuffer> {
     return this.transport(async (signal) => {
       const token = await this.options.token();
       const response = await (this.options.fetch ?? globalThis.fetch)(
-        `${this.options.baseUrl}${path}`,
+        `${preview?.baseUrl ?? this.options.baseUrl}${path}`,
         {
           signal,
+          cache: "no-store",
+          credentials: "omit",
+          redirect: "error",
           headers: {
             Accept: "application/pdf",
-            ...(token === null ? {} : { Authorization: `Bearer ${token}` }),
+            ...(preview
+              ? {
+                  Authorization: `Bearer ${preview.pairingToken}`,
+                  "X-Review-Session": token === null ? "" : `Bearer ${token}`,
+                }
+              : token === null
+                ? {}
+                : { Authorization: `Bearer ${token}` }),
           },
         },
       );
@@ -183,7 +277,9 @@ export class ReviewClient {
 
   /** Headers, body, parsing and validation share one deadline and unknown-outcome boundary. */
   private async transport<T>(read: (signal: AbortSignal) => Promise<T>): Promise<T> {
+    if (this.disposed) throw new TransportError("This session has ended.");
     const controller = new AbortController();
+    this.active.add(controller);
     const duration = this.options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
     const deadline = Date.now() + duration;
     let timeout: ReturnType<typeof setTimeout> | undefined;
@@ -196,10 +292,14 @@ export class ReviewClient {
     try {
       const value = await Promise.race([read(controller.signal), expired]);
       // Parsing and synchronous validation can occupy the event loop past the deadline.
-      if (Date.now() >= deadline) throw new DOMException("Deadline exceeded", "AbortError");
+      if (this.disposed || Date.now() >= deadline)
+        throw new DOMException("Deadline exceeded", "AbortError");
       return value;
     } catch (cause) {
-      if (cause instanceof ServiceError) throw cause;
+      if (cause instanceof ServiceError) {
+        if (cause.code === "unauthorized" && !this.disposed) this.options.onUnauthorized?.();
+        throw cause;
+      }
       // An unknown outcome already described precisely keeps its own wording.
       if (cause instanceof TransportError) throw cause;
       throw new TransportError(
@@ -209,6 +309,7 @@ export class ReviewClient {
       );
     } finally {
       clearTimeout(timeout);
+      this.active.delete(controller);
     }
   }
 }

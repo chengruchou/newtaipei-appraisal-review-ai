@@ -77,6 +77,12 @@ formatting belong to B's deterministic display-value mapper, never to an LLM.
 
 ## Local rendering configuration
 
+New multiple-context and placeholder output, including local backfill, requires
+an approved font digest supplied by trusted composition. Missing approval fails
+preflight without publishing output. Legacy single-context requests with no
+placeholders retain their optional-digest compatibility. Measurement and
+embedding use the same immutable, digest-checked font bytes.
+
 The local writer receives validated configuration explicitly. No font or file
 discovery occurs at import. Configuration declares an absolute font path,
 internal font name, positive font size, text color and alignment, labelled

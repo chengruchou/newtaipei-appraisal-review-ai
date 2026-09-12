@@ -1,66 +1,104 @@
-# Agentic AI Real Estate Valuation Reviewer
+# Agentic Real Estate Valuation Reviewer
 
-An evidence-grounded system for reviewing real estate valuation cases for the
-2026 New Taipei City AI Smart City Hackathon. Document adapters propose facts and
-rules; deterministic code checks applicability, grades, correction matrices,
-original values and cross-form arithmetic. Reviewers inspect located findings and
-authorize exact material. A verified, completed or corrected PDF is one output,
-not the whole product.
+An evidence-grounded valuation case review system for the New Taipei City
+competition. Document and model adapters propose facts and rules; deterministic
+code calculates grades, correction rates and totals, verifies evidence, and gates
+PDF output. Reviewers inspect findings and explicitly authorize exact material.
+PDF filling is one output of case review.
 
-## Current delivery
+**Current delivery: [PR #45](https://github.com/chengruchou/newtaipei-appraisal-review-ai/pull/45)
+is merged. `main` at `d148422a` is the local validation baseline, with the same
+source tree as reviewed head `fd22e683`.** Core browser/API flows passed, and the
+final delivery reports one complete local OCR restoration and download. Repeated
+OCR reliability, hosted CI, image security, AWS deployment, live model quality
+and formal business acceptance remain open. [Project progress](docs/project-progress.md)
+records current status; [validation evidence](docs/local-validation-record.md)
+separates checkpoints, and [the implementation backlog](docs/implementation-backlog.md)
+tracks remaining work.
 
-Rechecked main on 2026-09-10:
-`463880af3a6dc6aad2bfa6fdfc3bc267afc4d4a5`. Review #15, extraction #16,
-local PDF writer #19, M0 service foundation #20 and full-case goldens #33 are
-merged. [Project progress](docs/project-progress.md) distinguishes this baseline,
-other active work lines, this branch's #27 implementation and remaining acceptance.
-Local test results, historical CI and a future published head's CI are separate evidence.
+The current follow-up candidate adds per-model routing snapshots, bounded local
+restoration diagnostics and an explicit [local validation stack](docs/local-validation-stack.md).
+These additions require their own exact-commit validation; the historical
+baseline above is not acceptance of the follow-up image or OCR reliability.
 
-| Capability | Implemented behavior | Remaining acceptance |
+## Integrated boundaries
+
+| Boundary | Implemented and integrated locally | Remaining acceptance |
 | --- | --- | --- |
-| Source-bound review (#15) | Independent calculation, original cells, validated fills, applicability and completion gates | Independent human acceptance |
-| Document preparation (#16) | Allowlisted real parser, native/Bedrock candidate adapters, Linux/macOS reviewer and signed receipts | A actual model comparison; E full-field/source accuracy |
-| PDF core (#19) | Real local rendering/correction, template/map binding, preflight, reopen verification, atomic output; injected S3 wrapper | E formal CJK/template/multiple-context output; D live S3/Runtime |
-| M0 local integration (#20) | Configured HTTP/invocation using real parser/material/authorizer; optional real writer; separate service envelope | B web assembly and D full Runtime wiring |
-| M0 shared contracts (#20) | Versioned DTOs, immutable material helper, pure admission/idempotency guards, schema/fixtures | Transactional adapters, model selector and real event persistence |
-| Full-case goldens (#33) | Independently derived expectations, 13 case/revision manifests plus an index | Business rule approval and independent reviewer acceptance |
-| Sanitized document transfer (#27, this branch) | Authorized ingestion, exact privacy attestation, local/S3 immutable storage and run snapshots | A3 production export composition, authenticated gateway/D1 wiring and live S3 acceptance |
-| Runtime smoke (#14) | Synthetic HTTP/container/template preparation, durable=false | D durable jobs, identity, outbox/recovery and deployment |
-| Browser human review | Consumer fixtures only | B task APIs; C workbench |
+| Local privacy | Restricted Origin/session bridge, exact export/mapping readback, two-stage visual OCR review, bounded failure diagnostics and reproducible synthetic scenarios | Repeated OCR reliability; production provisioner, key recovery and desktop distribution |
+| Documents and extraction | Authorized immutable snapshots, actual PDF parser, source checks for resumed runs, production SDK adapter with injected model responses in rehearsal | Measured model quality and real cloud authorization |
+| Jobs and human tasks | SQLite job/task/revision/outbox/receipt transactions, durable dispatch queue, actual authenticated API | Production identity and cloud transaction composition |
+| Controlled actions | Canonical response adapter, trusted allowed actions, persisted run reservations, failed/unknown-effect quarantine | Designated model and operator evaluation |
+| PDF and publication | Two-context/eight-field writer, immutable font bytes, reopen, fenced publication, reauthorized download and separate local restored output | Formal assets and business grants; cloud recovery |
+| Workbench and Runtime | Canonical client and explicit synthetic local container entry with durable API/worker state and optional host companion | Independent review, platform acceptance, production login, image security and AWS operation |
+| Competition controls | Pinned rule/service catalogs, explicit data admission, per-model routing proofs, shared physical-dispatch reservations and conservative budget ledger | Trusted account/profile approval, cross-process deployment and live verification |
 
-[M0 pre-submission review](docs/m0-review.md) records reproduced defects, fixes
-and preserved trust boundaries. [Traceability](docs/delivery-traceability.md) separates local tests, historical CI
-and live acceptance. Passing synthetic tests does not establish real-case accuracy.
+There is one canonical #36/#38 service/task union and regenerated #39 consumer.
+The undeployed strict consumers migrate together; frozen commands and legacy
+HTTP/invocation success remain covered. `controlled-action-v1` remains separate.
+Legacy `ArtifactManifest` stays unchanged; `FencedArtifactManifest`
+(`artifact-manifest-v2`) carries every context and publication identity.
+See [contract ownership and migration](docs/service-contracts.md).
 
-## Design and reliability
+## Reliability and authority
 
-AI understands documents; deterministic code owns intervals, matrices, arithmetic,
-verification and PDF writing. The existing Controller is a gated workflow; the
-model-selected action policy is future A work. Model prose is neither a calculation
-trace nor approval. Rules are versioned case data, not universal policy inferred
-from one sample district, land-use category or date.
+- Preserve original facts, units, raw text, measured confidence, source version
+  and hash, one-based page and coordinates. Missing or contradictory critical
+  evidence stays `needs_review`; model prose is not calculation or approval.
+- Rules are versioned case-specific data. A sample district or land-use category
+  does not define universal policy. Unknown rules and factors fail explicitly.
+- Human confirmation binds an exact side and preserves confidence, including
+  zero. Correction does not silently confirm or approve. New material requires
+  matching independent approval and new authorized run sources.
+- A model selects only from trusted allowed actions. Failed receipts and unknown
+  external effects retain failed/quarantined evidence and consumed reservations;
+  re-entering the same run must not refill its budget.
+- Original PDFs and downloaded placeholder artifacts remain unchanged. A real
+  writer uses the approved template/map and the same immutable font bytes for
+  measurement and embedding, then reopens and verifies a separate output.
+  Unsupported context coverage never becomes a partial first-context report.
+- A result is visible only through its current committed reference. Lease,
+  attempt, fence, result version, source authorization and independent publication
+  grant must still match. Every download reauthorizes; local revealed values
+  cannot enter the publication writer.
 
-Preserve original text, confidence, observed values, source version/hash, one-based
-page and coordinates. Missing, contradictory or low-confidence critical evidence
-requires review. Explicit human confirmation preserves scores and remains separate
-from exact-material approval. A new revision cannot silently reuse old approval.
-Case facts/cells come from selected forms; rules/applicability come from selected
-criteria. Registered references support procedures, not substitute case facts.
+## Local original KPI1 workbench
 
-The writer produces a new file from a trusted original template and configured
-field coordinates. Multiple comparison contexts are supported by case review, but
-the existing writer accepts only one context. A multiple-context output request
-remains `verified/unsupported_contexts`; it never writes the first comparison as a
-partial report. End-to-end immutable source snapshots remain future work.
+The [controlled original workbench](docs/local-original-workbench.md) adds five
+views over actual local jobs, source PDFs and canonical human responses, with a
+pinned multi-source rule catalog. See [delivery and validation](docs/kpi1-delivery.md)
+for real-data scope and remaining gates. It does not issue rule/material approval
+or claim a complete report, external-model evaluation or cloud acceptance.
 
-## Quick start: real local integration with synthetic inputs
+## Run the configured job and review workbench
 
-Use Python 3.11+ and Linux/macOS for the existing local reviewer operations.
-Run from this checkout; each fixture command requires a fresh output directory.
+The [integrated local runbook](docs/integrated-local-runbook.md) provides the
+repository-local installation, core service, separate privacy bridge and actual
+Chromium commands. Use its fresh synthetic workspace and hash-pinned local OCR
+configuration; it makes no AWS or paid model calls. The exact acceptance status
+and remaining OCR stability or deployment gates remain in
+[project progress](docs/project-progress.md).
 
-```bash
+The workbench opens existing job IDs and uses a manually supplied session token.
+It supports task review, publication/download and local privacy/OCR review; a
+production login, job list and general upload/create flow are not implemented.
+The default AWS Docker entry has no configured execution worker and returns 503.
+Use the separate [local validation stack](docs/local-validation-stack.md) for the
+explicit synthetic frontend/API/worker composition. Its host-companion mode
+keeps original documents, mappings and restoration authority on the host. This
+does not supply production identity, general operator provisioning or an AWS
+deployment. See [architecture](docs/architecture.md).
+
+## Run the existing local reference service
+
+This established synthetic local facade is distinct from the new integrated
+job/task/privacy/browser rehearsal. It uses actual parser/review/PDF code with
+isolated synthetic assets and no AWS or model calls. It does not establish
+production identity, formal font approval or full integrated-service acceptance.
+
+```sh
 python3 -m venv .venv
-source .venv/bin/activate
+. .venv/bin/activate
 python -m pip install -e '.[dev]'
 export PYTHONPATH="$PWD/src"
 python scripts/local_service_smoke.py
@@ -69,91 +107,43 @@ export APPRAISAL_LOCAL_CONFIG="$PWD/artifacts/local-demo/config.json"
 uvicorn appraisal_review.local_service:app_from_environment --factory --host 127.0.0.1 --port 8000
 ```
 
-In another terminal with the same environment:
+Use a fresh fixture/output directory for each run. The fixture write and blocked
+requests, invocation parity and source-preservation checks are described in the
+[local service runbook](docs/local-service-runbook.md). Missing configuration
+fails closed; it never selects synthetic material or grants approval implicitly.
+The fake-writer demo's `completed` scenario remains `verified/simulated` and
+creates no PDF.
 
-```bash
-curl -fsS http://127.0.0.1:8000/health
-curl -fsS http://127.0.0.1:8000/v1/reviews -H 'Content-Type: application/json' --data-binary @artifacts/local-demo/request.json
-python -m appraisal_review.local_service invoke --config artifacts/local-demo/config.json --request artifacts/local-demo/request.json
-python -m appraisal_review.local_service run --config artifacts/local-demo/config.json --request artifacts/local-demo/request-write.json
-python -m appraisal_review.local_service run --config artifacts/local-demo/config-needs-review.json --request artifacts/local-demo/request-write.json
-```
+The configured `create_integrated_service` composition has a separate reproducible
+[runbook](docs/integrated-local-runbook.md). Its evidence distinguishes the accepted
+local core scenarios, the single completed privacy run and open cloud acceptance.
+[Architecture](docs/architecture.md) separates the local composition from the AWS
+target.
 
-The write command creates `artifacts/local-demo/output/completed.pdf`; the blocked
-command creates no new file. A repeat successful write to the same destination is
-rejected by default. Use a fresh directory/output for each run. The smoke command
-uses disposable files and also checks actual localhost HTTP, invocation parity,
-validation/configuration failures, source preservation and reopened PDF manifests.
+## Verification and delivery
 
-These fixtures generate their own synthetic PDFs and isolated test receipt, use
-an explicit redistributable Latin test font and keep raw confidence at zero through
-explicit test confirmation. They do not approve user documents or call a model.
-For your own allowlisted documents, prepared material and reviewed template/font,
-follow the [local service runbook](docs/local-service-runbook.md). No writer/font
-is required for review-only use. No missing configuration falls back to fixtures.
-
-## Public and reserved boundaries
-
-GET /health, POST /v1/validate, POST /v1/reviews and the invocation adapter keep their
-existing JSON and error shapes. The service-v1 result is a separate local `run`
-facade. Actual statuses remain verified/not_requested, verified/unavailable,
-verified/simulated and completed/written. A successful execution may need human
-review and retain findings without a PDF.
-
-The durable review-jobs group is now mounted: POST /v1/review-jobs accepts a
-submission with 202 once the job and its outbox entry are persisted, and
-GET /v1/review-jobs/{job_id}, GET /v1/review-jobs/{job_id}/result and
-POST /v1/review-jobs/{job_id}/cancel serve the same principal. It runs over an
-injected store, and only an in-memory reference adapter exists: state does not
-survive the process, and there is no DynamoDB, queue, dead-letter queue or alarm
-yet. Without a configured store and authenticator the routes answer
-capability_unavailable rather than a fabricated acceptance. See
-[ADR 0015](docs/adr/0015-durable-review-jobs.md).
-
-The [shared service contract](docs/service-contracts.md),
-[schema](schemas/service-v1.json) and [fixtures](examples/service-v1/README.md)
-are the common handoff for A–E. Document/task/download API groups remain reserved
-contracts; no fake-success endpoints are mounted. The local OS reviewer is not
-an Internet authentication service.
-
-## Verification
-
-```bash
+```sh
 ruff check .
 ruff format --check .
 mypy src
-pytest --cov=appraisal_review --cov-config=pyproject.toml --cov-report=term-missing
+pytest
 python -m pytest cloud_tests
-python scripts/http_smoke.py
-python scripts/local_service_smoke.py
-python -m pip install -r cloud_tests/requirements-dev.txt
-cfn-lint cloud_tests/image-stack.json cloud_tests/runtime-stack.json
 python scripts/check_submission.py --base origin/main
 ```
 
-Existing fake-writer demonstrations remain available through
-`python -m appraisal_review.demo completed`: this compatibility scenario is
-`verified/simulated`, creates no PDF and is separate from the real local smoke.
+Run additional frontend generation/verification, package/container checks and
+CloudFormation lint for the affected delivery scope. Schema regeneration is part
+of the coordinated migration, not evidence that an older strict client remains
+compatible. CI at an exact pushed head, local tests, SDK/emulator results and
+live AWS/browser observations must be reported separately. A job blocked before
+CI startup is not a green test run.
 
-## Architecture and next work
+Do not commit real cases, original competition PDFs, mappings, credentials,
+private URLs, generated PDFs or execution artifacts. Use explicit isolated
+synthetic approvals only for tests. See [data handling](docs/data-handling.md),
+[submission checks](docs/submission-checks.md), [the ADR registry](docs/adr/README.md)
+and [cloud acceptance](docs/cloud-acceptance.md).
 
-See [current and target architecture](docs/architecture.md),
-[A–E ownership and M0–M3](docs/mvp-plan.md), [PDF contract](docs/pdf-contract.md),
-[document preparation](docs/member-a-runbook.md), [cloud smoke](cloud_tests/README.md)
-and [competition requirements](docs/competition-requirements.md).
-The [document transfer contract](docs/document-transfer.md) and
-[storage runbook](infra/documents/README.md) describe the new C2 service boundary.
-
-Target AWS integration uses authorized document IDs, controlled S3 transfer,
-durable jobs/tasks/outbox, SQS, dispatcher, Runtime, Bedrock and fenced manifest
-publication. Human waiting persists a task and ends the attempt; a response starts
-a newly authorized revision/run. Runtime is not a state store, CloudWatch is not
-domain audit, and Bedrock cannot bypass deterministic gates. Current CDK and smoke
-files are preparation, not evidence of deployed resources.
-
-Real model trials require designated profile/SSO, Region, expected account/role and
-model access. M0 needs no AWS call. Formal CJK fonts/templates and independent
-complete-case acceptance still require controlled inputs and human review. No real
-source PDFs, OCR dumps, receipts, keys, generated PDFs or private URIs enter Git.
-Dependency licensing and sensitive inputs remain governed by
-[data handling](docs/data-handling.md).
+Earlier main SHA, branch, CI and milestone claims are preserved in the
+[historical delivery snapshots](docs/history/2026-09-11-pre-convergence/README.md).
+They do not describe the current integration checkout or its acceptance.

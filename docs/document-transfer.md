@@ -1,5 +1,18 @@
 # Authorized document transfer (C2 / Issue #27)
 
+Current integration note, 2026-09-11: this service is included in merged
+[PR #45](https://github.com/chengruchou/newtaipei-appraisal-review-ai/pull/45),
+main `d148422adb18190bada93b8588a4e34d73e3c2e4`. The integrated local workflow
+uses authorized sanitized documents and persistent service state. The contract
+below remains applicable; historical component-only acceptance notes do not
+establish current AWS acceptance. Product document onboarding remains in
+[#25](https://github.com/chengruchou/newtaipei-appraisal-review-ai/issues/25),
+guarded cloud composition in
+[#30](https://github.com/chengruchou/newtaipei-appraisal-review-ai/issues/30),
+and deployed acceptance in
+[#31](https://github.com/chengruchou/newtaipei-appraisal-review-ai/issues/31).
+See the [implementation backlog](implementation-backlog.md).
+
 ## Service contract
 
 `DocumentTransferService` is a synchronous controlled ingestion and resolution

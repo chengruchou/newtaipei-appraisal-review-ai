@@ -22,6 +22,13 @@ from pydantic import (
 
 Identifier = Annotated[str, StringConstraints(strict=True, strip_whitespace=True, min_length=1)]
 
+# An opaque de-identification token written verbatim into cloud artifacts. The
+# writer never resolves it; original values exist only in local backfill
+# configuration. ASCII-only so approved fonts always cover it.
+PlaceholderToken = Annotated[
+    str, StringConstraints(strict=True, pattern=r"^APR-PH-[A-Z0-9][A-Z0-9-]{7,62}$")
+]
+
 
 class PDFErrorCode(StrEnum):
     UNSUPPORTED_URI = "unsupported_document_uri"
@@ -114,7 +121,14 @@ class PDFField(PDFModel):
     bounding_box: tuple[float, float, float, float]
     max_characters: int | None = Field(default=None, ge=1, strict=True)
     value_ref: PDFValueRef | None = None
+    placeholder_token: PlaceholderToken | None = None
     operation: Literal["fill_blank", "annotate", "correct"] = "fill_blank"
+
+    @model_validator(mode="after")
+    def one_value_source(self) -> PDFField:
+        if self.value_ref is not None and self.placeholder_token is not None:
+            raise ValueError("A field binds a value reference or a placeholder token, not both")
+        return self
 
     @field_validator("bounding_box")
     @classmethod

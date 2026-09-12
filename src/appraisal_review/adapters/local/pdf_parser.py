@@ -83,9 +83,17 @@ class LocalPDFParser:
         )
 
     def _parse(self, uri: str) -> ParsedDocument:
+        spec, data = self._load(uri)
+        return self.parse_bytes(data, spec, uri=uri)
+
+    def parse_bytes(self, data: bytes, spec: DocumentInput, *, uri: str) -> ParsedDocument:
+        """Parse already-authorized immutable bytes; this path never opens spec.path."""
         import pymupdf
 
-        spec, data = self._load(uri)
+        if len(data) > self.max_bytes or not data.startswith(b"%PDF-"):
+            raise ValueError("Unsupported PDF or size limit")
+        if spec.expected_hash and hashlib.sha256(data).hexdigest() != spec.expected_hash:
+            raise ValueError("Source hash changed")
         with pymupdf.open(stream=data, filetype="pdf") as pdf:  # type: ignore[no-untyped-call]
             if pdf.needs_pass or not 0 < len(pdf) <= self.max_pages:
                 raise ValueError("Encrypted or oversized PDF")

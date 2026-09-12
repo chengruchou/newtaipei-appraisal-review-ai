@@ -7,7 +7,37 @@ from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 
 from appraisal_review.adapters.local.pdf_config import PDFRenderConfig
 from appraisal_review.domain.factor_models import FactorReviewResult, Grade
-from appraisal_review.domain.pdf_models import PDFFieldPlacementError, PDFValueRef
+from appraisal_review.domain.pdf_models import (
+    PDFFieldPlacementError,
+    PDFValueRef,
+    PDFWriteRequest,
+)
+
+
+def select_comparison(request: PDFWriteRequest, reference: PDFValueRef) -> FactorReviewResult:
+    """Choose the one verified comparison a field reference is bound to.
+
+    A legacy single-context request without a bound context keeps resolving in
+    its only result. Every context-bound request resolves each reference to
+    exactly one comparison; ambiguity or absence fails before any mutation.
+    """
+    comparisons = request.comparisons()
+    if not request.additional_results and request.result.context is None:
+        return request.result
+    matching = [
+        comparison
+        for comparison in comparisons
+        if comparison.context is not None
+        and (reference.scope, reference.target_id, reference.comparable_id)
+        == (
+            comparison.context.scope,
+            comparison.context.target_id,
+            comparison.context.comparable_id,
+        )
+    ]
+    if len(matching) != 1:
+        raise PDFFieldPlacementError("Field reference does not match verified comparison")
+    return matching[0]
 
 
 class PDFValueFormatter:

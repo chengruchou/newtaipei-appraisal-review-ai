@@ -1,0 +1,25 @@
+{
+  "schema_version": "local-privacy-v1",
+  "case_id": "00000000-0000-4000-8000-000000000001",
+  "document_id": "00000000-0000-4000-8000-000000000002",
+  "snapshot_id": "00000000-0000-4000-8000-000000000003",
+  "source_revision": 1,
+  "source_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "byte_size": 100,
+  "pages": [
+    {
+      "number": 1,
+      "width": 600.0,
+      "height": 800.0,
+      "coordinate_system": "pdf_bottom_left",
+      "page_space": "unrotated_crop_box",
+      "rotation": 0,
+      "crop_box": [
+        0.0,
+        0.0,
+        600.0,
+        800.0
+      ]
+    }
+  ]
+}

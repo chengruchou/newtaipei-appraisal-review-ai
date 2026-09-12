@@ -1,0 +1,84 @@
+{
+  "schema_version": "evaluation-v1",
+  "dataset_id": "synthetic-contracts",
+  "dataset_version": "v1",
+  "dataset_digest": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+  "dataset_kind": "synthetic",
+  "execution_kind": "mocked",
+  "split": "development",
+  "split_digest": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+  "golden_digest": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+  "golden_schema_version": "synthetic-v1",
+  "adjudication": "synthetic_expectations",
+  "inputs": [
+    {
+      "schema_version": "extraction-v1",
+      "source": {
+        "schema_version": "extraction-v1",
+        "document": {
+          "schema_version": "service-v1",
+          "case_id": "synthetic-case",
+          "document_id": "synthetic-forms",
+          "version": "v1",
+          "content_hash": "0a5d3bef47afd27b9a4ad381a2f40c82f42b25e247d4368027b463e0b1d7c39b",
+          "purpose": "forms"
+        },
+        "privacy_contract_version": "privacy-v1",
+        "privacy_manifest_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "page_count": 2
+      },
+      "pages": [
+        2,
+        1
+      ]
+    }
+  ],
+  "pipeline_version": "synthetic-v1",
+  "prompt_version": "synthetic-prompt-v1",
+  "prompt_digest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "proposal_schema_digest": "1111111111111111111111111111111111111111111111111111111111111111",
+  "rendering_configuration_digest": "2222222222222222222222222222222222222222222222222222222222222222",
+  "configuration": {
+    "schema_version": "extraction-v1",
+    "provider": "synthetic",
+    "model_id": "synthetic-model",
+    "region": "synthetic-region",
+    "api": "synthetic-api",
+    "routing_regions": [
+      "synthetic-region"
+    ],
+    "temperature": 0.0,
+    "max_output_tokens": 1000
+  },
+  "budget": {
+    "schema_version": "extraction-v1",
+    "max_pages": 2,
+    "max_calls": 4,
+    "max_attempts_per_page": 2,
+    "max_concurrency": 1,
+    "max_input_bytes": 100000,
+    "max_context_characters": 5000,
+    "max_output_tokens": 4000,
+    "max_elapsed_seconds": 60.0
+  },
+  "scoring": {
+    "schema_version": "extraction-v1",
+    "policy_version": "synthetic-v1",
+    "policy_digest": "3333333333333333333333333333333333333333333333333333333333333333",
+    "matching": "one_to_one_identity",
+    "denominator": "all_scheduled_eligible_cases",
+    "zero_denominator": "null",
+    "strings": "exact",
+    "numeric_absolute_tolerance": "0",
+    "numeric_relative_tolerance": "0",
+    "unit_policy": "exact",
+    "unit_policy_digest": null,
+    "missing_states": "distinct",
+    "localization": "not_measured",
+    "minimum_iou": null,
+    "acceptance_thresholds_digest": null
+  },
+  "repeats": 1,
+  "timing_scope": "provider_only",
+  "cost_policy": null
+}

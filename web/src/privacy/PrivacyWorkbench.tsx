@@ -9,6 +9,10 @@ import {
 import { PageReview } from "./PageReview";
 import { RegionEditor } from "./RegionEditor";
 import { PdfPreview } from "./PdfPreview";
+import { OcrReview } from "./OcrReview";
+import { OcrReviewRequired } from "./ocr-review-client";
+import { LocalFailureDetails } from "./LocalFailureDetails";
+import type { PrivacyDiagnostic } from "./diagnostics";
 
 /** Mount separately from cloud review routes; the bridge session remains in component memory. */
 export function PrivacyWorkbench({ bridgeBase }: { bridgeBase: string }) {
@@ -80,9 +84,14 @@ export function PrivacyReviewPanel({ client }: { client: LocalPrivacyClient }) {
   const [exactConfirmed, setExactConfirmed] = useState(false);
   const [resultId, setResultId] = useState("");
   const [restoredUrl, setRestoredUrl] = useState<string | null>(null);
+  const [ocrReview, setOcrReview] = useState<{ id: string; attempt: number } | null>(null);
+  const [ocrReady, setOcrReady] = useState(false);
+  const [restoring, setRestoring] = useState(false);
+  const [restoreDiagnostic, setRestoreDiagnostic] = useState<PrivacyDiagnostic | null>(null);
+  const restoreAttempt = useRef(0);
   const ownedUrls = useRef(new Set<string>());
   const uncertain = exportState === "unknown" || exportState === "attempted";
-  const locked = busy || needsReload || uncertain;
+  const locked = busy || needsReload || uncertain || ocrReview !== null;
 
   function localUrl(blob: Blob) {
     const url = URL.createObjectURL(blob);
@@ -197,8 +206,13 @@ export function PrivacyReviewPanel({ client }: { client: LocalPrivacyClient }) {
     }
   }
   async function restore() {
+    setRestoreDiagnostic(null);
     setBusy(true);
+    setRestoring(true);
     setMessage("");
+    setOcrReady(false);
+    setOcrReview(null);
+    restoreAttempt.current += 1;
     if (restoredUrl) {
       URL.revokeObjectURL(restoredUrl);
       ownedUrls.current.delete(restoredUrl);
@@ -207,12 +221,18 @@ export function PrivacyReviewPanel({ client }: { client: LocalPrivacyClient }) {
     try {
       const result = await client.restore(resultId);
       setRestoredUrl(localUrl(await client.restoredPdf(result)));
-    } catch {
-      setMessage(
-        "The local result could not be authorized or restored. No restored PDF is available.",
-      );
+    } catch (error) {
+      if (error instanceof OcrReviewRequired) {
+        setOcrReview({ id: error.reviewId, attempt: restoreAttempt.current });
+      } else {
+        setRestoreDiagnostic(error instanceof BridgeError ? (error.diagnostic ?? null) : null);
+        setMessage(
+          "The local result could not be authorized or restored. No restored PDF is available.",
+        );
+      }
     } finally {
       setBusy(false);
+      setRestoring(false);
     }
   }
   const allPagesReviewed =
@@ -247,7 +267,10 @@ export function PrivacyReviewPanel({ client }: { client: LocalPrivacyClient }) {
           Open selected source
         </button>
       </fieldset>
-      <button disabled={busy || uncertain} onClick={() => void review(() => client.reload())}>
+      <button
+        disabled={busy || uncertain || ocrReview !== null}
+        onClick={() => void review(() => client.reload())}
+      >
         Reload current local review
       </button>
       {snapshot ? (
@@ -344,12 +367,33 @@ export function PrivacyReviewPanel({ client }: { client: LocalPrivacyClient }) {
       ) : null}
       <fieldset disabled={busy || uncertain}>
         <legend>Restore an authorized result locally</legend>
+        <LocalFailureDetails diagnostic={restoreDiagnostic} />
+        {restoring ? (
+          <p role="status">Checking the authorized document and its OCR locally…</p>
+        ) : null}
         <label>
           Authorized result identifier
-          <input value={resultId} onChange={(e) => setResultId(e.target.value)} />
+          <input
+            disabled={ocrReview !== null}
+            value={resultId}
+            onChange={(e) => {
+              setResultId(e.target.value);
+              setRestoreDiagnostic(null);
+              setOcrReview(null);
+              setOcrReady(false);
+              if (restoredUrl) {
+                URL.revokeObjectURL(restoredUrl);
+                ownedUrls.current.delete(restoredUrl);
+                setRestoredUrl(null);
+              }
+            }}
+          />
         </label>
         <button
-          disabled={!/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(resultId)}
+          disabled={
+            !/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(resultId) ||
+            (ocrReview !== null && !ocrReady)
+          }
           onClick={() => void restore()}
         >
           Restore result through local bridge
@@ -360,6 +404,22 @@ export function PrivacyReviewPanel({ client }: { client: LocalPrivacyClient }) {
           </a>
         ) : null}
       </fieldset>
+      {ocrReview ? (
+        <OcrReview
+          key={`${ocrReview.id}:${ocrReview.attempt}`}
+          client={client.ocrReviews}
+          reviewId={ocrReview.id}
+          resultId={resultId}
+          onReady={setOcrReady}
+          onRestarted={() => {
+            setOcrReview(null);
+            setOcrReady(false);
+            setMessage(
+              "Previous local OCR confirmations were invalidated and their evidence retained. Restore this result explicitly to begin a fresh review.",
+            );
+          }}
+        />
+      ) : null}
     </article>
   );
 }

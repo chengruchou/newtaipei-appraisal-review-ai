@@ -1,0 +1,1620 @@
+{
+  "$defs": {
+    "ArithmeticCheck": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "sum",
+            "equals"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "inputs": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Inputs",
+          "type": "array"
+        },
+        "target": {
+          "title": "Target",
+          "type": "string"
+        },
+        "quantum": {
+          "default": "0.01",
+          "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+          "title": "Quantum",
+          "type": "string"
+        },
+        "tolerance": {
+          "default": "0",
+          "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+          "title": "Tolerance",
+          "type": "string"
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/SourceCitation"
+          },
+          "minItems": 1,
+          "title": "Evidence",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "inputs",
+        "target",
+        "evidence"
+      ],
+      "title": "ArithmeticCheck",
+      "type": "object"
+    },
+    "AttemptTelemetry": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "extraction-v1",
+          "default": "extraction-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "attempt": {
+          "minimum": 1,
+          "title": "Attempt",
+          "type": "integer"
+        },
+        "completion": {
+          "enum": [
+            "returned",
+            "failed",
+            "unknown"
+          ],
+          "title": "Completion",
+          "type": "string"
+        },
+        "failure": {
+          "anyOf": [
+            {
+              "enum": [
+                "unauthorized_source",
+                "privacy_unavailable",
+                "source_changed",
+                "unsupported_input",
+                "unsupported_capability",
+                "budget_exhausted",
+                "access_denied",
+                "configuration_error",
+                "throttled",
+                "service_unavailable",
+                "timeout",
+                "refused",
+                "truncated_output",
+                "malformed_output",
+                "invalid_source_reference",
+                "provider_error"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Failure"
+        },
+        "input_tokens": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Input Tokens"
+        },
+        "output_tokens": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Output Tokens"
+        },
+        "elapsed_seconds": {
+          "minimum": 0,
+          "title": "Elapsed Seconds",
+          "type": "number"
+        },
+        "backoff_seconds": {
+          "minimum": 0,
+          "title": "Backoff Seconds",
+          "type": "number"
+        }
+      },
+      "required": [
+        "attempt",
+        "completion",
+        "failure",
+        "input_tokens",
+        "output_tokens",
+        "elapsed_seconds",
+        "backoff_seconds"
+      ],
+      "title": "AttemptTelemetry",
+      "type": "object"
+    },
+    "CategoryBand": {
+      "additionalProperties": false,
+      "properties": {
+        "grade": {
+          "$ref": "#/$defs/Grade"
+        },
+        "values": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Values",
+          "type": "array"
+        }
+      },
+      "required": [
+        "grade",
+        "values"
+      ],
+      "title": "CategoryBand",
+      "type": "object"
+    },
+    "ComparisonContext": {
+      "additionalProperties": false,
+      "properties": {
+        "scope": {
+          "enum": [
+            "regional",
+            "individual"
+          ],
+          "title": "Scope",
+          "type": "string"
+        },
+        "target_id": {
+          "minLength": 1,
+          "title": "Target Id",
+          "type": "string"
+        },
+        "comparable_id": {
+          "minLength": 1,
+          "title": "Comparable Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "scope",
+        "target_id",
+        "comparable_id"
+      ],
+      "title": "ComparisonContext",
+      "type": "object"
+    },
+    "CorrectionMatrix": {
+      "additionalProperties": false,
+      "properties": {
+        "row_axis": {
+          "const": "target_grade",
+          "default": "target_grade",
+          "title": "Row Axis",
+          "type": "string"
+        },
+        "column_axis": {
+          "const": "comparable_grade",
+          "default": "comparable_grade",
+          "title": "Column Axis",
+          "type": "string"
+        },
+        "values": {
+          "additionalProperties": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object"
+          },
+          "title": "Values",
+          "type": "object"
+        }
+      },
+      "required": [
+        "values"
+      ],
+      "title": "CorrectionMatrix",
+      "type": "object"
+    },
+    "DocumentReference": {
+      "additionalProperties": false,
+      "description": "External identity: no caller-selected storage URI or asserted authority.",
+      "properties": {
+        "schema_version": {
+          "const": "service-v1",
+          "default": "service-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "case_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+          "title": "Case Id",
+          "type": "string"
+        },
+        "document_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+          "title": "Document Id",
+          "type": "string"
+        },
+        "version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+          "title": "Version",
+          "type": "string"
+        },
+        "content_hash": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Content Hash",
+          "type": "string"
+        },
+        "purpose": {
+          "enum": [
+            "criteria",
+            "forms",
+            "reference",
+            "brief",
+            "template"
+          ],
+          "title": "Purpose",
+          "type": "string"
+        }
+      },
+      "required": [
+        "case_id",
+        "document_id",
+        "version",
+        "content_hash",
+        "purpose"
+      ],
+      "title": "DocumentReference",
+      "type": "object"
+    },
+    "EmptyColumn": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/SourceCitation"
+          },
+          "minItems": 1,
+          "title": "Evidence",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "evidence"
+      ],
+      "title": "EmptyColumn",
+      "type": "object"
+    },
+    "EvidenceRef": {
+      "additionalProperties": false,
+      "description": "Location and confidence for a value found in a source document.",
+      "properties": {
+        "document_id": {
+          "title": "Document Id",
+          "type": "string"
+        },
+        "source_file": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source File"
+        },
+        "page": {
+          "minimum": 1,
+          "title": "Page",
+          "type": "integer"
+        },
+        "block_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Block Ids",
+          "type": "array"
+        },
+        "confidence": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "bounding_box": {
+          "anyOf": [
+            {
+              "maxItems": 4,
+              "minItems": 4,
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Bounding Box"
+        },
+        "coordinate_system": {
+          "anyOf": [
+            {
+              "enum": [
+                "ocr_top_left",
+                "pdf_bottom_left"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Coordinate System"
+        }
+      },
+      "required": [
+        "document_id",
+        "page",
+        "confidence"
+      ],
+      "title": "EvidenceRef",
+      "type": "object"
+    },
+    "EvidencedPair": {
+      "additionalProperties": false,
+      "properties": {
+        "context": {
+          "$ref": "#/$defs/ComparisonContext"
+        },
+        "pair": {
+          "$ref": "#/$defs/FactorPair"
+        },
+        "target_sources": {
+          "items": {
+            "$ref": "#/$defs/SourceCitation"
+          },
+          "title": "Target Sources",
+          "type": "array"
+        },
+        "comparable_sources": {
+          "items": {
+            "$ref": "#/$defs/SourceCitation"
+          },
+          "title": "Comparable Sources",
+          "type": "array"
+        },
+        "target_reliability": {
+          "$ref": "#/$defs/Reliability"
+        },
+        "comparable_reliability": {
+          "$ref": "#/$defs/Reliability"
+        }
+      },
+      "required": [
+        "context",
+        "pair",
+        "target_sources",
+        "comparable_sources",
+        "target_reliability",
+        "comparable_reliability"
+      ],
+      "title": "EvidencedPair",
+      "type": "object"
+    },
+    "ExtractionContext": {
+      "additionalProperties": false,
+      "description": "Closed context projection; no case identity strings or prior model prose.",
+      "properties": {
+        "schema_version": {
+          "const": "extraction-v1",
+          "default": "extraction-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "language": {
+          "enum": [
+            "zh-Hant",
+            "en"
+          ],
+          "title": "Language",
+          "type": "string"
+        },
+        "task": {
+          "enum": [
+            "propose_rules",
+            "propose_case",
+            "inspect_reference"
+          ],
+          "title": "Task",
+          "type": "string"
+        }
+      },
+      "required": [
+        "language",
+        "task"
+      ],
+      "title": "ExtractionContext",
+      "type": "object"
+    },
+    "FactConfirmation": {
+      "additionalProperties": false,
+      "properties": {
+        "protocol": {
+          "const": "local-review-v1",
+          "default": "local-review-v1",
+          "title": "Protocol",
+          "type": "string"
+        },
+        "reviewer": {
+          "minLength": 1,
+          "title": "Reviewer",
+          "type": "string"
+        },
+        "input_digest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Input Digest",
+          "type": "string"
+        }
+      },
+      "required": [
+        "reviewer",
+        "input_digest"
+      ],
+      "title": "FactConfirmation",
+      "type": "object"
+    },
+    "FactorObservation": {
+      "additionalProperties": false,
+      "properties": {
+        "raw_text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Raw Text"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/NormalizedValue"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/EvidenceRef"
+          },
+          "title": "Evidence",
+          "type": "array"
+        },
+        "confidence": {
+          "default": 0.0,
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Confidence",
+          "type": "number"
+        }
+      },
+      "title": "FactorObservation",
+      "type": "object"
+    },
+    "FactorPair": {
+      "additionalProperties": false,
+      "properties": {
+        "factor_id": {
+          "title": "Factor Id",
+          "type": "string"
+        },
+        "target": {
+          "$ref": "#/$defs/FactorObservation"
+        },
+        "comparable": {
+          "$ref": "#/$defs/FactorObservation"
+        }
+      },
+      "required": [
+        "factor_id",
+        "target",
+        "comparable"
+      ],
+      "title": "FactorPair",
+      "type": "object"
+    },
+    "FactorRule": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "factor_id": {
+          "title": "Factor Id",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "numeric_interval",
+            "distance_interval",
+            "category",
+            "presence_distance"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "unit": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Unit"
+        },
+        "intervals": {
+          "items": {
+            "$ref": "#/$defs/IntervalBand"
+          },
+          "title": "Intervals",
+          "type": "array"
+        },
+        "categories": {
+          "items": {
+            "$ref": "#/$defs/CategoryBand"
+          },
+          "title": "Categories",
+          "type": "array"
+        },
+        "correction_matrix": {
+          "$ref": "#/$defs/CorrectionMatrix"
+        },
+        "critical": {
+          "default": true,
+          "title": "Critical",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "factor_id",
+        "kind",
+        "correction_matrix"
+      ],
+      "title": "FactorRule",
+      "type": "object"
+    },
+    "Grade": {
+      "enum": [
+        "excellent",
+        "slightly_superior",
+        "normal",
+        "slightly_inferior",
+        "inferior"
+      ],
+      "title": "Grade",
+      "type": "string"
+    },
+    "HandoffLocation": {
+      "additionalProperties": false,
+      "description": "Page-only location is valid when no trustworthy region or field is known.",
+      "properties": {
+        "schema_version": {
+          "const": "extraction-v1",
+          "default": "extraction-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "page": {
+          "minimum": 1,
+          "title": "Page",
+          "type": "integer"
+        },
+        "region_id": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Region Id"
+        },
+        "field_id": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Field Id"
+        }
+      },
+      "required": [
+        "page"
+      ],
+      "title": "HandoffLocation",
+      "type": "object"
+    },
+    "HandoffRequest": {
+      "additionalProperties": false,
+      "description": "A request for #17/#24, never a HumanTask, confirmation or approval.",
+      "properties": {
+        "schema_version": {
+          "const": "extraction-v1",
+          "default": "extraction-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "request": {
+          "$ref": "#/$defs/PageRequest"
+        },
+        "reason": {
+          "enum": [
+            "missing",
+            "low_confidence",
+            "conflicting",
+            "unsupported",
+            "page_failed"
+          ],
+          "title": "Reason",
+          "type": "string"
+        },
+        "locations": {
+          "items": {
+            "$ref": "#/$defs/HandoffLocation"
+          },
+          "minItems": 1,
+          "title": "Locations",
+          "type": "array"
+        }
+      },
+      "required": [
+        "request",
+        "reason",
+        "locations"
+      ],
+      "title": "HandoffRequest",
+      "type": "object"
+    },
+    "IntervalBand": {
+      "additionalProperties": false,
+      "properties": {
+        "grade": {
+          "$ref": "#/$defs/Grade"
+        },
+        "minimum": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Minimum"
+        },
+        "minimum_inclusive": {
+          "default": true,
+          "title": "Minimum Inclusive",
+          "type": "boolean"
+        },
+        "maximum": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Maximum"
+        },
+        "maximum_inclusive": {
+          "default": false,
+          "title": "Maximum Inclusive",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "grade"
+      ],
+      "title": "IntervalBand",
+      "type": "object"
+    },
+    "InventoryContext": {
+      "additionalProperties": false,
+      "properties": {
+        "context": {
+          "$ref": "#/$defs/ComparisonContext"
+        },
+        "factor_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Factor Ids",
+          "type": "array"
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/SourceCitation"
+          },
+          "minItems": 1,
+          "title": "Evidence",
+          "type": "array"
+        }
+      },
+      "required": [
+        "context",
+        "factor_ids",
+        "evidence"
+      ],
+      "title": "InventoryContext",
+      "type": "object"
+    },
+    "NormalizedValue": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "enum": [
+            "number",
+            "text",
+            "category",
+            "boolean"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            }
+          ],
+          "title": "Value"
+        },
+        "unit": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Unit"
+        }
+      },
+      "required": [
+        "type",
+        "value"
+      ],
+      "title": "NormalizedValue",
+      "type": "object"
+    },
+    "ObservedValue": {
+      "additionalProperties": false,
+      "properties": {
+        "slot_id": {
+          "title": "Slot Id",
+          "type": "string"
+        },
+        "state": {
+          "enum": [
+            "present",
+            "blank",
+            "missing",
+            "not_present",
+            "not_applicable"
+          ],
+          "title": "State",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value"
+        },
+        "unit": {
+          "anyOf": [
+            {
+              "enum": [
+                "percent_points",
+                "ratio",
+                "grade"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Unit"
+        },
+        "raw_text": {
+          "title": "Raw Text",
+          "type": "string"
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/SourceCitation"
+          },
+          "title": "Evidence",
+          "type": "array"
+        }
+      },
+      "required": [
+        "slot_id",
+        "state",
+        "raw_text"
+      ],
+      "title": "ObservedValue",
+      "type": "object"
+    },
+    "PageOutcome": {
+      "additionalProperties": false,
+      "description": "Success means a candidate was produced, not that facts are verified.",
+      "properties": {
+        "schema_version": {
+          "const": "extraction-v1",
+          "default": "extraction-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "request": {
+          "$ref": "#/$defs/PageRequest"
+        },
+        "status": {
+          "enum": [
+            "candidate",
+            "failed"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "proposal": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PageProposal"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "failure": {
+          "anyOf": [
+            {
+              "enum": [
+                "unauthorized_source",
+                "privacy_unavailable",
+                "source_changed",
+                "unsupported_input",
+                "unsupported_capability",
+                "budget_exhausted",
+                "access_denied",
+                "configuration_error",
+                "throttled",
+                "service_unavailable",
+                "timeout",
+                "refused",
+                "truncated_output",
+                "malformed_output",
+                "invalid_source_reference",
+                "provider_error"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Failure"
+        },
+        "telemetry": {
+          "$ref": "#/$defs/ProviderTelemetry"
+        },
+        "handoffs": {
+          "items": {
+            "$ref": "#/$defs/HandoffRequest"
+          },
+          "title": "Handoffs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "request",
+        "status",
+        "proposal",
+        "failure",
+        "telemetry",
+        "handoffs"
+      ],
+      "title": "PageOutcome",
+      "type": "object"
+    },
+    "PageProposal": {
+      "additionalProperties": false,
+      "description": "Only proposed values, never approval receipts or executable instructions.",
+      "properties": {
+        "accounted_table_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Accounted Table Ids",
+          "type": "array"
+        },
+        "rules": {
+          "items": {
+            "$ref": "#/$defs/ProposedRule"
+          },
+          "title": "Rules",
+          "type": "array"
+        },
+        "contexts": {
+          "items": {
+            "$ref": "#/$defs/InventoryContext"
+          },
+          "title": "Contexts",
+          "type": "array"
+        },
+        "pairs": {
+          "items": {
+            "$ref": "#/$defs/EvidencedPair"
+          },
+          "title": "Pairs",
+          "type": "array"
+        },
+        "observed": {
+          "items": {
+            "$ref": "#/$defs/ObservedValue"
+          },
+          "title": "Observed",
+          "type": "array"
+        },
+        "slots": {
+          "items": {
+            "$ref": "#/$defs/ReviewSlot"
+          },
+          "title": "Slots",
+          "type": "array"
+        },
+        "checks": {
+          "items": {
+            "$ref": "#/$defs/ArithmeticCheck"
+          },
+          "title": "Checks",
+          "type": "array"
+        },
+        "empty_columns": {
+          "items": {
+            "$ref": "#/$defs/EmptyColumn"
+          },
+          "title": "Empty Columns",
+          "type": "array"
+        },
+        "unresolved": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Unresolved",
+          "type": "array"
+        },
+        "unsupported": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Unsupported",
+          "type": "array"
+        }
+      },
+      "title": "PageProposal",
+      "type": "object"
+    },
+    "PageRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "extraction-v1",
+          "default": "extraction-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "run": {
+          "$ref": "#/$defs/RunReference"
+        },
+        "source": {
+          "$ref": "#/$defs/SanitizedSourceReference"
+        },
+        "page": {
+          "minimum": 1,
+          "title": "Page",
+          "type": "integer"
+        },
+        "context": {
+          "$ref": "#/$defs/ExtractionContext"
+        }
+      },
+      "required": [
+        "run",
+        "source",
+        "page",
+        "context"
+      ],
+      "title": "PageRequest",
+      "type": "object"
+    },
+    "ProposedRule": {
+      "additionalProperties": false,
+      "properties": {
+        "scope": {
+          "enum": [
+            "regional",
+            "individual"
+          ],
+          "title": "Scope",
+          "type": "string"
+        },
+        "rule": {
+          "$ref": "#/$defs/FactorRule"
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/SourceCitation"
+          },
+          "minItems": 1,
+          "title": "Evidence",
+          "type": "array"
+        },
+        "unresolved": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Unresolved",
+          "type": "array"
+        }
+      },
+      "required": [
+        "scope",
+        "rule",
+        "evidence"
+      ],
+      "title": "ProposedRule",
+      "type": "object"
+    },
+    "ProviderConfiguration": {
+      "additionalProperties": false,
+      "description": "Pinned configuration metadata, not credentials or provider access proof.",
+      "properties": {
+        "schema_version": {
+          "const": "extraction-v1",
+          "default": "extraction-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "provider": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+          "title": "Provider",
+          "type": "string"
+        },
+        "model_id": {
+          "maxLength": 512,
+          "minLength": 1,
+          "title": "Model Id",
+          "type": "string"
+        },
+        "region": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+          "title": "Region",
+          "type": "string"
+        },
+        "api": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+          "title": "Api",
+          "type": "string"
+        },
+        "routing_regions": {
+          "items": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Routing Regions",
+          "type": "array"
+        },
+        "temperature": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Temperature",
+          "type": "number"
+        },
+        "max_output_tokens": {
+          "minimum": 1,
+          "title": "Max Output Tokens",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "provider",
+        "model_id",
+        "region",
+        "api",
+        "routing_regions",
+        "temperature",
+        "max_output_tokens"
+      ],
+      "title": "ProviderConfiguration",
+      "type": "object"
+    },
+    "ProviderTelemetry": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "extraction-v1",
+          "default": "extraction-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "configuration": {
+          "$ref": "#/$defs/ProviderConfiguration"
+        },
+        "prompt_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+          "title": "Prompt Version",
+          "type": "string"
+        },
+        "prompt_digest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Prompt Digest",
+          "type": "string"
+        },
+        "attempts": {
+          "items": {
+            "$ref": "#/$defs/AttemptTelemetry"
+          },
+          "title": "Attempts",
+          "type": "array"
+        },
+        "elapsed_seconds": {
+          "minimum": 0,
+          "title": "Elapsed Seconds",
+          "type": "number"
+        }
+      },
+      "required": [
+        "configuration",
+        "prompt_version",
+        "prompt_digest",
+        "attempts",
+        "elapsed_seconds"
+      ],
+      "title": "ProviderTelemetry",
+      "type": "object"
+    },
+    "Reliability": {
+      "additionalProperties": false,
+      "properties": {
+        "confidence_kind": {
+          "default": "unknown",
+          "enum": [
+            "unknown",
+            "localization_only",
+            "measured"
+          ],
+          "title": "Confidence Kind",
+          "type": "string"
+        },
+        "provenance": {
+          "default": "unknown",
+          "enum": [
+            "unknown",
+            "parser_registry",
+            "native_extraction"
+          ],
+          "title": "Provenance",
+          "type": "string"
+        },
+        "producer": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Producer"
+        },
+        "confirmation": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FactConfirmation"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "model_confidence": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model Confidence"
+        },
+        "method": {
+          "enum": [
+            "native_numeric",
+            "reviewer_confirmed",
+            "model_proposed",
+            "native_proposed",
+            "manual_proposed"
+          ],
+          "title": "Method",
+          "type": "string"
+        },
+        "selection": {
+          "enum": [
+            "checked",
+            "unchecked",
+            "ambiguous",
+            "not_applicable"
+          ],
+          "title": "Selection",
+          "type": "string"
+        },
+        "unresolved": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Unresolved",
+          "type": "array"
+        }
+      },
+      "required": [
+        "method",
+        "selection"
+      ],
+      "title": "Reliability",
+      "type": "object"
+    },
+    "ReviewSlot": {
+      "additionalProperties": false,
+      "description": "A required field from the reviewed inventory, never inferred from successful output.",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "context": {
+          "$ref": "#/$defs/ComparisonContext"
+        },
+        "factor_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Factor Id"
+        },
+        "value": {
+          "enum": [
+            "target_grade",
+            "comparable_grade",
+            "adjustment_percent",
+            "subtotal",
+            "total"
+          ],
+          "title": "Value",
+          "type": "string"
+        },
+        "derivable_blank": {
+          "default": false,
+          "title": "Derivable Blank",
+          "type": "boolean"
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/SourceCitation"
+          },
+          "minItems": 1,
+          "title": "Evidence",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "context",
+        "value",
+        "evidence"
+      ],
+      "title": "ReviewSlot",
+      "type": "object"
+    },
+    "RevisionReference": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "service-v1",
+          "default": "service-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "case_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+          "title": "Case Id",
+          "type": "string"
+        },
+        "revision_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+          "title": "Revision Id",
+          "type": "string"
+        },
+        "material_digest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Material Digest",
+          "type": "string"
+        }
+      },
+      "required": [
+        "case_id",
+        "revision_id",
+        "material_digest"
+      ],
+      "title": "RevisionReference",
+      "type": "object"
+    },
+    "RunReference": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "service-v1",
+          "default": "service-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "run_id": {
+          "format": "uuid",
+          "title": "Run Id",
+          "type": "string"
+        },
+        "revision": {
+          "$ref": "#/$defs/RevisionReference"
+        },
+        "attempt_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Attempt Id"
+        },
+        "runtime_session_id": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Runtime Session Id"
+        }
+      },
+      "required": [
+        "run_id",
+        "revision"
+      ],
+      "title": "RunReference",
+      "type": "object"
+    },
+    "SanitizedSourceReference": {
+      "additionalProperties": false,
+      "description": "Reference to #22 evidence, not a duplicate PrivacyManifest or access token.",
+      "properties": {
+        "schema_version": {
+          "const": "extraction-v1",
+          "default": "extraction-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "document": {
+          "$ref": "#/$defs/DocumentReference"
+        },
+        "privacy_contract_version": {
+          "const": "privacy-v1",
+          "title": "Privacy Contract Version",
+          "type": "string"
+        },
+        "privacy_manifest_digest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Privacy Manifest Digest",
+          "type": "string"
+        },
+        "page_count": {
+          "minimum": 1,
+          "title": "Page Count",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "document",
+        "privacy_contract_version",
+        "privacy_manifest_digest",
+        "page_count"
+      ],
+      "title": "SanitizedSourceReference",
+      "type": "object"
+    },
+    "SourceCitation": {
+      "additionalProperties": false,
+      "properties": {
+        "document_id": {
+          "title": "Document Id",
+          "type": "string"
+        },
+        "content_hash": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Content Hash",
+          "type": "string"
+        },
+        "version": {
+          "title": "Version",
+          "type": "string"
+        },
+        "page": {
+          "minimum": 1,
+          "title": "Page",
+          "type": "integer"
+        },
+        "region_id": {
+          "title": "Region Id",
+          "type": "string"
+        },
+        "bbox": {
+          "maxItems": 4,
+          "minItems": 4,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Bbox",
+          "type": "array"
+        },
+        "excerpt": {
+          "title": "Excerpt",
+          "type": "string"
+        }
+      },
+      "required": [
+        "document_id",
+        "content_hash",
+        "version",
+        "page",
+        "region_id",
+        "bbox",
+        "excerpt"
+      ],
+      "title": "SourceCitation",
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}

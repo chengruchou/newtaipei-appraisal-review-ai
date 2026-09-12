@@ -1,0 +1,61 @@
+{
+  "schema_version": "service-v1",
+  "task_id": "00000000-0000-0000-0000-0000001cfde6",
+  "run": {
+    "schema_version": "service-v1",
+    "run_id": "00000000-0000-0000-0000-0000001cfde0",
+    "revision": {
+      "schema_version": "service-v1",
+      "case_id": "synthetic-case",
+      "revision_id": "workbench-r1",
+      "material_digest": "66132edd117ff2b00bdaa074f2116b20d83962df98f79f081f10dd5ba40862c7"
+    },
+    "attempt_id": null,
+    "runtime_session_id": null
+  },
+  "version": 1,
+  "kind": "material_correction",
+  "required_permission": "correct_material",
+  "state": "open",
+  "side": {
+    "schema_version": "service-v1",
+    "context": {
+      "scope": "regional",
+      "target_id": "synthetic-target",
+      "comparable_id": "synthetic-comparable"
+    },
+    "factor_id": "synthetic.road_width",
+    "side": "target",
+    "input_digest": "c4b060b4c940436f46db2d3063a060afa71aaf12ae5fd5ce6a26c3daaa3d47ac"
+  },
+  "result_digest": null,
+  "question": "Correct road-target (regional, target) against the cited source. This response will require a full review of the resulting material.",
+  "evidence": [
+    {
+      "document_id": "synthetic-forms",
+      "content_hash": "37f1b0a1872d76a68cd0a482eb4aeb0ce4f3dae564f5e23340b470cef41835ab",
+      "version": "1",
+      "page": 1,
+      "region_id": "body",
+      "bbox": [
+        1.0,
+        2.0,
+        90.0,
+        40.0
+      ],
+      "excerpt": "Synthetic target 10 m; comparable 9 m; rate 5"
+    }
+  ],
+  "finding_ids": [
+    "[\"regional\",\"synthetic-target\",\"synthetic-comparable\"]/factor/synthetic.road_width",
+    "observed/road-rate"
+  ],
+  "allowed_responses": [
+    "correct",
+    "reject"
+  ],
+  "reason_code": "multiple-review-findings",
+  "affected_subject_ids": [
+    "road-target"
+  ]
+}

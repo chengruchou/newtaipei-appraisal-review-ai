@@ -6,7 +6,14 @@ from datetime import date
 from enum import StrEnum
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    SerializerFunctionWrapHandler,
+    model_serializer,
+    model_validator,
+)
 
 from appraisal_review.domain.document_models import SourceCitation
 from appraisal_review.domain.models import EvidenceRef
@@ -22,6 +29,7 @@ from appraisal_review.domain.review_contracts import (
     ReviewBinding,
     ReviewFinding,
 )
+from appraisal_review.domain.rule_sources import RuleBundle, RuleDocumentVersion
 
 
 class StrictFactorModel(BaseModel):
@@ -255,10 +263,26 @@ class ScopedRules(StrictFactorModel):
     source_version: str
     zone: str
     evidence: list[SourceCitation] = Field(min_length=1)
+    additional_sources: list[RuleDocumentVersion] = Field(default_factory=list)
+
+    @model_serializer(mode="wrap")
+    def serialize_additional_sources(self, handler: SerializerFunctionWrapHandler):  # type: ignore[no-untyped-def]
+        data = handler(self)
+        if not self.additional_sources:
+            data.pop("additional_sources", None)
+        return data
 
 
 class ReviewPolicy(ReviewBinding):
     rule_sets: list[ScopedRules] = Field(min_length=1)
+    rule_bundle: RuleBundle | None = None
+
+    @model_serializer(mode="wrap")
+    def serialize_rule_bundle(self, handler: SerializerFunctionWrapHandler):  # type: ignore[no-untyped-def]
+        data = handler(self)
+        if self.rule_bundle is None:
+            data.pop("rule_bundle", None)
+        return data
 
 
 class EvidencedPair(StrictFactorModel):

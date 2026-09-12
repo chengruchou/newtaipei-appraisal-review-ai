@@ -62,7 +62,9 @@
         "allowed_responses": [
           "confirm",
           "reject"
-        ]
+        ],
+        "reason_code": null,
+        "affected_subject_ids": []
       },
       "subject_id": "[\"regional\",\"synthetic-target\",\"synthetic-comparable\"]:synthetic.road_width:target"
     }
