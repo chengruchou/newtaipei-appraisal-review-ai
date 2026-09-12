@@ -89,6 +89,32 @@ export interface ExportDownload {
 }
 
 /* ------------------------------------------------------------------------- *
+ * Bundled download (export-bundles routes): pdf / excel / both as one parent
+ * request whose children are ordinary single-format exports.
+ * ------------------------------------------------------------------------- */
+
+export type BundleStatus = "pending" | "succeeded" | "failed";
+
+export interface CreateBundleCommand {
+  schema_version: "service-v1";
+  idempotency_key: string;
+  run: ExportRunReference;
+  calculation_snapshot_digest: string;
+  template_bundle: TemplateBundleReference;
+  requested_mode: ExportMode;
+  /** Each format at most once; ["pdf","xlsx"] is the six-file "both" bundle. */
+  formats: ExportFormat[];
+}
+
+export interface ExportBundleView {
+  bundle_id: string;
+  status: BundleStatus;
+  formats: ExportFormat[];
+  /** Live child operations; complete only when every child delivered every table. */
+  children: ExportOperation[];
+}
+
+/* ------------------------------------------------------------------------- *
  * Formal report approval (report-approvals routes)
  * ------------------------------------------------------------------------- */
 
@@ -304,6 +330,33 @@ export function parseExportOperation(payload: unknown): ExportOperation {
           message: typeof payload.problem.message === "string" ? payload.problem.message : null,
         }
       : null,
+  };
+}
+
+const BUNDLE_STATUSES: readonly string[] = ["pending", "succeeded", "failed"];
+
+export function parseBundleView(payload: unknown): ExportBundleView {
+  if (
+    !isRecord(payload) ||
+    !isRecord(payload.bundle) ||
+    typeof payload.bundle.bundle_id !== "string" ||
+    typeof payload.status !== "string" ||
+    !BUNDLE_STATUSES.includes(payload.status)
+  )
+    throw new TransportError(MALFORMED);
+  const formats = Array.isArray(payload.bundle.formats)
+    ? payload.bundle.formats.filter(
+        (entry): entry is ExportFormat => typeof entry === "string" && FORMATS.includes(entry),
+      )
+    : [];
+  const children = Array.isArray(payload.children)
+    ? payload.children.map(parseExportOperation)
+    : [];
+  return {
+    bundle_id: payload.bundle.bundle_id,
+    status: payload.status as BundleStatus,
+    formats,
+    children,
   };
 }
 
@@ -543,6 +596,9 @@ export interface ExportsApi {
   createExport(jobId: string, command: CreateExportCommand): Promise<ExportOperation>;
   readExport(jobId: string, exportId: string): Promise<ExportOperation>;
   downloadArtifact(jobId: string, artifact: ExportArtifact): Promise<ExportDownload>;
+  submitBundle(jobId: string, command: CreateBundleCommand): Promise<ExportBundleView>;
+  readBundle(jobId: string, bundleId: string): Promise<ExportBundleView>;
+  downloadBundle(jobId: string, bundleId: string): Promise<ExportDownload>;
   submitApproval(jobId: string, command: SubmitApprovalCommand): Promise<ReportApproval>;
   readApproval(jobId: string, approvalId: string): Promise<ReportApproval>;
   decideApproval(
@@ -632,6 +688,67 @@ export class ExportsClient implements ExportsApi {
     return parseExportOperation(
       await this.json("GET", `/v1/review-jobs/${encode(jobId)}/exports/${encode(exportId)}`),
     );
+  }
+
+  /**
+   * 202 acceptance; replaying the same key and payload returns the original bundle and
+   * replays its children, so a parent retry never mints duplicate exports.
+   */
+  async submitBundle(jobId: string, command: CreateBundleCommand): Promise<ExportBundleView> {
+    return parseBundleView(
+      await this.json("POST", `/v1/review-jobs/${encode(jobId)}/export-bundles`, command),
+    );
+  }
+
+  async readBundle(jobId: string, bundleId: string): Promise<ExportBundleView> {
+    return parseBundleView(
+      await this.json("GET", `/v1/review-jobs/${encode(jobId)}/export-bundles/${encode(bundleId)}`),
+    );
+  }
+
+  /**
+   * The assembled ZIP. Same binary rule as downloadArtifact: a JSON/HTML body is a
+   * problem, never file bytes. Per-file hashes live in the ZIP's own manifest.json,
+   * so there is no outer content hash to verify here.
+   */
+  async downloadBundle(jobId: string, bundleId: string): Promise<ExportDownload> {
+    return this.transport(async (signal) => {
+      const token = await this.options.token();
+      const response = await (this.options.fetch ?? globalThis.fetch)(
+        `${this.options.baseUrl}/v1/review-jobs/${encode(jobId)}/export-bundles/${encode(
+          bundleId,
+        )}/content`,
+        {
+          signal,
+          cache: "no-store",
+          credentials: "omit",
+          headers: {
+            Accept: "application/zip",
+            ...(token === null ? {} : { Authorization: `Bearer ${token}` }),
+          },
+        },
+      );
+      if (!response.ok) {
+        const text = await response.text();
+        let problem: unknown = null;
+        try {
+          problem = JSON.parse(text) as unknown;
+        } catch {
+          /* Use the unknown-outcome fallback below. */
+        }
+        throw (
+          canonicalExportProblem(response.status, problem) ?? new TransportError(UNKNOWN_OUTCOME)
+        );
+      }
+      const contentType = (response.headers.get("Content-Type") ?? "").split(";")[0]?.trim() ?? "";
+      if (contentType.toLowerCase() !== "application/zip")
+        throw new TransportError("The download did not return the expected file type.");
+      const bytes = await response.arrayBuffer();
+      const filename =
+        filenameFromDisposition(response.headers.get("Content-Disposition")) ??
+        "official-tables.zip";
+      return { bytes, filename, contentType };
+    });
   }
 
   /**
