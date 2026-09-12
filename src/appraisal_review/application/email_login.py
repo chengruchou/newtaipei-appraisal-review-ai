@@ -15,6 +15,20 @@ LATEST code for that email. A wrong code spends one of five attempts; an expired
 consumed or exhausted record answers the same generic 403 as an unknown email.
 Success consumes the record atomically (single use - a replay of the same code is
 refused) and issues a session through the injected ``issue_session`` callable.
+When the verify body also carries ``new_password`` (8..128 characters, no other
+composition rules), the freshly proven mailbox gets a password account in the
+same flow: the password is scrypt-hashed (n=2**14, r=8, p=1, 32-byte random
+salt) and upserted BEFORE the session is issued, so registration and the first
+sign-in are one step. Forgot-password is the identical flow - a new code plus a
+new password replaces the old hash atomically. Verify without ``new_password``
+keeps the original code-only sign-in behavior.
+
+``POST /v1/auth/login`` signs an existing account in with email + password.
+Refusals are the same generic 403 as a bad code, an unknown email burns the same
+scrypt work against a fixed fake salt so timing does not reveal account
+existence, and attempts are rate-limited per email and per caller like
+request-code. Passwords are never logged, never stored in plain form and never
+echoed by any response or validation error.
 
 Authority boundary (explicit by design): email verification proves mailbox
 control ONLY. This service grants nothing - the issued principal's shape, case
@@ -67,6 +81,19 @@ from appraisal_review.domain.service_contracts import (
 DELIVERY_FAILURE_REASONS = frozenset({"delivery_restricted", "throttled", "provider_unavailable"})
 
 _EMAIL_MAX_LENGTH = 254
+_PASSWORD_MIN_LENGTH = 8
+_PASSWORD_MAX_LENGTH = 128
+_SCRYPT_N = 2**14
+_SCRYPT_R = 8
+_SCRYPT_P = 1
+_SCRYPT_SALT_BYTES = 32
+_SCRYPT_DKLEN = 32
+#: Fixed fake salt for the unknown-email login path: the same KDF cost is burned
+#: against it so a login refusal takes the same time whether the account exists.
+_TIMING_EQUALIZER_SALT = bytes(_SCRYPT_SALT_BYTES)
+#: Impossible stored hash the burned digest is compared against (still in
+#: constant time); "f"*64 keeps the refusal path shaped like the real one.
+_TIMING_EQUALIZER_HASH = "f" * (_SCRYPT_DKLEN * 2)
 
 
 class MailDeliveryUnavailable(Exception):
@@ -120,20 +147,57 @@ class RequestCodeAccepted(ServiceModel):
 
 
 class VerifyCodeCommand(ServiceModel):
-    """Untrusted body; a malformed code is refused before any record is read."""
+    """Untrusted body; a malformed code or password is refused before any read.
+
+    ``new_password`` is optional: absent keeps the original code-only sign-in;
+    present (8..128 characters, no other composition rules) registers or resets
+    the password account for the freshly proven mailbox in the same flow. The
+    composed app's sanitized 422 branch guarantees a rejected body - password
+    included - is never echoed back.
+    """
 
     email: str = Field(min_length=3, max_length=_EMAIL_MAX_LENGTH)
     code: str = Field(pattern=r"^[0-9]{6,8}$")
+    new_password: str | None = Field(
+        default=None, min_length=_PASSWORD_MIN_LENGTH, max_length=_PASSWORD_MAX_LENGTH
+    )
+
+    normalized = field_validator("email")(_normalized_email)
+
+
+class PasswordLoginCommand(ServiceModel):
+    """Untrusted body for email+password sign-in; length gates only, no oracle."""
+
+    email: str = Field(min_length=3, max_length=_EMAIL_MAX_LENGTH)
+    password: str = Field(min_length=_PASSWORD_MIN_LENGTH, max_length=_PASSWORD_MAX_LENGTH)
 
     normalized = field_validator("email")(_normalized_email)
 
 
 class SessionGrant(ServiceModel):
-    """The one success response of verify; issued exactly once per code."""
+    """The one success response of verify and login.
+
+    ``password_set`` is True only when this grant also registered or reset a
+    password (verify with ``new_password``); it never restates stored state.
+    """
 
     token: str = Field(min_length=32)
     expires_at: int = Field(ge=1, strict=True)
     actor_id: str = Field(min_length=1)
+    password_set: bool = False
+
+
+class PasswordAccountRecord(ServiceModel):
+    """Server-side password account; only the scrypt salt and hash are stored."""
+
+    email: str = Field(min_length=3, max_length=_EMAIL_MAX_LENGTH)
+    password_scrypt_salt: str = Field(pattern=r"^[0-9a-f]{64}$")
+    password_scrypt_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+    created_at: int = Field(ge=0, strict=True)
+    updated_at: int = Field(ge=0, strict=True)
+    password_set_count: int = Field(ge=1, strict=True)
+
+    normalized = field_validator("email")(_normalized_email)
 
 
 class LoginCodeRecord(ServiceModel):
@@ -175,6 +239,12 @@ class EmailLoginStore(Protocol):
     attempt. ``consume`` is a conditional single-use commit - it returns ``True``
     for exactly one caller of an unconsumed, unexpired record with attempts left.
     ``spend_attempt`` decrements only while attempts remain.
+
+    Password accounts: ``read_account`` returns the stored scrypt material for a
+    normalized email or ``None``; ``upsert_password`` creates or replaces it in
+    one atomic write (register and reset are the same operation);
+    ``reserve_login_attempt`` mirrors ``reserve_request`` for the login plane so
+    password guessing is budgeted separately from code requests.
     """
 
     def reserve_request(
@@ -207,6 +277,21 @@ class EmailLoginStore(Protocol):
 
     def delivery_statuses(self, *, limit: int = 50) -> tuple[LoginDeliveryStatus, ...]: ...
 
+    def read_account(self, email: str) -> PasswordAccountRecord | None: ...
+
+    def upsert_password(self, *, email: str, salt_hex: str, hash_hex: str, now: int) -> None: ...
+
+    def reserve_login_attempt(
+        self,
+        *,
+        email: str,
+        caller: str,
+        now: int,
+        window_start: int,
+        max_per_email: int,
+        max_per_caller: int,
+    ) -> bool: ...
+
 
 def _default_mint_code() -> str:
     return f"{secrets.randbelow(1_000_000):06d}"
@@ -214,6 +299,19 @@ def _default_mint_code() -> str:
 
 def _code_hash(salt: str, code: str) -> str:
     return hashlib.sha256(f"{salt}:{code}".encode()).hexdigest()
+
+
+def _scrypt_password_hash(password: bytes, salt: bytes) -> bytes:
+    """Interactive-login scrypt (16 MiB, ~tens of ms); the seam tests inject."""
+    return hashlib.scrypt(
+        password,
+        salt=salt,
+        n=_SCRYPT_N,
+        r=_SCRYPT_R,
+        p=_SCRYPT_P,
+        maxmem=2**26,
+        dklen=_SCRYPT_DKLEN,
+    )
 
 
 class EmailLoginService:
@@ -231,6 +329,9 @@ class EmailLoginService:
         rate_window_seconds: int = 600,
         max_requests_per_email: int = 3,
         max_requests_per_caller: int = 3,
+        max_logins_per_email: int = 5,
+        max_logins_per_caller: int = 10,
+        password_kdf: Callable[[bytes, bytes], bytes] = _scrypt_password_hash,
     ) -> None:
         for name, value in (
             ("code_ttl_seconds", code_ttl_seconds),
@@ -238,6 +339,8 @@ class EmailLoginService:
             ("rate_window_seconds", rate_window_seconds),
             ("max_requests_per_email", max_requests_per_email),
             ("max_requests_per_caller", max_requests_per_caller),
+            ("max_logins_per_email", max_logins_per_email),
+            ("max_logins_per_caller", max_logins_per_caller),
         ):
             if type(value) is not int or value < 1:
                 raise ValueError(f"A positive {name} is required")
@@ -254,6 +357,11 @@ class EmailLoginService:
         self.rate_window_seconds = rate_window_seconds
         self.max_requests_per_email = max_requests_per_email
         self.max_requests_per_caller = max_requests_per_caller
+        self.max_logins_per_email = max_logins_per_email
+        self.max_logins_per_caller = max_logins_per_caller
+        # password_kdf(password_bytes, salt_bytes) -> derived bytes. The default is
+        # scrypt; tests inject a counting seam. Never call it with a plain string.
+        self.password_kdf = password_kdf
 
     async def request_code(
         self, command: RequestCodeCommand, *, caller: str
@@ -299,7 +407,12 @@ class EmailLoginService:
         return RequestCodeAccepted()
 
     async def verify_code(self, command: VerifyCodeCommand) -> SessionGrant:
-        """One generic 403 for every refusal; success is single-use by construction."""
+        """One generic 403 for every refusal; success is single-use by construction.
+
+        With ``new_password`` the proven mailbox's password account is created or
+        replaced BEFORE the session is issued - registration, first sign-in and
+        forgot-password are all this one flow. Without it, behavior is unchanged.
+        """
         command = VerifyCodeCommand.model_validate_json(command.model_dump_json())
         now = self.clock()
         record = self.store.latest_code(command.email)
@@ -317,8 +430,60 @@ class EmailLoginService:
         if not self.store.consume(record.record_id, now=now):
             # A concurrent verify or an intervening expiry won; never issue twice.
             raise ServiceFault(ServiceErrorCode.UNAUTHORIZED)
+        if command.new_password is not None:
+            salt = secrets.token_bytes(_SCRYPT_SALT_BYTES)
+            derived = self.password_kdf(command.new_password.encode(), salt)
+            self.store.upsert_password(
+                email=command.email, salt_hex=salt.hex(), hash_hex=derived.hex(), now=now
+            )
+        token, expires_at, actor_id = self.issue_session(command.email)
+        return SessionGrant(
+            token=token,
+            expires_at=expires_at,
+            actor_id=actor_id,
+            password_set=command.new_password is not None,
+        )
+
+    async def login(self, command: PasswordLoginCommand, *, caller: str) -> SessionGrant:
+        """Email+password sign-in: one generic refusal, no timing or rate oracle.
+
+        Every attempt (known or unknown email, right or wrong password) spends
+        one unit of the per-email and per-caller login budget first. An unknown
+        email then burns the same KDF cost against a fixed fake salt as a wrong
+        password does against the real one, so neither timing nor the refusal
+        body reveals whether an account exists. The password itself is never
+        logged, stored or echoed.
+        """
+        command = PasswordLoginCommand.model_validate_json(command.model_dump_json())
+        now = self.clock()
+        allowed = self.store.reserve_login_attempt(
+            email=command.email,
+            caller=caller if caller else "unknown",
+            now=now,
+            window_start=now - self.rate_window_seconds,
+            max_per_email=self.max_logins_per_email,
+            max_per_caller=self.max_logins_per_caller,
+        )
+        if not allowed:
+            # Over-budget refusals reuse the one generic 403: a distinct status
+            # would let a caller probe which addresses attract sign-in traffic.
+            raise ServiceFault(ServiceErrorCode.UNAUTHORIZED)
+        account = self.store.read_account(command.email)
+        if account is None:
+            self._password_matches(
+                command.password, _TIMING_EQUALIZER_SALT.hex(), _TIMING_EQUALIZER_HASH
+            )
+            raise ServiceFault(ServiceErrorCode.UNAUTHORIZED)
+        if not self._password_matches(
+            command.password, account.password_scrypt_salt, account.password_scrypt_hash
+        ):
+            raise ServiceFault(ServiceErrorCode.UNAUTHORIZED)
         token, expires_at, actor_id = self.issue_session(command.email)
         return SessionGrant(token=token, expires_at=expires_at, actor_id=actor_id)
+
+    def _password_matches(self, password: str, salt_hex: str, hash_hex: str) -> bool:
+        derived = self.password_kdf(password.encode(), bytes.fromhex(salt_hex))
+        return hmac.compare_digest(derived.hex(), hash_hex)
 
     def delivery_statuses(self, *, limit: int = 50) -> tuple[LoginDeliveryStatus, ...]:
         """OPERATOR-facing only: the integrator must mount this behind an

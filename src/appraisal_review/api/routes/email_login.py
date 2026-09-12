@@ -1,13 +1,25 @@
-"""Transport for email one-time-code login: request a code, verify it.
+"""Transport for email login: request a code, verify it, or sign in by password.
 
-Rules live in the service. This module mounts EXACTLY two endpoints, both
+Rules live in the service. This module mounts EXACTLY three endpoints, all
 unauthenticated by design (they exist to create authentication):
 
 - ``POST /v1/auth/request-code`` answers 202 with one fixed body for every
   outcome - known, unknown, rate-limited and undeliverable addresses look the
   same, so the route is not an account-existence oracle.
 - ``POST /v1/auth/verify`` exchanges a still-valid code for a session exactly
-  once; every refusal is the same generic 403.
+  once; every refusal is the same generic 403. An optional ``new_password``
+  (8..128 characters) additionally registers or resets the password account for
+  the proven mailbox in the same call - that is both first-time registration
+  and forgot-password.
+- ``POST /v1/auth/login`` exchanges email + password for a session; wrong
+  password, unknown email and an over-budget caller all answer the same
+  generic 403. The integrator must exempt this path in the composed app's
+  authentication middleware exactly like request-code and verify.
+
+No response or validation error ever echoes a password: the success body is
+the plain session grant, refusals are the fixed generic envelope, and the
+composed app's sanitized 422 branch (keyed on ``EMAIL_LOGIN_ENDPOINTS``)
+swallows rejected payloads for all three routes.
 
 Deliberately NOT here: ``GET /v1/session`` and ``DELETE /v1/session`` already
 exist on the composed app - logout of an email-login session is the existing
@@ -31,6 +43,7 @@ from fastapi import APIRouter, Depends, Request
 
 from appraisal_review.application.email_login import (
     EmailLoginService,
+    PasswordLoginCommand,
     RequestCodeAccepted,
     RequestCodeCommand,
     SessionGrant,
@@ -42,8 +55,11 @@ from appraisal_review.domain.service_contracts import ServiceErrorCode, ServiceP
 router = APIRouter(prefix="/v1/auth", tags=["email-login"])
 
 EMAIL_LOGIN_RESPONSES: dict[int | str, dict[str, Any]] = {
-    403: {"model": ServiceProblem, "description": "Code invalid, expired, consumed or unknown"},
-    422: {"model": ServiceProblem, "description": "Invalid email address or code format"},
+    403: {
+        "model": ServiceProblem,
+        "description": "Code or password invalid, expired, consumed, over budget or unknown",
+    },
+    422: {"model": ServiceProblem, "description": "Invalid email, code or password format"},
     503: {"model": ServiceProblem, "description": "Email login is not configured"},
 }
 
@@ -98,8 +114,30 @@ async def verify_code(
     command: VerifyCodeCommand,
     service: ServiceDependency,
 ) -> SessionGrant:
-    """Exchange a still-valid code for a session token, exactly once per code."""
+    """Exchange a still-valid code for a session token, exactly once per code.
+
+    With ``new_password`` the call also registers (or resets) the password
+    account for the proven mailbox before the session is issued.
+    """
     return await service.verify_code(command)
 
 
-EMAIL_LOGIN_ENDPOINTS = frozenset({request_code, verify_code})
+@router.post(
+    "/login",
+    status_code=200,
+    response_model=SessionGrant,
+    responses={
+        200: {"model": SessionGrant, "description": "Session issued for email and password"},
+        **EMAIL_LOGIN_RESPONSES,
+    },
+)
+async def login(
+    command: PasswordLoginCommand,
+    request: Request,
+    service: ServiceDependency,
+) -> SessionGrant:
+    """Sign in with email and password; every refusal is the same generic 403."""
+    return await service.login(command, caller=_caller(request))
+
+
+EMAIL_LOGIN_ENDPOINTS = frozenset({request_code, verify_code, login})

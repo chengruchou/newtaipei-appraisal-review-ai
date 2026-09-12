@@ -1,4 +1,7 @@
 import {
+  loginWithPassword,
+  PASSWORD_MAX_LENGTH,
+  PASSWORD_MIN_LENGTH,
   requestLoginCode,
   verifyLoginCode,
   type AuthPlaneOptions,
@@ -17,15 +20,46 @@ const AUTH_BASE_URL: string = import.meta.env.VITE_API_BASE_URL ?? "";
 
 export interface AuthApi {
   requestCode(email: string): Promise<void>;
-  verify(email: string, code: string): Promise<LoginGrant>;
+  verify(email: string, code: string, newPassword?: string): Promise<LoginGrant>;
+  login(email: string, password: string): Promise<LoginGrant>;
 }
 
 export function buildAuthApi(options?: Partial<AuthPlaneOptions>): AuthApi {
   const plane: AuthPlaneOptions = { baseUrl: AUTH_BASE_URL, ...options };
   return {
     requestCode: (email) => requestLoginCode(plane, email),
-    verify: (email, code) => verifyLoginCode(plane, email, code),
+    verify: (email, code, newPassword) => verifyLoginCode(plane, email, code, newPassword),
+    login: (email, password) => loginWithPassword(plane, email, password),
   };
+}
+
+/**
+ * Client-side gate for the set-password step (registration and password reset). The
+ * bounds mirror the service contract (8-128 characters); passwords are compared and
+ * measured verbatim — never trimmed, never logged, never placed inside a message.
+ * Returns null when the pair is acceptable, otherwise a bilingual sentence for the
+ * caller's language hook. Order matters: length first, then agreement.
+ */
+export function passwordSetupIssue(
+  password: string,
+  confirmation: string,
+): { en: string; zh: string } | null {
+  if (password.length < PASSWORD_MIN_LENGTH)
+    return {
+      en: `The password must be at least ${PASSWORD_MIN_LENGTH} characters long.`,
+      zh: `密碼長度至少 ${PASSWORD_MIN_LENGTH} 個字元。`,
+    };
+  if (password.length > PASSWORD_MAX_LENGTH)
+    return {
+      en: `The password must be at most ${PASSWORD_MAX_LENGTH} characters long.`,
+      zh: `密碼長度不可超過 ${PASSWORD_MAX_LENGTH} 個字元。`,
+    };
+  if (password !== confirmation)
+    return {
+      en: "The two password entries do not match.",
+      zh: "兩次輸入的密碼不一致。",
+    };
+  return null;
 }
 
 /**

@@ -4,20 +4,28 @@ import { LoginRefusedError } from "@/api/client";
 import { ORIGINAL_PREVIEW_URL } from "../config";
 import { useText } from "@/ui/Language";
 import { Icon } from "@/ui/Icon";
-import { buildAuthApi, looksLikeEmail } from "./intake";
+import { buildAuthApi, looksLikeEmail, passwordSetupIssue } from "./intake";
 
 /**
- * The signed-out entrance. Two doors, in this order:
+ * The signed-out entrance: a registration-and-login card plus one advanced fold.
  *
- * 1. Email sign-in (primary): request a one-time code, verify it, and continue with
- *    the bearer session the service answers with. The request-code step shows one
- *    neutral sentence for every address — never an account-existence oracle — and the
- *    code itself is never echoed or logged.
- * 2. An existing session credential (advanced, collapsed): the token-paste flow kept
+ * 1. Password sign-in (primary): email + password against POST /v1/auth/login. The
+ *    refusal is one deliberately generic sentence — identical for an unknown email
+ *    and a wrong password — so the entrance is never an account-existence oracle.
+ * 2. Registration (「註冊新帳號」) and password reset (「忘記密碼」): the same staged
+ *    flow on the same card — request a verification mail (neutral sentence for every
+ *    address), then verification code + set/confirm password in one step against
+ *    POST /v1/auth/verify with new_password. Only the wording differs between the
+ *    two. Passwords are validated locally (8-128 characters, both entries equal)
+ *    before any request; the code and both password fields are cleared on failure
+ *    and never echoed into any message.
+ * 3. An existing session credential (advanced, collapsed): the token-paste flow kept
  *    for demo fixtures and controlled deployments. It opens expanded when the visitor
  *    arrived on a deep link (an operator-supplied reference), collapsed on the plain
  *    front door.
  */
+type EntryMode = "login" | "register" | "reset";
+
 export function CaseEntry({
   connect,
   busy,
@@ -30,8 +38,12 @@ export function CaseEntry({
   const t = useText();
   const { pathname } = useLocation();
   const auth = useMemo(() => buildAuthApi(), []);
+  const [mode, setMode] = useState<EntryMode>("login");
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [codeSent, setCodeSent] = useState(false);
   const [notice, setNotice] = useState("");
   const [localError, setLocalError] = useState("");
@@ -42,13 +54,18 @@ export function CaseEntry({
   const working = busy || localBusy;
 
   const neutralSentence = t(
-    "If this mailbox is available, a verification code has been sent (valid for 10 minutes).",
-    "若信箱可用，驗證碼已寄出（10 分鐘內有效）。",
+    "A verification mail has been sent (if this mailbox is available); complete the verification within 10 minutes.",
+    "驗證信已寄出（若信箱可用），請於 10 分鐘內完成驗證。",
   );
 
   function refusalText(cause: unknown): string {
     if (cause instanceof LoginRefusedError) {
       if (cause.kind === "rate_limited") return t("Please try again later.", "請稍後再試。");
+      if (cause.kind === "credentials_rejected")
+        return t(
+          "The email or password is incorrect, or the account is not registered.",
+          "帳號或密碼錯誤，或帳號尚未註冊。",
+        );
       if (cause.kind === "code_rejected")
         return t("The verification code is invalid or expired.", "驗證碼無效或已過期。");
       return t(
@@ -62,7 +79,42 @@ export function CaseEntry({
     );
   }
 
-  async function sendCode() {
+  /** Mode switches always land on a clean first stage; only the email survives. */
+  function switchMode(next: EntryMode) {
+    setMode(next);
+    setCodeSent(false);
+    setPassword("");
+    setCode("");
+    setNewPassword("");
+    setConfirmPassword("");
+    setNotice("");
+    setLocalError("");
+  }
+
+  async function signInWithPassword() {
+    const address = email.trim();
+    if (!looksLikeEmail(address)) {
+      setLocalError(t("Enter a complete email address.", "請輸入完整的電子郵件地址。"));
+      return;
+    }
+    if (!password) {
+      setLocalError(t("Enter the password.", "請輸入密碼。"));
+      return;
+    }
+    setLocalBusy(true);
+    setLocalError("");
+    try {
+      const grant = await auth.login(address, password);
+      setPassword("");
+      await connect(grant.token);
+    } catch (cause) {
+      setLocalError(refusalText(cause));
+    } finally {
+      setLocalBusy(false);
+    }
+  }
+
+  async function sendVerificationMail() {
     const address = email.trim();
     if (!looksLikeEmail(address)) {
       setLocalError(t("Enter a complete email address.", "請輸入完整的電子郵件地址。"));
@@ -82,26 +134,46 @@ export function CaseEntry({
     }
   }
 
-  async function verifyAndSignIn() {
+  async function completeVerification() {
     const address = email.trim();
     const oneTimeCode = code.trim();
     if (!oneTimeCode) {
       setLocalError(t("Enter the verification code.", "請輸入驗證碼。"));
       return;
     }
+    // Local password gate first: an unacceptable pair never reaches the service.
+    const issue = passwordSetupIssue(newPassword, confirmPassword);
+    if (issue) {
+      setLocalError(t(issue.en, issue.zh));
+      return;
+    }
     setLocalBusy(true);
     setLocalError("");
     try {
-      const grant = await auth.verify(address, oneTimeCode);
+      const grant = await auth.verify(address, oneTimeCode, newPassword);
       setCode("");
+      setNewPassword("");
+      setConfirmPassword("");
       setNotice("");
       await connect(grant.token);
     } catch (cause) {
+      // The one-time code and both password entries are cleared on every failure.
+      setCode("");
+      setNewPassword("");
+      setConfirmPassword("");
       setLocalError(refusalText(cause));
     } finally {
       setLocalBusy(false);
     }
   }
+
+  const staged = mode !== "login";
+  const heading =
+    mode === "login"
+      ? t("Sign in to the workbench", "登入審查工作台")
+      : mode === "register"
+        ? t("Create a new account", "註冊新帳號")
+        : t("Reset the password", "重設密碼");
 
   return (
     <section className="sign-in-layout">
@@ -135,17 +207,32 @@ export function CaseEntry({
           onSubmit={(event) => {
             event.preventDefault();
             if (working) return;
-            if (codeSent) void verifyAndSignIn();
-            else void sendCode();
+            if (mode === "login") void signInWithPassword();
+            else if (codeSent) void completeVerification();
+            else void sendVerificationMail();
           }}
         >
-          <span className="eyebrow">{t("EMAIL SIGN-IN", "電子郵件登入")}</span>
-          <h2>{t("Sign in to the workbench", "登入審查工作台")}</h2>
+          <span className="eyebrow">
+            {mode === "login"
+              ? t("EMAIL SIGN-IN", "電子郵件登入")
+              : t("EMAIL VERIFICATION", "電子郵件驗證")}
+          </span>
+          <h2>{heading}</h2>
           <p className="muted">
-            {t(
-              "Enter your email to receive a one-time verification code.",
-              "輸入電子郵件，服務會寄送一次性驗證碼。",
-            )}
+            {mode === "login"
+              ? t(
+                  "Sign in with your email and password.",
+                  "輸入電子郵件與密碼登入工作台。",
+                )
+              : mode === "register"
+                ? t(
+                    "Enter your email; the service sends a verification mail to create the account.",
+                    "輸入電子郵件，服務會寄送驗證信以建立帳號。",
+                  )
+                : t(
+                    "Enter your email; the service sends a verification mail to reset the password.",
+                    "輸入電子郵件，服務會寄送驗證信以重設密碼。",
+                  )}
           </p>
           <label htmlFor="login-email">{t("Email address", "電子郵件")}</label>
           <input
@@ -155,9 +242,22 @@ export function CaseEntry({
             inputMode="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
-            disabled={working || codeSent}
+            disabled={working || (staged && codeSent)}
           />
-          {codeSent ? (
+          {mode === "login" ? (
+            <>
+              <label htmlFor="login-password">{t("Password", "密碼")}</label>
+              <input
+                id="login-password"
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                disabled={working}
+              />
+            </>
+          ) : null}
+          {staged && codeSent ? (
             <>
               {notice ? (
                 <p role="status" className="notice" data-tone="neutral">
@@ -175,6 +275,27 @@ export function CaseEntry({
                 onChange={(event) => setCode(event.target.value)}
                 disabled={working}
               />
+              <label htmlFor="new-password">{t("Set a password", "設定密碼")}</label>
+              <input
+                id="new-password"
+                type="password"
+                autoComplete="new-password"
+                value={newPassword}
+                onChange={(event) => setNewPassword(event.target.value)}
+                disabled={working}
+              />
+              <label htmlFor="confirm-password">{t("Confirm the password", "確認密碼")}</label>
+              <input
+                id="confirm-password"
+                type="password"
+                autoComplete="new-password"
+                value={confirmPassword}
+                onChange={(event) => setConfirmPassword(event.target.value)}
+                disabled={working}
+              />
+              <p className="small muted">
+                {t("Passwords are 8 to 128 characters.", "密碼長度須為 8 至 128 個字元。")}
+              </p>
             </>
           ) : null}
           {localError ? (
@@ -182,15 +303,38 @@ export function CaseEntry({
               {localError}
             </p>
           ) : null}
-          {codeSent ? (
+          {mode === "login" ? (
             <>
-              <button type="submit" data-variant="primary" disabled={working || !code.trim()}>
-                {working ? t("Verifying…", "驗證中…") : t("Verify and sign in", "驗證並登入")}
+              <button
+                type="submit"
+                data-variant="primary"
+                disabled={working || !email.trim() || !password}
+              >
+                {working ? t("Signing in…", "登入中…") : t("Sign in", "登入")}
                 <Icon name="arrow" />
               </button>
-              <div className="input-action">
-                <button type="button" disabled={working} onClick={() => void sendCode()}>
-                  {t("Resend code", "重新寄送驗證碼")}
+              <div className="input-action" style={{ flexWrap: "wrap" }}>
+                <button type="button" disabled={working} onClick={() => switchMode("register")}>
+                  {t("Create a new account", "註冊新帳號")}
+                </button>
+                <button type="button" disabled={working} onClick={() => switchMode("reset")}>
+                  {t("Forgot the password", "忘記密碼")}
+                </button>
+              </div>
+            </>
+          ) : codeSent ? (
+            <>
+              <button type="submit" data-variant="primary" disabled={working || !code.trim()}>
+                {working
+                  ? t("Verifying…", "驗證中…")
+                  : mode === "register"
+                    ? t("Complete registration and sign in", "完成註冊並登入")
+                    : t("Reset the password and sign in", "重設密碼並登入")}
+                <Icon name="arrow" />
+              </button>
+              <div className="input-action" style={{ flexWrap: "wrap" }}>
+                <button type="button" disabled={working} onClick={() => void sendVerificationMail()}>
+                  {t("Resend the verification mail", "重新寄送驗證信")}
                 </button>
                 <button
                   type="button"
@@ -198,19 +342,31 @@ export function CaseEntry({
                   onClick={() => {
                     setCodeSent(false);
                     setCode("");
+                    setNewPassword("");
+                    setConfirmPassword("");
                     setNotice("");
                     setLocalError("");
                   }}
                 >
                   {t("Use a different email", "使用其他信箱")}
                 </button>
+                <button type="button" disabled={working} onClick={() => switchMode("login")}>
+                  {t("Back to sign-in", "返回登入")}
+                </button>
               </div>
             </>
           ) : (
-            <button type="submit" data-variant="primary" disabled={working || !email.trim()}>
-              {working ? t("Sending…", "寄送中…") : t("Send verification code", "送出驗證碼")}
-              <Icon name="arrow" />
-            </button>
+            <>
+              <button type="submit" data-variant="primary" disabled={working || !email.trim()}>
+                {working ? t("Sending…", "寄送中…") : t("Send verification mail", "寄送驗證信")}
+                <Icon name="arrow" />
+              </button>
+              <div className="input-action" style={{ flexWrap: "wrap" }}>
+                <button type="button" disabled={working} onClick={() => switchMode("login")}>
+                  {t("Back to sign-in", "返回登入")}
+                </button>
+              </div>
+            </>
           )}
           <p className="small muted">
             {t(

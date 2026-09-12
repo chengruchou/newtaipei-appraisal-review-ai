@@ -477,12 +477,21 @@ export function newIdempotencyKey(random?: () => string): string {
  * Types are exported so other panels can reuse them without editing this file.
  * --------------------------------------------------------------------------- */
 
-/** 200 answer of POST /v1/auth/verify. The token is a normal bearer session. */
+/**
+ * 200 answer of POST /v1/auth/verify and POST /v1/auth/login. The token is a normal
+ * bearer session. `password_set` is only present on verify answers (null when the
+ * service omitted it, e.g. on the login endpoint or an older deployment).
+ */
 export interface LoginGrant {
   token: string;
   expires_at: string | number | null;
   actor_id: string;
+  password_set: boolean | null;
 }
+
+/** Client-side password bounds, mirroring the service contract for /v1/auth/verify. */
+export const PASSWORD_MIN_LENGTH = 8;
+export const PASSWORD_MAX_LENGTH = 128;
 
 /** GET /v1/session — the service's own description of the current bearer session. */
 export interface AuthSessionView {
@@ -546,8 +555,16 @@ export class IntakeRequestError extends Error {
   }
 }
 
-/** How a login-plane request was refused. "code_rejected" is deliberately generic. */
-export type LoginRefusalKind = "code_rejected" | "rate_limited" | "unavailable";
+/**
+ * How a login-plane request was refused. "code_rejected" and "credentials_rejected"
+ * are deliberately generic: the service answers the same way for an unknown email and
+ * a wrong code/password, and the UI must keep that indistinguishability.
+ */
+export type LoginRefusalKind =
+  | "code_rejected"
+  | "credentials_rejected"
+  | "rate_limited"
+  | "unavailable";
 
 export class LoginRefusedError extends Error {
   readonly kind: LoginRefusalKind;
@@ -582,22 +599,53 @@ export async function requestLoginCode(options: AuthPlaneOptions, email: string)
 }
 
 /**
- * POST /v1/auth/verify — 200 {token, expires_at, actor_id} or a deliberately generic
- * 403. The code is never echoed back and never logged; a refusal carries no detail
- * beyond its kind.
+ * POST /v1/auth/verify — 200 {token, expires_at, actor_id, password_set} or a
+ * deliberately generic 403. `newPassword` (8-128 characters, validated by the caller
+ * before any request is made) registers or resets the account password in the same
+ * step. Neither the code nor the password is ever echoed back or logged; a refusal
+ * carries no detail beyond its kind.
  */
 export async function verifyLoginCode(
   options: AuthPlaneOptions,
   email: string,
   code: string,
+  newPassword?: string,
 ): Promise<LoginGrant> {
-  const response = await authPlaneFetch(options, "/v1/auth/verify", { email, code });
+  const body: Record<string, string> = { email, code };
+  if (newPassword !== undefined) body.new_password = newPassword;
+  const response = await authPlaneFetch(options, "/v1/auth/verify", body);
   if (!response.ok) {
     if (response.status === 429) throw new LoginRefusedError("rate_limited", 429);
     if ([400, 401, 403, 404, 422].includes(response.status))
       throw new LoginRefusedError("code_rejected", response.status);
     throw new LoginRefusedError("unavailable", response.status);
   }
+  return parseLoginGrant(response);
+}
+
+/**
+ * POST /v1/auth/login — 200 {token, expires_at, actor_id} or a deliberately generic
+ * 403 that is identical for an unknown email and a wrong password; the UI keeps that
+ * property by showing one sentence for every "credentials_rejected". The password is
+ * never echoed back and never logged.
+ */
+export async function loginWithPassword(
+  options: AuthPlaneOptions,
+  email: string,
+  password: string,
+): Promise<LoginGrant> {
+  const response = await authPlaneFetch(options, "/v1/auth/login", { email, password });
+  if (!response.ok) {
+    if (response.status === 429) throw new LoginRefusedError("rate_limited", 429);
+    if ([400, 401, 403, 404, 422].includes(response.status))
+      throw new LoginRefusedError("credentials_rejected", response.status);
+    throw new LoginRefusedError("unavailable", response.status);
+  }
+  return parseLoginGrant(response);
+}
+
+/** Shared 200-body reader for the two grant-answering login-plane endpoints. */
+async function parseLoginGrant(response: Response): Promise<LoginGrant> {
   let payload: unknown = null;
   try {
     payload = JSON.parse(await response.text()) as unknown;
@@ -615,6 +663,7 @@ export async function verifyLoginCode(
     token: payload.token,
     actor_id: payload.actor_id,
     expires_at: timestampOrNull(payload.expires_at),
+    password_set: typeof payload.password_set === "boolean" ? payload.password_set : null,
   };
 }
 

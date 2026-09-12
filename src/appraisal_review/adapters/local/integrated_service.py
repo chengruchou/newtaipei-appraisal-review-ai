@@ -910,7 +910,7 @@ def create_integrated_service(
             return Response(status_code=403)
         if not request.url.path.startswith("/v1/"):
             return await call_next(request)
-        if request.url.path in {"/v1/auth/request-code", "/v1/auth/verify"}:
+        if request.url.path in {"/v1/auth/request-code", "/v1/auth/verify", "/v1/auth/login"}:
             # The sign-in handshake is pre-auth by design; the login service owns
             # its own rate limits, and neither route ever reveals account existence.
             return await call_next(request)

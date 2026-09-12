@@ -14,7 +14,25 @@ export default defineConfig({
     sourcemap: false,
     outDir: "dist",
   },
-  server: { port: 5173, strictPort: true },
+  server: {
+    port: 5173,
+    strictPort: true,
+    // Local development against a running workbench API: set VITE_DEV_API_PORT to
+    // its loopback port and the dev server forwards /v1 with the Host header the
+    // authority check expects. Unset (the default) adds no proxy at all — the
+    // conditional spread leaves the property out entirely, which is what
+    // exactOptionalPropertyTypes requires of Vite's ServerOptions.
+    ...(process.env.VITE_DEV_API_PORT
+      ? {
+          proxy: {
+            "/v1": {
+              target: `http://127.0.0.1:${process.env.VITE_DEV_API_PORT}`,
+              changeOrigin: true,
+            },
+          },
+        }
+      : {}),
+  },
   test: {
     globals: true,
     environment: "jsdom",
