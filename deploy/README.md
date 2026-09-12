@@ -120,3 +120,43 @@ to an OS account.
 These images are a local rehearsal. They are not a deployment target, carry no
 hosted identity, and do not replace the AWS work in
 [the architecture](../docs/architecture.md).
+
+## Cloud demo deployment (2026-09-12 round)
+
+The same `workbench` image target serves the team demo on one EC2 instance. What
+changes for the cloud build, and nothing else:
+
+- `deploy/payload/` is staged before the build (never committed): the three official
+  templates and the prepared calculation snapshot. The image also carries
+  `configs/mappings/` and `libreoffice-calc` + Noto CJK fonts, so both export formats
+  work with no host dependencies.
+- On startup the entrypoint binds the staged snapshot to the freshly prepared case
+  (`scripts/register_prepared_snapshot.py`); a failure leaves exports answering 503
+  honestly rather than stopping the container.
+- The API keeps its loopback bind INSIDE the container; nginx is the only published
+  origin, and every `/v1` request still needs the launcher-issued bearer token. The
+  instance's security group exposes port 80 only.
+
+Build, ship and launch (operator credentials in the environment):
+
+```bash
+mkdir -p deploy/payload/templates
+cp <official templates>/*.xlsx deploy/payload/templates/
+cp artifacts/shulin-case/snapshot.json deploy/payload/snapshot.json
+docker buildx build --platform linux/amd64 -f deploy/Dockerfile \
+  --target workbench -t appraisal-workbench:aws --load .
+docker save appraisal-workbench:aws | gzip > /tmp/workbench-image.tgz
+aws s3 cp /tmp/workbench-image.tgz s3://<team-bucket>/deploy/workbench-image.tgz
+# launch: see the run-instances call in the delivery notes; user-data loads the
+# image from a presigned URL and posts the private fixture manifest back through a
+# presigned PUT, so the instance needs no IAM role, SSH key or SSM access.
+```
+
+Sign-in for the demo: fetch `deploy/instance-fixture.json` from the team bucket and
+use its `session_token` on the public URL's sign-in page. Restart recovery: the
+workbench state lives in `/srv/workbench` on the instance and is reopened, never
+reset, on container restart.
+
+**Draft only.** The deployed workbench serves the isolated case shell with the real
+Shulin calculation snapshot for export rehearsal; it is not a formal valuation
+delivery, and every downloaded table is labelled 草稿.
