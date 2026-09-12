@@ -1,4 +1,5 @@
 import { ReviewClient } from "./api/client";
+import { ExportsClient } from "./api/exports";
 
 /**
  * The API origin is a build-time setting, never a value the page discovers at runtime.
@@ -8,6 +9,25 @@ import { ReviewClient } from "./api/client";
 const BASE_URL: string = import.meta.env.VITE_API_BASE_URL ?? "";
 
 const TOKEN_KEY = "workbench.session-token";
+const PAIR_TOKEN_KEY = "workbench.original-pairing";
+export const ORIGINAL_PREVIEW_URL: string = import.meta.env.VITE_LOCAL_ORIGINAL_PREVIEW_URL ?? "";
+
+export function readPairToken(): string | null {
+  try {
+    return sessionStorage.getItem(PAIR_TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function writePairToken(token: string | null): void {
+  try {
+    if (token) sessionStorage.setItem(PAIR_TOKEN_KEY, token);
+    else sessionStorage.removeItem(PAIR_TOKEN_KEY);
+  } catch {
+    /* Pairing remains optional and tab scoped. */
+  }
+}
 
 /**
  * Identity comes from the deployment. The workbench holds a token only for the lifetime of
@@ -28,6 +48,7 @@ export function writeToken(token: string | null): void {
   try {
     if (token === null) {
       sessionStorage.removeItem(TOKEN_KEY);
+      sessionStorage.removeItem(PAIR_TOKEN_KEY);
     } else {
       sessionStorage.setItem(TOKEN_KEY, token);
     }
@@ -37,7 +58,28 @@ export function writeToken(token: string | null): void {
   }
 }
 
-export function buildClient(): ReviewClient {
+/**
+ * Same origin and session as the main client. The token is read per request so a
+ * re-verified session does not leave the export panel holding a stale credential.
+ */
+export function buildExportsClient(): ExportsClient {
+  return new ExportsClient({ baseUrl: BASE_URL, token: () => Promise.resolve(readToken()) });
+}
+
+export function buildClient(
+  token: string | null = readToken(),
+  onUnauthorized?: () => void,
+  pairingToken: string | null = readPairToken(),
+): ReviewClient {
   // Sync today, but the seam is a promise so a deployment can refresh a token here.
-  return new ReviewClient({ baseUrl: BASE_URL, token: () => Promise.resolve(readToken()) });
+  return new ReviewClient({
+    baseUrl: BASE_URL,
+    token: () => Promise.resolve(token),
+    ...(onUnauthorized ? { onUnauthorized } : {}),
+    ...(ORIGINAL_PREVIEW_URL && pairingToken
+      ? {
+          localOriginalPreview: { baseUrl: ORIGINAL_PREVIEW_URL, pairingToken },
+        }
+      : {}),
+  });
 }

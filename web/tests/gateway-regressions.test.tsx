@@ -55,9 +55,18 @@ it.each([502, 504])(
   "freezes the original correction and key after a gateway %s",
   async (status) => {
     const user = userEvent.setup();
-    const fetch = vi.fn(() =>
-      Promise.resolve(new Response("<html>Gateway failure</html>", { status })),
-    );
+    const fetch = vi.fn((url: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.method === "POST")
+        return Promise.resolve(new Response("<html>Gateway failure</html>", { status }));
+      if ((url instanceof Request ? url.url : String(url)).includes("/responses/"))
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({ schema_version: "service-v1", code: "not_found", message }),
+            { status: 404 },
+          ),
+        );
+      return Promise.resolve(new Response(JSON.stringify(correctionView()), { status: 200 }));
+    });
     const client = new ReviewClient({
       baseUrl: "",
       token: () => Promise.resolve(null),
@@ -84,10 +93,14 @@ it.each([502, 504])(
     expect(screen.queryByRole("button", { name: /review and submit/i })).not.toBeInTheDocument();
     await user.click(screen.getByRole("radio", { name: /refuse to confirm/i }));
     await user.type(screen.getByLabelText("Corrected value"), "99");
-    await user.click(screen.getByRole("button", { name: /send again/i }));
-    expect(fetch).toHaveBeenCalledTimes(2);
-    const calls = fetch.mock.calls as unknown as [string, RequestInit][];
-    expect(calls[1]?.[1].body).toBe(calls[0]?.[1].body);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("button", { name: /send again/i })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /check submission status/i }));
+    await user.click(await screen.findByRole("button", { name: /send again/i }));
+    expect(fetch).toHaveBeenCalledTimes(4);
+    const calls = fetch.mock.calls as [string, RequestInit][];
+    expect(calls.map((call) => call[1].method)).toEqual(["POST", "GET", "GET", "POST"]);
+    expect(calls[3]?.[1].body).toBe(calls[0]?.[1].body);
     expect(JSON.parse(calls[0]![1].body as string)).toMatchObject({
       action: "correct",
       idempotency_key: "original-command-key",

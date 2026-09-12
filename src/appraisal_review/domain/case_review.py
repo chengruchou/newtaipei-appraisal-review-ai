@@ -17,16 +17,19 @@ from appraisal_review.domain.factor_models import (
     FactorReviewResult,
     ReviewMaterial,
     ReviewPolicy,
+    ScopedRules,
 )
 from appraisal_review.domain.fill_candidates import ArithmeticComparison, validate_slot
 from appraisal_review.domain.pdf_types import document_identity
 from appraisal_review.domain.review_contracts import (
     ArithmeticCheck,
+    ComparisonContext,
     Coverage,
     ReviewFinding,
     ReviewSlot,
 )
 from appraisal_review.domain.rule_engine import calculate
+from appraisal_review.domain.rule_sources import verify_rule_bundle
 from appraisal_review.domain.source_purpose import SourcePurposes
 from appraisal_review.domain.verification import ReviewVerifier
 from appraisal_review.ports.approval import ReviewAuthorization
@@ -35,6 +38,26 @@ from appraisal_review.ports.approval import ReviewAuthorization
 def source_cell(ref: SourceCitation) -> tuple[object, ...]:
     """All current citation entries are value anchors; excerpt is not cell identity."""
     return (ref.document_id, ref.content_hash, ref.version, ref.page, ref.region_id, ref.bbox)
+
+
+def matching_rule_sets(policy: ReviewPolicy, context: ComparisonContext) -> list[ScopedRules]:
+    """One shared applicability predicate for review and read-only metadata."""
+    return [
+        scoped
+        for scoped in policy.rule_sets
+        if scoped.context == context
+        and scoped.zone == policy.identity.zone
+        and scoped.rules.applicability.jurisdiction == policy.identity.district
+        and scoped.rules.applicability.land_use_category == policy.identity.land_use_category
+        and (
+            scoped.rules.applicability.effective_from is None
+            or scoped.rules.applicability.effective_from <= policy.identity.effective_date
+        )
+        and (
+            scoped.rules.applicability.effective_to is None
+            or policy.identity.effective_date <= scoped.rules.applicability.effective_to
+        )
+    ]
 
 
 class CaseReviewer:
@@ -142,9 +165,10 @@ class CaseReviewer:
                 "sources", "source_identity", "verified", "Current source versions and hashes match"
             )
 
+        purposes = None
         try:
             purposes = SourcePurposes.selected(
-                registry, forms=forms_source, criteria=criteria_source
+                registry, forms=forms_source, criteria=criteria_source, bundle=policy.rule_bundle
             )
             violations = purposes.violations(policy, facts)
         except ValueError:
@@ -164,6 +188,58 @@ class CaseReviewer:
                 )
 
         inventory = policy.inventory
+        if policy.rule_bundle is not None:
+            bundle = policy.rule_bundle
+            bundle_contexts = [entry.context for entry in inventory.contexts]
+            selection = verify_rule_bundle(bundle, policy.identity, bundle_contexts, registry)
+            required.append("rule_bundle")
+            if bundle.identity != policy.identity or {c.key() for c in bundle.contexts} != {
+                c.key() for c in bundle_contexts
+            }:
+                add(
+                    "rule_bundle",
+                    "selection_conflict",
+                    "needs_review",
+                    "The bundle is bound to different case conditions or contexts",
+                )
+                return finish()
+            if selection.status != "ready":
+                add(
+                    "rule_bundle",
+                    "rule_status",
+                    "needs_review",
+                    "Rule source selection requires review: " + "; ".join(selection.reasons),
+                )
+                # Source observations can be inspected independently of applicable
+                # rule approval. These are pending facts, never calculated grades
+                # or an assertion that the candidate bundle is applicable.
+                for pair in facts.pairs:
+                    refs = pair.target_sources + pair.comparable_sources
+                    if (
+                        purposes is None
+                        or not citations_valid(refs)
+                        or not purposes.allows(refs, "case")
+                    ):
+                        continue
+                    finding_id = f"{pair.context.key()}/factor/{pair.pair.factor_id}"
+                    required.append(finding_id)
+                    add(
+                        finding_id,
+                        "evidence_reliability",
+                        "needs_review",
+                        "Inspect the source observations; applicable rules remain unconfirmed",
+                        context=pair.context,
+                        factor_id=pair.pair.factor_id,
+                        evidence=refs,
+                    )
+                return finish()
+            add(
+                "rule_bundle",
+                "rule_source",
+                "verified",
+                "Pinned source metadata is applicable; "
+                "separate exact material authority is still required",
+            )
         contexts = [c.context.key() for c in inventory.contexts]
         pair_keys = [(p.context.key(), p.pair.factor_id) for p in facts.pairs]
         slots = [s.id for s in inventory.slots]
@@ -278,22 +354,7 @@ class CaseReviewer:
             key = context.key()
             required.append(key)
             required.extend(f"{key}/factor/{factor}" for factor in entry.factor_ids)
-            matches = [
-                s
-                for s in policy.rule_sets
-                if s.context == context
-                and s.zone == policy.identity.zone
-                and s.rules.applicability.jurisdiction == policy.identity.district
-                and s.rules.applicability.land_use_category == policy.identity.land_use_category
-                and (
-                    s.rules.applicability.effective_from is None
-                    or s.rules.applicability.effective_from <= policy.identity.effective_date
-                )
-                and (
-                    s.rules.applicability.effective_to is None
-                    or policy.identity.effective_date <= s.rules.applicability.effective_to
-                )
-            ]
+            matches = matching_rule_sets(policy, context)
             if len(matches) != 1:
                 add(
                     key,
@@ -313,6 +374,18 @@ class CaseReviewer:
                 and d.content_hash == rule_source.content_hash
                 and d.version == scoped.source_version
             ]
+            source_bindings = [
+                (
+                    rule_source.document_id,
+                    rule_source.content_hash,
+                    scoped.source_version,
+                    rule_source.pages,
+                ),
+                *(
+                    (s.document_id, s.content_hash, s.version, s.pages)
+                    for s in scoped.additional_sources
+                ),
+            ]
             if (
                 not source_matches
                 or not rule_source.pages
@@ -320,7 +393,11 @@ class CaseReviewer:
                 or not citations_valid(entry.evidence)
                 or rule_set.status == "rejected"
                 or any(
-                    e.document_id != rule_source.document_id or e.page not in rule_source.pages
+                    not any(
+                        (e.document_id, e.content_hash, e.version) == binding[:3]
+                        and e.page in binding[3]
+                        for binding in source_bindings
+                    )
                     for e in scoped.evidence
                 )
             ):

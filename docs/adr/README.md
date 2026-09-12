@@ -66,6 +66,14 @@ work is tracked in [the backlog](../implementation-backlog.md).
 | 0045 | [Preserve unknown gateway write outcomes](0045-gateway-write-outcome.md) |
 | 0046 | [Exact local visual review of uncertain restoration OCR](0046-local-ocr-visual-review.md) |
 | 0047 | [Explicit competition runtime composition and atomic spending limits](0047-competition-runtime-composition.md) |
+| 0048 | [Bind model discovery to each guarded invocation](0048-model-routing-snapshots.md) |
+| 0049 | [Bounded diagnostics for local restoration and download](0049-local-restoration-diagnostics.md) |
+| 0050 | [Explicit local Docker validation composition](0050-local-validation-stack.md) |
+| 0051 | [Local original workbench and pinned rule bundles](0051-local-original-workbench-and-rule-bundles.md) |
+| 0052 | [Observed model routing evidence and route-dependent capability](0052-observed-model-routing-evidence.md) |
+| 0053 | [Declared case sources are an expectation, never evidence](0053-declared-case-source-manifest.md) |
+| 0054 | [A per-source direct path for document sets that need no privacy processing](0054-direct-non-sensitive-source-path.md) |
+| 0055 | [Faithful workbook to PDF conversion or none](0055-workbook-pdf-conversion.md) |
 
 ## Originating filename migration
 

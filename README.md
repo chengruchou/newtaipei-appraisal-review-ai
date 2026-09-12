@@ -16,17 +16,132 @@ records current status; [validation evidence](docs/local-validation-record.md)
 separates checkpoints, and [the implementation backlog](docs/implementation-backlog.md)
 tracks remaining work.
 
+The current follow-up candidate adds per-model routing snapshots, bounded local
+restoration diagnostics and an explicit [local validation stack](docs/local-validation-stack.md).
+These additions require their own exact-commit validation; the historical
+baseline above is not acceptance of the follow-up image or OCR reliability.
+
+## Deploy and run with Docker
+
+This branch packages the reviewer workbench as containers. Everything below runs
+on one machine with Docker alone: no Python, Node, AWS account or model
+credential, and no step calls a paid API or reaches a real case document.
+
+**Requirements.** Docker Engine with the Compose plugin; check with
+`docker compose version`. The first build pulls `python:3.12-slim` and
+`node:22-bookworm-slim` and takes a few minutes.
+
+### 1. Get the branch and start it
+
+```sh
+git clone https://github.com/chengruchou/newtaipei-appraisal-review-ai.git
+cd newtaipei-appraisal-review-ai
+git checkout feat/docker-deployment
+docker compose up -d --build
+```
+
+The workbench is the default service, so no profile flag is needed. Wait for it
+to report healthy:
+
+```sh
+docker compose ps
+# workbench   Up (healthy)   127.0.0.1:4174->8080/tcp
+```
+
+### 2. Read the sign-in manifest
+
+On first start the launcher builds a synthetic workspace inside the container's
+volume and issues its own session token. Print it:
+
+```sh
+docker compose exec workbench workbench-entrypoint fixture
+```
+
+```json
+{
+  "session_token": "rk_...",
+  "empty_job_id": "...",
+  "completed_job_id": "...",
+  "tasks": { "confirm": "...", "correct": "...", "reject": "..." }
+}
+```
+
+That manifest is local authentication configuration for synthetic fixtures. Keep
+it out of Git and out of any evidence report.
+
+### 3. Sign in and open a job
+
+Open http://127.0.0.1:4174 and paste `session_token` on the sign-in screen. Then
+paste a job identifier:
+
+- `completed_job_id` opens a finished job: status, findings with their cited
+  source regions, independent verification and a PDF download that is
+  reauthorized and hash-checked on every request.
+- `empty_job_id` opens a job with no open tasks.
+- The `tasks` identifiers open individual review questions directly at
+  `/tasks/<id>`, each with its evidence and response form.
+
+There is no job list and no upload or create flow; the workbench opens
+identifiers you supply.
+
+### 4. Confirm it is really serving
+
+```sh
+curl -o /dev/null -w '%{http_code}\n' http://127.0.0.1:4174/
+curl -o /dev/null -w '%{http_code}\n' \
+  http://127.0.0.1:4174/v1/review-jobs/00000000-0000-0000-0000-000000000000
+```
+
+The first is `200`. The second is `403`, which is the correct answer: the API
+responds through the proxy and refuses an unauthorized read. To exercise it with
+the issued token:
+
+```sh
+TOKEN=$(docker compose exec -T workbench workbench-entrypoint fixture \
+  | sed -n 's/.*"session_token": "\([^"]*\)".*/\1/p')
+curl -H "Authorization: Bearer $TOKEN" \
+  http://127.0.0.1:4174/v1/review-jobs/<completed_job_id>
+```
+
+### 5. Stop, reset or rebuild
+
+```sh
+docker compose stop workbench        # keep the workspace
+docker compose down                  # remove the container, keep the volume
+docker compose down -v               # discard the workspace and start clean
+docker compose up -d --build         # rebuild after changing the tree
+```
+
+Response scenarios consume tasks, so the entrypoint reopens durable state rather
+than resetting it. Use `down -v` to replay every scenario from the start.
+
+### What this deployment is not
+
+Only the frontend origin is published, on loopback. The API keeps its numeric
+loopback bind and authority inside the container and is never reachable from the
+host or the Docker network; the frontend is built with no `VITE_API_BASE_URL` and
+reaches it through a same-origin proxy.
+
+The images carry synthetic fixtures only. This is not the AWS entry, not
+production login, and not business acceptance, and a healthy container is not
+evidence of real-case accuracy. The `/privacy` route does not work here: it needs
+a separate local bridge plus an operator-owned OCR executable and language assets
+pinned by hash, which must be chosen on the host and never baked into an image.
+
+The optional demo and check profiles, the image layout and the reasoning behind
+the single-container design are in [the container runbook](deploy/README.md).
+
 ## Integrated boundaries
 
 | Boundary | Implemented and integrated locally | Remaining acceptance |
 | --- | --- | --- |
-| Local privacy | Restricted Origin/session bridge, exact export/mapping readback, two-stage visual OCR review and one complete synthetic restoration/download | Repeated OCR reliability and diagnosis; production desktop distribution |
+| Local privacy | Restricted Origin/session bridge, exact export/mapping readback, two-stage visual OCR review, bounded failure diagnostics and reproducible synthetic scenarios | Repeated OCR reliability; production provisioner, key recovery and desktop distribution |
 | Documents and extraction | Authorized immutable snapshots, actual PDF parser, source checks for resumed runs, production SDK adapter with injected model responses in rehearsal | Measured model quality and real cloud authorization |
 | Jobs and human tasks | SQLite job/task/revision/outbox/receipt transactions, durable dispatch queue, actual authenticated API | Production identity and cloud transaction composition |
 | Controlled actions | Canonical response adapter, trusted allowed actions, persisted run reservations, failed/unknown-effect quarantine | Designated model and operator evaluation |
 | PDF and publication | Two-context/eight-field writer, immutable font bytes, reopen, fenced publication, reauthorized download and separate local restored output | Formal assets and business grants; cloud recovery |
-| Workbench and Runtime | Canonical client, seven core browser scenarios, configured wheel/container local success | Complete Docker service entry, production login, image security and AWS operation |
-| Competition controls | Pinned rule/service catalogs, explicit data admission, guarded clients, shared physical-dispatch reservations and conservative budget ledger | Per-model routing binding, trusted account/profile approval and live verification |
+| Workbench and Runtime | Canonical client and explicit synthetic local container entry with durable API/worker state and optional host companion | Independent review, platform acceptance, production login, image security and AWS operation |
+| Competition controls | Pinned rule/service catalogs, explicit data admission, per-model routing proofs, shared physical-dispatch reservations and conservative budget ledger | Trusted account/profile approval, cross-process deployment and live verification |
 
 There is one canonical #36/#38 service/task union and regenerated #39 consumer.
 The undeployed strict consumers migrate together; frozen commands and legacy
@@ -57,6 +172,14 @@ See [contract ownership and migration](docs/service-contracts.md).
   grant must still match. Every download reauthorizes; local revealed values
   cannot enter the publication writer.
 
+## Local original KPI1 workbench
+
+The [controlled original workbench](docs/local-original-workbench.md) adds five
+views over actual local jobs, source PDFs and canonical human responses, with a
+pinned multi-source rule catalog. See [delivery and validation](docs/kpi1-delivery.md)
+for real-data scope and remaining gates. It does not issue rule/material approval
+or claim a complete report, external-model evaluation or cloud acceptance.
+
 ## Run the configured job and review workbench
 
 The [integrated local runbook](docs/integrated-local-runbook.md) provides the
@@ -70,8 +193,17 @@ The workbench opens existing job IDs and uses a manually supplied session token.
 It supports task review, publication/download and local privacy/OCR review; a
 production login, job list and general upload/create flow are not implemented.
 The default AWS Docker entry has no configured execution worker and returns 503.
-The successful configured local container rehearsal does not supply a complete
-frontend/API/worker deployment. See [architecture](docs/architecture.md).
+Use the separate [local validation stack](docs/local-validation-stack.md) for the
+explicit synthetic frontend/API/worker composition. Its host-companion mode
+keeps original documents, mappings and restoration authority on the host. This
+does not supply production identity, general operator provisioning or an AWS
+deployment. See [architecture](docs/architecture.md).
+
+### Containers
+
+The same workbench runs from one container; see
+[Deploy and run with Docker](#deploy-and-run-with-docker) above for the steps and
+[the container runbook](deploy/README.md) for the image layout and its limits.
 
 ## Run the existing local reference service
 

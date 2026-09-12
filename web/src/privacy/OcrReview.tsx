@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
 import { evidenceBox } from "@/ui/evidenceGeometry";
+import { BridgeError } from "./client";
+import { LocalFailureDetails } from "./LocalFailureDetails";
+import type { PrivacyDiagnostic } from "./diagnostics";
 import {
   currentOcrReceipt,
   validOcrReading,
@@ -23,6 +26,7 @@ export function OcrReview({
 }) {
   const [view, setView] = useState<OcrReviewView | null>(null);
   const [error, setError] = useState(false);
+  const [diagnostic, setDiagnostic] = useState<PrivacyDiagnostic | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [restarting, setRestarting] = useState(false);
   const [restartFailed, setRestartFailed] = useState(false);
@@ -32,13 +36,17 @@ export function OcrReview({
     onReady(false);
     setView(null);
     setError(false);
+    setDiagnostic(null);
     void client
       .get(reviewId)
       .then((current) => {
         if (!cancelled) setView(current);
       })
-      .catch(() => {
-        if (!cancelled) setError(true);
+      .catch((caught: unknown) => {
+        if (!cancelled) {
+          setError(true);
+          setDiagnostic(caught instanceof BridgeError ? (caught.diagnostic ?? null) : null);
+        }
       });
     return () => {
       cancelled = true;
@@ -50,17 +58,20 @@ export function OcrReview({
     onReady(false);
     setRestarting(true);
     setView(null);
+    setDiagnostic(null);
     try {
       await client.restart(reviewId, resultId);
       onRestarted();
-    } catch {
+    } catch (caught) {
       setRestartFailed(true);
+      setDiagnostic(caught instanceof BridgeError ? (caught.diagnostic ?? null) : null);
     } finally {
       setRestarting(false);
     }
   }
   return (
     <section aria-label="Local visual OCR review">
+      <LocalFailureDetails diagnostic={diagnostic} />
       {error ? (
         <p role="alert">The local OCR review could not be verified. Reload before continuing.</p>
       ) : null}
@@ -134,6 +145,7 @@ function ReviewStage({
   );
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [diagnostic, setDiagnostic] = useState<PrivacyDiagnostic | null>(null);
   const receipt = currentOcrReceipt(view);
   const item = view.items.find((entry) => entry.item_id === itemId && entry.page === page);
   const remaining = view.items.filter((entry) => entry.confirmed_reading === null).length;
@@ -154,8 +166,9 @@ function ReviewStage({
     onReady(false);
     try {
       setView(await client.confirm(view, item.item_id, reading));
-    } catch {
+    } catch (caught) {
       setFailed(true);
+      setDiagnostic(caught instanceof BridgeError ? (caught.diagnostic ?? null) : null);
     } finally {
       setBusy(false);
       onConfirming(false);
@@ -185,6 +198,7 @@ function ReviewStage({
           its current receipts before continuing.
         </p>
       ) : null}
+      <LocalFailureDetails diagnostic={diagnostic} />
       <label>
         OCR review page
         <select
@@ -303,6 +317,7 @@ function ReviewPage({
   const [url, setUrl] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [diagnostic, setDiagnostic] = useState<PrivacyDiagnostic | null>(null);
   const dimensions = view.pages.find((entry) => entry.number === page)!;
   // Confirmations change receipts only; the mounted stage fixes these image bytes.
   const [imageView] = useState(view);
@@ -317,8 +332,11 @@ function ReviewPage({
           setUrl(owned);
         }
       })
-      .catch(() => {
-        if (!cancelled) setFailed(true);
+      .catch((caught: unknown) => {
+        if (!cancelled) {
+          setFailed(true);
+          setDiagnostic(caught instanceof BridgeError ? (caught.diagnostic ?? null) : null);
+        }
       });
     return () => {
       cancelled = true;
@@ -333,6 +351,7 @@ function ReviewPage({
           The exact page image could not be loaded. No item on this page can be confirmed.
         </p>
       ) : null}
+      <LocalFailureDetails diagnostic={diagnostic} />
       {url ? (
         <>
           <div style={{ position: "relative", maxWidth: "60rem" }}>

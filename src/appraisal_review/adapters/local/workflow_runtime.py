@@ -5,17 +5,17 @@ from __future__ import annotations
 import asyncio
 import sqlite3
 from contextlib import closing
+from dataclasses import replace
 from uuid import UUID
 
 from appraisal_review.adapters.local.human_task_store import LocalHumanTaskStore
 from appraisal_review.adapters.local.integrated_service import LocalDirectory
 from appraisal_review.adapters.local.job_store import InMemoryJobStore
 from appraisal_review.adapters.local.sqlite_review_store import SQLiteReviewStore
-from appraisal_review.application.document_transfer import DocumentTransferService
 from appraisal_review.application.revisions import RevisionSnapshot
 from appraisal_review.application.runtime_sources import source_fault
 from appraisal_review.application.service_guards import Principal, ServiceFault
-from appraisal_review.domain.document_transfer import DocumentFault
+from appraisal_review.domain.document_transfer import DocumentFault, DocumentOperation
 from appraisal_review.domain.factor_models import AgentReviewRun
 from appraisal_review.domain.review_contracts import content_digest
 from appraisal_review.domain.service_contracts import (
@@ -26,6 +26,7 @@ from appraisal_review.domain.service_contracts import (
     ServiceErrorCode,
 )
 from appraisal_review.ports.jobs import ClaimedAttempt, ConditionFailed, JobRecord
+from appraisal_review.ports.runtime_documents import RuntimeDocuments
 
 
 class SQLiteExecutionAuthority:
@@ -34,7 +35,7 @@ class SQLiteExecutionAuthority:
     def __init__(
         self,
         store: SQLiteReviewStore,
-        documents: DocumentTransferService,
+        documents: RuntimeDocuments,
         directory: LocalDirectory,
     ) -> None:
         self.store, self.documents, self.directory = store, documents, directory
@@ -92,6 +93,13 @@ class SQLiteExecutionAuthority:
         ).fetchone()
         if epoch is not None and epoch[0] != 0:
             raise ServiceFault(ServiceErrorCode.UNAUTHORIZED)
+        try:
+            for reference in snapshot.revision.documents:
+                self.documents.authorization.require(
+                    principal, reference.case_id, reference.purpose, DocumentOperation.READ
+                )
+        except DocumentFault as error:
+            raise source_fault(error) from None
         return job
 
     async def require_current(
@@ -133,6 +141,26 @@ class SQLiteExecutionAuthority:
             job = await self._check(principal, record, attempt, snapshot, j, c)
             if any(task.run != job.current_run for task in tasks):
                 raise ConditionFailed("Task registration lost its current attempt")
+            # Abandoned prior attempts remain in history but cannot accept answers.
+            for task_id, previous in tuple(t._tasks.items()):
+                old = previous.task
+                if (
+                    previous.job_id == job.job_id
+                    and old.run.run_id == job.current_run.run_id
+                    and old.run.revision == job.current_run.revision
+                    and old.run.attempt_id != job.current_run.attempt_id
+                    and old.state == "open"
+                ):
+                    t._tasks[task_id] = replace(
+                        previous,
+                        task=HumanTask.model_validate(
+                            {
+                                **old.model_dump(),
+                                "state": "superseded",
+                                "version": old.version + 1,
+                            }
+                        ),
+                    )
             t.seed(job_id=job.job_id, principal_id=job.principal_id, snapshot=snapshot, tasks=tasks)
 
         await asyncio.to_thread(self.store._transaction, apply)
@@ -141,13 +169,41 @@ class SQLiteExecutionAuthority:
 class SQLiteWorkflowReviews:
     """Immutable internal review output; it cannot authorize or publish an artifact."""
 
-    def __init__(self, store: SQLiteReviewStore) -> None:
+    def __init__(self, store: SQLiteReviewStore, *, attempt_scoped: bool = False) -> None:
         self.store = store
+        self.attempt_scoped = attempt_scoped
         with closing(store._connect()) as connection:
             connection.execute(
                 "CREATE TABLE IF NOT EXISTS workflow_reviews "
                 "(run_id TEXT PRIMARY KEY, run TEXT NOT NULL, review TEXT NOT NULL)"
             )
+
+            if attempt_scoped:
+                connection.execute(
+                    "CREATE TABLE IF NOT EXISTS workflow_review_attempts "
+                    "(run_id TEXT NOT NULL, attempt_id TEXT NOT NULL, run TEXT NOT NULL, "
+                    "review TEXT NOT NULL, PRIMARY KEY(run_id,attempt_id))"
+                )
+
+    def _lookup(self, connection: sqlite3.Connection, run: RunReference) -> tuple[str, str] | None:
+        if self.attempt_scoped:
+            row = connection.execute(
+                "SELECT run,review FROM workflow_review_attempts WHERE run_id=? AND attempt_id=?",
+                (str(run.run_id), str(run.attempt_id or "")),
+            ).fetchone()
+            if row is not None:
+                return (str(row[0]), str(row[1]))
+        row = connection.execute(
+            "SELECT run,review FROM workflow_reviews WHERE run_id=?", (str(run.run_id),)
+        ).fetchone()
+        if row is None:
+            return None
+        if (
+            self.attempt_scoped
+            and RunReference.model_validate_json(row[0]).attempt_id != run.attempt_id
+        ):
+            return None
+        return (str(row[0]), str(row[1]))
 
     async def put(self, run: RunReference, review: AgentReviewRun) -> None:
         run = RunReference.model_validate_json(run.model_dump_json())
@@ -160,16 +216,20 @@ class SQLiteWorkflowReviews:
         with closing(self.store._connect()) as connection:
             connection.execute("BEGIN IMMEDIATE")
             try:
-                row = connection.execute(
-                    "SELECT run,review FROM workflow_reviews WHERE run_id=?", (str(run.run_id),)
-                ).fetchone()
+                row = self._lookup(connection, run)
                 expected = (run.model_dump_json(), review.model_dump_json())
                 if row is not None and tuple(row) != expected:
                     raise ServiceFault(ServiceErrorCode.CONFLICT)
-                connection.execute(
-                    "INSERT OR IGNORE INTO workflow_reviews VALUES(?,?,?)",
-                    (str(run.run_id), *expected),
-                )
+                if self.attempt_scoped:
+                    connection.execute(
+                        "INSERT OR IGNORE INTO workflow_review_attempts VALUES(?,?,?,?)",
+                        (str(run.run_id), str(run.attempt_id or ""), *expected),
+                    )
+                else:
+                    connection.execute(
+                        "INSERT OR IGNORE INTO workflow_reviews VALUES(?,?,?)",
+                        (str(run.run_id), *expected),
+                    )
                 connection.commit()
             except BaseException:
                 connection.rollback()
@@ -179,9 +239,7 @@ class SQLiteWorkflowReviews:
         try:
             run = RunReference.model_validate_json(run.model_dump_json())
             with closing(self.store._connect()) as connection:
-                row = connection.execute(
-                    "SELECT run,review FROM workflow_reviews WHERE run_id=?", (str(run.run_id),)
-                ).fetchone()
+                row = self._lookup(connection, run)
             if row is None:
                 return None
             stored_run = RunReference.model_validate_json(row[0])

@@ -13,18 +13,29 @@ the very question whose answer authorizes a change.
 from typing import Annotated, Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 
 from appraisal_review.api.dependencies import get_human_task_service, get_principal
 from appraisal_review.application.human_tasks import HumanTaskService
-from appraisal_review.application.service_guards import Principal
-from appraisal_review.domain.service_contracts import HumanResponse, ServiceProblem
+from appraisal_review.application.service_guards import Principal, ServiceFault
+from appraisal_review.domain.job_contracts import JobReference
+from appraisal_review.domain.service_contracts import (
+    HumanResponse,
+    OpaqueID,
+    ServiceErrorCode,
+    ServiceProblem,
+)
 from appraisal_review.domain.task_contracts import (
     ResponseReceipt,
     RevisionListView,
     TaskListView,
     TaskSubjectView,
     TaskView,
+)
+from appraisal_review.domain.workbench_contracts import (
+    CaseContextView,
+    PausedReviewView,
+    ReviewSessionView,
 )
 
 router = APIRouter(tags=["human-tasks"])
@@ -96,6 +107,75 @@ async def submit_task_response(
     return await service.respond(principal, task_id, command)
 
 
+@router.get("/v1/review-session", response_model=ReviewSessionView, responses=PROBLEM_RESPONSES)
+async def read_review_session(
+    request: Request, principal: PrincipalDependency
+) -> ReviewSessionView:
+    configured = getattr(request.app.state, "configured_workbench_jobs", None)
+    jobs = []
+    if configured is not None:
+        service = get_human_task_service(request)
+        for job_id in configured():
+            try:
+                view = await service.list_tasks(principal, UUID(str(job_id)))
+                jobs.append(JobReference(case_id=view.job.case_id, job_id=view.job.job_id))
+            except ServiceFault as fault:
+                if fault.problem.code not in {
+                    ServiceErrorCode.UNAUTHORIZED,
+                    ServiceErrorCode.NOT_FOUND,
+                }:
+                    raise
+    return ReviewSessionView(
+        actor=principal.actor,
+        data_mode=getattr(request.app.state, "workbench_data_mode", "unspecified"),
+        configured_jobs=tuple(jobs),
+    )
+
+
+@router.get(
+    "/v1/review-jobs/{job_id}/context", response_model=CaseContextView, responses=PROBLEM_RESPONSES
+)
+async def read_case_context(
+    job_id: UUID, service: ServiceDependency, principal: PrincipalDependency
+) -> CaseContextView:
+    return await service.read_context(principal, job_id)
+
+
+@router.get(
+    "/v1/review-jobs/{job_id}/assessment",
+    response_model=PausedReviewView,
+    responses=PROBLEM_RESPONSES,
+)
+async def read_paused_assessment(
+    job_id: UUID, service: ServiceDependency, principal: PrincipalDependency
+) -> PausedReviewView:
+    return await service.read_assessment(principal, job_id)
+
+
+@router.get(
+    "/v1/review-tasks/{task_id}/responses/{key}",
+    response_model=ResponseReceipt,
+    responses=PROBLEM_RESPONSES,
+)
+async def read_task_response(
+    task_id: UUID,
+    key: OpaqueID,
+    service: ServiceDependency,
+    principal: PrincipalDependency,
+) -> ResponseReceipt:
+    return await service.read_response(principal, task_id, key)
+
+
 HUMAN_TASK_ENDPOINTS = frozenset(
-    {list_job_tasks, list_job_revisions, read_task, read_task_subject, submit_task_response}
+    {
+        list_job_tasks,
+        list_job_revisions,
+        read_task,
+        read_task_subject,
+        submit_task_response,
+        read_review_session,
+        read_case_context,
+        read_paused_assessment,
+        read_task_response,
+    }
 )

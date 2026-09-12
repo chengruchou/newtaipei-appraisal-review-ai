@@ -103,3 +103,34 @@ def test_revision_cannot_clean_invalid_native_confirmation_into_authority(side):
     getattr(candidate.facts.pairs[0], f"{side}_reliability").confirmation = None
     child = parent.revise(candidate, "r2")
     assert getattr(child.material.facts.pairs[0], f"{side}_reliability").method == "model_proposed"
+
+
+@pytest.mark.parametrize("method", ["native_proposed", "manual_proposed"])
+@pytest.mark.parametrize("changed", [False, True])
+def test_local_proposal_revisions_retain_origin_without_native_authority(method, changed):
+    """Synthetic lineage regression, separate from real correction acceptance."""
+    material = synthetic_material()
+    pair = material.facts.pairs[0]
+    pair.target_reliability.method = method
+    pair.pair.target.confidence = 0
+    for evidence in pair.pair.target.evidence:
+        evidence.confidence = 0
+    assert pair.target_reliability.method == method
+    assert pair.target_reliability.confirmation is None
+    parent = RevisionSnapshot.capture(material, "local-r1")
+    proposed = parent.material
+    if changed:
+        proposed.facts.pairs[0].pair.target.value.value += 1
+    # A caller-provided label must not turn a local proposal into native authority.
+    proposed.facts.pairs[0].target_reliability.method = "native_numeric"
+    child = parent.revise(proposed, "local-r2")
+    current = child.material.facts.pairs[0]
+    assert current.target_reliability.method == ("manual_proposed" if changed else method)
+    assert current.target_reliability.confirmation is None
+    assert current.pair.target.confidence == 0
+    assert current.pair.target.evidence == pair.pair.target.evidence
+    assert parent.material == material
+    assert (
+        child.revise(child.material, "local-r3").material.facts.pairs[0].target_reliability.method
+        == current.target_reliability.method
+    )

@@ -1,0 +1,114 @@
+# Local container deployment. Synthetic fixtures only; see deploy/README.md before
+# pointing anything at real documents.
+
+name: appraisal-review
+
+services:
+  # The reviewer workbench: the React frontend and the synthetic integrated API.
+  # The API stays on this container's loopback; only the frontend origin is published.
+  workbench:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile
+      target: workbench
+    ports:
+      - "127.0.0.1:4174:8080"
+    volumes:
+      - workbench:/app/artifacts
+    restart: unless-stopped
+
+  # --- The single-shot review demo, kept behind a profile ---------------------
+  # docker compose --profile review-demo up
+
+  fixture:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile
+      target: reviewer
+    profiles: ["review-demo"]
+    command: ["fixture"]
+    environment:
+      APPRAISAL_DEMO_RESET: "${APPRAISAL_DEMO_RESET:-0}"
+    volumes:
+      - demo:/app/artifacts
+    restart: "no"
+
+  reviewer:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile
+      target: reviewer
+    profiles: ["review-demo"]
+    environment:
+      APPRAISAL_DEMO_CONFIG: config.json
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - demo:/app/artifacts
+    depends_on:
+      fixture:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  # The same image pinned to material whose critical evidence is missing, so the
+  # completion gate can be observed over real HTTP instead of described.
+  reviewer-gate:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile
+      target: reviewer
+    profiles: ["review-demo"]
+    environment:
+      APPRAISAL_DEMO_CONFIG: config-needs-review.json
+    ports:
+      - "127.0.0.1:8001:8000"
+    volumes:
+      - demo:/app/artifacts
+    depends_on:
+      fixture:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  console:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile
+      target: console
+    profiles: ["review-demo"]
+    environment:
+      APPRAISAL_REVIEWER_URL: http://reviewer:8000
+      APPRAISAL_GATE_URL: http://reviewer-gate:8000
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - demo:/app/artifacts
+    depends_on:
+      reviewer:
+        condition: service_healthy
+      reviewer-gate:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # --- Checks -----------------------------------------------------------------
+  # docker compose --profile verify run --rm verify
+  # docker compose --profile verify run --rm web-verify
+
+  verify:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile
+      target: verify
+    profiles: ["verify"]
+    restart: "no"
+
+  web-verify:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile
+      target: web-verify
+    profiles: ["verify"]
+    restart: "no"
+
+volumes:
+  workbench:
+  demo:

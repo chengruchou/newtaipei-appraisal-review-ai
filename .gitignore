@@ -31,7 +31,11 @@ cdk.out/
 .vscode/
 
 # Competition and case data: never commit real documents
+deploy/payload/
 /*.pdf
+# Official form templates and the operator's local notes: never committed.
+docs/table/
+*.xlsx
 datasets/raw/
 datasets/interim/
 datasets/processed/

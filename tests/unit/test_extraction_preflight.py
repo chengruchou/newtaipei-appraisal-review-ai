@@ -60,14 +60,14 @@ def policy(**changes):
     )
 
 
-def model(region="us-east-1"):
+def model(region="us-east-1", inference_types=("ON_DEMAND", "INFERENCE_PROFILE")):
     return {
         "modelDetails": {
             "modelId": "vendor.synthetic-v1",
             "modelArn": f"arn:aws:bedrock:{region}::foundation-model/vendor.synthetic-v1",
             "inputModalities": ["TEXT", "IMAGE"],
             "outputModalities": ["TEXT"],
-            "inferenceTypesSupported": ["ON_DEMAND"],
+            "inferenceTypesSupported": list(inference_types),
             "modelLifecycle": {"status": "ACTIVE"},
         }
     }
@@ -485,4 +485,35 @@ def test_foundation_capability_is_bound_to_exact_model_and_region(problem):
         details["modelArn"] = model("us-west-2")["modelDetails"]["modelArn"]
     with pytest.raises(ExtractionBoundaryError):
         preflight(factory, policy())
+    assert all(call.args[0] != "bedrock-runtime" for call in factory.client.call_args_list)
+
+
+def test_direct_foundation_route_requires_on_demand_capability():
+    factory, mapping = clients()
+    mapping["bedrock", "us-east-1"].get_foundation_model.return_value = model(
+        inference_types=("INFERENCE_PROFILE",)
+    )
+    with pytest.raises(ExtractionBoundaryError):
+        preflight(factory, policy())
+    assert all(call.args[0] != "bedrock-runtime" for call in factory.client.call_args_list)
+
+
+@pytest.mark.parametrize("kind", ["system_profile", "application_profile"])
+def test_profile_route_accepts_destinations_without_on_demand(kind):
+    factory, mapping, config = profile_setup(kind)
+    for region in ("us-east-1", "us-west-2"):
+        mapping["bedrock", region].get_foundation_model.return_value = model(
+            region, inference_types=("INFERENCE_PROFILE",)
+        )
+    assert preflight(factory, config) is mapping["bedrock-runtime", "us-east-1"]
+    mapping["bedrock-runtime", "us-east-1"].converse.assert_not_called()
+
+
+def test_profile_route_rejects_a_destination_the_profile_cannot_route_to():
+    factory, mapping, config = profile_setup()
+    mapping["bedrock", "us-west-2"].get_foundation_model.return_value = model(
+        "us-west-2", inference_types=("ON_DEMAND",)
+    )
+    with pytest.raises(ExtractionBoundaryError):
+        preflight(factory, config)
     assert all(call.args[0] != "bedrock-runtime" for call in factory.client.call_args_list)

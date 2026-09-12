@@ -1342,7 +1342,9 @@
           "enum": [
             "native_numeric",
             "reviewer_confirmed",
-            "model_proposed"
+            "model_proposed",
+            "native_proposed",
+            "manual_proposed"
           ],
           "title": "Method",
           "type": "string"

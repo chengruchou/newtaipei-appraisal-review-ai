@@ -10,7 +10,13 @@ from datetime import UTC, datetime, timedelta
 from typing import Literal
 from uuid import UUID, uuid4
 
+from appraisal_review.application.privacy_diagnostics import diagnostic_stage, restore_stage
 from appraisal_review.application.privacy_refill import validate_refill
+from appraisal_review.domain.privacy_diagnostics import (
+    LocalRestoreFailure,
+    RestoreFailureCode,
+    RestoreStage,
+)
 from appraisal_review.domain.privacy_mapping import LocalMappingRecord
 from appraisal_review.domain.privacy_models import (
     PrivacyRegion,
@@ -81,7 +87,8 @@ class LocalRefillReview:
         if type(max_retained_bytes) is not int or not 0 < max_retained_bytes <= 64 * 1024 * 1024:
             raise ValueError("Bounded local review retention required")
         self.max_retained_bytes = max_retained_bytes
-        self.engine_digest = engine_identity()
+        with restore_stage(RestoreStage.ENGINE):
+            self.engine_digest = engine_identity()
         if len(self.engine_digest) != 64 or any(
             c not in "0123456789abcdef" for c in self.engine_digest
         ):
@@ -118,30 +125,42 @@ class LocalRefillReview:
 
     def _check(self) -> None:
         self._lifetime()
-        if self.engine_identity() != self.engine_digest:
-            raise ValueError("Local OCR review expired or engine changed")
-        self.authorize()
-        validate_refill(self.mapping, self.plan, self.artifact)
+        with restore_stage(RestoreStage.ENGINE):
+            if self.engine_identity() != self.engine_digest:
+                raise LocalRestoreFailure(
+                    RestoreFailureCode.ENGINE_CHANGED, "Local OCR review expired or engine changed"
+                )
+        with restore_stage(RestoreStage.REVIEW_AUTHORITY):
+            self.authorize()
+        with restore_stage(RestoreStage.PLAN):
+            validate_refill(self.mapping, self.plan, self.artifact)
         self._check_evidence()
         # Engine checks, publication reads and evidence hashing can outlive a
         # review lease. Never return authority based only on the entry check.
         self._lifetime()
 
+    @diagnostic_stage(RestoreStage.REVIEW_EVIDENCE)
     def _check_evidence(self) -> None:
         for stage, measurements in self._stage_observations.items():
             if (
                 _digest([o.model_dump(mode="json") for o in measurements])
                 != self._measurement_digests[stage]
             ):
-                raise ValueError("Retained stage measurements changed")
+                raise LocalRestoreFailure(
+                    RestoreFailureCode.EVIDENCE_CHANGED, "Retained stage measurements changed"
+                )
             hashes = tuple(
                 hashlib.sha256(png).hexdigest() for png in self._stage_images[stage].values()
             )
             if hashes != self._stage_page_digests[stage]:
-                raise ValueError("Retained stage images changed")
+                raise LocalRestoreFailure(
+                    RestoreFailureCode.EVIDENCE_CHANGED, "Retained stage images changed"
+                )
         for stage, view in self._history.items():
             if self._immutable_view(view) != self._stage_view_bindings[stage]:
-                raise ValueError("Retained stage view changed")
+                raise LocalRestoreFailure(
+                    RestoreFailureCode.EVIDENCE_CHANGED, "Retained stage view changed"
+                )
         for receipt in self._receipts:
             view = self._view if receipt.stage == self._view.stage else self._history[receipt.stage]
             if (
@@ -154,28 +173,39 @@ class LocalRefillReview:
                 or receipt.readings != view.items
                 or receipt.expires_at != self.expires_at
             ):
-                raise ValueError("Local review receipt changed")
+                raise LocalRestoreFailure(
+                    RestoreFailureCode.EVIDENCE_CHANGED, "Local review receipt changed"
+                )
         if hasattr(self, "_view"):
             if self._immutable_view(self._view) != self._view_binding:
-                raise ValueError("Review measurements or scope changed")
+                raise LocalRestoreFailure(
+                    RestoreFailureCode.EVIDENCE_CHANGED, "Review measurements or scope changed"
+                )
             for page in self._view.pages:
                 if hashlib.sha256(self._images[page.number]).hexdigest() != page.image_sha256:
-                    raise ValueError("Review image changed")
+                    raise LocalRestoreFailure(
+                        RestoreFailureCode.EVIDENCE_CHANGED, "Review image changed"
+                    )
             if self._view.stage == "restored" and (
                 self._candidate is None
                 or hashlib.sha256(self._candidate).hexdigest() != self._view.input_sha256
             ):
-                raise ValueError("Reviewed candidate changed")
+                raise LocalRestoreFailure(
+                    RestoreFailureCode.EVIDENCE_CHANGED, "Reviewed candidate changed"
+                )
         self._admit(0)
 
+    @diagnostic_stage(RestoreStage.REVIEW_LIFETIME)
     def _lifetime(self) -> None:
+        if self._revoked:
+            raise LocalRestoreFailure(RestoreFailureCode.REVIEW_REVOKED, "Local OCR review expired")
         if (
-            self._revoked
-            or not self.created_at <= self.now() < self.expires_at
+            not self.created_at <= self.now() < self.expires_at
             or time.monotonic() >= self._deadline
         ):
-            raise ValueError("Local OCR review expired")
+            raise LocalRestoreFailure(RestoreFailureCode.REVIEW_EXPIRED, "Local OCR review expired")
 
+    @diagnostic_stage(RestoreStage.REVIEW)
     def archive_evidence(self) -> tuple[dict[str, object], dict[str, bytes]]:
         """Retain expired evidence without renewing or importing its authority."""
         if self._revoked or self._complete is not None:
@@ -252,7 +282,8 @@ class LocalRefillReview:
     def _prepare(self, stage: Literal["published", "restored"], pdf: bytes) -> None:
         self._check()
         pages = self.plan.pages
-        rendered = self.processor.render(pdf, pages)
+        with restore_stage(RestoreStage.RENDER):
+            rendered = self.processor.render(pdf, pages)
         if len(rendered) != len(pages):
             raise ValueError("Page coverage differs")
         self._admit(sum(len(image.preview.png) for image in rendered))
@@ -265,10 +296,11 @@ class LocalRefillReview:
             remaining = deadline - time.monotonic()
             if remaining <= 0:
                 raise ValueError("OCR deadline")
-            observations = tuple(
-                TextObservation.model_validate(o)
-                for o in self.ocr.read(image.preview, page, timeout=remaining)
-            )
+            with restore_stage(RestoreStage.OCR):
+                observations = tuple(
+                    TextObservation.model_validate(o)
+                    for o in self.ocr.read(image.preview, page, timeout=remaining)
+                )
             if (
                 time.monotonic() > deadline
                 or not observations
@@ -398,10 +430,12 @@ class LocalRefillReview:
         self._stage_input_digests[stage] = self._view.input_sha256
         self._check()
 
+    @diagnostic_stage(RestoreStage.REVIEW)
     def view(self) -> OCRReviewView:
         self._check()
         return self._view.model_copy(update={"receipts": tuple(self._receipts)})
 
+    @diagnostic_stage(RestoreStage.REVIEW)
     def image(self, page: int) -> bytes:
         self._check()
         content = self._images[page]
@@ -412,6 +446,7 @@ class LocalRefillReview:
         self._check()
         return content
 
+    @diagnostic_stage(RestoreStage.REVIEW)
     def confirm(self, item_id: UUID, command: OCRReviewConfirmation) -> OCRReviewView:
         self._check()
         if command.review_digest != self._view.review_digest or self._complete is not None:
@@ -446,6 +481,7 @@ class LocalRefillReview:
         self._receipt()
         return self.view()
 
+    @diagnostic_stage(RestoreStage.REVIEW)
     def history(self, stage: Literal["published", "restored"]) -> OCRReviewView:
         self._check()
         return self.view() if self._view.stage == stage else self._history[stage]
@@ -490,6 +526,7 @@ class LocalRefillReview:
             )
         return True
 
+    @diagnostic_stage(RestoreStage.REVIEW)
     def advance(self) -> FinalLocalArtifact | None:
         self._check()
         if self._complete is not None:
@@ -498,7 +535,10 @@ class LocalRefillReview:
             return None
         if self._view.stage == "published":
             self._history["published"] = self.view()
-            candidate = self.processor.write(self.mapping, self.plan, self.artifact, self.original)
+            with restore_stage(RestoreStage.CANDIDATE_WRITE):
+                candidate = self.processor.write(
+                    self.mapping, self.plan, self.artifact, self.original
+                )
             if type(candidate) is not bytes:
                 raise ValueError("Immutable candidate PDF required")
             self._admit(len(candidate))
@@ -531,6 +571,7 @@ class LocalRefillReview:
         )
         return self._complete
 
+    @diagnostic_stage(RestoreStage.REVIEW)
     def permits_completed(self, digest: str) -> bool:
         self._check()
         return (

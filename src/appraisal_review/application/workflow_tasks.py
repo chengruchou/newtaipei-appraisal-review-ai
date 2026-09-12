@@ -367,10 +367,12 @@ class WorkflowTaskService:
                 )
             elif task.kind == TaskKind.RULES:
                 material = snapshot.material
-                purposes = SourcePurposes.selected(material.policy.registry)
+                purposes = SourcePurposes.selected(
+                    material.policy.registry, bundle=material.policy.rule_bundle
+                )
                 if any(
                     scoped.rules.status == "rejected"
-                    or not purposes.allows(scoped.evidence, "rule")
+                    or not purposes.allows(scoped.evidence, "rule", scope=scoped.context.scope)
                     for scoped in material.policy.rule_sets
                 ):
                     raise ServiceFault(ServiceErrorCode.VALIDATION)

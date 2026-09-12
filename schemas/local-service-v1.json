@@ -1,5 +1,28 @@
 {
   "$defs": {
+    "BatchHandling": {
+      "additionalProperties": false,
+      "description": "Batch-level default plus the per-document exemptions recorded against it.",
+      "properties": {
+        "schema_version": {
+          "const": "batch-handling-v1",
+          "default": "batch-handling-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "scopes": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/SourceHandlingScope"
+          },
+          "maxItems": 64,
+          "title": "Scopes",
+          "type": "array"
+        }
+      },
+      "title": "BatchHandling",
+      "type": "object"
+    },
     "CaseIdentity": {
       "additionalProperties": false,
       "properties": {
@@ -53,6 +76,13 @@
           "minItems": 2,
           "title": "Documents",
           "type": "array"
+        },
+        "handling": {
+          "$ref": "#/$defs/BatchHandling",
+          "default": {
+            "schema_version": "batch-handling-v1",
+            "scopes": []
+          }
         }
       },
       "required": [
@@ -470,6 +500,62 @@
         "value"
       ],
       "title": "PDFValueRef",
+      "type": "object"
+    },
+    "SourceHandlingScope": {
+      "additionalProperties": false,
+      "description": "Why a named authority placed these exact documents outside privacy processing.",
+      "properties": {
+        "schema_version": {
+          "const": "source-handling-v1",
+          "default": "source-handling-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "privacy_processing": {
+          "enum": [
+            "required",
+            "not_required"
+          ],
+          "title": "Privacy Processing",
+          "type": "string"
+        },
+        "document_ids": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Document Ids",
+          "type": "array"
+        },
+        "decided_by": {
+          "default": "",
+          "title": "Decided By",
+          "type": "string"
+        },
+        "decided_on": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Decided On"
+        },
+        "rationale": {
+          "default": "",
+          "title": "Rationale",
+          "type": "string"
+        }
+      },
+      "required": [
+        "privacy_processing"
+      ],
+      "title": "SourceHandlingScope",
       "type": "object"
     }
   },

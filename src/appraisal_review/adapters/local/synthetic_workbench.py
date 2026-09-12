@@ -29,6 +29,10 @@ from appraisal_review.adapters.local.document_authority import (
     Ed25519ExportVerifier,
 )
 from appraisal_review.adapters.local.document_storage import SQLiteDocumentStorage
+from appraisal_review.adapters.local.export_composition import (
+    discover_export_assets,
+    discover_render_converter,
+)
 from appraisal_review.adapters.local.integrated_publication import (
     IntegratedResultProjection,
     PublicationEvidenceWriter,
@@ -46,12 +50,14 @@ from appraisal_review.adapters.local.service import (
     LocalServiceConfiguration,
     LocalWriterConfiguration,
 )
+from appraisal_review.adapters.local.snapshot_registry import RegisteredSnapshots
 from appraisal_review.adapters.local.sqlite_publication import (
     SQLiteArtifactObjectStore,
     SQLiteManifestRepository,
 )
 from appraisal_review.adapters.local.sqlite_review_store import SQLiteReviewStore
 from appraisal_review.adapters.local.sqlite_workflow_run_ledger import SqliteWorkflowRunLedger
+from appraisal_review.adapters.local.workbook_writer import fill_workbook
 from appraisal_review.adapters.local.workflow_runtime import (
     SQLiteDecisionTrace,
     SQLiteExecutionAuthority,
@@ -69,7 +75,7 @@ from appraisal_review.application.revisions import RevisionSnapshot
 from appraisal_review.application.runtime_sources import SnapshotJobService
 from appraisal_review.application.service_guards import Principal
 from appraisal_review.domain.artifact_publication import ManifestCandidate, SourceVersion
-from appraisal_review.domain.document_transfer import DocumentOperation
+from appraisal_review.domain.document_transfer import DocumentOperation, Purpose
 from appraisal_review.domain.factor_models import AgentReviewRequest, ReviewMaterial
 from appraisal_review.domain.review_contracts import content_digest
 from appraisal_review.domain.service_contracts import (
@@ -192,6 +198,12 @@ class CaseDocuments(DocumentTransferService):
 
     def __init__(self, cases: dict[str, Any]) -> None:
         self.cases = cases
+        self.authorization = self
+
+    def require(
+        self, principal: Principal, case_id: str, purpose: Purpose, operation: DocumentOperation
+    ) -> None:
+        self._case(case_id).authorization.require(principal, case_id, purpose, operation)
 
     def _case(self, case_id: str) -> DocumentTransferService:
         if case_id not in self.cases:
@@ -262,6 +274,8 @@ class SyntheticWorkbench:
             self.case_ids[name]: self._execution(name, fixture)
             for name, fixture in fixtures.items()
         }
+        export_assets = discover_export_assets()
+        self.snapshots = RegisteredSnapshots(self.root / "snapshots")
         self.app = create_integrated_service(
             authority=f"127.0.0.1:{port}",
             directory=self.directory,
@@ -269,6 +283,14 @@ class SyntheticWorkbench:
             documents=self.documents,
             execution=self,
             resolver=self.resolver,
+            export_assets=export_assets,
+            export_filler=fill_workbook if export_assets is not None else None,
+            export_converter=discover_render_converter(),
+            snapshot_provider=self.snapshots,
+        )
+        self.app.state.workbench_data_mode = "synthetic"
+        self.app.state.configured_workbench_jobs = lambda: tuple(
+            self.state.get("job_ids", {}).values()
         )
 
     def _execution(self, name: str, fixture: Any) -> IntegratedWorkflowExecution:

@@ -80,9 +80,20 @@ assets. An installed wheel and separately configured container exercised that
 composition. `infra/runtime/Dockerfile` supplies the Python runtime entry, not a
 complete frontend/API/privacy-bridge stack. Its default
 `appraisal_review.adapters.aws.runtime_app:app` has no execution worker and
-returns 503; merely copying `runtime.json` does not configure one. A complete
-Docker validation entry and the production AWS composition are separate backlog
-items. The browser fault-injection proxy is test infrastructure.
+returns 503; merely copying `runtime.json` does not configure one.
+
+The separate `infra/local-validation` entry serves the built workbench and
+configured synthetic API/worker with a private durable volume. The launcher pins
+a local Docker Unix endpoint and exposes only numeric loopback addresses. Its
+host-companion mode forwards to an explicitly configured host API while the
+browser contacts the restricted host privacy bridge directly; original files,
+keys and mappings stay on that host. This mode and the standalone synthetic
+container have distinct acceptance evidence. See
+[local validation](local-validation-stack.md) and ADR 0050.
+
+Production operator provisioning, login and AWS composition remain separate
+work. The browser fault-injection proxy remains test infrastructure; the local
+container entry does not expose those synthetic recovery controls.
 
 ## Transaction and authority boundaries
 
@@ -155,10 +166,13 @@ Competition-specific builders in `adapters/aws/competition_runtime.py` use
 authority, restrict resources and apply shared physical-dispatch and persistent
 conservative budget reservations. A reviewed profile must come from trusted
 operator configuration. The checked-in pending profile grants no approval.
-Remaining work includes binding the complete discovered destination set and
-request region to each selected model in the production path; a standalone
-destination-check helper does not enforce that binding. The deployment must also
-connect these builders to the authenticated API and complete durable worker.
+The guarded composition binds each selected model to its freshly discovered,
+exact approved destination set and checks that proof, request region and current
+authority at every physical dispatch and retry. A failed fresh preflight revokes
+earlier clients for that model. ADR 0048 defines the bounded snapshot and budget
+binding; it is not a continuous remote routing feed. Deployment must still
+connect these builders to the authenticated API and complete durable worker,
+with reviewed operator inputs and actual invocation evidence.
 See [the competition profile](competition-deployment-profile.md) and
 [data admission](competition-data-review.md).
 

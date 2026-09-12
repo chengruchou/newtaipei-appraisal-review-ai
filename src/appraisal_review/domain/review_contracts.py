@@ -123,7 +123,13 @@ class Reliability(DocumentModel):
     producer: str | None = Field(default=None, min_length=1)
     confirmation: FactConfirmation | None = None
     model_confidence: float | None = Field(default=None, ge=0, le=1)
-    method: Literal["native_numeric", "reviewer_confirmed", "model_proposed"]
+    method: Literal[
+        "native_numeric",
+        "reviewer_confirmed",
+        "model_proposed",
+        "native_proposed",
+        "manual_proposed",
+    ]
     selection: Literal["checked", "unchecked", "ambiguous", "not_applicable"]
     unresolved: list[str] = Field(default_factory=list)
 

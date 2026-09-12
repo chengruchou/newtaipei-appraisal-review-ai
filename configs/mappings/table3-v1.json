@@ -1,0 +1,2979 @@
+{
+ "schema_version": "official-table-mapping-v1",
+ "table": "table_3",
+ "template_name": "表3地價區段勘查表.xlsx 的副本.xlsx",
+ "template_digest": "f85bc407857d2a0072f9a64db1a2edffe224a242ff3d6bc87aa649cc2317342b",
+ "sheet_name": "表3區段勘查表",
+ "bindings": [
+  {
+   "cell": "B3",
+   "source": "table_3.case.year_term",
+   "label": "年期",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "G3",
+   "source": "table_3.case.zone_number",
+   "label": "區段編號",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "L3",
+   "source": "table_3.case.zone_extent",
+   "label": "區段範圍",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "B45",
+   "source": "table_3.case.survey_date",
+   "label": "勘查日期",
+   "value_kind": "date",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "H4",
+   "source": "table_3.case.urban_plan",
+   "label": "都市計畫(內外)",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "B4",
+   "source": "table_3.case.urban_plan_grade",
+   "label": "都市計畫(內外)優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "C4",
+   "source": "table_3.case.urban_plan_grade_scale",
+   "label": "都市計畫(內外)等級數(2或5)",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "H5",
+   "source": "table_3.case.zoning",
+   "label": "使用分區(使用地類別)",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "B5",
+   "source": "table_3.case.zoning_grade",
+   "label": "使用分區(使用地類別)優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "C5",
+   "source": "table_3.case.zoning_grade_scale",
+   "label": "使用分區(使用地類別)等級數(2或5)",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "H6",
+   "source": "table_3.case.building_coverage_text",
+   "label": "建蔽率",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "text",
+    "not_applicable_text": "-",
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "B6",
+   "source": "table_3.case.building_coverage_grade",
+   "label": "建蔽率優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "C6",
+   "source": "table_3.case.building_coverage_grade_scale",
+   "label": "建蔽率等級數(2或5)",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "H7",
+   "source": "table_3.case.floor_area_ratio_text",
+   "label": "容積率",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "text",
+    "not_applicable_text": "-",
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "B7",
+   "source": "table_3.case.floor_area_ratio_grade",
+   "label": "容積率優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "C7",
+   "source": "table_3.case.floor_area_ratio_grade_scale",
+   "label": "容積率等級數(2或5)",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "H8",
+   "source": "table_3.case.building_prohibition",
+   "label": "有無禁止建築",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "B8",
+   "source": "table_3.case.building_prohibition_grade",
+   "label": "有無禁止建築優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "C8",
+   "source": "table_3.case.building_prohibition_grade_scale",
+   "label": "有無禁止建築等級數(2或5)",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "H9",
+   "source": "table_3.case.building_restriction",
+   "label": "有無限制建築",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "B9",
+   "source": "table_3.case.building_restriction_grade",
+   "label": "有無限制建築優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "C9",
+   "source": "table_3.case.building_restriction_grade_scale",
+   "label": "有無限制建築等級數(2或5)",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "G11",
+   "source": "table_3.case.main_road_name",
+   "label": "主要道路名稱",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "J11",
+   "source": "table_3.case.main_road_width_m",
+   "label": "主要道路寬度(M)",
+   "value_kind": "decimal",
+   "unit": "m",
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "B11",
+   "source": "table_3.case.main_road_grade",
+   "label": "主要道路優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "C11",
+   "source": "table_3.case.main_road_grade_scale",
+   "label": "主要道路等級數(2或5)",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "G12",
+   "source": "table_3.case.avg_road_width_m",
+   "label": "區段內道路平均寬度(M)",
+   "value_kind": "decimal",
+   "unit": "m",
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "B12",
+   "source": "table_3.case.avg_road_width_grade",
+   "label": "區段內道路平均寬度優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "C12",
+   "source": "table_3.case.avg_road_width_grade_scale",
+   "label": "區段內道路平均寬度等級數(2或5)",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "B13",
+   "source": "table_3.case.major_station_grade",
+   "label": "大型車站優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "C13",
+   "source": "table_3.case.major_station_grade_scale",
+   "label": "大型車站等級數(2或5)",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "F13",
+   "source": "table_3.case.hsr_station_name",
+   "label": "高鐵站名稱",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "J13",
+   "source": "table_3.case.hsr_station_distance_m",
+   "label": "高鐵站距離(M)",
+   "value_kind": "decimal",
+   "unit": "m",
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "F14",
+   "source": "table_3.case.train_station_name",
+   "label": "火車站名稱",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "J14",
+   "source": "table_3.case.train_station_distance_m",
+   "label": "火車站距離(M)",
+   "value_kind": "decimal",
+   "unit": "m",
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "F15",
+   "source": "table_3.case.bus_terminal_name",
+   "label": "客運站名稱",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "J15",
+   "source": "table_3.case.bus_terminal_distance_m",
+   "label": "客運站距離(M)",
+   "value_kind": "decimal",
+   "unit": "m",
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "F16",
+   "source": "table_3.case.mrt_station_name",
+   "label": "捷運站名稱",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "J16",
+   "source": "table_3.case.mrt_station_distance_m",
+   "label": "捷運站距離(M)",
+   "value_kind": "decimal",
+   "unit": "m",
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "F17",
+   "source": "table_3.case.bus_stop_name",
+   "label": "站牌名稱",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "J17",
+   "source": "table_3.case.bus_stop_distance_m",
+   "label": "站牌距離(M)",
+   "value_kind": "decimal",
+   "unit": "m",
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "B17",
+   "source": "table_3.case.bus_stop_grade",
+   "label": "站牌優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "C17",
+   "source": "table_3.case.bus_stop_grade_scale",
+   "label": "站牌等級數(2或5)",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "F19",
+   "source": "table_3.case.interchange_name",
+   "label": "交流道名稱",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "J19",
+   "source": "table_3.case.interchange_distance_m",
+   "label": "交流道距離(M)",
+   "value_kind": "decimal",
+   "unit": "m",
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "B19",
+   "source": "table_3.case.interchange_grade",
+   "label": "交流道優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "C19",
+   "source": "table_3.case.interchange_grade_scale",
+   "label": "交流道等級數(2或5)",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "I20",
+   "source": "table_3.case.settlement_distance_m",
+   "label": "接近聚落程度(M)",
+   "value_kind": "decimal",
+   "unit": "m",
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "B20",
+   "source": "table_3.case.settlement_grade",
+   "label": "接近聚落程度優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "C20",
+   "source": "table_3.case.settlement_grade_scale",
+   "label": "接近聚落程度等級數(2或5)",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "I21",
+   "source": "table_3.case.distribution_center_distance_m",
+   "label": "接近運銷中心程度(M)",
+   "value_kind": "decimal",
+   "unit": "m",
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "B21",
+   "source": "table_3.case.distribution_center_grade",
+   "label": "接近運銷中心程度優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "C21",
+   "source": "table_3.case.distribution_center_grade_scale",
+   "label": "接近運銷中心程度等級數(2或5)",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "I22",
+   "source": "table_3.case.consumer_market_distance_m",
+   "label": "接近消費市場程度(M)",
+   "value_kind": "decimal",
+   "unit": "m",
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "B22",
+   "source": "table_3.case.consumer_market_grade",
+   "label": "接近消費市場程度優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "C22",
+   "source": "table_3.case.consumer_market_grade_scale",
+   "label": "接近消費市場程度等級數(2或5)",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "I23",
+   "source": "table_3.case.road_development",
+   "label": "區段內道路規劃及闢建程度",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "B23",
+   "source": "table_3.case.road_development_grade",
+   "label": "區段內道路規劃及闢建程度優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "C23",
+   "source": "table_3.case.road_development_grade_scale",
+   "label": "區段內道路規劃及闢建程度等級數(2或5)",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "I24",
+   "source": "table_3.case.sunlight",
+   "label": "日照",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "B24",
+   "source": "table_3.case.sunlight_grade",
+   "label": "日照優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "C24",
+   "source": "table_3.case.sunlight_grade_scale",
+   "label": "日照等級數(2或5)",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "I25",
+   "source": "table_3.case.landscape",
+   "label": "景觀",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "B25",
+   "source": "table_3.case.landscape_grade",
+   "label": "景觀優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "C25",
+   "source": "table_3.case.landscape_grade_scale",
+   "label": "景觀等級數(2或5)",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "I26",
+   "source": "table_3.case.slope",
+   "label": "傾斜度",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "B26",
+   "source": "table_3.case.slope_grade",
+   "label": "傾斜度優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "C26",
+   "source": "table_3.case.slope_grade_scale",
+   "label": "傾斜度等級數(2或5)",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "I27",
+   "source": "table_3.case.drainage",
+   "label": "保(排)水之良否",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "B27",
+   "source": "table_3.case.drainage_grade",
+   "label": "保(排)水之良否優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "C27",
+   "source": "table_3.case.drainage_grade_scale",
+   "label": "保(排)水之良否等級數(2或5)",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "I28",
+   "source": "table_3.case.terrain",
+   "label": "地勢",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "B28",
+   "source": "table_3.case.terrain_grade",
+   "label": "地勢優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "C28",
+   "source": "table_3.case.terrain_grade_scale",
+   "label": "地勢等級數(2或5)",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "I29",
+   "source": "table_3.case.wind",
+   "label": "風勢",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "B29",
+   "source": "table_3.case.wind_grade",
+   "label": "風勢優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "C29",
+   "source": "table_3.case.wind_grade_scale",
+   "label": "風勢等級數(2或5)",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "I30",
+   "source": "table_3.case.soil",
+   "label": "土質",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "B30",
+   "source": "table_3.case.soil_grade",
+   "label": "土質優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "C30",
+   "source": "table_3.case.soil_grade_scale",
+   "label": "土質等級數(2或5)",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "B31",
+   "source": "table_3.case.site_improvement_grade",
+   "label": "建築基地改良優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "C31",
+   "source": "table_3.case.site_improvement_grade_scale",
+   "label": "建築基地改良等級數(2或5)",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "B33",
+   "source": "table_3.case.farmland_improvement_grade",
+   "label": "農地改良優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "C33",
+   "source": "table_3.case.farmland_improvement_grade_scale",
+   "label": "農地改良等級數(2或5)",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "B35",
+   "source": "table_3.case.school_grade",
+   "label": "學校優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "C35",
+   "source": "table_3.case.school_grade_scale",
+   "label": "學校等級數(2或5)",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "F35",
+   "source": "table_3.case.school_1_name",
+   "label": "學校1名稱",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "J35",
+   "source": "table_3.case.school_1_distance_m",
+   "label": "學校1距離(M)",
+   "value_kind": "decimal",
+   "unit": "m",
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "F36",
+   "source": "table_3.case.school_2_name",
+   "label": "學校2名稱",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "J36",
+   "source": "table_3.case.school_2_distance_m",
+   "label": "學校2距離(M)",
+   "value_kind": "decimal",
+   "unit": "m",
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "F37",
+   "source": "table_3.case.school_3_name",
+   "label": "學校3名稱",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "J37",
+   "source": "table_3.case.school_3_distance_m",
+   "label": "學校3距離(M)",
+   "value_kind": "decimal",
+   "unit": "m",
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "F38",
+   "source": "table_3.case.school_4_name",
+   "label": "學校4名稱",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "J38",
+   "source": "table_3.case.school_4_distance_m",
+   "label": "學校4距離(M)",
+   "value_kind": "decimal",
+   "unit": "m",
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "B39",
+   "source": "table_3.case.market_grade",
+   "label": "市場優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "C39",
+   "source": "table_3.case.market_grade_scale",
+   "label": "市場等級數(2或5)",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "F39",
+   "source": "table_3.case.market_1_name",
+   "label": "市場1名稱",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "J39",
+   "source": "table_3.case.market_1_distance_m",
+   "label": "市場1距離(M)",
+   "value_kind": "decimal",
+   "unit": "m",
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "F40",
+   "source": "table_3.case.market_2_name",
+   "label": "市場2名稱",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "J40",
+   "source": "table_3.case.market_2_distance_m",
+   "label": "市場2距離(M)",
+   "value_kind": "decimal",
+   "unit": "m",
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "F41",
+   "source": "table_3.case.market_3_name",
+   "label": "市場3名稱",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "J41",
+   "source": "table_3.case.market_3_distance_m",
+   "label": "市場3距離(M)",
+   "value_kind": "decimal",
+   "unit": "m",
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "B42",
+   "source": "table_3.case.park_grade",
+   "label": "公園廣場徒步區優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "C42",
+   "source": "table_3.case.park_grade_scale",
+   "label": "公園廣場徒步區等級數(2或5)",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "F42",
+   "source": "table_3.case.park_1_name",
+   "label": "公園廣場1名稱",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "J42",
+   "source": "table_3.case.park_1_distance_m",
+   "label": "公園廣場1距離(M)",
+   "value_kind": "decimal",
+   "unit": "m",
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "F43",
+   "source": "table_3.case.park_2_name",
+   "label": "公園廣場2名稱",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "J43",
+   "source": "table_3.case.park_2_distance_m",
+   "label": "公園廣場2距離(M)",
+   "value_kind": "decimal",
+   "unit": "m",
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "F44",
+   "source": "table_3.case.park_3_name",
+   "label": "公園廣場3名稱",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "J44",
+   "source": "table_3.case.park_3_distance_m",
+   "label": "公園廣場3距離(M)",
+   "value_kind": "decimal",
+   "unit": "m",
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "M4",
+   "source": "table_3.case.tourism_grade",
+   "label": "觀光遊憩設施優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "N4",
+   "source": "table_3.case.tourism_grade_scale",
+   "label": "觀光遊憩設施等級數(2或5)",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "S4",
+   "source": "table_3.case.tourism_name",
+   "label": "觀光遊憩設施名稱",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "U4",
+   "source": "table_3.case.tourism_distance_m",
+   "label": "觀光遊憩設施距離(M)",
+   "value_kind": "decimal",
+   "unit": "m",
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "M6",
+   "source": "table_3.case.parking_grade",
+   "label": "停車場地優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "N6",
+   "source": "table_3.case.parking_grade_scale",
+   "label": "停車場地等級數(2或5)",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "S6",
+   "source": "table_3.case.parking_name",
+   "label": "停車場地名稱",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "U6",
+   "source": "table_3.case.parking_distance_m",
+   "label": "停車場地距離(M)",
+   "value_kind": "decimal",
+   "unit": "m",
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "M8",
+   "source": "table_3.case.service_facility_grade",
+   "label": "接近服務性設施的程度優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "N8",
+   "source": "table_3.case.service_facility_grade_scale",
+   "label": "接近服務性設施的程度等級數(2或5)",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "S8",
+   "source": "table_3.case.service_facility_name",
+   "label": "服務性設施名稱",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "U8",
+   "source": "table_3.case.service_facility_distance_m",
+   "label": "服務性設施距離(M)",
+   "value_kind": "decimal",
+   "unit": "m",
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "M10",
+   "source": "table_3.case.power_resource_grade",
+   "label": "電力資源優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "N10",
+   "source": "table_3.case.power_resource_grade_scale",
+   "label": "電力資源等級數(2或5)",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "R10",
+   "source": "table_3.case.power_resource",
+   "label": "電力資源",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "M11",
+   "source": "table_3.case.industrial_water_grade",
+   "label": "產業用水及設施優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "N11",
+   "source": "table_3.case.industrial_water_grade_scale",
+   "label": "產業用水及設施等級數(2或5)",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "R11",
+   "source": "table_3.case.industrial_water",
+   "label": "產業用水及設施",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "M12",
+   "source": "table_3.case.waste_water_facility_grade",
+   "label": "污廢水及廢棄物處理設施優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "N12",
+   "source": "table_3.case.waste_water_facility_grade_scale",
+   "label": "污廢水及廢棄物處理設施等級數(2或5)",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "R12",
+   "source": "table_3.case.waste_water_facility",
+   "label": "污廢水及廢棄物處理設施",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "M14",
+   "source": "table_3.case.utility_facility_grade",
+   "label": "電業氣體燃料優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "N14",
+   "source": "table_3.case.utility_facility_grade_scale",
+   "label": "電業氣體燃料等級數(2或5)",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "S14",
+   "source": "table_3.case.substation_name",
+   "label": "變電所或高壓鐵塔名稱",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "U14",
+   "source": "table_3.case.substation_distance_m",
+   "label": "變電所或高壓鐵塔距離(M)",
+   "value_kind": "decimal",
+   "unit": "m",
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "S16",
+   "source": "table_3.case.gas_tank_name",
+   "label": "瓦斯槽或儲油槽名稱",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "U16",
+   "source": "table_3.case.gas_tank_distance_m",
+   "label": "瓦斯槽或儲油槽距離(M)",
+   "value_kind": "decimal",
+   "unit": "m",
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "M18",
+   "source": "table_3.case.funeral_facility_grade",
+   "label": "殯葬優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "N18",
+   "source": "table_3.case.funeral_facility_grade_scale",
+   "label": "殯葬等級數(2或5)",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "S18",
+   "source": "table_3.case.cemetery_name",
+   "label": "墓地名稱",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "U18",
+   "source": "table_3.case.cemetery_distance_m",
+   "label": "墓地距離(M)",
+   "value_kind": "decimal",
+   "unit": "m",
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "S19",
+   "source": "table_3.case.funeral_home_name",
+   "label": "殯儀館名稱",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "U19",
+   "source": "table_3.case.funeral_home_distance_m",
+   "label": "殯儀館距離(M)",
+   "value_kind": "decimal",
+   "unit": "m",
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "S20",
+   "source": "table_3.case.crematorium_name",
+   "label": "火葬場名稱",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "U20",
+   "source": "table_3.case.crematorium_distance_m",
+   "label": "火葬場距離(M)",
+   "value_kind": "decimal",
+   "unit": "m",
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "S21",
+   "source": "table_3.case.columbarium_name",
+   "label": "納骨塔名稱",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "U21",
+   "source": "table_3.case.columbarium_distance_m",
+   "label": "納骨塔距離(M)",
+   "value_kind": "decimal",
+   "unit": "m",
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "M22",
+   "source": "table_3.case.waste_facility_grade",
+   "label": "廢棄物處理優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "N22",
+   "source": "table_3.case.waste_facility_grade_scale",
+   "label": "廢棄物處理等級數(2或5)",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "S22",
+   "source": "table_3.case.sewage_plant_name",
+   "label": "污水處理場名稱",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "U22",
+   "source": "table_3.case.sewage_plant_distance_m",
+   "label": "污水處理場距離(M)",
+   "value_kind": "decimal",
+   "unit": "m",
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "S23",
+   "source": "table_3.case.landfill_name",
+   "label": "垃圾場或掩埋場名稱",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "U23",
+   "source": "table_3.case.landfill_distance_m",
+   "label": "垃圾場或掩埋場距離(M)",
+   "value_kind": "decimal",
+   "unit": "m",
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "S24",
+   "source": "table_3.case.incinerator_name",
+   "label": "焚化爐名稱",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "U24",
+   "source": "table_3.case.incinerator_distance_m",
+   "label": "焚化爐距離(M)",
+   "value_kind": "decimal",
+   "unit": "m",
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "M25",
+   "source": "table_3.case.pollution_grade",
+   "label": "環境污染優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "N25",
+   "source": "table_3.case.pollution_grade_scale",
+   "label": "環境污染等級數(2或5)",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "S25",
+   "source": "table_3.case.water_pollution_name",
+   "label": "水污染名稱",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "U25",
+   "source": "table_3.case.water_pollution_distance_m",
+   "label": "水污染距離(M)",
+   "value_kind": "decimal",
+   "unit": "m",
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "S26",
+   "source": "table_3.case.noise_pollution_name",
+   "label": "噪音污染名稱",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "U26",
+   "source": "table_3.case.noise_pollution_distance_m",
+   "label": "噪音污染距離(M)",
+   "value_kind": "decimal",
+   "unit": "m",
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "S27",
+   "source": "table_3.case.air_pollution_name",
+   "label": "廢氣污染名稱",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "U27",
+   "source": "table_3.case.air_pollution_distance_m",
+   "label": "廢氣污染距離(M)",
+   "value_kind": "decimal",
+   "unit": "m",
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "S28",
+   "source": "table_3.case.waste_pollution_name",
+   "label": "廢棄物污染名稱",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "U28",
+   "source": "table_3.case.waste_pollution_distance_m",
+   "label": "廢棄物污染距離(M)",
+   "value_kind": "decimal",
+   "unit": "m",
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "S29",
+   "source": "table_3.case.other_pollution_name",
+   "label": "其他污染名稱",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "U29",
+   "source": "table_3.case.other_pollution_distance_m",
+   "label": "其他污染距離(M)",
+   "value_kind": "decimal",
+   "unit": "m",
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "M30",
+   "source": "table_3.case.department_store_grade",
+   "label": "百貨公司優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "N30",
+   "source": "table_3.case.department_store_grade_scale",
+   "label": "百貨公司等級數(2或5)",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "S30",
+   "source": "table_3.case.department_store_name",
+   "label": "百貨公司名稱",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "S31",
+   "source": "table_3.case.department_store_count",
+   "label": "百貨公司數量",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "U31",
+   "source": "table_3.case.department_store_distance_m",
+   "label": "百貨公司距離(M)",
+   "value_kind": "decimal",
+   "unit": "m",
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "M32",
+   "source": "table_3.case.financial_institution_grade",
+   "label": "金融機構優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "N32",
+   "source": "table_3.case.financial_institution_grade_scale",
+   "label": "金融機構等級數(2或5)",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "S32",
+   "source": "table_3.case.financial_institution_name",
+   "label": "金融機構名稱",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "S33",
+   "source": "table_3.case.financial_institution_count",
+   "label": "金融機構數量",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "U33",
+   "source": "table_3.case.financial_institution_distance_m",
+   "label": "金融機構距離(M)",
+   "value_kind": "decimal",
+   "unit": "m",
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "M34",
+   "source": "table_3.case.entertainment_grade",
+   "label": "娛樂設施優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "N34",
+   "source": "table_3.case.entertainment_grade_scale",
+   "label": "娛樂設施等級數(2或5)",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "S34",
+   "source": "table_3.case.entertainment_name",
+   "label": "娛樂設施名稱",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "S35",
+   "source": "table_3.case.entertainment_count",
+   "label": "娛樂設施數量",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "U35",
+   "source": "table_3.case.entertainment_distance_m",
+   "label": "娛樂設施距離(M)",
+   "value_kind": "decimal",
+   "unit": "m",
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "M36",
+   "source": "table_3.case.exhibition_hotel_grade",
+   "label": "大型展示中心或觀光飯店優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "N36",
+   "source": "table_3.case.exhibition_hotel_grade_scale",
+   "label": "大型展示中心或觀光飯店等級數(2或5)",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "S36",
+   "source": "table_3.case.exhibition_hotel_name",
+   "label": "大型展示中心或觀光飯店名稱",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "S37",
+   "source": "table_3.case.exhibition_hotel_count",
+   "label": "大型展示中心或觀光飯店數量",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "U37",
+   "source": "table_3.case.exhibition_hotel_distance_m",
+   "label": "大型展示中心或觀光飯店距離(M)",
+   "value_kind": "decimal",
+   "unit": "m",
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "M38",
+   "source": "table_3.case.customer_traffic_grade",
+   "label": "顧客之通行量優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "N38",
+   "source": "table_3.case.customer_traffic_grade_scale",
+   "label": "顧客之通行量等級數(2或5)",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "R38",
+   "source": "table_3.case.customer_traffic",
+   "label": "顧客之通行量",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "M39",
+   "source": "table_3.case.shop_adjacency_grade",
+   "label": "店鋪之毗連狀態優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "N39",
+   "source": "table_3.case.shop_adjacency_grade_scale",
+   "label": "店鋪之毗連狀態等級數(2或5)",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "R39",
+   "source": "table_3.case.shop_adjacency",
+   "label": "店鋪之毗連狀態",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "O40",
+   "source": "table_3.case.other_factor_grade",
+   "label": "其他影響因素優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "P40",
+   "source": "table_3.case.other_factor_grade_scale",
+   "label": "其他影響因素等級數(2或5)",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "Q40",
+   "source": "table_3.case.other_factor",
+   "label": "其他影響因素",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "R42",
+   "source": "table_3.case.building_density",
+   "label": "建築密度",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "R43",
+   "source": "table_3.case.building_type",
+   "label": "建築型態",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  }
+ ]
+}

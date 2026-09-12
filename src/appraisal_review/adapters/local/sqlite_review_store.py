@@ -13,6 +13,7 @@ import stat
 import time
 from collections.abc import Awaitable, Callable
 from dataclasses import replace
+from functools import lru_cache
 from pathlib import Path
 from typing import Literal, TypeVar
 from uuid import UUID
@@ -82,15 +83,24 @@ class _SnapshotRow(_Row):
 
     def snapshot(self) -> RevisionSnapshot:
         # Recompute the reference from the actual material, not a trusted JSON label.
-        rebuilt = RevisionSnapshot.capture(
-            self.material,
-            self.revision.reference.revision_id,
-            parent=self.revision.parent,
-            changes=self.revision.changes,
-        )
-        if rebuilt.revision != self.revision:
-            raise SQLiteReviewStoreError("Stored snapshot does not match its revision")
-        return rebuilt
+        return _checked_snapshot(self.material.model_dump_json(), self.revision.model_dump_json())
+
+
+@lru_cache(maxsize=4)
+def _checked_snapshot(material_json: str, revision_json: str) -> RevisionSnapshot:
+    """Cache pure canonical validation of exact immutable bytes, never source grants.
+
+    Any byte/metadata change is a different key and must validate again. Returned
+    snapshots hold only strings; their public model properties always detach.
+    """
+    material = ReviewMaterial.model_validate_json(material_json)
+    revision = MaterialRevision.model_validate_json(revision_json)
+    rebuilt = RevisionSnapshot.capture(
+        material, revision.reference.revision_id, parent=revision.parent, changes=revision.changes
+    )
+    if rebuilt.revision != revision:
+        raise SQLiteReviewStoreError("Stored snapshot does not match its revision")
+    return rebuilt
 
 
 class _State(_Row):
@@ -164,6 +174,22 @@ class _State(_Row):
         )
 
 
+@lru_cache(maxsize=2)
+def _immutable_state_parts(payload: str) -> tuple[str, tuple[RevisionSnapshot, ...]]:
+    """Validate exact committed bytes once, retaining no mutable state or authority.
+
+    Long source registries dominate the snapshot JSON. Only their validated
+    immutable strings are shared. Every transaction reconstructs its mutable
+    job/task state, checks current policy and reads the actual database payload.
+    A byte change always misses this bounded cache and revalidates everything.
+    """
+    state = _State.model_validate_json(payload)
+    _, tasks = state.stores()
+    snapshots = tuple(tasks._snapshots.values())
+    state.snapshots = []
+    return state.model_dump_json(), snapshots
+
+
 class SQLiteReviewStore:
     """Combined JobStore and HumanTaskStore for private local SQLite deployments.
 
@@ -180,10 +206,12 @@ class SQLiteReviewStore:
         *,
         policy: JobPolicy | None = None,
         clock: Callable[[], float] = time.time,
+        response_authority: Callable[[AcceptedResponse, HumanTask], None] | None = None,
     ) -> None:
         self.path = path.absolute()
         self.policy = policy or JobPolicy()
         self.clock = clock
+        self.response_authority = response_authority
         self.path.parent.mkdir(mode=0o700, parents=False, exist_ok=True)
         self._check_directory()
         try:
@@ -277,23 +305,39 @@ class SQLiteReviewStore:
             [job_memory.InMemoryJobStore, task_memory.LocalHumanTaskStore, sqlite3.Connection],
             Awaitable[T],
         ],
+        *,
+        read_only: bool = False,
     ) -> T:
         connection = self._connect()
         try:
-            connection.execute("BEGIN IMMEDIATE")
+            connection.execute("BEGIN" if read_only else "BEGIN IMMEDIATE")
             row = connection.execute(
                 "SELECT payload FROM review_state WHERE singleton=1"
             ).fetchone()
             if row is None:
                 raise SQLiteReviewStoreError("Missing local review state")
-            j, t = self._decode(row[0]).stores()
+            try:
+                metadata, snapshots = _immutable_state_parts(row[0])
+            except ValueError:
+                raise SQLiteReviewStoreError("Invalid local review state") from None
+            j, t = self._decode(metadata).stores()
+            t._snapshots = {
+                (
+                    snapshot.revision.reference.case_id,
+                    snapshot.revision.reference.revision_id,
+                ): snapshot
+                for snapshot in snapshots
+            }
+            if read_only:
+                self._close_terminal_tasks(j, t)
 
             async def run_operation() -> T:
                 return await operation(j, t, connection)
 
             value = asyncio.run(run_operation())
-            self._close_terminal_tasks(j, t)
-            self._save(connection, _State.capture(j, t))
+            if not read_only:
+                self._close_terminal_tasks(j, t)
+                self._save(connection, _State.capture(j, t))
             connection.commit()
             return value
         except BaseException:
@@ -312,6 +356,17 @@ class SQLiteReviewStore:
         # Caller cancellation can leave the outcome unknown; the transaction still
         # commits all effects or none, and the same idempotency key recovers it.
         return await asyncio.to_thread(self._transaction, lambda j, t, c: operation(j, t))
+
+    async def _read(
+        self,
+        operation: Callable[
+            [job_memory.InMemoryJobStore, task_memory.LocalHumanTaskStore], Awaitable[T]
+        ],
+    ) -> T:
+        """Validate a consistent committed view without rewriting the source registry."""
+        return await asyncio.to_thread(
+            self._transaction, lambda j, t, c: operation(j, t), read_only=True
+        )
 
     @staticmethod
     def _close_terminal_tasks(
@@ -405,6 +460,10 @@ class SQLiteReviewStore:
         ) -> ResponseReceipt:
             if payload_digest != response_digest(accepted.command):
                 raise ConditionFailed("Response digest does not match the command")
+            if self.response_authority is not None:
+                # Synchronous trusted authority check under this write transaction.
+                # It must not perform network calls or rely on a request-time grant.
+                self.response_authority(accepted, task)
             old_receipt = await t.read_receipt(
                 principal_id=accepted.actor.actor_id, key=accepted.command.idempotency_key
             )
@@ -482,7 +541,7 @@ class SQLiteReviewStore:
                 raise SQLiteReviewStoreError("Stored run submission digest does not match")
             return submission
 
-        return await self._execute(read)
+        return await self._read(read)
 
     async def create_job(
         self,
@@ -504,12 +563,12 @@ class SQLiteReviewStore:
         return await self._execute(apply)
 
     async def read_job(self, *, job_id: UUID) -> JobRecord | None:
-        return await self._execute(lambda j, t: j.read_job(job_id=job_id))
+        return await self._read(lambda j, t: j.read_job(job_id=job_id))
 
     async def read_result_reference(
         self, *, run_id: UUID, result_version: int
     ) -> ResultReference | None:
-        return await self._execute(
+        return await self._read(
             lambda j, t: j.read_result_reference(run_id=run_id, result_version=result_version)
         )
 
@@ -620,32 +679,32 @@ class SQLiteReviewStore:
         )
 
     async def pending_dispatches(self, *, now: int, limit: int) -> tuple[DispatchRecord, ...]:
-        return await self._execute(lambda j, t: j.pending_dispatches(now=now, limit=limit))
+        return await self._read(lambda j, t: j.pending_dispatches(now=now, limit=limit))
 
     async def expired_leases(self, *, now: int, limit: int) -> tuple[ExpiredLease, ...]:
-        return await self._execute(lambda j, t: j.expired_leases(now=now, limit=limit))
+        return await self._read(lambda j, t: j.expired_leases(now=now, limit=limit))
 
     async def stranded_retryables(
         self, *, stranded_before: int, limit: int
     ) -> tuple[JobRecord, ...]:
-        return await self._execute(
+        return await self._read(
             lambda j, t: j.stranded_retryables(stranded_before=stranded_before, limit=limit)
         )
 
     async def read_task(self, *, task_id: UUID) -> TaskRecord | None:
-        return await self._execute(lambda j, t: t.read_task(task_id=task_id))
+        return await self._read(lambda j, t: t.read_task(task_id=task_id))
 
     async def list_tasks(self, *, job_id: UUID) -> tuple[TaskRecord, ...]:
-        return await self._execute(lambda j, t: t.list_tasks(job_id=job_id))
+        return await self._read(lambda j, t: t.list_tasks(job_id=job_id))
 
     async def list_revisions(self, *, job_id: UUID) -> tuple[MaterialRevision, ...]:
-        return await self._execute(lambda j, t: t.list_revisions(job_id=job_id))
+        return await self._read(lambda j, t: t.list_revisions(job_id=job_id))
 
     async def read_snapshot(self, *, revision: RevisionReference) -> RevisionSnapshot | None:
-        return await self._execute(lambda j, t: t.read_snapshot(revision=revision))
+        return await self._read(lambda j, t: t.read_snapshot(revision=revision))
 
     async def read_receipt(self, *, principal_id: str, key: str) -> StoredReceipt | None:
-        return await self._execute(lambda j, t: t.read_receipt(principal_id=principal_id, key=key))
+        return await self._read(lambda j, t: t.read_receipt(principal_id=principal_id, key=key))
 
 
 def _port_conformance(store: SQLiteReviewStore) -> tuple[JobStore, HumanTaskStore]:
@@ -756,7 +815,7 @@ class SQLiteResultStore:
         ) -> ServiceResult | None:
             return self._get(j, connection, run_id=run_id, result_version=result_version)
 
-        return await asyncio.to_thread(self.store._transaction, read)
+        return await asyncio.to_thread(self.store._transaction, read, read_only=True)
 
     async def get_committed(self, reference: ResultReference) -> ServiceResult:
         async def read(
@@ -775,7 +834,7 @@ class SQLiteResultStore:
                 raise SQLiteReviewStoreError("Missing committed result")
             return body
 
-        return await asyncio.to_thread(self.store._transaction, read)
+        return await asyncio.to_thread(self.store._transaction, read, read_only=True)
 
 
 def _result_port_conformance(store: SQLiteReviewStore) -> ResultStore:

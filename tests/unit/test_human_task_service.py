@@ -210,7 +210,7 @@ def test_confirmation_commits_a_revision_that_keeps_the_confirmation() -> None:
     asyncio.run(scenario())
 
 
-def test_a_correction_clears_confirmations_and_never_raises_confidence() -> None:
+def test_a_correction_clears_confirmations_and_preserves_raw_confidence() -> None:
     async def scenario() -> None:
         harness = Harness()
         principal = caller()
@@ -230,7 +230,7 @@ def test_a_correction_clears_confirmations_and_never_raises_confidence() -> None
         assert stored is not None
         pair = stored.material.facts.pairs[0]
         assert pair.pair.target.value.value == 12.0
-        assert pair.pair.target.confidence <= 0.5
+        assert pair.pair.target.confidence == material.facts.pairs[0].pair.target.confidence
         assert pair.comparable_reliability.confirmation is None
         assert pair.target_reliability.confirmation is None
         chain = await harness.tasks.list_revisions(job_id=harness.job_id)

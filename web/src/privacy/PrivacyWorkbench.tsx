@@ -11,6 +11,8 @@ import { RegionEditor } from "./RegionEditor";
 import { PdfPreview } from "./PdfPreview";
 import { OcrReview } from "./OcrReview";
 import { OcrReviewRequired } from "./ocr-review-client";
+import { LocalFailureDetails } from "./LocalFailureDetails";
+import type { PrivacyDiagnostic } from "./diagnostics";
 
 /** Mount separately from cloud review routes; the bridge session remains in component memory. */
 export function PrivacyWorkbench({ bridgeBase }: { bridgeBase: string }) {
@@ -85,6 +87,7 @@ export function PrivacyReviewPanel({ client }: { client: LocalPrivacyClient }) {
   const [ocrReview, setOcrReview] = useState<{ id: string; attempt: number } | null>(null);
   const [ocrReady, setOcrReady] = useState(false);
   const [restoring, setRestoring] = useState(false);
+  const [restoreDiagnostic, setRestoreDiagnostic] = useState<PrivacyDiagnostic | null>(null);
   const restoreAttempt = useRef(0);
   const ownedUrls = useRef(new Set<string>());
   const uncertain = exportState === "unknown" || exportState === "attempted";
@@ -203,6 +206,7 @@ export function PrivacyReviewPanel({ client }: { client: LocalPrivacyClient }) {
     }
   }
   async function restore() {
+    setRestoreDiagnostic(null);
     setBusy(true);
     setRestoring(true);
     setMessage("");
@@ -221,6 +225,7 @@ export function PrivacyReviewPanel({ client }: { client: LocalPrivacyClient }) {
       if (error instanceof OcrReviewRequired) {
         setOcrReview({ id: error.reviewId, attempt: restoreAttempt.current });
       } else {
+        setRestoreDiagnostic(error instanceof BridgeError ? (error.diagnostic ?? null) : null);
         setMessage(
           "The local result could not be authorized or restored. No restored PDF is available.",
         );
@@ -362,6 +367,7 @@ export function PrivacyReviewPanel({ client }: { client: LocalPrivacyClient }) {
       ) : null}
       <fieldset disabled={busy || uncertain}>
         <legend>Restore an authorized result locally</legend>
+        <LocalFailureDetails diagnostic={restoreDiagnostic} />
         {restoring ? (
           <p role="status">Checking the authorized document and its OCR locally…</p>
         ) : null}
@@ -372,6 +378,7 @@ export function PrivacyReviewPanel({ client }: { client: LocalPrivacyClient }) {
             value={resultId}
             onChange={(e) => {
               setResultId(e.target.value);
+              setRestoreDiagnostic(null);
               setOcrReview(null);
               setOcrReady(false);
               if (restoredUrl) {

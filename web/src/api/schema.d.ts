@@ -21,6 +21,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/documents/{document_id}/content": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Read Source Content
+     * @description Read an admitted source, pinned to the exact version and content hash requested.
+     */
+    get: operations["read_source_content_v1_documents__document_id__content_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/review-jobs": {
     parameters: {
       query?: never;
@@ -61,6 +81,43 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/review-jobs/{job_id}/artifacts/{artifact_id}/content": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Read Artifact Content
+     * @description Download a published artifact of the job's current run under a current grant.
+     */
+    get: operations["read_artifact_content_v1_review_jobs__job_id__artifacts__artifact_id__content_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/review-jobs/{job_id}/assessment": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Read Paused Assessment */
+    get: operations["read_paused_assessment_v1_review_jobs__job_id__assessment_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/review-jobs/{job_id}/cancel": {
     parameters: {
       query?: never;
@@ -75,6 +132,83 @@ export interface paths {
      * @description A running attempt is asked to stop cooperatively, never killed mid-write.
      */
     post: operations["cancel_review_job_v1_review_jobs__job_id__cancel_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/review-jobs/{job_id}/context": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Read Case Context */
+    get: operations["read_case_context_v1_review_jobs__job_id__context_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/review-jobs/{job_id}/exports": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Submit Export
+     * @description Request the official tables in one format; replaying the same request is safe.
+     */
+    post: operations["submit_export_v1_review_jobs__job_id__exports_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/review-jobs/{job_id}/exports/basis": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Read Export Basis
+     * @description The snapshot digest and template bundle a request for this job must pin.
+     */
+    get: operations["read_export_basis_v1_review_jobs__job_id__exports_basis_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/review-jobs/{job_id}/exports/{export_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Read Export
+     * @description Current state of one export, including per-table outcomes and blockers.
+     */
+    get: operations["read_export_v1_review_jobs__job_id__exports__export_id__get"];
+    put?: never;
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -138,6 +272,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/review-session": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Read Review Session */
+    get: operations["read_review_session_v1_review_session_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/review-tasks/{task_id}": {
     parameters: {
       query?: never;
@@ -172,6 +323,23 @@ export interface paths {
      * @description 200 means the answer is committed; an exact replay returns the same receipt body.
      */
     post: operations["submit_task_response_v1_review_tasks__task_id__responses_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/review-tasks/{task_id}/responses/{key}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Read Task Response */
+    get: operations["read_task_response_v1_review_tasks__task_id__responses__key__get"];
+    put?: never;
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -379,6 +547,80 @@ export interface components {
         [key: string]: string;
       };
     };
+    /**
+     * CaseConditionCandidate
+     * @description A source-backed proposed condition, never an assertion of applicability.
+     */
+    CaseConditionCandidate: {
+      /** Evidence */
+      evidence: components["schemas"]["SourceCitation"][];
+      /**
+       * Field
+       * @enum {string}
+       */
+      field:
+        | "case_id"
+        | "district"
+        | "zone"
+        | "land_use_category"
+        | "effective_date"
+        | "current_use"
+        | "regulatory_zone"
+        | "target_id"
+        | "comparable_id";
+      /** Interpretation */
+      interpretation: string;
+      /**
+       * Method
+       * @default manual_proposed
+       * @enum {string}
+       */
+      method: "native_proposed" | "manual_proposed";
+      /** Value */
+      value: string;
+    };
+    /**
+     * CaseContextView
+     * @description Exact current material metadata; selection is not confirmation or approval.
+     *
+     *     The exact semantic snapshot is required. No source path, raw material payload,
+     *     principal roster or future deployment region is exposed. Document purposes are
+     *     preserved, not inferred as general rules, district prices or report templates.
+     */
+    CaseContextView: {
+      /**
+       * Documents
+       * @default []
+       */
+      documents: components["schemas"]["DocumentReference"][];
+      identity: components["schemas"]["CaseIdentity"] | null;
+      job: components["schemas"]["JobReference"];
+      /**
+       * Observations
+       * @default []
+       */
+      observations: components["schemas"]["CaseObservationView"][];
+      revision: components["schemas"]["RevisionReference"];
+      rule_bundle?: components["schemas"]["RuleBundleView"] | null;
+      /** Rule Bundle Id */
+      rule_bundle_id?: string | null;
+      /**
+       * Rules
+       * @default []
+       */
+      rules: components["schemas"]["PinnedRuleView"][];
+      /**
+       * Schema Version
+       * @default service-v1
+       * @constant
+       */
+      schema_version: "service-v1";
+      /**
+       * Selections
+       * @default []
+       */
+      selections: components["schemas"]["RuleSelectionView"][];
+    };
     /** CaseIdentity */
     CaseIdentity: {
       /** Case Id */
@@ -397,6 +639,17 @@ export interface components {
       /** Zone */
       zone: string;
     };
+    /** CaseObservationView */
+    CaseObservationView: {
+      observation: components["schemas"]["PublicValue-Output"];
+      /**
+       * Schema Version
+       * @default service-v1
+       * @constant
+       */
+      schema_version: "service-v1";
+      side: components["schemas"]["FactSideReference"];
+    };
     /** CaseReviewResult */
     CaseReviewResult: {
       /** Comparisons */
@@ -412,6 +665,53 @@ export interface components {
        */
       schema_version: "2.0";
       status: components["schemas"]["EvaluationStatus"];
+    };
+    /** CatalogRuleSource */
+    CatalogRuleSource: {
+      /** Content Hash */
+      content_hash: string;
+      /** District */
+      district: string;
+      /** Document Id */
+      document_id: string;
+      /** Effective From */
+      effective_from: string | null;
+      /** Effective To */
+      effective_to: string | null;
+      /** Entry Id */
+      entry_id: string;
+      /** Entry Version */
+      entry_version: string;
+      /** Evidence */
+      evidence: components["schemas"]["SourceCitation"][];
+      /** Land Use Category */
+      land_use_category: string;
+      /** Pages */
+      pages: number[];
+      /**
+       * Review Status
+       * @default candidate
+       * @enum {string}
+       */
+      review_status: "candidate" | "reviewed";
+      /**
+       * Role
+       * @enum {string}
+       */
+      role: "general_rules" | "district_basis";
+      /** Scopes */
+      scopes: ("regional" | "individual")[];
+      /** Unresolved */
+      unresolved?: string[];
+      /**
+       * Use
+       * @enum {string}
+       */
+      use: "factor_rules" | "procedure";
+      /** Version */
+      version: string;
+      /** Zone */
+      zone: string;
     };
     /**
      * CheckStatus
@@ -429,6 +729,70 @@ export interface components {
       scope: "regional" | "individual";
       /** Target Id */
       target_id: string;
+    };
+    /**
+     * ConvertedPDFArtifact
+     * @description A PDF converted from one exact workbook copy, which it names.
+     */
+    ConvertedPDFArtifact: {
+      /**
+       * Artifact Id
+       * Format: uuid
+       */
+      artifact_id: string;
+      /** Content Hash */
+      content_hash: string;
+      /**
+       * Content Type
+       * @default application/pdf
+       * @constant
+       */
+      content_type: "application/pdf";
+      /** Filename */
+      filename: string;
+      /** Font Hash */
+      font_hash?: string | null;
+      /** Key */
+      key: string;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "converted_pdf";
+      /** Object Version */
+      object_version?: string | null;
+      /** Page Count */
+      page_count: number;
+      /** Render Input Hash */
+      render_input_hash?: string | null;
+      /**
+       * Schema Version
+       * @default service-v1
+       * @constant
+       */
+      schema_version: "service-v1";
+      /** Size Bytes */
+      size_bytes: number;
+      /** Snapshot Digest */
+      snapshot_digest: string;
+      /** Source Workbook Hash */
+      source_workbook_hash: string;
+      /**
+       * Table
+       * @enum {string}
+       */
+      table: "table_3" | "table_4" | "table_5";
+      template_bundle: components["schemas"]["TemplateBundleReference"];
+      /** Template Hash */
+      template_hash: string;
+      /**
+       * Verification
+       * @default converted_pdf_reopened
+       * @constant
+       */
+      verification: "converted_pdf_reopened";
+      /** Writer Version */
+      writer_version: string;
     };
     /** Coverage */
     Coverage: {
@@ -516,6 +880,131 @@ export interface components {
      * @enum {string}
      */
     ExecutionStatus: "queued" | "running" | "succeeded" | "failed";
+    /**
+     * ExportBasis
+     * @description Everything a client needs to compose a valid export request, served, not guessed.
+     *
+     *     The page must not invent the snapshot digest or the template bundle: both identify
+     *     server-held state, and a wrong guess turns into a confusing conflict. This view hands
+     *     them over for the job's current run, together with the snapshot's open gaps so the
+     *     format chooser can show what a draft will still be missing.
+     */
+    ExportBasis: {
+      /**
+       * Blockers
+       * @default []
+       */
+      blockers: string[];
+      /** Calculation Snapshot Digest */
+      calculation_snapshot_digest: string;
+      /**
+       * Job Id
+       * Format: uuid
+       */
+      job_id: string;
+      run: components["schemas"]["RunReference"];
+      /**
+       * Schema Version
+       * @default service-v1
+       * @constant
+       */
+      schema_version: "service-v1";
+      template_bundle: components["schemas"]["TemplateBundleReference"];
+    };
+    /**
+     * ExportOperation
+     * @description Immutable format plus the current state of one export request.
+     */
+    ExportOperation: {
+      /**
+       * Artifacts
+       * @default []
+       */
+      artifacts: (
+        components["schemas"]["WorkbookArtifact"] | components["schemas"]["ConvertedPDFArtifact"]
+      )[];
+      /**
+       * Blockers
+       * @default []
+       */
+      blockers: string[];
+      /** Calculation Snapshot Digest */
+      calculation_snapshot_digest: string;
+      /**
+       * Effective Mode
+       * @enum {string}
+       */
+      effective_mode: "draft" | "formal";
+      /**
+       * Export Format
+       * @enum {string}
+       */
+      export_format: "pdf" | "xlsx";
+      /**
+       * Export Id
+       * Format: uuid
+       */
+      export_id: string;
+      /**
+       * Job Id
+       * Format: uuid
+       */
+      job_id: string;
+      /** Payload Digest */
+      payload_digest: string;
+      problem?: components["schemas"]["ServiceProblem"] | null;
+      /**
+       * Requested Mode
+       * @enum {string}
+       */
+      requested_mode: "draft" | "formal";
+      run: components["schemas"]["RunReference"];
+      /**
+       * Schema Version
+       * @default service-v1
+       * @constant
+       */
+      schema_version: "service-v1";
+      /**
+       * Status
+       * @enum {string}
+       */
+      status: "queued" | "running" | "succeeded" | "failed" | "partial";
+      /**
+       * Tables
+       * @default []
+       */
+      tables: components["schemas"]["TableOutcome"][];
+      template_bundle: components["schemas"]["TemplateBundleReference"];
+    };
+    /**
+     * ExportRequest
+     * @description An untrusted command. Eligibility for formal output is decided by the server.
+     */
+    ExportRequest: {
+      /** Calculation Snapshot Digest */
+      calculation_snapshot_digest: string;
+      /**
+       * Export Format
+       * @enum {string}
+       */
+      export_format: "pdf" | "xlsx";
+      /** Idempotency Key */
+      idempotency_key: string;
+      /**
+       * Requested Mode
+       * @enum {string}
+       */
+      requested_mode: "draft" | "formal";
+      run: components["schemas"]["RunReference"];
+      /**
+       * Schema Version
+       * @default service-v1
+       * @constant
+       */
+      schema_version: "service-v1";
+      template_bundle: components["schemas"]["TemplateBundleReference"];
+    };
     /**
      * ExtractedField
      * @description A normalized field that retains its original representation.
@@ -990,6 +1479,30 @@ export interface components {
       written_field_ids: string[];
     };
     /**
+     * PausedReviewView
+     * @description An exact stored human-handoff assessment, never a committed or published result.
+     */
+    PausedReviewView: {
+      coverage: components["schemas"]["Coverage"];
+      /** Findings */
+      findings: components["schemas"]["ReviewFinding"][];
+      run: components["schemas"]["RunReference"];
+      /**
+       * Schema Version
+       * @default service-v1
+       * @constant
+       */
+      schema_version: "service-v1";
+      /**
+       * Scope
+       * @default paused_review
+       * @constant
+       */
+      scope: "paused_review";
+      status: components["schemas"]["EvaluationStatus"];
+      verification: components["schemas"]["ServiceVerification"] | null;
+    };
+    /**
      * Permission
      * @enum {string}
      */
@@ -1000,6 +1513,26 @@ export interface components {
       | "approve_rules"
       | "approve_material"
       | "publish_artifact";
+    /** PinnedRuleView */
+    PinnedRuleView: {
+      applicability: components["schemas"]["RuleApplicability"];
+      /**
+       * Declared Status
+       * @enum {string}
+       */
+      declared_status: "candidate" | "approved" | "rejected";
+      /** Evidence */
+      evidence: components["schemas"]["SourceCitation"][];
+      reference: components["schemas"]["RuleReference"];
+      /**
+       * Schema Version
+       * @default service-v1
+       * @constant
+       */
+      schema_version: "service-v1";
+      /** Zone */
+      zone: string;
+    };
     /**
      * PublicValue
      * @description URI-free view of an original/proposed value; never a trusted fact input.
@@ -1149,6 +1682,30 @@ export interface components {
       schema_version: string;
     };
     /**
+     * ReviewSessionView
+     * @description The currently authenticated actor, not a registration or permission grant.
+     */
+    ReviewSessionView: {
+      actor: components["schemas"]["ActorReference"];
+      /**
+       * Configured Jobs
+       * @default []
+       */
+      configured_jobs: components["schemas"]["JobReference"][];
+      /**
+       * Data Mode
+       * @default unspecified
+       * @enum {string}
+       */
+      data_mode: "unspecified" | "synthetic" | "local_original";
+      /**
+       * Schema Version
+       * @default service-v1
+       * @constant
+       */
+      schema_version: "service-v1";
+    };
+    /**
      * ReviewSubmission
      * @description Reserved jobs request; no jobs route or durable implementation in M0.
      */
@@ -1201,6 +1758,38 @@ export interface components {
        */
       schema_version: "service-v1";
     };
+    /** RuleApplicability */
+    RuleApplicability: {
+      /** Effective From */
+      effective_from?: string | null;
+      /** Effective To */
+      effective_to?: string | null;
+      /** Jurisdiction */
+      jurisdiction: string;
+      /** Land Use Category */
+      land_use_category: string;
+    };
+    /**
+     * RuleBundleView
+     * @description Selected, authorized sources only; the full internal catalog stays private.
+     */
+    RuleBundleView: {
+      /** Catalog Digest */
+      catalog_digest: string;
+      /** Catalog Version */
+      catalog_version: string;
+      /** Condition Candidates */
+      condition_candidates?: components["schemas"]["CaseConditionCandidate"][];
+      /** Conditions Confirmed */
+      conditions_confirmed: boolean;
+      /** Contexts */
+      contexts: components["schemas"]["ComparisonContext"][];
+      identity: components["schemas"]["CaseIdentity"];
+      /** Primary Criteria Document Id */
+      primary_criteria_document_id: string;
+      /** Sources */
+      sources: components["schemas"]["CatalogRuleSource"][];
+    };
     /**
      * RuleDefinition
      * @description A versioned deterministic validation rule.
@@ -1246,6 +1835,23 @@ export interface components {
       schema_version: "service-v1";
       /** Version */
       version: string;
+    };
+    /** RuleSelectionView */
+    RuleSelectionView: {
+      context: components["schemas"]["ComparisonContext"];
+      /** Matches */
+      matches: components["schemas"]["RuleReference"][];
+      /**
+       * Schema Version
+       * @default service-v1
+       * @constant
+       */
+      schema_version: "service-v1";
+      /**
+       * Status
+       * @enum {string}
+       */
+      status: "unique" | "missing" | "ambiguous";
     };
     /** RuleSet */
     RuleSet: {
@@ -1386,6 +1992,28 @@ export interface components {
       version: string;
     };
     /**
+     * TableOutcome
+     * @description Per-table result, so a partial export says which table is missing and why.
+     */
+    TableOutcome: {
+      /** Artifact Id */
+      artifact_id?: string | null;
+      /** Delivered */
+      delivered: boolean;
+      problem?: components["schemas"]["ServiceProblem"] | null;
+      /**
+       * Schema Version
+       * @default service-v1
+       * @constant
+       */
+      schema_version: "service-v1";
+      /**
+       * Table
+       * @enum {string}
+       */
+      table: "table_3" | "table_4" | "table_5";
+    };
+    /**
      * TaskKind
      * @enum {string}
      */
@@ -1468,6 +2096,24 @@ export interface components {
       /** Subject Id */
       subject_id?: string | null;
       task: components["schemas"]["HumanTask"];
+    };
+    /**
+     * TemplateBundleReference
+     * @description A pinned official asset bundle. A request names it; it never carries a path.
+     */
+    TemplateBundleReference: {
+      /** Bundle Hash */
+      bundle_hash: string;
+      /** Bundle Id */
+      bundle_id: string;
+      /**
+       * Schema Version
+       * @default service-v1
+       * @constant
+       */
+      schema_version: "service-v1";
+      /** Version */
+      version: string;
     };
     /** ValidationError */
     ValidationError: {
@@ -1556,6 +2202,68 @@ export interface components {
       warnings?: string[];
     };
     /**
+     * WorkbookArtifact
+     * @description A filled copy of the official workbook, with the cells the writer was allowed.
+     */
+    WorkbookArtifact: {
+      /**
+       * Artifact Id
+       * Format: uuid
+       */
+      artifact_id: string;
+      /** Content Hash */
+      content_hash: string;
+      /**
+       * Content Type
+       * @default application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+       * @constant
+       */
+      content_type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+      /** Filename */
+      filename: string;
+      /** Key */
+      key: string;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "official_workbook";
+      /** Object Version */
+      object_version?: string | null;
+      /**
+       * Schema Version
+       * @default service-v1
+       * @constant
+       */
+      schema_version: "service-v1";
+      /** Sheet Name */
+      sheet_name: string;
+      /** Size Bytes */
+      size_bytes: number;
+      /** Snapshot Digest */
+      snapshot_digest: string;
+      /**
+       * Table
+       * @enum {string}
+       */
+      table: "table_3" | "table_4" | "table_5";
+      template_bundle: components["schemas"]["TemplateBundleReference"];
+      /** Template Hash */
+      template_hash: string;
+      /**
+       * Verification
+       * @default workbook_reopened
+       * @constant
+       */
+      verification: "workbook_reopened";
+      /** Writer Version */
+      writer_version: string;
+      /** Written Cells */
+      written_cells: string[];
+      /** Written Range */
+      written_range: string;
+    };
+    /**
      * WorkflowStatus
      * @enum {string}
      */
@@ -1587,6 +2295,77 @@ export interface operations {
           "application/json": {
             [key: string]: string;
           };
+        };
+      };
+    };
+  };
+  read_source_content_v1_documents__document_id__content_get: {
+    parameters: {
+      query: {
+        version: string;
+        content_hash: string;
+      };
+      header?: never;
+      path: {
+        document_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Verified bytes for the requested source or published artifact */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/pdf": string;
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
+        };
+      };
+      /** @description No current grant for this case or artifact */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description No such document or artifact */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description The job has no current run to read from */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description Invalid identifier, version or hash */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description No content plane is configured */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
         };
       };
     };
@@ -1736,6 +2515,142 @@ export interface operations {
       };
     };
   };
+  read_artifact_content_v1_review_jobs__job_id__artifacts__artifact_id__content_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        job_id: string;
+        artifact_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Verified bytes for the requested source or published artifact */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/pdf": string;
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
+        };
+      };
+      /** @description No current grant for this case or artifact */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description No such document or artifact */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description The job has no current run to read from */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description Invalid identifier, version or hash */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description No content plane is configured */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+    };
+  };
+  read_paused_assessment_v1_review_jobs__job_id__assessment_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        job_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PausedReviewView"];
+        };
+      };
+      /** @description The principal lacks the case permission */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description No such task or job for this principal */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description The task or revision moved first */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description Invalid response */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description No human-task store is configured */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+    };
+  };
   cancel_review_job_v1_review_jobs__job_id__cancel_post: {
     parameters: {
       query?: never;
@@ -1793,6 +2708,288 @@ export interface operations {
         };
       };
       /** @description No durable job store is configured */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+    };
+  };
+  read_case_context_v1_review_jobs__job_id__context_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        job_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CaseContextView"];
+        };
+      };
+      /** @description The principal lacks the case permission */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description No such task or job for this principal */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description The task or revision moved first */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description Invalid response */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description No human-task store is configured */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+    };
+  };
+  submit_export_v1_review_jobs__job_id__exports_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        job_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ExportRequest"];
+      };
+    };
+    responses: {
+      /** @description Exact replay of a known request */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ExportOperation"];
+        };
+      };
+      /** @description The export is durably owned */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ExportOperation"];
+        };
+      };
+      /** @description The principal lacks the case permission */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description No such job or export for this principal */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description A used idempotency key with a changed payload, or a stale run */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description Invalid export request */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description No export executor is configured */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+    };
+  };
+  read_export_basis_v1_review_jobs__job_id__exports_basis_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        job_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ExportBasis"];
+        };
+      };
+      /** @description The principal lacks the case permission */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description No such job or export for this principal */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description A used idempotency key with a changed payload, or a stale run */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description Invalid export request */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description No export executor is configured */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+    };
+  };
+  read_export_v1_review_jobs__job_id__exports__export_id__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        job_id: string;
+        export_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ExportOperation"];
+        };
+      };
+      /** @description The principal lacks the case permission */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description No such job or export for this principal */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description A used idempotency key with a changed payload, or a stale run */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description Invalid export request */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description No export executor is configured */
       503: {
         headers: {
           [name: string]: unknown;
@@ -2004,6 +3201,71 @@ export interface operations {
       };
     };
   };
+  read_review_session_v1_review_session_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ReviewSessionView"];
+        };
+      };
+      /** @description The principal lacks the case permission */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description No such task or job for this principal */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description The task or revision moved first */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description Invalid response */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description No human-task store is configured */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+    };
+  };
   read_task_v1_review_tasks__task_id__get: {
     parameters: {
       query?: never;
@@ -2085,6 +3347,74 @@ export interface operations {
         "application/json": components["schemas"]["HumanResponse"];
       };
     };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ResponseReceipt"];
+        };
+      };
+      /** @description The principal lacks the case permission */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description No such task or job for this principal */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description The task or revision moved first */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description Invalid response */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description No human-task store is configured */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+    };
+  };
+  read_task_response_v1_review_tasks__task_id__responses__key__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        task_id: string;
+        key: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
     responses: {
       /** @description Successful Response */
       200: {

@@ -6,7 +6,6 @@ import asyncio
 from typing import Protocol
 from uuid import UUID
 
-from appraisal_review.application.document_transfer import DocumentTransferService
 from appraisal_review.application.review_jobs import (
     ReviewJobService,
     SubmissionOutcome,
@@ -26,6 +25,7 @@ from appraisal_review.domain.service_contracts import (
 )
 from appraisal_review.ports.jobs import ClaimedAttempt, JobRecord
 from appraisal_review.ports.model_dispatch import dispatch_async_authority
+from appraisal_review.ports.runtime_documents import RuntimeDocuments
 
 
 class RevisionLookup(Protocol):
@@ -58,7 +58,7 @@ def source_fault(error: DocumentFault) -> ServiceFault:
 class SnapshotJobService(ReviewJobService):
     """Use with the inherited HTTP contract once its authenticated owner is integrated."""
 
-    def bind_sources(self, documents: DocumentTransferService, revisions: RevisionLookup) -> None:
+    def bind_sources(self, documents: RuntimeDocuments, revisions: RevisionLookup) -> None:
         self.documents, self.revisions = documents, revisions
 
     async def submit(self, principal: Principal, submission: ReviewSubmission) -> SubmissionOutcome:
@@ -100,7 +100,7 @@ class SnapshotBoundExecution:
     def __init__(
         self,
         execution: ReviewExecution,
-        documents: DocumentTransferService,
+        documents: RuntimeDocuments,
         submissions: SubmissionLookup,
         principals: CurrentPrincipalLookup,
     ) -> None:

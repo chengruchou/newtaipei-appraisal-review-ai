@@ -10,7 +10,7 @@ storage semantics live in adapters and DTO validity grants no authority.
 from __future__ import annotations
 
 import re
-from typing import Literal
+from typing import Literal, cast
 from uuid import UUID
 
 from pydantic import Field, model_validator
@@ -26,8 +26,13 @@ _ARTIFACT_KEY = re.compile(
     rf"^cases/(?P<case_id>{_SEGMENT})"
     rf"/runs/(?P<run_id>{_UUID})"
     rf"/attempts/(?P<attempt_id>{_UUID})"
-    rf"/artifacts/(?P<artifact_id>{_UUID})\.pdf$"
+    rf"/artifacts/(?P<artifact_id>{_UUID})\.(?P<suffix>pdf|xlsx)$"
 )
+
+
+#: Formats this system actually writes. The official workbook and the PDF converted from
+#: it are the only two, and a key must say which one it addresses.
+ArtifactSuffix = Literal["pdf", "xlsx"]
 
 
 class PublicationError(Exception):
@@ -39,21 +44,29 @@ class PublicationError(Exception):
 
 
 class ArtifactKey(DocumentModel):
-    """Parsed attempt-scoped object key; segments never contain separators."""
+    """Parsed attempt-scoped object key; segments never contain separators.
+
+    The suffix is part of the key because a run may publish the official workbook and the
+    PDF converted from it, and the two must not collide on one object. It defaults to pdf so
+    every existing caller and stored key keeps its exact spelling.
+    """
 
     case_id: OpaqueID
     run_id: UUID
     attempt_id: UUID
     artifact_id: UUID
+    suffix: ArtifactSuffix = "pdf"
 
     def key(self) -> str:
         return (
             f"cases/{self.case_id}/runs/{self.run_id}"
-            f"/attempts/{self.attempt_id}/artifacts/{self.artifact_id}.pdf"
+            f"/attempts/{self.attempt_id}/artifacts/{self.artifact_id}.{self.suffix}"
         )
 
     @classmethod
-    def for_run(cls, run: RunReference, artifact_id: UUID) -> ArtifactKey:
+    def for_run(
+        cls, run: RunReference, artifact_id: UUID, *, suffix: ArtifactSuffix = "pdf"
+    ) -> ArtifactKey:
         if run.attempt_id is None:
             raise ValueError("Artifact keys are attempt-scoped; the run must bind an attempt")
         return cls(
@@ -61,6 +74,7 @@ class ArtifactKey(DocumentModel):
             run_id=run.run_id,
             attempt_id=run.attempt_id,
             artifact_id=artifact_id,
+            suffix=suffix,
         )
 
     @classmethod
@@ -73,6 +87,7 @@ class ArtifactKey(DocumentModel):
             run_id=UUID(match["run_id"]),
             attempt_id=UUID(match["attempt_id"]),
             artifact_id=UUID(match["artifact_id"]),
+            suffix=cast(ArtifactSuffix, match["suffix"]),
         )
 
 
