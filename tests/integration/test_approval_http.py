@@ -121,3 +121,53 @@ async def _basis_and_submit(tmp_path):
 
         # Without authentication the route still refuses outright.
         assert (await client.get(f"/v1/review-jobs/{job_id}/exports/basis")).status_code == 403
+
+
+def test_case_intake_over_the_assembled_app(tmp_path):
+    asyncio.run(_case_intake_flow(tmp_path))
+
+
+async def _case_intake_flow(tmp_path):
+    workbench = await prepare_workbench(tmp_path / "workbench", port=18772)
+    await workbench.settle()
+    manifest = workbench.manifest()
+    headers = {"Authorization": f"Bearer {manifest['session_token']}"}
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=workbench.app), base_url=manifest["api_base_url"]
+    ) as client:
+        created = await client.post(
+            "/v1/cases",
+            headers=headers,
+            json={
+                "schema_version": "service-v1",
+                "idempotency_key": "intake-http-1",
+                "title": "整合測試案件",
+                "district": "樹林區",
+            },
+        )
+        assert created.status_code == 201, created.text
+        case_id = created.json()["case_id"]
+
+        body = "材料位元組".encode()
+        uploaded = await client.post(
+            f"/v1/cases/{case_id}/materials",
+            headers={
+                **headers,
+                "Content-Type": "application/pdf",
+                "X-Upload-Filename": "notes.pdf",
+                "X-Idempotency-Key": "material-http-1",
+            },
+            content=body,
+        )
+        assert uploaded.status_code == 201, uploaded.text
+        import hashlib as _hashlib
+
+        assert uploaded.json()["sha256"] == _hashlib.sha256(body).hexdigest()
+
+        listed = await client.get(f"/v1/cases/{case_id}/materials", headers=headers)
+        assert listed.status_code == 200, listed.text
+        records = listed.json()["materials"]
+        assert len(records) == 1 and records[0]["filename"] == "notes.pdf"
+
+        # Unauthenticated callers see nothing.
+        assert (await client.get(f"/v1/cases/{case_id}/materials")).status_code == 403

@@ -341,6 +341,7 @@ class SyntheticWorkbench:
             export_filler=fill_workbook if export_assets is not None else None,
             export_converter=discover_render_converter(),
             snapshot_provider=self.snapshots,
+            intake_root=self.root / "intake",
         )
         self.app.state.workbench_data_mode = "synthetic"
         self.app.state.configured_workbench_jobs = lambda: tuple(

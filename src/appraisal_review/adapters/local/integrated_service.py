@@ -27,9 +27,11 @@ from starlette.middleware.base import RequestResponseEndpoint
 
 from appraisal_review.adapters.local.approval_store import SQLiteApprovalStore
 from appraisal_review.adapters.local.artifact_publication import CommittedResultResolver
+from appraisal_review.adapters.local.case_intake_store import SQLiteCaseIntakeStore
 from appraisal_review.adapters.local.export_store import SQLiteExportStore
 from appraisal_review.adapters.local.sqlite_review_store import SQLiteReviewStore
 from appraisal_review.api.app import create_app
+from appraisal_review.application.case_intake import CaseIntakeService
 from appraisal_review.application.exports import (
     ExportAssets,
     ExportService,
@@ -664,6 +666,7 @@ def create_integrated_service(
     legacy_review_enabled: bool = True,
     poll_interval: float = 0.1,
     attempt_scoped_reviews: bool = False,
+    intake_root: Path | None = None,
 ) -> FastAPI:
     if not authority.startswith("127.0.0.1:"):
         raise ValueError("This configured local service requires a numeric loopback authority")
@@ -765,6 +768,13 @@ def create_integrated_service(
         export_operations=export_service,
         report_approvals=approval_service,
     )
+    if intake_root is not None:
+        # Real case intake: durable case records plus raw uploaded materials under the
+        # persistent workbench tree; membership comes from the directory's own grant.
+        app.state.case_intake = CaseIntakeService(
+            store=SQLiteCaseIntakeStore(store, root=intake_root),
+            grant=directory.grant_case,
+        )
     app.state.material_catalog = catalog
     app.state.runtime_worker = worker
     app.state.worker_problem = None
