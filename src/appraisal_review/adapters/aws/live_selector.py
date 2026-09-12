@@ -23,6 +23,7 @@ and unit tests never require the SDK.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 
 from appraisal_review.adapters.aws.action_selector import (
@@ -45,6 +46,7 @@ def live_action_selector(
     *,
     dispatch_store_path: Path | None = None,
     competition_admission: CompetitionDataAdmission | None = None,
+    provenance_for_case: Callable[[str], str | None] | None = None,
 ) -> BedrockActionSelector:
     """Build a real bedrock-runtime Converse selector behind the dispatch guard.
 
@@ -76,4 +78,8 @@ def live_action_selector(
         ),
     )
     install_bedrock_dispatch(client, dispatcher, competition_admission=competition_admission)
-    return BedrockActionSelector(client, ModelSelectorConfig(model_id=model_id, attempts=1))
+    return BedrockActionSelector(
+        client,
+        ModelSelectorConfig(model_id=model_id, attempts=1),
+        provenance_for_case=provenance_for_case,
+    )

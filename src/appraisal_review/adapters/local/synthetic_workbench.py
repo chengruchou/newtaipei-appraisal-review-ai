@@ -11,7 +11,7 @@ import json
 import os
 import secrets
 import time
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from contextlib import closing
 from dataclasses import dataclass, replace
 from pathlib import Path
@@ -109,6 +109,7 @@ def compose_action_selector(
     *,
     environ: Mapping[str, str] | None = None,
     dispatch_store_path: Path | None = None,
+    synthetic_case_ids: Callable[[], frozenset[str]] | None = None,
 ) -> BedrockActionSelector:
     """Env-gated selector composition; misconfiguration refuses to launch.
 
@@ -137,13 +138,27 @@ def compose_action_selector(
     if not region:
         raise ValueError("REVIEW_MODEL_CLIENT=bedrock requires REVIEW_MODEL_REGION to be set")
     from appraisal_review.adapters.aws import live_selector
+    from appraisal_review.adapters.aws.assembled_admission import TrustedAssemblyAdmission
 
     print(
         f"Action selector: live Bedrock Converse (model_id={model_id}, region={region})",
         flush=True,
     )
+
+    def provenance(case_id: str) -> str | None:
+        # Only content assembled from this workbench's own synthetic fixture cases
+        # may leave for the model; a real intake case answers None, the selector
+        # leaves the send undeclared and the admission refuses it outright.
+        if synthetic_case_ids is not None and case_id in synthetic_case_ids():
+            return "synthetic_fixture"
+        return None
+
     return live_selector.live_action_selector(
-        model_id, region, dispatch_store_path=dispatch_store_path
+        model_id,
+        region,
+        dispatch_store_path=dispatch_store_path,
+        competition_admission=TrustedAssemblyAdmission(frozenset({"synthetic_fixture"})),
+        provenance_for_case=provenance,
     )
 
 
@@ -374,7 +389,9 @@ class SyntheticWorkbench:
             controllers=self.controller,
             reviews=SQLiteWorkflowReviews(self.store),
             selector=compose_action_selector(
-                self.store, dispatch_store_path=self.root / "state" / "model_dispatch.sqlite3"
+                self.store,
+                dispatch_store_path=self.root / "state" / "model_dispatch.sqlite3",
+                synthetic_case_ids=lambda: frozenset(self.case_ids.values()),
             ),
             ledger=SqliteWorkflowRunLedger(self.root / "state/workflow.sqlite"),
             trace=SQLiteDecisionTrace(self.store),

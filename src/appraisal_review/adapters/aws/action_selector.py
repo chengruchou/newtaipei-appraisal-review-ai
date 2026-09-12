@@ -7,11 +7,16 @@ import json
 import threading
 import time
 from collections.abc import Callable, Mapping
+from contextlib import ExitStack
 from typing import Any, Literal, Protocol
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from appraisal_review.adapters.aws.assembled_admission import (
+    OutboundModelIntent,
+    declare_outbound_envelope,
+)
 from appraisal_review.adapters.aws.bedrock_dispatch import require_bedrock_dispatch
 from appraisal_review.application.service_guards import ServiceFault, admit_action
 from appraisal_review.domain.service_contracts import (
@@ -76,11 +81,16 @@ class BedrockActionSelector:
         config: ModelSelectorConfig,
         *,
         proposal_id_factory: Callable[[], UUID] = uuid4,
+        provenance_for_case: Callable[[str], str | None] | None = None,
     ) -> None:
         require_bedrock_dispatch(client)
         self._client = client
         self._config = config
         self._proposal_id_factory = proposal_id_factory
+        # case_id -> content provenance tag for the assembled-envelope admission.
+        # None (or a None answer) leaves the send undeclared, which a guarded live
+        # transport refuses - real-case content stays off the wire until admitted.
+        self._provenance_for_case = provenance_for_case
         self._actor = ActorReference(actor_id=f"model:{config.model_id}", kind="model")
         self._inflight = threading.Lock()
 
@@ -135,9 +145,30 @@ class BedrockActionSelector:
                     authority=inherited_dispatch_authority(),
                 )
 
-                def converse(guard: DispatchGuard = guard) -> dict[str, Any]:
+                case_id = current.snapshot.run.revision.case_id
+                provenance = (
+                    None
+                    if self._provenance_for_case is None
+                    else self._provenance_for_case(case_id)
+                )
+
+                def converse(
+                    guard: DispatchGuard = guard, provenance: str | None = provenance
+                ) -> dict[str, Any]:
                     try:
-                        with dispatch_guard(guard):
+                        with ExitStack() as stack:
+                            stack.enter_context(dispatch_guard(guard))
+                            if provenance is not None:
+                                stack.enter_context(
+                                    declare_outbound_envelope(
+                                        OutboundModelIntent(
+                                            model_id=self._config.model_id,
+                                            system_text=SYSTEM_PROMPT,
+                                            user_payload=payload,
+                                            provenance=provenance,
+                                        )
+                                    )
+                                )
                             return self._client.converse(
                                 modelId=self._config.model_id,
                                 system=[{"text": SYSTEM_PROMPT}],
