@@ -331,7 +331,7 @@ class TestDecisions:
         assert decided.decision.decided_at == 6000
 
     def test_return_requires_reason(self, scene: dict[str, Any]) -> None:
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError, match="records why"):
             ApprovalDecisionCommand(idempotency_key="d1", decision="return")
 
     def test_replayed_decision_returns_original(self, scene: dict[str, Any]) -> None:
@@ -376,7 +376,7 @@ class TestFormalExports:
     def test_withdrawal_blocks_new_formal_and_downloads(self, scene: dict[str, Any]) -> None:
         approval = submit(scene)
         decide(scene, approval.approval_id, "approve", "d1")
-        operation = export_formal(scene)
+        export_formal(scene)
         asyncio.run(scene["exports"].run_pending())
         decide(scene, approval.approval_id, "withdraw", "d2", reason="figure disputed")
         with pytest.raises(ServiceFault):
