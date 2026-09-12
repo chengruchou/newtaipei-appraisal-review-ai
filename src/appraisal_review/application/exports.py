@@ -32,6 +32,7 @@ from appraisal_review.domain.official_export import (
     REQUIRED_TABLES,
     ConvertedPDFArtifact,
     ExportArtifact,
+    ExportBasis,
     ExportOperation,
     ExportRequest,
     TableOutcome,
@@ -54,9 +55,14 @@ WRITER_VERSION = "workbook-writer-1"
 
 
 class FilledWorkbookLike(Protocol):
-    content: bytes
-    sheet_name: str
-    written_cells: tuple[str, ...]
+    @property
+    def content(self) -> bytes: ...
+
+    @property
+    def sheet_name(self) -> str: ...
+
+    @property
+    def written_cells(self) -> tuple[str, ...]: ...
 
 
 WorkbookFiller = Callable[[bytes, TableMapping, CalculationSnapshot], FilledWorkbookLike]
@@ -211,6 +217,26 @@ class ExportService:
         )
         stored, _created = self.store.create(operation, request, principal.actor.actor_id)
         return stored
+
+    async def basis(self, principal: Principal, job_id: UUID) -> ExportBasis:
+        """The server-held facts a client compiles into a valid request."""
+        status = await self.jobs.status(principal, job_id)
+        principal.require(status.job.case_id, Permission.REVIEW)
+        current = status.current_run
+        if current is None:
+            raise ServiceFault(ServiceErrorCode.CONFLICT)
+        snapshot = self.snapshots.read(status.job.case_id, current.revision.revision_id)
+        if snapshot is None:
+            # No registered calculation for this revision yet; exporting would have
+            # nothing honest to fill from.
+            raise ServiceFault(ServiceErrorCode.CONFLICT)
+        return ExportBasis(
+            job_id=job_id,
+            run=RunReference(run_id=current.run_id, revision=current.revision),
+            calculation_snapshot_digest=snapshot.digest(),
+            template_bundle=self.assets.bundle,
+            blockers=tuple(f"{key}: {reason}" for key, reason in sorted(snapshot.gaps.items())),
+        )
 
     async def read(self, principal: Principal, job_id: UUID, export_id: UUID) -> ExportOperation:
         status = await self.jobs.status(principal, job_id)

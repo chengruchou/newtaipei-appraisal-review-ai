@@ -18,7 +18,11 @@ from fastapi import APIRouter, Depends
 
 from appraisal_review.api.dependencies import get_export_operations, get_principal
 from appraisal_review.application.service_guards import Principal
-from appraisal_review.domain.official_export import ExportOperation, ExportRequest
+from appraisal_review.domain.official_export import (
+    ExportBasis,
+    ExportOperation,
+    ExportRequest,
+)
 from appraisal_review.domain.service_contracts import ServiceProblem
 from appraisal_review.ports.exports import ExportOperations
 
@@ -59,6 +63,16 @@ async def submit_export(
     return await operations.submit(principal, job_id, request)
 
 
+@router.get("/basis", response_model=ExportBasis, responses=EXPORT_RESPONSES)
+async def read_export_basis(
+    job_id: UUID,
+    principal: PrincipalDependency,
+    operations: OperationsDependency,
+) -> ExportBasis:
+    """The snapshot digest and template bundle a request for this job must pin."""
+    return await operations.basis(principal, job_id)
+
+
 @router.get("/{export_id}", response_model=ExportOperation, responses=EXPORT_RESPONSES)
 async def read_export(
     job_id: UUID,
@@ -70,4 +84,4 @@ async def read_export(
     return await operations.read(principal, job_id, export_id)
 
 
-EXPORT_ENDPOINTS = frozenset({submit_export, read_export})
+EXPORT_ENDPOINTS = frozenset({submit_export, read_export, read_export_basis})

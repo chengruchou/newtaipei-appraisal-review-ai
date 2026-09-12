@@ -13,7 +13,11 @@ from typing import Protocol
 from uuid import UUID
 
 from appraisal_review.application.service_guards import Principal
-from appraisal_review.domain.official_export import ExportOperation, ExportRequest
+from appraisal_review.domain.official_export import (
+    ExportBasis,
+    ExportOperation,
+    ExportRequest,
+)
 
 
 class ExportOperations(Protocol):
@@ -25,4 +29,8 @@ class ExportOperations(Protocol):
 
     async def read(self, principal: Principal, job_id: UUID, export_id: UUID) -> ExportOperation:
         """Current state of one operation, authorized against the current principal."""
+        ...
+
+    async def basis(self, principal: Principal, job_id: UUID) -> ExportBasis:
+        """Server-held request ingredients for the job's current run."""
         ...

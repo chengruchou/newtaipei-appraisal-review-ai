@@ -7,6 +7,7 @@ launcher supplies its own isolated assets; this module never invents approvals.
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import hmac
 import json
 from collections.abc import AsyncIterator, Callable, Mapping
@@ -22,8 +23,16 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.base import RequestResponseEndpoint
 
 from appraisal_review.adapters.local.artifact_publication import CommittedResultResolver
+from appraisal_review.adapters.local.export_store import SQLiteExportStore
 from appraisal_review.adapters.local.sqlite_review_store import SQLiteReviewStore
 from appraisal_review.api.app import create_app
+from appraisal_review.application.exports import (
+    ExportAssets,
+    ExportService,
+    SnapshotProvider,
+    WorkbookConverter,
+    WorkbookFiller,
+)
 from appraisal_review.application.human_tasks import HumanTaskService
 from appraisal_review.application.outbox import DispatchMessage, JobReconciler, OutboxDispatcher
 from appraisal_review.application.revisions import RevisionSnapshot
@@ -424,8 +433,10 @@ class LocalContentPlane:
         jobs: SnapshotJobService,
         resolver: CommittedResultResolver | None,
         source_delivery_enabled: bool = True,
+        exports: SQLiteExportStore | None = None,
     ) -> None:
         self.catalog, self.documents, self.jobs = catalog, documents, jobs
+        self.exports = exports
         # A composition that publishes nothing, or deliberately withholds source bytes,
         # keeps answering capability_unavailable. Moving the routes behind this port must
         # not quietly re-enable delivery the local original stack chose to switch off.
@@ -457,9 +468,29 @@ class LocalContentPlane:
         job_id: UUID,
         artifact_id: UUID,
     ) -> DeliveredContent:
+        status = await self.jobs.status(principal, job_id)
+        principal.require(status.job.case_id, Permission.REVIEW)
+        if self.exports is not None:
+            # A committed export record is its own authority for the bytes it delivered;
+            # the operation already pins snapshot, template bundle and per-table hashes.
+            found = await asyncio.to_thread(self.exports.find_delivered, job_id, artifact_id)
+            if found is not None:
+                operation, body = found
+                delivered = next(a for a in operation.artifacts if a.artifact_id == artifact_id)
+                if hashlib.sha256(body).hexdigest() != delivered.content_hash:
+                    raise ServiceFault(ServiceErrorCode.EXECUTION)
+                media = (
+                    "application/pdf"
+                    if delivered.kind == "converted_pdf"
+                    else "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
+                return DeliveredContent(
+                    data=body,
+                    media_type=cast(ContentMediaType, media),
+                    filename=delivered.filename,
+                )
         if self.resolver is None:
             raise ServiceFault(ServiceErrorCode.CAPABILITY)
-        status = await self.jobs.status(principal, job_id)
         result = await self.jobs.result(principal, job_id)
         if status.current_run is None:
             raise ServiceFault(ServiceErrorCode.CONFLICT)
@@ -498,6 +529,10 @@ def create_integrated_service(
     worker_enabled: bool = True,
     worker_timeout: float = 60,
     source_delivery_enabled: bool = True,
+    export_assets: ExportAssets | None = None,
+    export_filler: WorkbookFiller | None = None,
+    export_converter: WorkbookConverter | None = None,
+    snapshot_provider: SnapshotProvider | None = None,
     legacy_review_enabled: bool = True,
     poll_interval: float = 0.1,
     attempt_scoped_reviews: bool = False,
@@ -537,6 +572,18 @@ def create_integrated_service(
             verification=public_verification(review.verification),
         )
 
+    export_store: SQLiteExportStore | None = None
+    export_service: ExportService | None = None
+    if export_assets is not None and export_filler is not None and snapshot_provider is not None:
+        export_store = SQLiteExportStore(store)
+        export_service = ExportService(
+            jobs=service,
+            store=export_store,
+            assets=export_assets,
+            filler=export_filler,
+            converter=export_converter,
+            snapshots=snapshot_provider,
+        )
     app = create_app(
         job_service=service,
         human_task_service=HumanTaskService(
@@ -552,7 +599,9 @@ def create_integrated_service(
             jobs=service,
             resolver=resolver,
             source_delivery_enabled=source_delivery_enabled,
+            exports=export_store,
         ),
+        export_operations=export_service,
     )
     app.state.material_catalog = catalog
     app.state.runtime_worker = worker
@@ -580,6 +629,8 @@ def create_integrated_service(
                     for message in queue.pending():
                         await worker.process(message)
                         queue.acknowledge(message)
+                    if export_service is not None:
+                        await export_service.run_pending()
                     application.state.worker_problem = None
                 except Exception:
                     application.state.worker_problem = "worker_unavailable"

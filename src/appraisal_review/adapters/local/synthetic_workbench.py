@@ -29,6 +29,10 @@ from appraisal_review.adapters.local.document_authority import (
     Ed25519ExportVerifier,
 )
 from appraisal_review.adapters.local.document_storage import SQLiteDocumentStorage
+from appraisal_review.adapters.local.export_composition import (
+    discover_converter,
+    discover_export_assets,
+)
 from appraisal_review.adapters.local.integrated_publication import (
     IntegratedResultProjection,
     PublicationEvidenceWriter,
@@ -46,12 +50,14 @@ from appraisal_review.adapters.local.service import (
     LocalServiceConfiguration,
     LocalWriterConfiguration,
 )
+from appraisal_review.adapters.local.snapshot_registry import RegisteredSnapshots
 from appraisal_review.adapters.local.sqlite_publication import (
     SQLiteArtifactObjectStore,
     SQLiteManifestRepository,
 )
 from appraisal_review.adapters.local.sqlite_review_store import SQLiteReviewStore
 from appraisal_review.adapters.local.sqlite_workflow_run_ledger import SqliteWorkflowRunLedger
+from appraisal_review.adapters.local.workbook_writer import fill_workbook
 from appraisal_review.adapters.local.workflow_runtime import (
     SQLiteDecisionTrace,
     SQLiteExecutionAuthority,
@@ -268,6 +274,8 @@ class SyntheticWorkbench:
             self.case_ids[name]: self._execution(name, fixture)
             for name, fixture in fixtures.items()
         }
+        export_assets = discover_export_assets()
+        self.snapshots = RegisteredSnapshots(self.root / "snapshots")
         self.app = create_integrated_service(
             authority=f"127.0.0.1:{port}",
             directory=self.directory,
@@ -275,6 +283,10 @@ class SyntheticWorkbench:
             documents=self.documents,
             execution=self,
             resolver=self.resolver,
+            export_assets=export_assets,
+            export_filler=fill_workbook if export_assets is not None else None,
+            export_converter=discover_converter(),
+            snapshot_provider=self.snapshots,
         )
         self.app.state.workbench_data_mode = "synthetic"
         self.app.state.configured_workbench_jobs = lambda: tuple(

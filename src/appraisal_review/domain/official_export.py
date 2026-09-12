@@ -57,6 +57,22 @@ class TemplateBundleReference(ServiceModel):
     bundle_hash: Digest
 
 
+class ExportBasis(ServiceModel):
+    """Everything a client needs to compose a valid export request, served, not guessed.
+
+    The page must not invent the snapshot digest or the template bundle: both identify
+    server-held state, and a wrong guess turns into a confusing conflict. This view hands
+    them over for the job's current run, together with the snapshot's open gaps so the
+    format chooser can show what a draft will still be missing.
+    """
+
+    job_id: UUID
+    run: RunReference
+    calculation_snapshot_digest: Digest
+    template_bundle: TemplateBundleReference
+    blockers: tuple[str, ...] = ()
+
+
 class ExportRequest(ServiceModel):
     """An untrusted command. Eligibility for formal output is decided by the server."""
 

@@ -803,6 +803,138 @@
         "title": "ComparisonContext",
         "type": "object"
       },
+      "ConvertedPDFArtifact": {
+        "additionalProperties": false,
+        "description": "A PDF converted from one exact workbook copy, which it names.",
+        "properties": {
+          "artifact_id": {
+            "format": "uuid",
+            "title": "Artifact Id",
+            "type": "string"
+          },
+          "content_hash": {
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Content Hash",
+            "type": "string"
+          },
+          "content_type": {
+            "const": "application/pdf",
+            "default": "application/pdf",
+            "title": "Content Type",
+            "type": "string"
+          },
+          "filename": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Filename",
+            "type": "string"
+          },
+          "font_hash": {
+            "anyOf": [
+              {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Font Hash"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "kind": {
+            "const": "converted_pdf",
+            "default": "converted_pdf",
+            "title": "Kind",
+            "type": "string"
+          },
+          "object_version": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Object Version"
+          },
+          "page_count": {
+            "minimum": 1.0,
+            "title": "Page Count",
+            "type": "integer"
+          },
+          "schema_version": {
+            "const": "service-v1",
+            "default": "service-v1",
+            "title": "Schema Version",
+            "type": "string"
+          },
+          "size_bytes": {
+            "minimum": 1.0,
+            "title": "Size Bytes",
+            "type": "integer"
+          },
+          "snapshot_digest": {
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Snapshot Digest",
+            "type": "string"
+          },
+          "source_workbook_hash": {
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Source Workbook Hash",
+            "type": "string"
+          },
+          "table": {
+            "enum": [
+              "table_3",
+              "table_4",
+              "table_5"
+            ],
+            "title": "Table",
+            "type": "string"
+          },
+          "template_bundle": {
+            "$ref": "#/components/schemas/TemplateBundleReference"
+          },
+          "template_hash": {
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Template Hash",
+            "type": "string"
+          },
+          "verification": {
+            "const": "converted_pdf_reopened",
+            "default": "converted_pdf_reopened",
+            "title": "Verification",
+            "type": "string"
+          },
+          "writer_version": {
+            "minLength": 1,
+            "title": "Writer Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "artifact_id",
+          "key",
+          "table",
+          "content_hash",
+          "size_bytes",
+          "filename",
+          "template_bundle",
+          "template_hash",
+          "snapshot_digest",
+          "writer_version",
+          "source_workbook_hash",
+          "page_count"
+        ],
+        "title": "ConvertedPDFArtifact",
+        "type": "object"
+      },
       "Coverage": {
         "additionalProperties": false,
         "properties": {
@@ -1059,6 +1191,239 @@
         ],
         "title": "ExecutionStatus",
         "type": "string"
+      },
+      "ExportBasis": {
+        "additionalProperties": false,
+        "description": "Everything a client needs to compose a valid export request, served, not guessed.\n\nThe page must not invent the snapshot digest or the template bundle: both identify\nserver-held state, and a wrong guess turns into a confusing conflict. This view hands\nthem over for the job's current run, together with the snapshot's open gaps so the\nformat chooser can show what a draft will still be missing.",
+        "properties": {
+          "blockers": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Blockers",
+            "type": "array"
+          },
+          "calculation_snapshot_digest": {
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Calculation Snapshot Digest",
+            "type": "string"
+          },
+          "job_id": {
+            "format": "uuid",
+            "title": "Job Id",
+            "type": "string"
+          },
+          "run": {
+            "$ref": "#/components/schemas/RunReference"
+          },
+          "schema_version": {
+            "const": "service-v1",
+            "default": "service-v1",
+            "title": "Schema Version",
+            "type": "string"
+          },
+          "template_bundle": {
+            "$ref": "#/components/schemas/TemplateBundleReference"
+          }
+        },
+        "required": [
+          "job_id",
+          "run",
+          "calculation_snapshot_digest",
+          "template_bundle"
+        ],
+        "title": "ExportBasis",
+        "type": "object"
+      },
+      "ExportOperation": {
+        "additionalProperties": false,
+        "description": "Immutable format plus the current state of one export request.",
+        "properties": {
+          "artifacts": {
+            "default": [],
+            "items": {
+              "discriminator": {
+                "mapping": {
+                  "converted_pdf": "#/components/schemas/ConvertedPDFArtifact",
+                  "official_workbook": "#/components/schemas/WorkbookArtifact"
+                },
+                "propertyName": "kind"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/WorkbookArtifact"
+                },
+                {
+                  "$ref": "#/components/schemas/ConvertedPDFArtifact"
+                }
+              ]
+            },
+            "title": "Artifacts",
+            "type": "array"
+          },
+          "blockers": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Blockers",
+            "type": "array"
+          },
+          "calculation_snapshot_digest": {
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Calculation Snapshot Digest",
+            "type": "string"
+          },
+          "effective_mode": {
+            "enum": [
+              "draft",
+              "formal"
+            ],
+            "title": "Effective Mode",
+            "type": "string"
+          },
+          "export_format": {
+            "enum": [
+              "pdf",
+              "xlsx"
+            ],
+            "title": "Export Format",
+            "type": "string"
+          },
+          "export_id": {
+            "format": "uuid",
+            "title": "Export Id",
+            "type": "string"
+          },
+          "job_id": {
+            "format": "uuid",
+            "title": "Job Id",
+            "type": "string"
+          },
+          "payload_digest": {
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Payload Digest",
+            "type": "string"
+          },
+          "problem": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ServiceProblem"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "requested_mode": {
+            "enum": [
+              "draft",
+              "formal"
+            ],
+            "title": "Requested Mode",
+            "type": "string"
+          },
+          "run": {
+            "$ref": "#/components/schemas/RunReference"
+          },
+          "schema_version": {
+            "const": "service-v1",
+            "default": "service-v1",
+            "title": "Schema Version",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "queued",
+              "running",
+              "succeeded",
+              "failed",
+              "partial"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "tables": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/TableOutcome"
+            },
+            "title": "Tables",
+            "type": "array"
+          },
+          "template_bundle": {
+            "$ref": "#/components/schemas/TemplateBundleReference"
+          }
+        },
+        "required": [
+          "export_id",
+          "job_id",
+          "run",
+          "export_format",
+          "requested_mode",
+          "effective_mode",
+          "status",
+          "payload_digest",
+          "calculation_snapshot_digest",
+          "template_bundle"
+        ],
+        "title": "ExportOperation",
+        "type": "object"
+      },
+      "ExportRequest": {
+        "additionalProperties": false,
+        "description": "An untrusted command. Eligibility for formal output is decided by the server.",
+        "properties": {
+          "calculation_snapshot_digest": {
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Calculation Snapshot Digest",
+            "type": "string"
+          },
+          "export_format": {
+            "enum": [
+              "pdf",
+              "xlsx"
+            ],
+            "title": "Export Format",
+            "type": "string"
+          },
+          "idempotency_key": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+            "title": "Idempotency Key",
+            "type": "string"
+          },
+          "requested_mode": {
+            "enum": [
+              "draft",
+              "formal"
+            ],
+            "title": "Requested Mode",
+            "type": "string"
+          },
+          "run": {
+            "$ref": "#/components/schemas/RunReference"
+          },
+          "schema_version": {
+            "const": "service-v1",
+            "default": "service-v1",
+            "title": "Schema Version",
+            "type": "string"
+          },
+          "template_bundle": {
+            "$ref": "#/components/schemas/TemplateBundleReference"
+          }
+        },
+        "required": [
+          "idempotency_key",
+          "run",
+          "calculation_snapshot_digest",
+          "template_bundle",
+          "requested_mode",
+          "export_format"
+        ],
+        "title": "ExportRequest",
+        "type": "object"
       },
       "ExtractedField": {
         "additionalProperties": false,
@@ -3371,6 +3736,59 @@
         "title": "SourceCitation",
         "type": "object"
       },
+      "TableOutcome": {
+        "additionalProperties": false,
+        "description": "Per-table result, so a partial export says which table is missing and why.",
+        "properties": {
+          "artifact_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Artifact Id"
+          },
+          "delivered": {
+            "title": "Delivered",
+            "type": "boolean"
+          },
+          "problem": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ServiceProblem"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "schema_version": {
+            "const": "service-v1",
+            "default": "service-v1",
+            "title": "Schema Version",
+            "type": "string"
+          },
+          "table": {
+            "enum": [
+              "table_3",
+              "table_4",
+              "table_5"
+            ],
+            "title": "Table",
+            "type": "string"
+          }
+        },
+        "required": [
+          "table",
+          "delivered"
+        ],
+        "title": "TableOutcome",
+        "type": "object"
+      },
       "TaskKind": {
         "enum": [
           "fact_confirmation",
@@ -3510,6 +3928,40 @@
           "task"
         ],
         "title": "TaskView",
+        "type": "object"
+      },
+      "TemplateBundleReference": {
+        "additionalProperties": false,
+        "description": "A pinned official asset bundle. A request names it; it never carries a path.",
+        "properties": {
+          "bundle_hash": {
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Bundle Hash",
+            "type": "string"
+          },
+          "bundle_id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+            "title": "Bundle Id",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": "service-v1",
+            "default": "service-v1",
+            "title": "Schema Version",
+            "type": "string"
+          },
+          "version": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "bundle_id",
+          "version",
+          "bundle_hash"
+        ],
+        "title": "TemplateBundleReference",
         "type": "object"
       },
       "ValidationError": {
@@ -3742,6 +4194,137 @@
           "status"
         ],
         "title": "VerificationReport",
+        "type": "object"
+      },
+      "WorkbookArtifact": {
+        "additionalProperties": false,
+        "description": "A filled copy of the official workbook, with the cells the writer was allowed.",
+        "properties": {
+          "artifact_id": {
+            "format": "uuid",
+            "title": "Artifact Id",
+            "type": "string"
+          },
+          "content_hash": {
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Content Hash",
+            "type": "string"
+          },
+          "content_type": {
+            "const": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "default": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "title": "Content Type",
+            "type": "string"
+          },
+          "filename": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Filename",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "kind": {
+            "const": "official_workbook",
+            "default": "official_workbook",
+            "title": "Kind",
+            "type": "string"
+          },
+          "object_version": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Object Version"
+          },
+          "schema_version": {
+            "const": "service-v1",
+            "default": "service-v1",
+            "title": "Schema Version",
+            "type": "string"
+          },
+          "sheet_name": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Sheet Name",
+            "type": "string"
+          },
+          "size_bytes": {
+            "minimum": 1.0,
+            "title": "Size Bytes",
+            "type": "integer"
+          },
+          "snapshot_digest": {
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Snapshot Digest",
+            "type": "string"
+          },
+          "table": {
+            "enum": [
+              "table_3",
+              "table_4",
+              "table_5"
+            ],
+            "title": "Table",
+            "type": "string"
+          },
+          "template_bundle": {
+            "$ref": "#/components/schemas/TemplateBundleReference"
+          },
+          "template_hash": {
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Template Hash",
+            "type": "string"
+          },
+          "verification": {
+            "const": "workbook_reopened",
+            "default": "workbook_reopened",
+            "title": "Verification",
+            "type": "string"
+          },
+          "writer_version": {
+            "minLength": 1,
+            "title": "Writer Version",
+            "type": "string"
+          },
+          "written_cells": {
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Written Cells",
+            "type": "array"
+          },
+          "written_range": {
+            "maxLength": 32,
+            "minLength": 3,
+            "title": "Written Range",
+            "type": "string"
+          }
+        },
+        "required": [
+          "artifact_id",
+          "key",
+          "table",
+          "content_hash",
+          "size_bytes",
+          "filename",
+          "template_bundle",
+          "template_hash",
+          "snapshot_digest",
+          "writer_version",
+          "sheet_name",
+          "written_range",
+          "written_cells"
+        ],
+        "title": "WorkbookArtifact",
         "type": "object"
       },
       "WorkflowStatus": {
@@ -4421,6 +5004,288 @@
         "summary": "Read Case Context",
         "tags": [
           "human-tasks"
+        ]
+      }
+    },
+    "/v1/review-jobs/{job_id}/exports": {
+      "post": {
+        "description": "Request the official tables in one format; replaying the same request is safe.",
+        "operationId": "submit_export_v1_review_jobs__job_id__exports_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportOperation"
+                }
+              }
+            },
+            "description": "Exact replay of a known request"
+          },
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportOperation"
+                }
+              }
+            },
+            "description": "The export is durably owned"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceProblem"
+                }
+              }
+            },
+            "description": "The principal lacks the case permission"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceProblem"
+                }
+              }
+            },
+            "description": "No such job or export for this principal"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceProblem"
+                }
+              }
+            },
+            "description": "A used idempotency key with a changed payload, or a stale run"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceProblem"
+                }
+              }
+            },
+            "description": "Invalid export request"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceProblem"
+                }
+              }
+            },
+            "description": "No export executor is configured"
+          }
+        },
+        "summary": "Submit Export",
+        "tags": [
+          "exports"
+        ]
+      }
+    },
+    "/v1/review-jobs/{job_id}/exports/basis": {
+      "get": {
+        "description": "The snapshot digest and template bundle a request for this job must pin.",
+        "operationId": "read_export_basis_v1_review_jobs__job_id__exports_basis_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportBasis"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceProblem"
+                }
+              }
+            },
+            "description": "The principal lacks the case permission"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceProblem"
+                }
+              }
+            },
+            "description": "No such job or export for this principal"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceProblem"
+                }
+              }
+            },
+            "description": "A used idempotency key with a changed payload, or a stale run"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceProblem"
+                }
+              }
+            },
+            "description": "Invalid export request"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceProblem"
+                }
+              }
+            },
+            "description": "No export executor is configured"
+          }
+        },
+        "summary": "Read Export Basis",
+        "tags": [
+          "exports"
+        ]
+      }
+    },
+    "/v1/review-jobs/{job_id}/exports/{export_id}": {
+      "get": {
+        "description": "Current state of one export, including per-table outcomes and blockers.",
+        "operationId": "read_export_v1_review_jobs__job_id__exports__export_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Job Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "export_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Export Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportOperation"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceProblem"
+                }
+              }
+            },
+            "description": "The principal lacks the case permission"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceProblem"
+                }
+              }
+            },
+            "description": "No such job or export for this principal"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceProblem"
+                }
+              }
+            },
+            "description": "A used idempotency key with a changed payload, or a stale run"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceProblem"
+                }
+              }
+            },
+            "description": "Invalid export request"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceProblem"
+                }
+              }
+            },
+            "description": "No export executor is configured"
+          }
+        },
+        "summary": "Read Export",
+        "tags": [
+          "exports"
         ]
       }
     },
