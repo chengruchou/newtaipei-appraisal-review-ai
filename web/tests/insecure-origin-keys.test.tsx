@@ -35,6 +35,9 @@ afterEach(() => {
 
 function exportsApi(overrides: Partial<ExportsApi> = {}): ExportsApi {
   return {
+    submitApproval: vi.fn(() => Promise.reject(new Error("not scripted"))),
+    readApproval: vi.fn(() => Promise.reject(new Error("not scripted"))),
+    decideApproval: vi.fn(() => Promise.reject(new Error("not scripted"))),
     readBasis: vi.fn(() => Promise.reject(new Error("readBasis not scripted"))),
     createExport: vi.fn(() => Promise.reject(new Error("createExport not scripted"))),
     readExport: vi.fn(() => Promise.reject(new Error("readExport not scripted"))),
