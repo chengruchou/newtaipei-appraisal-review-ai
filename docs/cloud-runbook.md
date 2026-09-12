@@ -44,6 +44,13 @@ REVIEW_MODEL_REGION=us-west-2
 REVIEW_EMAIL_LOGIN=ses                 # optional; requires REVIEW_MAIL_FROM
 REVIEW_MAIL_FROM=<verified SES identity>
 REVIEW_MAIL_REGION=us-west-2
+REVIEW_OFFICIAL_BATCH_CASE_IDS=<case ids, comma separated>
+    # cases whose materials come from the official batch; their runs pass the
+    # trusted-assembly admission with provenance "official_batch"
+REVIEW_APPROVER_EMAILS=<mailboxes, comma separated>
+    # deploy-time operator decision: these verified mailboxes receive PUBLISH
+REVIEW_APPROVER_CASE_IDS=<case ids, comma separated>
+    # extra case memberships granted to approver mailboxes at session issue
 ```
 
 SES is in sandbox (200/day, verified recipients only). Verified identity:
@@ -52,6 +59,11 @@ the team's test mailbox.
 ## Update (container swap - keeps /srv/workbench data)
 
 Run with operator credentials; needs docker + buildx locally.
+
+To build from a clean tree while other work is in flight, export the candidate
+commit with `git archive <sha> | tar -x -C <dir>` and build there - but stage
+`deploy/payload/` (gitignored: official templates + snapshot.json) into the
+exported tree first, or the build fails at `COPY deploy/payload/`.
 
 ```bash
 git -C <worktree> rev-parse --short HEAD   # candidate sha
