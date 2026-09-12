@@ -480,36 +480,128 @@ class SQLiteManifestRepository:
                     and existing.candidate != candidate
                 ):
                     raise PublicationError("manifest_conflict")
-            expires = int(self.clock()) + self.approval_ttl_seconds
-            connection.execute(
-                "INSERT INTO publication_access VALUES(?,?,?,?,?,1) ON CONFLICT(case_id,actor_id) "
-                "DO UPDATE SET actor=excluded.actor,permissions=excluded.permissions,"
-                "expires_at=excluded.expires_at,active=1",
-                (
-                    case_id,
-                    principal.actor.actor_id,
-                    principal.actor.model_dump_json(),
-                    _json(sorted(p.value for p in principal.permissions)),
-                    expires,
-                ),
-            )
-            connection.execute(
-                "INSERT INTO publication_grants VALUES(?,?,?,?,?,?,?,?,1) "
-                "ON CONFLICT(case_id,run_id,actor_id) DO UPDATE SET digest=excluded.digest,"
-                "candidate=excluded.candidate,pin=excluded.pin,epoch=excluded.epoch,"
-                "expires_at=excluded.expires_at,active=1",
-                (
-                    case_id,
-                    str(candidate.run.run_id),
-                    principal.actor.actor_id,
-                    candidate.digest(),
-                    candidate.model_dump_json(),
-                    current.digest,
-                    current.epoch,
-                    expires,
-                ),
-            )
+            self._issue(connection, candidate, principal, current)
         return candidate.digest()
+
+    def _issue(
+        self,
+        connection: sqlite3.Connection,
+        candidate: ManifestCandidate,
+        principal: Principal,
+        pin: _Pinned,
+    ) -> int:
+        """Write one bounded access and download window. The cap is never exceeded."""
+        case_id = candidate.run.revision.case_id
+        expires = int(self.clock()) + self.approval_ttl_seconds
+        connection.execute(
+            "INSERT INTO publication_access VALUES(?,?,?,?,?,1) ON CONFLICT(case_id,actor_id) "
+            "DO UPDATE SET actor=excluded.actor,permissions=excluded.permissions,"
+            "expires_at=excluded.expires_at,active=1",
+            (
+                case_id,
+                principal.actor.actor_id,
+                principal.actor.model_dump_json(),
+                _json(sorted(p.value for p in principal.permissions)),
+                expires,
+            ),
+        )
+        connection.execute(
+            "INSERT INTO publication_grants VALUES(?,?,?,?,?,?,?,?,1) "
+            "ON CONFLICT(case_id,run_id,actor_id) DO UPDATE SET digest=excluded.digest,"
+            "candidate=excluded.candidate,pin=excluded.pin,epoch=excluded.epoch,"
+            "expires_at=excluded.expires_at,active=1",
+            (
+                case_id,
+                str(candidate.run.run_id),
+                principal.actor.actor_id,
+                candidate.digest(),
+                candidate.model_dump_json(),
+                pin.digest,
+                pin.epoch,
+                expires,
+            ),
+        )
+        return expires
+
+    def _renewable(
+        self,
+        connection: sqlite3.Connection,
+        candidate: ManifestCandidate,
+        principal: Principal,
+        pin: _Pinned,
+    ) -> None:
+        """Accept a lapsed window, refuse a revoked or superseded one.
+
+        This is deliberately not _grant: the expiry is the one thing being renewed. Every
+        other condition still has to hold, and `active` is what keeps revoke() final -
+        a revoked grant row stays revoked and can never be renewed back into existence.
+        """
+        row = connection.execute(
+            "SELECT digest,pin,epoch,active FROM publication_grants "
+            "WHERE case_id=? AND run_id=? AND actor_id=?",
+            (candidate.run.revision.case_id, str(candidate.run.run_id), principal.actor.actor_id),
+        ).fetchone()
+        if row is None:
+            raise PublicationError("unpublished")
+        if row[3] != 1:
+            raise PublicationError("publication_revoked")
+        if tuple(row[:3]) != (candidate.digest(), pin.digest, pin.epoch):
+            raise PublicationError("stale_publication")
+
+    def reauthorize_download(self, principal: Principal, case_id: str) -> int:
+        """Renew a lapsed download window for output that is already committed.
+
+        A window closing is not a change of authority, so a reviewer should not have to
+        re-run a case to fetch the same verified bytes again. Nothing is regenerated and no
+        synthetic approval is involved: the committed manifest, the run's current ownership,
+        the pinned sources and the case permission are all rechecked against the current
+        principal, and the new window is bounded by the same lifetime as the original.
+        """
+        principal.require(case_id, Permission.REVIEW)
+        if principal.actor.kind == "model":
+            raise PublicationError("publication_unauthorized")
+        pending: list[tuple[ManifestCandidate, _Pinned]] = []
+        connection = self.database._connect()
+        try:
+            connection.execute("BEGIN")
+            state = self._state(connection)
+            current_runs = {
+                job["current_run_id"]
+                for job in state["jobs"].values()
+                if job["case_id"] == case_id and job["principal_id"] == principal.actor.actor_id
+            }
+            rows = connection.execute(
+                "SELECT fencing_token,digest,payload FROM publication_manifests "
+                "WHERE case_id=? AND actor_id=?",
+                (case_id, principal.actor.actor_id),
+            ).fetchall()
+            for row in rows:
+                manifest = self._manifest(row)
+                if manifest is None or str(manifest.candidate.run.run_id) not in current_runs:
+                    continue
+                pin = self._pin(connection, manifest.candidate)
+                self._owner(principal, pin)
+                self._renewable(connection, manifest.candidate, principal, pin)
+                pending.append((manifest.candidate, pin))
+        finally:
+            connection.rollback()
+            connection.close()
+        if not pending:
+            raise PublicationError("unpublished")
+        # Source admission is rechecked outside the read transaction, exactly as authorize
+        # does, so a withdrawn source still blocks a renewal.
+        for candidate, _ in pending:
+            self._sources(principal, candidate)
+        renewed: list[int] = []
+        with _transaction(self.database) as connection:
+            for candidate, before in pending:
+                current = self._pin(connection, candidate)
+                if (before.digest, before.epoch) != (current.digest, current.epoch):
+                    raise PublicationError("stale_publication")
+                self._owner(principal, current)
+                self._renewable(connection, candidate, principal, current)
+                renewed.append(self._issue(connection, candidate, principal, current))
+        return min(renewed)
 
     def revoke(self, case_id: str) -> None:
         """Trusted source/access revocation; invalidate in-flight callbacks durably."""
