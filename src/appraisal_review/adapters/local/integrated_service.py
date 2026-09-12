@@ -19,7 +19,7 @@ from contextvars import ContextVar
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import cast, get_args
-from uuid import UUID, uuid4
+from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
 
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse
@@ -787,6 +787,46 @@ def create_integrated_service(
         # External lookups become CANDIDATES here; adoption into facts or tables
         # stays a separate named-human path and is not wired by this plane.
         app.state.fact_candidates = CandidateService(store=SQLiteCandidateStore(store))
+
+    mail_from = os.environ.get("REVIEW_MAIL_FROM", "").strip()
+    if os.environ.get("REVIEW_EMAIL_LOGIN") == "ses":
+        if not mail_from or "@" not in mail_from:
+            raise ValueError("REVIEW_EMAIL_LOGIN=ses requires REVIEW_MAIL_FROM to be set")
+        mail_region = os.environ.get("REVIEW_MAIL_REGION", "us-west-2").strip()
+        from appraisal_review.adapters.aws.ses_mailer import SesMailer, sesv2_client_factory
+        from appraisal_review.adapters.local.email_login_store import SQLiteEmailLoginStore
+        from appraisal_review.application.email_login import EmailLoginService
+        from appraisal_review.domain.service_contracts import ActorReference
+
+        def issue_session(email: str) -> tuple[str, int, str]:
+            # A verified mailbox proves control of the mailbox, nothing more: the
+            # principal starts with NO case memberships and only baseline working
+            # permissions - publication authority is never granted here. The actor
+            # id is stable per mailbox so a returning user keeps their case history.
+            actor_id = str(uuid5(NAMESPACE_URL, "email-login/" + email.strip().lower()))
+            session_principal = Principal(
+                actor=ActorReference(actor_id=actor_id, kind="human"),
+                case_ids=frozenset(),
+                permissions=frozenset(
+                    {Permission.REVIEW, Permission.CONFIRM, Permission.CORRECT}
+                ),
+            )
+            token = secrets.token_urlsafe(36)
+            expires_at = int(time.time()) + 8 * 3600
+            directory.add_session(token, session_principal, expires_at)
+            for intake_case_id, creator_actor_id in (
+                () if intake_root is None else intake_store.memberships()
+            ):
+                if creator_actor_id == actor_id:
+                    with suppress(ServiceFault, ValueError):
+                        directory.grant_case(actor_id, intake_case_id)
+            return token, expires_at, actor_id
+
+        app.state.email_login = EmailLoginService(
+            store=SQLiteEmailLoginStore(store),
+            mailer=SesMailer(sesv2_client_factory(mail_region), sender=mail_from),
+            issue_session=issue_session,
+        )
     app.state.material_catalog = catalog
     app.state.runtime_worker = worker
     app.state.worker_problem = None
