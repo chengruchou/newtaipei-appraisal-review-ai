@@ -26,6 +26,7 @@ from appraisal_review.application.report_readiness import ReadinessPolicy, evalu
 from appraisal_review.application.review_jobs import ReviewJobService
 from appraisal_review.application.service_guards import Principal, ServiceFault
 from appraisal_review.domain.calculation_snapshot import CalculationSnapshot
+from appraisal_review.domain.job_contracts import JobStatusView
 from appraisal_review.domain.official_table_mapping import OfficialTable
 from appraisal_review.domain.report_approval import (
     ApprovalDecision,
@@ -67,7 +68,7 @@ class ReportApprovalService:
 
     async def _current_snapshot(
         self, principal: Principal, job_id: UUID
-    ) -> tuple[str, CalculationSnapshot, RunReference]:
+    ) -> tuple[JobStatusView, CalculationSnapshot, RunReference]:
         status = await self.jobs.status(principal, job_id)
         principal.require(status.job.case_id, Permission.REVIEW)
         current = status.current_run
@@ -76,17 +77,27 @@ class ReportApprovalService:
         snapshot = self.snapshots.read(status.job.case_id, current.revision.revision_id)
         if snapshot is None:
             raise ServiceFault(ServiceErrorCode.CONFLICT)
-        return status.job.case_id, snapshot, current
+        return status, snapshot, current
+
+    def _evaluate(self, status: JobStatusView, snapshot: CalculationSnapshot) -> ReportReadiness:
+        # Open human tasks gate submission at the evaluator, not as an afterthought:
+        # the job status is the one source that knows them.
+        return evaluate_readiness(
+            snapshot,
+            self.policy,
+            open_task_count=len(status.open_task_ids),
+            open_task_ids=tuple(str(task_id) for task_id in status.open_task_ids),
+        )
 
     async def readiness(self, principal: Principal, job_id: UUID) -> ReportReadiness:
-        _, snapshot, _ = await self._current_snapshot(principal, job_id)
-        return evaluate_readiness(snapshot, self.policy)
+        status, snapshot, _ = await self._current_snapshot(principal, job_id)
+        return self._evaluate(status, snapshot)
 
     async def latest_for_current_binding(
         self, principal: Principal, job_id: UUID
     ) -> ReportApproval | None:
         """The approval the current content would publish under, if any."""
-        _, snapshot, _current = await self._current_snapshot(principal, job_id)
+        _status, snapshot, _current = await self._current_snapshot(principal, job_id)
         try:
             binding = self._binding(snapshot)
         except ServiceFault:
@@ -117,14 +128,14 @@ class ReportApprovalService:
         self, principal: Principal, job_id: UUID, command: SubmitReportApproval
     ) -> ReportApproval:
         command = SubmitReportApproval.model_validate_json(command.model_dump_json())
-        _case_id, snapshot, current = await self._current_snapshot(principal, job_id)
+        status, snapshot, current = await self._current_snapshot(principal, job_id)
         if command.run.run_id != current.run_id or command.run.revision != current.revision:
             raise ServiceFault(ServiceErrorCode.CONFLICT)
         if command.calculation_snapshot_digest != snapshot.digest():
             raise ServiceFault(ServiceErrorCode.CONFLICT)
         if command.template_bundle != self.assets.bundle:
             raise ServiceFault(ServiceErrorCode.VALIDATION)
-        readiness = evaluate_readiness(snapshot, self.policy)
+        readiness = self._evaluate(status, snapshot)
         if readiness.state != "ready_to_submit":
             # The blockers are served by the basis view; submitting cannot bypass them.
             raise ServiceFault(ServiceErrorCode.CONFLICT)
@@ -140,7 +151,7 @@ class ReportApprovalService:
             status="submitted",
             submitted_by=principal.actor,
             submitted_at=self.clock(),
-            readiness_policy_version=self.policy.policy_version,
+            readiness_policy_version=readiness.policy_version,
             payload_digest=command.payload_digest(),
         )
         stored, _created = self.store.create(

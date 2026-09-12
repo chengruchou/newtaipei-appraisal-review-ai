@@ -57,6 +57,12 @@ class ReadinessBlocker(ServiceModel):
         "stale_snapshot",
         "bundle_mismatch",
         "human_task_open",
+        "na_not_permitted",
+        "invalid_value",
+        "unit_mismatch",
+        "weight_sum_invalid",
+        "arithmetic_mismatch",
+        "calculation_policy_unconfirmed",
     ]
     message: str = Field(min_length=1, max_length=512)
     source_key: str | None = Field(default=None, max_length=256)

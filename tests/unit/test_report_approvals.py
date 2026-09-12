@@ -258,8 +258,12 @@ class TestReadinessPolicy:
 
     def test_justified_not_applicable_passes(self, scene: dict[str, Any]) -> None:
         entries = {key: entry() for key in REQUIRED[1:]}
+        # v2 discipline: a lawful absence carries a human-confirmed ruling, not
+        # just any non-blank trace string.
         entries[REQUIRED[0]] = SnapshotEntry(
-            state="not_applicable", trace="ruled out by criteria page 7"
+            state="not_applicable",
+            origin="human_confirmed",
+            trace="ruled out by criteria page 7",
         )
         assert (
             evaluate_readiness(snapshot_for(scene["run"], entries), scene["approvals"].policy).state
@@ -526,16 +530,12 @@ class TestHumanOnlyApproval:
 class TestDuplicateSubmissionConsistency:
     """P2-B: resubmitting the same content must not shadow a live approval."""
 
-    def test_second_key_same_binding_reuses_the_live_request(
-        self, scene: dict[str, Any]
-    ) -> None:
+    def test_second_key_same_binding_reuses_the_live_request(self, scene: dict[str, Any]) -> None:
         first = submit(scene, key="a1")
         second = submit(scene, key="a2")
         assert second.approval_id == first.approval_id
 
-    def test_resubmission_does_not_shadow_an_approved_binding(
-        self, scene: dict[str, Any]
-    ) -> None:
+    def test_resubmission_does_not_shadow_an_approved_binding(self, scene: dict[str, Any]) -> None:
         approval = submit(scene, key="a1")
         decide(scene, approval.approval_id, "approve", "d1")
         again = submit(scene, key="a3")
