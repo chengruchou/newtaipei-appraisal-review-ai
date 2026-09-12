@@ -798,18 +798,35 @@ def create_integrated_service(
         from appraisal_review.application.email_login import EmailLoginService
         from appraisal_review.domain.service_contracts import ActorReference
 
+        approver_emails = frozenset(
+            entry.strip().lower()
+            for entry in os.environ.get("REVIEW_APPROVER_EMAILS", "").split(",")
+            if entry.strip()
+        )
+        approver_case_grants = frozenset(
+            entry.strip()
+            for entry in os.environ.get("REVIEW_APPROVER_CASE_IDS", "").split(",")
+            if entry.strip()
+        )
+
         def issue_session(email: str) -> tuple[str, int, str]:
             # A verified mailbox proves control of the mailbox, nothing more: the
             # principal starts with NO case memberships and only baseline working
-            # permissions - publication authority is never granted here. The actor
+            # permissions. Publication authority comes solely from the deploy-time
+            # operator configuration naming the trusted approvers - the trusted
+            # management mechanism - never from the verification itself. The actor
             # id is stable per mailbox so a returning user keeps their case history.
-            actor_id = str(uuid5(NAMESPACE_URL, "email-login/" + email.strip().lower()))
+            normalized = email.strip().lower()
+            actor_id = str(uuid5(NAMESPACE_URL, "email-login/" + normalized))
+            permissions = {Permission.REVIEW, Permission.CONFIRM, Permission.CORRECT}
+            memberships: set[str] = set()
+            if normalized in approver_emails:
+                permissions.add(Permission.PUBLISH)
+                memberships.update(approver_case_grants)
             session_principal = Principal(
                 actor=ActorReference(actor_id=actor_id, kind="human"),
-                case_ids=frozenset(),
-                permissions=frozenset(
-                    {Permission.REVIEW, Permission.CONFIRM, Permission.CORRECT}
-                ),
+                case_ids=frozenset(memberships),
+                permissions=frozenset(permissions),
             )
             token = secrets.token_urlsafe(36)
             expires_at = int(time.time()) + 8 * 3600

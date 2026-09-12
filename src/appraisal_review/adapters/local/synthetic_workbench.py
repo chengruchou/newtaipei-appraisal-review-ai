@@ -145,19 +145,34 @@ def compose_action_selector(
         flush=True,
     )
 
+    # Cases whose materials are exactly the admitted official document batch may
+    # send their assembled content to the model. This is deploy-time operator
+    # configuration implementing the recorded batch-admission decision; unlisted
+    # real cases stay undeclared and the admission refuses their sends outright.
+    official_batch_cases = frozenset(
+        case.strip()
+        for case in (env.get("REVIEW_OFFICIAL_BATCH_CASE_IDS") or "").split(",")
+        if case.strip()
+    )
+
     def provenance(case_id: str) -> str | None:
         # Only content assembled from this workbench's own synthetic fixture cases
-        # may leave for the model; a real intake case answers None, the selector
-        # leaves the send undeclared and the admission refuses it outright.
+        # or the operator-listed official-batch cases may leave for the model; any
+        # other case answers None, the selector leaves the send undeclared and the
+        # admission refuses it outright.
         if synthetic_case_ids is not None and case_id in synthetic_case_ids():
             return "synthetic_fixture"
+        if case_id in official_batch_cases:
+            return "official_batch"
         return None
 
     return live_selector.live_action_selector(
         model_id,
         region,
         dispatch_store_path=dispatch_store_path,
-        competition_admission=TrustedAssemblyAdmission(frozenset({"synthetic_fixture"})),
+        competition_admission=TrustedAssemblyAdmission(
+            frozenset({"synthetic_fixture", "official_batch"})
+        ),
         provenance_for_case=provenance,
     )
 
