@@ -10,6 +10,8 @@ from __future__ import annotations
 import json
 import os
 import secrets
+import time
+from collections.abc import Mapping
 from contextlib import closing
 from dataclasses import dataclass, replace
 from pathlib import Path
@@ -100,6 +102,49 @@ from appraisal_review.testing.integration_fixture import (
 )
 
 SCENARIOS = ("empty", "completed", "confirm", "correct", "reject", "conflict", "lost_response")
+
+
+def compose_action_selector(
+    store: SQLiteReviewStore,
+    *,
+    environ: Mapping[str, str] | None = None,
+    dispatch_store_path: Path | None = None,
+) -> BedrockActionSelector:
+    """Env-gated selector composition; misconfiguration refuses to launch.
+
+    Unset or ``REVIEW_MODEL_CLIENT=synthetic`` keeps today's fixed mock Converse
+    client exactly. ``bedrock`` requires ``REVIEW_MODEL_ID`` and
+    ``REVIEW_MODEL_REGION`` and composes the live guarded client; missing or
+    invalid configuration raises here rather than silently falling back to the
+    synthetic selector. Diagnostics name environment variables, never values of
+    credentials.
+    """
+    env: Mapping[str, str] = os.environ if environ is None else environ
+    mode = env.get("REVIEW_MODEL_CLIENT") or "synthetic"
+    if mode == "synthetic":
+        return BedrockActionSelector(
+            SyntheticConverseClient(store),
+            ModelSelectorConfig(model_id="fixed-synthetic-converse-v1", attempts=1),
+        )
+    if mode != "bedrock":
+        raise ValueError(
+            "REVIEW_MODEL_CLIENT must be unset, 'synthetic' or 'bedrock'; got " + repr(mode)
+        )
+    model_id = (env.get("REVIEW_MODEL_ID") or "").strip()
+    region = (env.get("REVIEW_MODEL_REGION") or "").strip()
+    if not model_id:
+        raise ValueError("REVIEW_MODEL_CLIENT=bedrock requires REVIEW_MODEL_ID to be set")
+    if not region:
+        raise ValueError("REVIEW_MODEL_CLIENT=bedrock requires REVIEW_MODEL_REGION to be set")
+    from appraisal_review.adapters.aws import live_selector
+
+    print(
+        f"Action selector: live Bedrock Converse (model_id={model_id}, region={region})",
+        flush=True,
+    )
+    return live_selector.live_action_selector(
+        model_id, region, dispatch_store_path=dispatch_store_path
+    )
 
 
 def _private_json(path: Path, value: Any) -> None:
@@ -231,7 +276,16 @@ class SyntheticWorkbench:
             name: f.snapshot.revision.reference.case_id for name, f in fixtures.items()
         }
         self.principal = next(iter(fixtures.values())).principal
-        self.directory = LocalDirectory({state["session_token"]: self.principal})
+        sessions: dict[str, Principal | tuple[Principal, int | None]] = {
+            state["session_token"]: self.principal
+        }
+        for record in state.get("operator_tokens", []):
+            granted = frozenset(Permission(name) for name in record["permissions"])
+            sessions[record["token"]] = (
+                replace(self.principal, permissions=granted),
+                int(record["expires_at"]),
+            )
+        self.directory = LocalDirectory(sessions, revocations_path=root / "revoked_tokens.json")
         self.store = SQLiteReviewStore(root / "state/review.sqlite")
         with closing(self.store._connect()) as db:
             db.execute(
@@ -318,9 +372,8 @@ class SyntheticWorkbench:
             registration=self.guard,
             controllers=self.controller,
             reviews=SQLiteWorkflowReviews(self.store),
-            selector=BedrockActionSelector(
-                SyntheticConverseClient(self.store),
-                ModelSelectorConfig(model_id="fixed-synthetic-converse-v1", attempts=1),
+            selector=compose_action_selector(
+                self.store, dispatch_store_path=self.root / "state" / "model_dispatch.sqlite3"
             ),
             ledger=SqliteWorkflowRunLedger(self.root / "state/workflow.sqlite"),
             trace=SQLiteDecisionTrace(self.store),
@@ -328,6 +381,35 @@ class SyntheticWorkbench:
             budget=Budget(steps_remaining=8, model_calls_remaining=8, retries_remaining=0),
             project_result=self.projection,
         )
+
+    def mint_operator_token(
+        self, ttl_seconds: int, permissions: frozenset[Permission] | None = None
+    ) -> str:
+        """Mint a time-limited operator session via a trusted management command.
+
+        Deliberately not an HTTP route: only the deployer holding the workbench
+        process may issue tokens. The token persists like the fixture token in
+        the private ``bootstrap.json`` (section ``operator_tokens``) with its
+        expiry, so it survives restart and expires server-side.
+        """
+        if type(ttl_seconds) is not int or ttl_seconds < 1:
+            raise ValueError("A positive integer ttl_seconds is required")
+        granted = frozenset(permissions) if permissions is not None else self.principal.permissions
+        if not granted or not granted <= self.principal.permissions:
+            raise ValueError("Operator permissions must be a non-empty subset of the fixture's")
+        token = secrets.token_urlsafe(36)
+        expires_at = int(time.time()) + ttl_seconds
+        self.directory.add_session(token, replace(self.principal, permissions=granted), expires_at)
+        records = self.state.setdefault("operator_tokens", [])
+        records.append(
+            {
+                "token": token,
+                "expires_at": expires_at,
+                "permissions": sorted(permission.value for permission in granted),
+            }
+        )
+        _private_json(self.root / "bootstrap.json", self.state)
+        return token
 
     async def register_synthetic_case(
         self,

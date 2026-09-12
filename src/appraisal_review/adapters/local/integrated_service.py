@@ -10,6 +10,9 @@ import asyncio
 import hashlib
 import hmac
 import json
+import os
+import secrets
+import time
 from collections.abc import AsyncIterator, Callable, Mapping
 from contextlib import asynccontextmanager, closing, suppress
 from contextvars import ContextVar
@@ -62,15 +65,73 @@ from appraisal_review.ports.jobs import ClaimedAttempt, JobRecord
 from appraisal_review.ports.runtime_documents import RuntimeDocuments
 
 _request_principal: ContextVar[Principal | None] = ContextVar("review_principal", default=None)
+_request_token: ContextVar[str | None] = ContextVar("review_session_token", default=None)
+
+
+def _write_private(path: Path, value: object) -> None:
+    """Atomically replace an owned private file inside the private data directory."""
+    temporary = path.with_name(path.name + "." + secrets.token_hex(8) + ".tmp")
+    descriptor = os.open(temporary, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+    try:
+        with os.fdopen(descriptor, "w") as stream:
+            json.dump(value, stream, ensure_ascii=False, indent=2)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, path)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 class LocalDirectory:
-    """Trusted session configuration; requests cannot supply actor or permission fields."""
+    """Trusted session configuration; requests cannot supply actor or permission fields.
 
-    def __init__(self, sessions: Mapping[str, Principal]) -> None:
+    A session value may carry an expiry (epoch seconds); ``None`` keeps the legacy
+    non-expiring behavior, so baked fixture tokens continue to authenticate. Revoked
+    token digests optionally persist to ``revocations_path`` and survive a reload of
+    the directory from bootstrap state; without a path revocation is process-lifetime.
+    """
+
+    def __init__(
+        self,
+        sessions: Mapping[str, Principal | tuple[Principal, int | None]],
+        *,
+        clock: Callable[[], float] = time.time,
+        revocations_path: Path | None = None,
+    ) -> None:
         if not sessions or any(len(token) < 32 for token in sessions):
             raise ValueError("Explicit server-issued local sessions are required")
-        self._sessions = dict(sessions)
+        self._sessions: dict[str, Principal] = {}
+        self._expiries: dict[str, int | None] = {}
+        self._clock = clock
+        self._revocations_path = revocations_path
+        self._revoked: set[str] = set()
+        if revocations_path is not None and revocations_path.exists():
+            loaded = json.loads(revocations_path.read_text())
+            if not isinstance(loaded, list) or any(type(item) is not str for item in loaded):
+                raise ValueError("The revocation list must be a JSON array of token digests")
+            self._revoked = set(loaded)
+        for token, value in sessions.items():
+            principal, expires_at = value if isinstance(value, tuple) else (value, None)
+            self.add_session(token, principal, expires_at)
+
+    def add_session(self, token: str, principal: Principal, expires_at: int | None) -> None:
+        """Trusted local setup only; tokens are server-minted, never request-chosen."""
+        if len(token) < 32:
+            raise ValueError("Explicit server-issued local sessions are required")
+        if expires_at is not None and expires_at <= 0:
+            raise ValueError("A session expiry must be a positive epoch second")
+        self._sessions[token] = principal
+        self._expiries[token] = expires_at
+
+    @staticmethod
+    def _digest(token: str) -> str:
+        return hashlib.sha256(token.encode()).hexdigest()
+
+    def _inactive(self, token: str) -> bool:
+        if self._digest(token) in self._revoked:
+            return True
+        expires_at = self._expiries.get(token)
+        return expires_at is not None and self._clock() >= expires_at
 
     def authenticate(self, header: str) -> Principal:
         scheme, _, token = header.partition(" ")
@@ -78,11 +139,31 @@ class LocalDirectory:
             raise ServiceFault(ServiceErrorCode.UNAUTHORIZED)
         for expected, principal in self._sessions.items():
             if hmac.compare_digest(expected, token):
+                # Expired or revoked sessions answer exactly like unknown tokens.
+                if self._inactive(expected):
+                    break
                 return principal
         raise ServiceFault(ServiceErrorCode.UNAUTHORIZED)
 
+    def session_view(self, token: str) -> tuple[Principal, int | None]:
+        """Post-authentication projection of the presented token; never echoes it."""
+        for expected, principal in self._sessions.items():
+            if hmac.compare_digest(expected, token) and not self._inactive(expected):
+                return principal, self._expiries.get(expected)
+        raise ServiceFault(ServiceErrorCode.UNAUTHORIZED)
+
+    def revoke_token(self, token: str) -> None:
+        """Revoke the exact presented bearer token, durably when a path is configured."""
+        self._revoked.add(self._digest(token))
+        self._sessions.pop(token, None)
+        self._expiries.pop(token, None)
+        if self._revocations_path is not None:
+            _write_private(self._revocations_path, sorted(self._revoked))
+
     async def read(self, principal_id: str, case_id: str) -> Principal:
-        for principal in self._sessions.values():
+        for token, principal in self._sessions.items():
+            if self._inactive(token):
+                continue
             if principal.actor.actor_id == principal_id and case_id in principal.case_ids:
                 principal.require(case_id, Permission.REVIEW)
                 return principal
@@ -93,6 +174,9 @@ class LocalDirectory:
         before()
         self._sessions = {
             token: p for token, p in self._sessions.items() if p.actor.actor_id != actor_id
+        }
+        self._expiries = {
+            token: expiry for token, expiry in self._expiries.items() if token in self._sessions
         }
 
     def grant_case(self, actor_id: str, case_id: str) -> Principal:
@@ -686,6 +770,38 @@ def create_integrated_service(
     app.state.worker_problem = None
     queue = SQLiteDispatchQueue(store)
     app.state.dispatch_queue = queue
+
+    def _current_session() -> tuple[Principal, str]:
+        principal = _request_principal.get()
+        bearer = _request_token.get()
+        if principal is None or bearer is None:
+            raise ServiceFault(ServiceErrorCode.UNAUTHORIZED)
+        return principal, bearer
+
+    async def read_session() -> JSONResponse:
+        """Describe the authenticated session; the token itself never travels back."""
+        principal, bearer = _current_session()
+        _, expires_at = directory.session_view(bearer)
+        return JSONResponse(
+            {
+                "actor_id": principal.actor.actor_id,
+                "kind": principal.actor.kind,
+                "expires_at": expires_at,
+                "permissions_summary": {
+                    "case_count": len(principal.case_ids),
+                    "permission_count": len(principal.permissions),
+                },
+            }
+        )
+
+    async def delete_session() -> Response:
+        """Revoke the CURRENT bearer token; no route mints or rotates tokens."""
+        _, bearer = _current_session()
+        directory.revoke_token(bearer)
+        return Response(status_code=204)
+
+    app.add_api_route("/v1/session", read_session, methods=["GET"])
+    app.add_api_route("/v1/session", delete_session, methods=["DELETE"], status_code=204)
     if not legacy_review_enabled:
         # The local-original composition admits only configured revision references.
         # It must not expose the legacy caller-URI execution entry point.
@@ -732,16 +848,19 @@ def create_integrated_service(
             return Response(status_code=403)
         if not request.url.path.startswith("/v1/"):
             return await call_next(request)
+        header = request.headers.get("authorization", "")
         try:
-            principal = directory.authenticate(request.headers.get("authorization", ""))
+            principal = directory.authenticate(header)
         except ServiceFault as fault:
             return JSONResponse(status_code=403, content=fault.problem.model_dump(mode="json"))
         token = _request_principal.set(principal)
+        bearer = _request_token.set(header.partition(" ")[2])
         try:
             response: Response = await call_next(request)
             response.headers["Cache-Control"] = "no-store"
             return response
         finally:
+            _request_token.reset(bearer)
             _request_principal.reset(token)
 
     return app
