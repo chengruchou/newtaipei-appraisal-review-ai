@@ -89,6 +89,20 @@ keeps original documents, mappings and restoration authority on the host. This
 does not supply production identity, general operator provisioning or an AWS
 deployment. See [architecture](docs/architecture.md).
 
+### Containers
+
+`docker compose up --build` serves that same workbench from one container on
+http://127.0.0.1:4174: the built frontend, the synthetic integrated API and its
+execution worker. The API keeps its numeric loopback bind and authority inside the
+container and is never published; the frontend is built with no `VITE_API_BASE_URL`
+and reaches it through a same-origin proxy. Read the session token the launcher
+issued with `docker compose exec workbench workbench-entrypoint fixture`, then sign
+in at that address and open a job ID from the same manifest.
+
+This is the local synthetic rehearsal in a container. It is not the AWS entry, not
+production login, and it carries no OCR assets, so the privacy and restoration
+route is unavailable in it. See the [container runbook](deploy/README.md).
+
 ## Run the existing local reference service
 
 This established synthetic local facade is distinct from the new integrated

@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Appraisal review pipeline console</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="masthead">
+      <div>
+        <h1>Appraisal review pipeline console</h1>
+        <p class="subtitle">
+          A local visual surface over the reviewer's own HTTP API. Synthetic fixtures only:
+          nothing here approves a real document or establishes real-case accuracy.
+        </p>
+      </div>
+      <div id="upstreams" class="upstreams" aria-live="polite"></div>
+    </header>
+
+    <main>
+      <section class="panel">
+        <h2>1. Choose a scenario</h2>
+        <div id="scenarios" class="scenarios"></div>
+        <p id="expectation" class="expectation"></p>
+        <div class="request">
+          <div class="request-head">
+            <label for="payload">Request body sent to <code id="target-url">…</code></label>
+            <div class="actions">
+              <button id="reset" type="button" class="ghost">Reload scenario</button>
+              <button id="run" type="button" class="primary">Send review request</button>
+            </div>
+          </div>
+          <textarea id="payload" spellcheck="false" rows="12"></textarea>
+        </div>
+        <div id="call" class="call" hidden></div>
+      </section>
+
+      <section id="results" hidden>
+        <section class="panel">
+          <h2>2. Outcome</h2>
+          <div id="outcome" class="outcome"></div>
+          <div id="verification" class="verification"></div>
+        </section>
+
+        <section class="panel">
+          <h2>3. Pipeline</h2>
+          <ol id="pipeline" class="pipeline"></ol>
+        </section>
+
+        <section class="panel">
+          <h2>4. Independent calculation</h2>
+          <div id="comparisons"></div>
+        </section>
+
+        <section class="panel">
+          <h2>5. Findings and evidence</h2>
+          <div id="findings"></div>
+        </section>
+
+        <section class="panel">
+          <h2>6. Coverage</h2>
+          <div id="coverage"></div>
+        </section>
+
+        <section class="panel">
+          <h2>7. Artifact</h2>
+          <div id="artifact"></div>
+        </section>
+
+        <section class="panel">
+          <details>
+            <summary>Raw response</summary>
+            <pre id="raw"></pre>
+          </details>
+        </section>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
