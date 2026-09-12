@@ -13,17 +13,17 @@ from collections.abc import AsyncIterator, Callable, Mapping
 from contextlib import asynccontextmanager, closing, suppress
 from contextvars import ContextVar
 from dataclasses import dataclass, replace
-from typing import Annotated
+from pathlib import Path
+from typing import cast, get_args
 from uuid import UUID, uuid4
 
-from fastapi import Depends, FastAPI, Request, Response
+from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import RequestResponseEndpoint
 
 from appraisal_review.adapters.local.artifact_publication import CommittedResultResolver
 from appraisal_review.adapters.local.sqlite_review_store import SQLiteReviewStore
 from appraisal_review.api.app import create_app
-from appraisal_review.api.dependencies import get_principal
 from appraisal_review.application.human_tasks import HumanTaskService
 from appraisal_review.application.outbox import DispatchMessage, JobReconciler, OutboxDispatcher
 from appraisal_review.application.revisions import RevisionSnapshot
@@ -44,6 +44,7 @@ from appraisal_review.domain.service_contracts import (
     ServiceErrorCode,
     ServiceResult,
 )
+from appraisal_review.ports.content import ContentMediaType, DeliveredContent
 from appraisal_review.ports.jobs import ClaimedAttempt, JobRecord
 from appraisal_review.ports.runtime_documents import RuntimeDocuments
 
@@ -405,6 +406,87 @@ class SQLiteDispatchQueue:
                 raise
 
 
+class LocalContentPlane:
+    """Reads authorized bytes for the shared content routes.
+
+    Every check the inline routes used to perform stays here: the source lookup is pinned to
+    an exact version and hash, an artifact must belong to the job's current run, and the
+    publication resolver still verifies the bytes against the manifest before returning
+    them. A lapsed download grant raises PublicationError and surfaces as 403, so the
+    fifteen-minute window is enforced rather than reported as a missing artifact.
+    """
+
+    def __init__(
+        self,
+        *,
+        catalog: LocalMaterialCatalog,
+        documents: RuntimeDocuments,
+        jobs: SnapshotJobService,
+        resolver: CommittedResultResolver | None,
+        source_delivery_enabled: bool = True,
+    ) -> None:
+        self.catalog, self.documents, self.jobs = catalog, documents, jobs
+        # A composition that publishes nothing, or deliberately withholds source bytes,
+        # keeps answering capability_unavailable. Moving the routes behind this port must
+        # not quietly re-enable delivery the local original stack chose to switch off.
+        self.resolver = resolver
+        self.source_delivery_enabled = source_delivery_enabled
+
+    async def read_source(
+        self,
+        principal: Principal,
+        *,
+        document_id: UUID,
+        version: str,
+        content_hash: str,
+    ) -> DeliveredContent:
+        if not self.source_delivery_enabled:
+            raise ServiceFault(ServiceErrorCode.CAPABILITY)
+        reference = self.catalog.source(str(document_id), version, content_hash)
+        principal.require(reference.case_id, Permission.REVIEW)
+        try:
+            data = await asyncio.to_thread(self.documents.read, principal, reference)
+        except DocumentFault as error:
+            raise source_fault(error) from None
+        return DeliveredContent(data=data.content, media_type="application/pdf")
+
+    async def read_artifact(
+        self,
+        principal: Principal,
+        *,
+        job_id: UUID,
+        artifact_id: UUID,
+    ) -> DeliveredContent:
+        if self.resolver is None:
+            raise ServiceFault(ServiceErrorCode.CAPABILITY)
+        status = await self.jobs.status(principal, job_id)
+        result = await self.jobs.result(principal, job_id)
+        if status.current_run is None:
+            raise ServiceFault(ServiceErrorCode.CONFLICT)
+        if artifact_id not in {artifact.artifact_id for artifact in result.artifacts}:
+            raise ServiceFault(ServiceErrorCode.NOT_FOUND)
+        try:
+            artifact, data = await asyncio.to_thread(
+                self.resolver.verified_bytes,
+                principal,
+                status.job.case_id,
+                status.current_run.run_id,
+                artifact_id,
+            )
+        except PublicationError:
+            raise ServiceFault(ServiceErrorCode.UNAUTHORIZED) from None
+        # The published manifest records what the writer produced; transport never guesses.
+        media_type = artifact.content_type or "application/pdf"
+        if media_type not in get_args(ContentMediaType):
+            raise ServiceFault(ServiceErrorCode.CAPABILITY)
+        suffix = Path(artifact.key).suffix or ".pdf"
+        return DeliveredContent(
+            data=data,
+            media_type=cast(ContentMediaType, media_type),
+            filename=f"{artifact.artifact_id}{suffix}",
+        )
+
+
 def create_integrated_service(
     *,
     authority: str,
@@ -464,6 +546,13 @@ def create_integrated_service(
             workbench_access=access,
         ),
         principal_resolver=directory,
+        content_plane=LocalContentPlane(
+            catalog=catalog,
+            documents=documents,
+            jobs=service,
+            resolver=resolver,
+            source_delivery_enabled=source_delivery_enabled,
+        ),
     )
     app.state.material_catalog = catalog
     app.state.runtime_worker = worker
@@ -525,52 +614,5 @@ def create_integrated_service(
             return response
         finally:
             _request_principal.reset(token)
-
-    @app.get("/v1/documents/{document_id}/content")
-    async def source_pdf(
-        document_id: UUID,
-        version: str,
-        content_hash: str,
-        principal: Annotated[Principal, Depends(get_principal)],
-    ) -> Response:
-        if not source_delivery_enabled:
-            raise ServiceFault(ServiceErrorCode.CAPABILITY)
-        reference = catalog.source(str(document_id), version, content_hash)
-        principal.require(reference.case_id, Permission.REVIEW)
-        try:
-            data = await asyncio.to_thread(documents.read, principal, reference)
-        except DocumentFault as error:
-            raise source_fault(error) from None
-        return Response(data.content, media_type="application/pdf")
-
-    @app.get("/v1/review-jobs/{job_id}/artifacts/{artifact_id}/content")
-    async def artifact_pdf(
-        job_id: UUID,
-        artifact_id: UUID,
-        principal: Annotated[Principal, Depends(get_principal)],
-    ) -> Response:
-        if resolver is None:
-            raise ServiceFault(ServiceErrorCode.CAPABILITY)
-        status = await service.status(principal, job_id)
-        result = await service.result(principal, job_id)
-        if status.current_run is None:
-            raise ServiceFault(ServiceErrorCode.CONFLICT)
-        if artifact_id not in {artifact.artifact_id for artifact in result.artifacts}:
-            raise ServiceFault(ServiceErrorCode.NOT_FOUND)
-        try:
-            artifact, data = await asyncio.to_thread(
-                resolver.verified_bytes,
-                principal,
-                status.job.case_id,
-                status.current_run.run_id,
-                artifact_id,
-            )
-        except PublicationError:
-            raise ServiceFault(ServiceErrorCode.UNAUTHORIZED) from None
-        return Response(
-            data,
-            media_type="application/pdf",
-            headers={"Content-Disposition": f'attachment; filename="{artifact.artifact_id}.pdf"'},
-        )
 
     return app

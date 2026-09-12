@@ -5,6 +5,8 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict
 
+from appraisal_review.api.routes.content import CONTENT_ENDPOINTS
+from appraisal_review.api.routes.content import router as content_router
 from appraisal_review.api.routes.human_tasks import HUMAN_TASK_ENDPOINTS
 from appraisal_review.api.routes.human_tasks import router as human_task_router
 from appraisal_review.api.routes.review_jobs import JOB_ENDPOINTS
@@ -23,6 +25,7 @@ from appraisal_review.config import Settings
 from appraisal_review.domain.models import CanonicalCase, ReviewResult, RuleSet
 from appraisal_review.domain.rule_engine import RuleEngine
 from appraisal_review.domain.service_contracts import ServiceErrorCode
+from appraisal_review.ports.content import ContentPlane
 from appraisal_review.ports.service import PrincipalResolver
 
 # Reserved mapping from docs/service-contracts.md. The durable plane answers with the
@@ -60,6 +63,7 @@ def create_app(
     job_service: ReviewJobService | None = None,
     human_task_service: HumanTaskService | None = None,
     principal_resolver: PrincipalResolver | None = None,
+    content_plane: ContentPlane | None = None,
 ) -> FastAPI:
     if controller_factory is not None and (settings is not None or adapters is not None):
         raise ValueError("Choose an explicit factory or settings/adapters, not both")
@@ -76,6 +80,11 @@ def create_app(
         raise ValueError("Durable jobs require both a store and a principal resolver")
     if human_task_service is not None and principal_resolver is None:
         raise ValueError("Human tasks require a principal resolver")
+    # Content delivery reads case-scoped bytes, so it needs the same authenticator as the
+    # other two planes. Its routes stay mounted either way: the contract promises a 503 for
+    # an unwired plane, and a missing route would instead read as a missing artifact.
+    if content_plane is not None and principal_resolver is None:
+        raise ValueError("Content delivery requires a principal resolver")
     app = FastAPI(
         title="Agentic AI Real Estate Valuation Reviewer",
         version="0.1.0",
@@ -89,9 +98,11 @@ def create_app(
     app.state.job_service = job_service
     app.state.human_task_service = human_task_service
     app.state.principal_resolver = principal_resolver
+    app.state.content_plane = content_plane
     app.include_router(router)
     app.include_router(job_router)
     app.include_router(human_task_router)
+    app.include_router(content_router)
 
     @app.exception_handler(ServiceFault)
     async def service_fault(request: Request, fault: ServiceFault) -> JSONResponse:
@@ -115,7 +126,11 @@ def create_app(
                     code="invalid_request", message="Invalid review request."
                 ).response(),
             )
-        if endpoint in JOB_ENDPOINTS or endpoint in HUMAN_TASK_ENDPOINTS:
+        if (
+            endpoint in JOB_ENDPOINTS
+            or endpoint in HUMAN_TASK_ENDPOINTS
+            or endpoint in CONTENT_ENDPOINTS
+        ):
             # These routes answer with the sanitized service envelope and never echo the
             # rejected payload, which may quote document text or a proposed correction.
             return JSONResponse(

@@ -26,7 +26,11 @@
         "expected_hash": "0000000000000000000000000000000000000000000000000000000000000000",
         "document_date": null
       }
-    ]
+    ],
+    "handling": {
+      "schema_version": "batch-handling-v1",
+      "scopes": []
+    }
   },
   "material_path": "/absolute/operator/material.json",
   "expected_material_digest": "0000000000000000000000000000000000000000000000000000000000000000",
