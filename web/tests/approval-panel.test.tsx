@@ -1,7 +1,7 @@
 /** Canonical-shape approval contract inputs for unit regression only, not real case data. */
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   ExportServiceError,
   type ApprovalDecisionCommand,
@@ -224,6 +224,165 @@ describe("approval decisions", () => {
     await user.click(screen.getByRole("button", { name: "確認送出決定" }));
     await screen.findByText(/您沒有核准權限（publish_artifact）/);
     expect(screen.getByText("待核准")).toBeInTheDocument();
+  });
+});
+
+/** An approval the service has already approved, with its recorded approve decision. */
+function approvedApproval() {
+  return approval({
+    status: "approved",
+    decision: {
+      decision: "approve",
+      actor: { actor_id: "director-1", kind: "human" },
+      decided_at: 1_757_600_100,
+      reason: null,
+    },
+  });
+}
+
+describe("decision availability by status (P1-C)", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("offers 核准 and 退回 while awaiting approval, and no 撤回", () => {
+    show(api(), ready(serverBasis({ approval: approval() })));
+    expect(screen.getByRole("button", { name: "核准" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "退回" })).toBeEnabled();
+    // The service only accepts withdraw on an approved request; offering it here 409s.
+    expect(screen.queryByRole("button", { name: "撤回" })).not.toBeInTheDocument();
+  });
+
+  it("offers only 撤回 once approved", () => {
+    show(api(), ready(serverBasis({ approval: approvedApproval() })));
+    expect(screen.getByText("已核准")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "撤回" })).toBeEnabled();
+    expect(screen.queryByRole("button", { name: "核准" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "退回" })).not.toBeInTheDocument();
+  });
+
+  it("offers no decision action once returned, withdrawn or superseded", () => {
+    const terminal = [
+      approval({
+        status: "returned",
+        decision: {
+          decision: "return",
+          actor: { actor_id: "director-1", kind: "human" },
+          decided_at: 1_757_600_200,
+          reason: "表4 交易條件仍有疑義",
+        },
+      }),
+      approval({
+        status: "withdrawn",
+        decision: {
+          decision: "withdraw",
+          actor: { actor_id: "reviewer-1", kind: "human" },
+          decided_at: 1_757_600_300,
+          reason: "送錯版本",
+        },
+      }),
+      approval({ status: "superseded", decision: null }),
+    ];
+    const pills = ["已退回", "已撤回", "已失效（版本已變更）"];
+    terminal.forEach((record, index) => {
+      const view = show(api(), ready(serverBasis({ approval: record })));
+      expect(screen.getByText(pills[index] as string)).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "核准" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "退回" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "撤回" })).not.toBeInTheDocument();
+      view.unmount();
+    });
+  });
+
+  it("withdraws an approved request with a required reason and shows the receipt", async () => {
+    const sent: ApprovalDecisionCommand[] = [];
+    const withdrawn = approval({
+      status: "withdrawn",
+      decision: {
+        decision: "withdraw",
+        actor: { actor_id: "director-1", kind: "human" },
+        decided_at: 1_757_600_400,
+        reason: "誤核准，需重新審查",
+      },
+    });
+    const service = api({
+      decideApproval: vi.fn(
+        (_job: string, approvalId: string, decisionCommand: ApprovalDecisionCommand) => {
+          expect(approvalId).toBe("appr-1");
+          sent.push(decisionCommand);
+          return Promise.resolve(withdrawn);
+        },
+      ),
+    });
+    const onRefresh = vi.fn();
+    const user = userEvent.setup();
+    show(service, ready(serverBasis({ approval: approvedApproval() })), onRefresh);
+    await user.click(screen.getByRole("button", { name: "撤回" }));
+    const confirm = screen.getByRole("button", { name: "確認送出決定" });
+    expect(confirm).toBeDisabled();
+    expect(screen.getByText(/退回與撤回皆須填寫理由/)).toBeInTheDocument();
+    await user.type(screen.getByLabelText("理由（必填）"), "誤核准，需重新審查");
+    expect(confirm).toBeEnabled();
+    await user.click(confirm);
+    await screen.findByText("已撤回");
+    expect(sent).toHaveLength(1);
+    expect(sent[0]).toMatchObject({
+      schema_version: "service-v1",
+      decision: "withdraw",
+      reason: "誤核准，需重新審查",
+    });
+    expect(sent[0]?.idempotency_key).toMatch(/^wb-/);
+    expect(screen.getByText(/理由：誤核准，需重新審查/)).toBeInTheDocument();
+    expect(onRefresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("retries an unknown withdraw outcome with the same key and payload", async () => {
+    const calls: ApprovalDecisionCommand[] = [];
+    const withdrawn = approval({
+      status: "withdrawn",
+      decision: {
+        decision: "withdraw",
+        actor: { actor_id: "director-1", kind: "human" },
+        decided_at: 1_757_600_500,
+        reason: "誤核准，需重新審查",
+      },
+    });
+    const service = api({
+      decideApproval: vi.fn(
+        (_job: string, _id: string, decisionCommand: ApprovalDecisionCommand) => {
+          calls.push(decisionCommand);
+          return calls.length === 1
+            ? Promise.reject(new TransportError("The service did not answer in time."))
+            : Promise.resolve(withdrawn);
+        },
+      ),
+    });
+    const user = userEvent.setup();
+    show(service, ready(serverBasis({ approval: approvedApproval() })));
+    await user.click(screen.getByRole("button", { name: "撤回" }));
+    await user.type(screen.getByLabelText("理由（必填）"), "誤核准，需重新審查");
+    await user.click(screen.getByRole("button", { name: "確認送出決定" }));
+    await screen.findByText(/無法確認決定是否已被記錄/);
+    // Confirming again replays the SAME decision, approval id, key and payload.
+    await user.click(screen.getByRole("button", { name: "確認送出決定" }));
+    await screen.findByText("已撤回");
+    expect(calls).toHaveLength(2);
+    expect(calls[1]).toEqual(calls[0]);
+    expect(calls[0]?.idempotency_key).toMatch(/^wb-/);
+  });
+
+  it("explains a failed key mint on a decision and sends nothing", async () => {
+    vi.stubGlobal("crypto", {});
+    const decideApproval = vi.fn(() => Promise.reject(new Error("decideApproval not scripted")));
+    const service = api({ decideApproval });
+    const user = userEvent.setup();
+    show(service, ready(serverBasis({ approval: approval() })));
+    await user.click(screen.getByRole("button", { name: "核准" }));
+    await user.click(screen.getByRole("button", { name: "確認送出決定" }));
+    await screen.findByText(/無法產生操作識別碼，請更新瀏覽器或改用安全連線/);
+    expect(decideApproval).not.toHaveBeenCalled();
+    // The panel is not stuck: the confirm step stays usable for a later attempt.
+    expect(screen.getByRole("button", { name: "確認送出決定" })).toBeEnabled();
   });
 });
 

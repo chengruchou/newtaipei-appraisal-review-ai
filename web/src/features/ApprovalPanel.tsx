@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { newIdempotencyKey } from "@/api/client";
 import {
   ExportServiceError,
+  type ApprovalDecisionCommand,
   type ApprovalDecisionKind,
   type ExportReadiness,
   type ExportReadinessBlocker,
@@ -145,14 +146,42 @@ interface SubmitAttempt {
   command: SubmitApprovalCommand;
 }
 
+/** An unknown-outcome decision; a retry replays exactly this approval, key and payload. */
+interface DecisionAttempt {
+  key: string;
+  approvalId: string;
+  command: ApprovalDecisionCommand;
+}
+
 type PanelNotice =
   | { kind: "service"; error: ExportServiceError; on: "submit" | "decision" }
-  | { kind: "unknown-submit" };
+  | { kind: "unknown-submit" }
+  | { kind: "unknown-decision" }
+  | { kind: "key-unavailable" };
 
 function sameSubmitPayload(a: SubmitApprovalCommand, b: SubmitApprovalCommand): boolean {
   return (
     JSON.stringify({ ...a, idempotency_key: "" }) === JSON.stringify({ ...b, idempotency_key: "" })
   );
+}
+
+function sameDecisionPayload(a: ApprovalDecisionCommand, b: ApprovalDecisionCommand): boolean {
+  return (
+    JSON.stringify({ ...a, idempotency_key: "" }) === JSON.stringify({ ...b, idempotency_key: "" })
+  );
+}
+
+/**
+ * The decisions the service will accept for a given approval status. The backend
+ * requires status "submitted" for approve/return and status "approved" for withdraw;
+ * offering anything else is a guaranteed 409.
+ */
+export function availableDecisions(
+  status: ReportApproval["status"],
+): readonly ApprovalDecisionKind[] {
+  if (status === "submitted") return ["approve", "return"];
+  if (status === "approved") return ["withdraw"];
+  return [];
 }
 
 export function ApprovalPanel({
@@ -170,6 +199,8 @@ export function ApprovalPanel({
   const [busy, setBusy] = useState(false);
   /** An unknown submit outcome; a retry reuses exactly this key+payload. */
   const [pending, setPending] = useState<SubmitAttempt | null>(null);
+  /** An unknown decision outcome; confirming again reuses exactly this key+payload. */
+  const [pendingAttempt, setPendingAttempt] = useState<DecisionAttempt | null>(null);
   /** The freshest approval this panel has seen from an action response. */
   const [actionResult, setActionResult] = useState<ReportApproval | null>(null);
   const [notice, setNotice] = useState<PanelNotice | null>(null);
@@ -197,7 +228,15 @@ export function ApprovalPanel({
     // An unknown outcome retries with the SAME key and payload, so a replay returns the
     // original approval. A fresh submit always mints a new key.
     const reuse = pending !== null && sameSubmitPayload(pending.command, draft);
-    const key = reuse && pending ? pending.key : newIdempotencyKey();
+    let key: string;
+    try {
+      // Minting can throw on runtimes with no cryptographic randomness at all; nothing
+      // has been sent yet, so `pending` is untouched and no state is spent.
+      key = reuse && pending ? pending.key : newIdempotencyKey();
+    } catch {
+      setNotice({ kind: "key-unavailable" });
+      return;
+    }
     const command: SubmitApprovalCommand = { ...draft, idempotency_key: key };
     setBusy(true);
     setNotice(null);
@@ -221,31 +260,50 @@ export function ApprovalPanel({
 
   async function decide(kind: ApprovalDecisionKind) {
     if (!approval || busy) return;
+    if (!availableDecisions(approval.status).includes(kind)) return;
     const trimmed = reason.trim();
     if ((kind === "return" || kind === "withdraw") && !trimmed) return;
+    const draft: ApprovalDecisionCommand = {
+      schema_version: "service-v1",
+      idempotency_key: "",
+      decision: kind,
+      ...(kind === "approve" ? {} : { reason: trimmed }),
+    };
+    // An unknown outcome is retried with the SAME approval id, key and payload, so a
+    // replay returns the recorded decision. Any other confirm mints a fresh key.
+    const reuse =
+      pendingAttempt !== null &&
+      pendingAttempt.approvalId === approval.approval_id &&
+      sameDecisionPayload(pendingAttempt.command, draft);
+    let key: string;
+    try {
+      // Minting can throw on runtimes with no cryptographic randomness at all; nothing
+      // has been sent yet, so no state is spent.
+      key = reuse && pendingAttempt ? pendingAttempt.key : newIdempotencyKey();
+    } catch {
+      setNotice({ kind: "key-unavailable" });
+      return;
+    }
+    const command: ApprovalDecisionCommand = { ...draft, idempotency_key: key };
     setBusy(true);
     setNotice(null);
     try {
-      const next = await api.decideApproval(jobId, approval.approval_id, {
-        schema_version: "service-v1",
-        idempotency_key: newIdempotencyKey(),
-        decision: kind,
-        ...(kind === "approve" ? {} : { reason: trimmed }),
-      });
+      const next = await api.decideApproval(jobId, approval.approval_id, command);
+      setPendingAttempt(null);
       setActionResult(next);
       setPendingDecision(null);
       setReason("");
       onRefresh();
     } catch (cause) {
       if (cause instanceof ExportServiceError) {
+        // A definitive refusal: this exact request will not be accepted, so the key is spent.
+        setPendingAttempt(null);
         setNotice({ kind: "service", error: cause, on: "decision" });
       } else {
-        // The decision outcome is unknown; the durable state decides, so re-read it.
-        setNotice({
-          kind: "service",
-          error: new ExportServiceError("execution_failed", 0, null),
-          on: "decision",
-        });
+        // The decision outcome is unknown; keep the exact attempt so confirming again
+        // replays it, and re-read the durable state, which decides.
+        setPendingAttempt({ key, approvalId: approval.approval_id, command });
+        setNotice({ kind: "unknown-decision" });
         onRefresh();
       }
     } finally {
@@ -272,6 +330,17 @@ export function ApprovalPanel({
               ? t("Required data is still pending.", "資料待補，必要項尚未齊備。")
               : null;
   const canSubmit = blockedReason === null;
+
+  const decisionActions = approval ? availableDecisions(approval.status) : [];
+  // A pending pick can go stale when a refresh lands a new status; never confirm a
+  // decision the current status no longer accepts.
+  const activeDecision =
+    pendingDecision !== null && decisionActions.includes(pendingDecision) ? pendingDecision : null;
+  const decisionWords: Record<ApprovalDecisionKind, [string, string]> = {
+    approve: ["Approve", "核准"],
+    return: ["Return", "退回"],
+    withdraw: ["Withdraw", "撤回"],
+  };
 
   return (
     <section className="panel" aria-label={t("Report and approval", "報表與核准")}>
@@ -429,44 +498,29 @@ export function ApprovalPanel({
                   {t("Reason", "理由")}：{approval.decision.reason}
                 </p>
               ) : null}
-              {approval.status === "submitted" ? (
-                pendingDecision === null ? (
+              {decisionActions.length > 0 ? (
+                activeDecision === null ? (
                   <div className="toolbar">
-                    <button
-                      type="button"
-                      data-variant="primary"
-                      disabled={busy}
-                      onClick={() => setPendingDecision("approve")}
-                    >
-                      {t("Approve", "核准")}
-                    </button>
-                    <button
-                      type="button"
-                      disabled={busy}
-                      onClick={() => setPendingDecision("return")}
-                    >
-                      {t("Return", "退回")}
-                    </button>
-                    <button
-                      type="button"
-                      disabled={busy}
-                      onClick={() => setPendingDecision("withdraw")}
-                    >
-                      {t("Withdraw", "撤回")}
-                    </button>
+                    {decisionActions.map((kind) => (
+                      <button
+                        key={kind}
+                        type="button"
+                        data-variant={kind === "approve" ? "primary" : undefined}
+                        disabled={busy}
+                        onClick={() => setPendingDecision(kind)}
+                      >
+                        {t(...decisionWords[kind])}
+                      </button>
+                    ))}
                   </div>
                 ) : (
                   <div className="notice" data-tone="warn">
                     <p style={{ margin: 0 }}>
                       {t("About to record the decision", "即將記錄決定")}：
-                      {pendingDecision === "approve"
-                        ? t("Approve", "核准")
-                        : pendingDecision === "return"
-                          ? t("Return", "退回")
-                          : t("Withdraw", "撤回")}
-                      。{t("This is recorded by the service.", "此決定將由服務留存。")}
+                      {t(...decisionWords[activeDecision])}。
+                      {t("This is recorded by the service.", "此決定將由服務留存。")}
                     </p>
-                    {pendingDecision !== "approve" ? (
+                    {activeDecision !== "approve" ? (
                       <>
                         <label>
                           {t("Reason (required)", "理由（必填）")}
@@ -489,9 +543,9 @@ export function ApprovalPanel({
                     <button
                       type="button"
                       data-variant="primary"
-                      disabled={busy || (pendingDecision !== "approve" && !reason.trim())}
+                      disabled={busy || (activeDecision !== "approve" && !reason.trim())}
                       onClick={() => {
-                        void decide(pendingDecision);
+                        void decide(activeDecision);
                       }}
                     >
                       {t("Confirm decision", "確認送出決定")}
@@ -604,6 +658,28 @@ function ApprovalNotice({
           </button>
         ) : null}
       </div>
+    );
+  }
+  if (notice.kind === "unknown-decision") {
+    return (
+      <div className="notice" data-tone="warn" role="alert">
+        <p style={{ margin: 0 }}>
+          {t(
+            "It is unknown whether the decision was recorded. Confirming again resends the same decision and key, so a replay returns the recorded decision instead of recording a second one.",
+            "無法確認決定是否已被記錄。再次確認送出會沿用同一組決定與識別碼，若服務已記錄將回到原本的結果，不會重複記錄。",
+          )}
+        </p>
+      </div>
+    );
+  }
+  if (notice.kind === "key-unavailable") {
+    return (
+      <p className="notice" data-tone="danger" role="alert">
+        {t(
+          "An operation identifier could not be generated in this browser. Update the browser or open the workbench over a secure (HTTPS) connection, then try again. No request was sent.",
+          "無法產生操作識別碼，請更新瀏覽器或改用安全連線（HTTPS）後再試。本次未送出任何請求。",
+        )}
+      </p>
     );
   }
   const { error, on } = notice;
