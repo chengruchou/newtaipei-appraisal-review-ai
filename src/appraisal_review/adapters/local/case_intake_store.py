@@ -145,3 +145,12 @@ class SQLiteCaseIntakeStore:
                 (case_id,),
             ).fetchall()
         return tuple(MaterialRecord.model_validate_json(row[0]) for row in rows)
+
+    def memberships(self) -> tuple[tuple[str, str], ...]:
+        """(case_id, creator actor_id) pairs, so a reopened composition can re-grant
+        the durable intake memberships that the in-memory directory forgot."""
+        with _transaction(self.database) as connection:
+            rows = connection.execute(
+                "SELECT case_id, actor_id FROM intake_cases ORDER BY rowid"
+            ).fetchall()
+        return tuple((row[0], row[1]) for row in rows)

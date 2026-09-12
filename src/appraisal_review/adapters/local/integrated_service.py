@@ -771,10 +771,17 @@ def create_integrated_service(
     if intake_root is not None:
         # Real case intake: durable case records plus raw uploaded materials under the
         # persistent workbench tree; membership comes from the directory's own grant.
+        intake_store = SQLiteCaseIntakeStore(store, root=intake_root)
         app.state.case_intake = CaseIntakeService(
-            store=SQLiteCaseIntakeStore(store, root=intake_root),
+            store=intake_store,
             grant=directory.grant_case,
         )
+        # The directory is rebuilt in memory on every boot; intake memberships are
+        # durable state, so re-grant them to their creators. An actor whose session
+        # no longer exists simply stays without access - never a startup failure.
+        for intake_case_id, creator_actor_id in intake_store.memberships():
+            with suppress(ServiceFault, ValueError):
+                directory.grant_case(creator_actor_id, intake_case_id)
     app.state.material_catalog = catalog
     app.state.runtime_worker = worker
     app.state.worker_problem = None

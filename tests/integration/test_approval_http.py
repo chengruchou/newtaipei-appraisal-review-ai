@@ -171,3 +171,14 @@ async def _case_intake_flow(tmp_path):
 
         # Unauthenticated callers see nothing.
         assert (await client.get(f"/v1/cases/{case_id}/materials")).status_code == 403
+
+    # A reopened composition (container restart) must re-grant durable intake
+    # memberships: the same token still reads the same case and material records.
+    # Same port: the loopback Host check binds the authority into the app.
+    reopened = await prepare_workbench(tmp_path / "workbench", port=18772)
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=reopened.app), base_url=manifest["api_base_url"]
+    ) as client:
+        listed = await client.get(f"/v1/cases/{case_id}/materials", headers=headers)
+        assert listed.status_code == 200, listed.text
+        assert len(listed.json()["materials"]) == 1
