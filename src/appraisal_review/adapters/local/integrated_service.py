@@ -624,10 +624,12 @@ def create_integrated_service(
         export_store = SQLiteExportStore(store)
         approval_store = SQLiteApprovalStore(store)
 
-        def read_confirmed_references(job_id: UUID) -> frozenset[str]:
+        async def read_confirmed_references(job_id: UUID) -> frozenset[str]:
             # Absence claims must cite a confirmation a human actually committed:
             # the answered task ids of this job are the only recognized references.
-            records = asyncio.run(store.list_tasks(job_id=job_id))
+            # Awaited by the approval service on the request loop - asyncio.run here
+            # would abort every basis/readiness call with a nested-event-loop error.
+            records = await store.list_tasks(job_id=job_id)
             return frozenset(
                 str(record.task.task_id) for record in records if record.task.state == "answered"
             )

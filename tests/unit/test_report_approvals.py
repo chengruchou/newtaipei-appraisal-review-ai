@@ -645,3 +645,60 @@ class TestDuplicateSubmissionConsistency:
         replay = submit(scene, key="a1")
         assert replay.approval_id == first.approval_id
         assert replay.status == "withdrawn"
+
+
+class TestAsyncConfirmedReferences:
+    """The confirmation registry is awaited on the running request loop.
+
+    A sync callable doing asyncio.run() here aborted every basis/readiness call in
+    the assembled app with a nested-event-loop RuntimeError; the service now awaits
+    an async reader and hands the evaluator plain data.
+    """
+
+    def test_registry_awaited_on_the_running_loop(self, scene: dict[str, Any]) -> None:
+        base = scene["approvals"]
+        seen: list[Any] = []
+
+        async def registry(job_id: Any) -> frozenset[str]:
+            asyncio.get_running_loop()  # raises if not on the live loop
+            seen.append(job_id)
+            return frozenset({"receipt-1"})
+
+        service = ReportApprovalService(
+            jobs=base.jobs,
+            store=scene["approval_store"],
+            assets=scene["assets"],
+            filler=base.filler,
+            snapshots=scene["snapshots"],
+            policy=base.policy,
+            confirmed_references=registry,
+        )
+
+        async def drive() -> Any:
+            first = await service.readiness(scene["person"], scene["job_id"])
+            second = await service.readiness(scene["person"], scene["job_id"])
+            return first, second
+
+        first, second = asyncio.run(drive())
+        assert seen == [scene["job_id"], scene["job_id"]]
+        assert first == second
+        assert first.state == "ready_to_submit"
+
+    def test_empty_registry_is_data_not_an_error(self, scene: dict[str, Any]) -> None:
+        base = scene["approvals"]
+
+        async def registry(job_id: Any) -> frozenset[str]:
+            return frozenset()
+
+        service = ReportApprovalService(
+            jobs=base.jobs,
+            store=scene["approval_store"],
+            assets=scene["assets"],
+            filler=base.filler,
+            snapshots=scene["snapshots"],
+            policy=base.policy,
+            confirmed_references=registry,
+        )
+        readiness = asyncio.run(service.readiness(scene["person"], scene["job_id"]))
+        # The fixture snapshot claims no absences, so an empty registry blocks nothing.
+        assert readiness.state == "ready_to_submit"

@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import hashlib
 import time
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from uuid import NAMESPACE_URL, UUID, uuid5
 
 from appraisal_review.adapters.local.approval_store import SQLiteApprovalStore
@@ -57,7 +57,7 @@ class ReportApprovalService:
         snapshots: SnapshotProvider,
         policy: ReadinessPolicy,
         clock: Callable[[], int] = lambda: int(time.time()),
-        confirmed_references: Callable[[UUID], frozenset[str]] | None = None,
+        confirmed_references: Callable[[UUID], Awaitable[frozenset[str]]] | None = None,
     ) -> None:
         self.jobs = jobs
         self.store = store
@@ -67,8 +67,10 @@ class ReportApprovalService:
         self.policy = policy
         self.clock = clock
         # job_id -> identifiers of confirmations a human actually committed (answered
-        # task ids). Absences claiming human confirmation must cite one of these; with
-        # no registry wired, a spec-carrying policy fails closed on every claimed absence.
+        # task ids), awaited in the async service layer - the evaluator itself only
+        # receives already-fetched data. Absences claiming human confirmation must cite
+        # one of these; with no registry wired, a spec-carrying policy fails closed on
+        # every claimed absence.
         self.confirmed_references = confirmed_references
 
     async def _current_snapshot(
@@ -84,25 +86,30 @@ class ReportApprovalService:
             raise ServiceFault(ServiceErrorCode.CONFLICT)
         return status, snapshot, current
 
-    def _evaluate(self, status: JobStatusView, snapshot: CalculationSnapshot) -> ReportReadiness:
+    async def _confirmed(self, job_id: UUID) -> frozenset[str] | None:
+        if self.confirmed_references is None:
+            return None
+        return await self.confirmed_references(job_id)
+
+    def _evaluate(
+        self,
+        status: JobStatusView,
+        snapshot: CalculationSnapshot,
+        confirmed: frozenset[str] | None,
+    ) -> ReportReadiness:
         # Open human tasks gate submission at the evaluator, not as an afterthought:
         # the job status is the one source that knows them.
-        registry = (
-            self.confirmed_references(status.job.job_id)
-            if self.confirmed_references is not None
-            else None
-        )
         return evaluate_readiness(
             snapshot,
             self.policy,
             open_task_count=len(status.open_task_ids),
             open_task_ids=tuple(str(task_id) for task_id in status.open_task_ids),
-            confirmed_traces=registry,
+            confirmed_traces=confirmed,
         )
 
     async def readiness(self, principal: Principal, job_id: UUID) -> ReportReadiness:
         status, snapshot, _ = await self._current_snapshot(principal, job_id)
-        return self._evaluate(status, snapshot)
+        return self._evaluate(status, snapshot, await self._confirmed(job_id))
 
     async def latest_for_current_binding(
         self, principal: Principal, job_id: UUID
@@ -146,7 +153,7 @@ class ReportApprovalService:
             raise ServiceFault(ServiceErrorCode.CONFLICT)
         if command.template_bundle != self.assets.bundle:
             raise ServiceFault(ServiceErrorCode.VALIDATION)
-        readiness = self._evaluate(status, snapshot)
+        readiness = self._evaluate(status, snapshot, await self._confirmed(job_id))
         if readiness.state != "ready_to_submit":
             # The blockers are served by the basis view; submitting cannot bypass them.
             raise ServiceFault(ServiceErrorCode.CONFLICT)
