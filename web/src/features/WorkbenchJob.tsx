@@ -529,21 +529,30 @@ function Results({
   const [filter, setFilter] = useState<FindingCategory | "all">("all");
   const [search, setSearch] = useState("");
   const source = data.result ?? data.assessment;
-  // The export request is assembled only from identities the service already answered
-  // with; when any of them is missing the panel says so instead of inventing one.
-  const exportRun = data.job.current_run ?? data.result?.run ?? data.assessment?.run ?? null;
-  const exportBasis: ExportBasis | null =
-    exportRun && data.context.rule_bundle && data.context.rule_bundle_id
-      ? {
-          run: exportRun,
-          calculationSnapshotDigest: data.context.revision.material_digest,
-          templateBundle: {
-            bundle_id: data.context.rule_bundle_id,
-            version: data.context.rule_bundle.catalog_version,
-            bundle_hash: data.context.rule_bundle.catalog_digest,
-          },
-        }
-      : null;
+  // The snapshot digest and template bundle are server-held facts: the page asks the
+  // exports/basis route for them and never assembles its own. A 409 simply means no
+  // calculation snapshot is registered for this revision yet.
+  const [exportBasis, setExportBasis] = useState<ExportBasis | null>(null);
+  useEffect(() => {
+    let active = true;
+    setExportBasis(null);
+    exportsApi
+      .readBasis(jobId)
+      .then((served) => {
+        if (!active) return;
+        setExportBasis({
+          run: served.run,
+          calculationSnapshotDigest: served.calculation_snapshot_digest,
+          templateBundle: served.template_bundle,
+        });
+      })
+      .catch(() => {
+        if (active) setExportBasis(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, [exportsApi, jobId, data.context.revision.revision_id]);
   if (!source) return <FindingsUnavailable data={data} />;
   const findings = source.findings;
   const categories: FindingCategory[] = ["matched", "content", "rules", "evidence", "uncovered"];

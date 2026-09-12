@@ -236,8 +236,17 @@ export interface ExportsClientOptions {
   timeoutMs?: number;
 }
 
+export interface ServerExportBasis {
+  job_id: string;
+  run: ExportRunReference;
+  calculation_snapshot_digest: string;
+  template_bundle: TemplateBundleReference;
+  blockers: string[];
+}
+
 /** The seam the panel depends on, so tests can supply a scripted service. */
 export interface ExportsApi {
+  readBasis(jobId: string): Promise<ServerExportBasis>;
   createExport(jobId: string, command: CreateExportCommand): Promise<ExportOperation>;
   readExport(jobId: string, exportId: string): Promise<ExportOperation>;
   downloadArtifact(jobId: string, artifact: ExportArtifact): Promise<ExportDownload>;
@@ -257,6 +266,25 @@ export class ExportsClient implements ExportsApi {
    * original operation; a different payload under the same key is a 409, which the caller
    * resolves by minting a new key, never by mutating the existing operation.
    */
+  /**
+   * The server-held ingredients a valid request must pin. 409 means no calculation
+   * snapshot is registered for the job's current revision yet - the caller shows that
+   * state instead of inventing a digest or bundle.
+   */
+  async readBasis(jobId: string): Promise<ServerExportBasis> {
+    const body = (await this.json(
+      "GET",
+      `/v1/review-jobs/${encode(jobId)}/exports/basis`,
+    )) as ServerExportBasis;
+    return {
+      job_id: body.job_id,
+      run: body.run,
+      calculation_snapshot_digest: body.calculation_snapshot_digest,
+      template_bundle: body.template_bundle,
+      blockers: Array.isArray(body.blockers) ? body.blockers : [],
+    };
+  }
+
   async createExport(jobId: string, command: CreateExportCommand): Promise<ExportOperation> {
     return parseExportOperation(
       await this.json("POST", `/v1/review-jobs/${encode(jobId)}/exports`, command),

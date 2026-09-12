@@ -14,6 +14,7 @@ import { artifact, basis, operation } from "./export-fixtures";
 
 function api(overrides: Partial<ExportsApi> = {}): ExportsApi {
   return {
+    readBasis: vi.fn(() => Promise.reject(new Error("readBasis not scripted"))),
     createExport: vi.fn(() => Promise.reject(new Error("createExport not scripted"))),
     readExport: vi.fn(() => Promise.reject(new Error("readExport not scripted"))),
     downloadArtifact: vi.fn(() => Promise.reject(new Error("downloadArtifact not scripted"))),
