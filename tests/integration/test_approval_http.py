@@ -172,6 +172,17 @@ async def _case_intake_flow(tmp_path):
         # Unauthenticated callers see nothing.
         assert (await client.get(f"/v1/cases/{case_id}/materials")).status_code == 403
 
+    # The sign-in handshake is reachable WITHOUT a bearer: an unwired email plane
+    # answers capability_unavailable (503), never the middleware's 403 - the
+    # regression that blocked the deployed login form.
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=workbench.app), base_url=manifest["api_base_url"]
+    ) as anonymous:
+        handshake = await anonymous.post(
+            "/v1/auth/request-code", json={"email": "person@example.com"}
+        )
+        assert handshake.status_code == 503, handshake.text
+
     # A reopened composition (container restart) must re-grant durable intake
     # memberships: the same token still reads the same case and material records.
     # Same port: the loopback Host check binds the authority into the app.
