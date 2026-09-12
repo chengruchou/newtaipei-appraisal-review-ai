@@ -55,10 +55,10 @@ function FormCard({ form, context }: { form: OfficialFormDefinition; context: Ca
           )}
         </p>
       ) : null}
-      <p className="notice" data-tone="warn" role="status">
+      <p className="notice" role="status">
         {t(
-          "Not available in this deployment: no form download route is published by the service.",
-          "本部署尚未提供：服務未發布此表的下載路由。",
+          "Draft downloads for this form are produced from the committed calculation snapshot on the results page, under 報表匯出.",
+          "此表的草稿下載由「結果總覽」頁的「報表匯出」面板依已提交的計算快照產出。",
         )}
       </p>
     </section>
