@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type {
   HumanResponse,
@@ -50,6 +50,8 @@ export function ResponseForm({
   const setAction = (value: HumanResponse["action"]) => store.change({ action: value });
   const setCorrectedText = (value: string) => store.change({ correctedText: value });
   const setPhase = (value: ResponsePhase) => store.change({ phase: value });
+  /** True when minting a fresh idempotency key failed; retries of a frozen command are unaffected. */
+  const [keyUnavailable, setKeyUnavailable] = useState(false);
   const callback = useRef<((receipt: ResponseReceipt) => void) | null>(onCommitted);
   useEffect(() => {
     callback.current = onCommitted;
@@ -251,7 +253,16 @@ export function ResponseForm({
           )
         )
           return;
-        const command = build();
+        let command: HumanResponse | null;
+        try {
+          // Minting the key can throw where no cryptographic randomness exists. That is
+          // a brand-new user intent, not a retry: no key was spent and nothing was sent.
+          command = build();
+        } catch {
+          setKeyUnavailable(true);
+          return;
+        }
+        setKeyUnavailable(false);
         if (command === null) {
           return;
         }
@@ -413,6 +424,15 @@ export function ResponseForm({
           <h3 style={{ marginTop: 0 }}>{serviceProblemText(phase.error.code, t).title}</h3>
           <p>{serviceProblemText(phase.error.code, t).guidance}</p>
         </div>
+      ) : null}
+
+      {keyUnavailable ? (
+        <p className="notice" data-tone="danger" role="alert">
+          {t(
+            "An operation identifier could not be generated in this browser. Update the browser or open the workbench over a secure (HTTPS) connection, then try again. Nothing was submitted.",
+            "無法產生操作識別碼，請更新瀏覽器或改用安全連線（HTTPS）後再試。尚未送出任何回覆。",
+          )}
+        </p>
       ) : null}
 
       {phase.name === "confirming" || phase.name === "submitting" ? (

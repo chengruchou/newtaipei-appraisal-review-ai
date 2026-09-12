@@ -39,7 +39,10 @@ interface Attempt {
 }
 
 type Notice =
-  { kind: "service"; error: ExportServiceError } | { kind: "unknown" } | { kind: "poll-failed" };
+  | { kind: "service"; error: ExportServiceError }
+  | { kind: "unknown" }
+  | { kind: "poll-failed" }
+  | { kind: "key-unavailable" };
 
 function samePayload(a: CreateExportCommand, b: CreateExportCommand): boolean {
   return (
@@ -136,7 +139,15 @@ export function ExportPanel({
     // original operation. Anything else - including a changed format or mode - is a new
     // operation under a new key; an existing operation's format never mutates.
     const reuse = pending !== null && samePayload(pending.command, draft);
-    const key = reuse && pending ? pending.key : newIdempotencyKey();
+    let key: string;
+    try {
+      // Minting can throw on runtimes with no cryptographic randomness at all; nothing
+      // has been sent yet, so `pending` is untouched and no state is spent.
+      key = reuse && pending ? pending.key : newIdempotencyKey();
+    } catch {
+      setNotice({ kind: "key-unavailable" });
+      return;
+    }
     const command: CreateExportCommand = { ...draft, idempotency_key: key };
     setBusy(true);
     setNotice(null);
@@ -497,6 +508,16 @@ function NoticeView({
           </button>
         ) : null}
       </div>
+    );
+  }
+  if (notice.kind === "key-unavailable") {
+    return (
+      <p className="notice" data-tone="danger" role="alert">
+        {t(
+          "An operation identifier could not be generated in this browser. Update the browser or open the workbench over a secure (HTTPS) connection, then try again. No request was sent.",
+          "無法產生操作識別碼，請更新瀏覽器或改用安全連線（HTTPS）後再試。本次未送出任何請求。",
+        )}
+      </p>
     );
   }
   if (notice.kind === "poll-failed") {

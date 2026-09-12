@@ -1,4 +1,5 @@
 import { validateResponse } from "./validation";
+import { newOperationKey } from "./ids";
 import { canonicalProblem, ServiceError, TransportError, UNKNOWN_OUTCOME } from "./problems";
 import type { components } from "./schema";
 
@@ -320,7 +321,12 @@ function encode(segment: string): string {
 
 /**
  * One key per reviewed command. Every retry carries that same command and key.
+ *
+ * Minting goes through `newOperationKey`, which works on insecure origins where
+ * `crypto.randomUUID` does not exist and throws `OperationKeySourceError` when no
+ * cryptographic randomness is available at all. Callers mint inside their submit
+ * handler's try/catch so that failure surfaces as an explicit message.
  */
-export function newIdempotencyKey(random: () => string = () => crypto.randomUUID()): string {
-  return `wb-${random()}`;
+export function newIdempotencyKey(random?: () => string): string {
+  return random ? `wb-${random()}` : newOperationKey("wb");
 }
