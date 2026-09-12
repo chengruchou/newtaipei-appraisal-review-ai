@@ -3194,6 +3194,118 @@
         "summary": "Health"
       }
     },
+    "/v1/documents/{document_id}/content": {
+      "get": {
+        "description": "Read an admitted source, pinned to the exact version and content hash requested.",
+        "operationId": "read_source_content_v1_documents__document_id__content_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Document Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "title": "Version",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "content_hash",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-f0-9]{64}$",
+              "title": "Content Hash",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Verified bytes for the requested source or published artifact"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceProblem"
+                }
+              }
+            },
+            "description": "No current grant for this case or artifact"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceProblem"
+                }
+              }
+            },
+            "description": "No such document or artifact"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceProblem"
+                }
+              }
+            },
+            "description": "The job has no current run to read from"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceProblem"
+                }
+              }
+            },
+            "description": "Invalid identifier, version or hash"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceProblem"
+                }
+              }
+            },
+            "description": "No content plane is configured"
+          }
+        },
+        "summary": "Read Source Content",
+        "tags": [
+          "content"
+        ]
+      }
+    },
     "/v1/review-jobs": {
       "post": {
         "description": "202 means the job and its outbox entry are persisted, never that a review ran.\n\nAn exact replay returns 200 with the job's real status, because reporting the pinned\nacceptance for a job that has already moved on would be a fabricated response.",
@@ -3366,6 +3478,107 @@
         "summary": "Read Review Job",
         "tags": [
           "review-jobs"
+        ]
+      }
+    },
+    "/v1/review-jobs/{job_id}/artifacts/{artifact_id}/content": {
+      "get": {
+        "description": "Download a published artifact of the job's current run under a current grant.",
+        "operationId": "read_artifact_content_v1_review_jobs__job_id__artifacts__artifact_id__content_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Job Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "artifact_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Artifact Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Verified bytes for the requested source or published artifact"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceProblem"
+                }
+              }
+            },
+            "description": "No current grant for this case or artifact"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceProblem"
+                }
+              }
+            },
+            "description": "No such document or artifact"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceProblem"
+                }
+              }
+            },
+            "description": "The job has no current run to read from"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceProblem"
+                }
+              }
+            },
+            "description": "Invalid identifier, version or hash"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceProblem"
+                }
+              }
+            },
+            "description": "No content plane is configured"
+          }
+        },
+        "summary": "Read Artifact Content",
+        "tags": [
+          "content"
         ]
       }
     },

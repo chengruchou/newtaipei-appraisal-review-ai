@@ -21,6 +21,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/documents/{document_id}/content": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Read Source Content
+     * @description Read an admitted source, pinned to the exact version and content hash requested.
+     */
+    get: operations["read_source_content_v1_documents__document_id__content_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/review-jobs": {
     parameters: {
       query?: never;
@@ -53,6 +73,26 @@ export interface paths {
     };
     /** Read Review Job */
     get: operations["read_review_job_v1_review_jobs__job_id__get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/review-jobs/{job_id}/artifacts/{artifact_id}/content": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Read Artifact Content
+     * @description Download a published artifact of the job's current run under a current grant.
+     */
+    get: operations["read_artifact_content_v1_review_jobs__job_id__artifacts__artifact_id__content_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -1591,6 +1631,77 @@ export interface operations {
       };
     };
   };
+  read_source_content_v1_documents__document_id__content_get: {
+    parameters: {
+      query: {
+        version: string;
+        content_hash: string;
+      };
+      header?: never;
+      path: {
+        document_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Verified bytes for the requested source or published artifact */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/pdf": string;
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
+        };
+      };
+      /** @description No current grant for this case or artifact */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description No such document or artifact */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description The job has no current run to read from */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description Invalid identifier, version or hash */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description No content plane is configured */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+    };
+  };
   submit_review_job_v1_review_jobs_post: {
     parameters: {
       query?: never;
@@ -1726,6 +1837,75 @@ export interface operations {
         };
       };
       /** @description No durable job store is configured */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+    };
+  };
+  read_artifact_content_v1_review_jobs__job_id__artifacts__artifact_id__content_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        job_id: string;
+        artifact_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Verified bytes for the requested source or published artifact */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/pdf": string;
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
+        };
+      };
+      /** @description No current grant for this case or artifact */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description No such document or artifact */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description The job has no current run to read from */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description Invalid identifier, version or hash */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description No content plane is configured */
       503: {
         headers: {
           [name: string]: unknown;

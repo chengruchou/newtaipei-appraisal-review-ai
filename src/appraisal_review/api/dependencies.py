@@ -7,6 +7,7 @@ from appraisal_review.application.human_tasks import HumanTaskService
 from appraisal_review.application.review_jobs import ReviewJobService
 from appraisal_review.application.service_guards import Principal, ServiceFault
 from appraisal_review.domain.service_contracts import ServiceErrorCode
+from appraisal_review.ports.content import ContentPlane
 from appraisal_review.ports.service import PrincipalResolver
 
 
@@ -29,6 +30,14 @@ def get_human_task_service(request: Request) -> HumanTaskService:
     if service is None:
         raise ServiceFault(ServiceErrorCode.CAPABILITY)
     return service
+
+
+def get_content_plane(request: Request) -> ContentPlane:
+    """An unwired content plane reports capability_unavailable, never an empty download."""
+    plane: ContentPlane | None = getattr(request.app.state, "content_plane", None)
+    if plane is None:
+        raise ServiceFault(ServiceErrorCode.CAPABILITY)
+    return plane
 
 
 async def get_principal(request: Request) -> Principal:
