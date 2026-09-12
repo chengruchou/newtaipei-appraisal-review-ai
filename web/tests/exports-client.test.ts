@@ -127,3 +127,25 @@ it("keeps a gateway answer an unknown outcome rather than a refusal", async () =
   expect(outcome).toBeInstanceOf(TransportError);
   expect((outcome as TransportError).message).toBe(UNKNOWN_OUTCOME);
 });
+
+describe("sha256Hex fallback", () => {
+  it("matches the RFC test vector without WebCrypto", async () => {
+    const { sha256Hex } = await import("../src/api/exports");
+    const subtle = Object.getOwnPropertyDescriptor(globalThis.crypto ?? {}, "subtle");
+    // Simulate the insecure-origin deployment where crypto.subtle is undefined.
+    if (globalThis.crypto)
+      Object.defineProperty(globalThis.crypto, "subtle", { value: undefined, configurable: true });
+    try {
+      const abc = new TextEncoder().encode("abc");
+      const buffer = abc.buffer.slice(abc.byteOffset, abc.byteOffset + abc.byteLength);
+      expect(await sha256Hex(buffer)).toBe(
+        "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      );
+      expect(await sha256Hex(new ArrayBuffer(0))).toBe(
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      );
+    } finally {
+      if (globalThis.crypto && subtle) Object.defineProperty(globalThis.crypto, "subtle", subtle);
+    }
+  });
+});
