@@ -219,6 +219,15 @@ def preflight(clients: AWSClients, policy: BedrockAccessPolicy) -> Any:
             for region, model in models
         ):
             raise ExtractionBoundaryError("unsupported_capability")
+        # The required inference type follows the invocation route, not preference.
+        # A direct foundation request needs ON_DEMAND. A profile-routed request reaches
+        # each destination through the profile, and such destinations legitimately
+        # publish only INFERENCE_PROFILE; demanding ON_DEMAND there rejects every
+        # profile-only model, while accepting ON_DEMAND alone would admit a destination
+        # the profile cannot route to.
+        required_inference_type = (
+            "ON_DEMAND" if policy.model_kind == "foundation" else "INFERENCE_PROFILE"
+        )
         for region, model in models:
             details = metadata(
                 client("bedrock", region).get_foundation_model, modelIdentifier=model
@@ -228,7 +237,7 @@ def preflight(clients: AWSClients, policy: BedrockAccessPolicy) -> Any:
                 or _foundation(details["modelArn"]) != (region, model)
                 or not {"TEXT", "IMAGE"} <= set(details["inputModalities"])
                 or "TEXT" not in details["outputModalities"]
-                or "ON_DEMAND" not in details["inferenceTypesSupported"]
+                or required_inference_type not in details["inferenceTypesSupported"]
                 or details["modelLifecycle"]["status"] != "ACTIVE"
             ):
                 raise ExtractionBoundaryError("unsupported_capability")

@@ -84,26 +84,27 @@ configuration; the digest by itself is not proof of operator approval.
 
 `check_profile` also requires actual role-permission and invocation-auth evidence
 digests. A local test fixture is not such evidence for the competition account.
-`extraction_preflight.preflight` now compares the complete discovered destination
-set with `check_model_destinations` for the requested model, before any foundation
-metadata lookup. Every approved use of that exact identifier must agree on the
-kind, destinations and routing snapshot. Missing, duplicate, substituted and
-expanded sets fail even when another model permits the extra region or ARN.
-The returned runtime client captures an immutable model scope, profile digest,
-routing digest and preflight deadline; cached SDK transports do not share that
-scope. Foundation metadata is authorized against this model's region/ARN pair,
-and runtime requests must use its exact identifier and the primary region.
-Generic dynamic-profile clients cannot borrow a completed preflight.
-
-Each physical send and retry rechecks the scope, deadline, current authority and
-profile. A failed fresh preflight invalidates older clients for that model in
-the same factory; restoring an exact approved set still requires fresh preflight.
-A changed profile cannot reuse the old budget binding or ledger. Counters are
-neither reset nor refunded. Other processes perform their own fresh preflights;
-this is not a cross-process invalidation service or continuous observation of
-AWS routing between discovery and invocation. Existing account/role, capability,
-cross-region/global, data-admission and dispatch requirements all remain.
-See [ADR 0048](adr/0048-model-routing-snapshots.md) for the boundary and evidence.
+`check_model_destinations` is a helper that compares a supplied complete
+destination set against every approved use of the model. Its discovered input now
+comes from `adapters/aws/routing_discovery.py`, whose read-only `RoutingSnapshot`
+records the complete destination set and a reproducible pin digest; see
+[ADR 0052](adr/0052-observed-model-routing-evidence.md) and the operator report in
+`scripts/check_aws_readiness.py`. That closes the observation gap only. The
+comparison still has no call site inside an actual invocation path. The guarded
+client separately checks the requested model identifier and a profile-wide set of
+allowed regional endpoints; those checks do not establish the exact
+model/region/destination relationship for the actual invocation. Do not claim that
+this runtime boundary is complete because the helper's unit tests pass.
+[#47](https://github.com/chengruchou/newtaipei-appraisal-review-ai/issues/47)
+owns the request-bound composition and negative regression cases. Keep the
+existing extraction preflight checks for account, role, all routing destinations
+and model capabilities; they do not replace that missing runtime binding. The
+capability check requires the inference type of the route actually used:
+`ON_DEMAND` for a direct foundation request, `INFERENCE_PROFILE` on every
+destination for a profile-routed request. A model that publishes only
+`INFERENCE_PROFILE` is reachable through its profile and must not be treated as
+unsupported, and a destination that publishes only `ON_DEMAND` must not be
+accepted as a profile destination.
 
 The shared dispatcher consumes `scope`, `interval_seconds` and the central store
 binding. SQLite proves only host-local coordination; a team-wide claim needs the
