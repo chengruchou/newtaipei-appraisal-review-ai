@@ -40,6 +40,18 @@ class RedirectRefused(SourceReadRefused):
     """A redirect target failed validation or too many hops occurred."""
 
 
+class HttpStatusRefused(SourceReadRefused):
+    """Response carried a non-success HTTP status; its body is not a document."""
+
+
+class IncompleteContentRefused(HttpStatusRefused):
+    """204/206/304 responses cannot yield a complete document here."""
+
+
+class UnsupportedContentTypeRefused(SourceReadRefused):
+    """Declared Content-Type is a binary format; refusing to decode it as text."""
+
+
 class OversizeBodyRefused(SourceReadRefused):
     """Response body exceeded max_bytes."""
 
@@ -123,6 +135,19 @@ class FetchResult:
 FetchCallable = Callable[[str], FetchResult]
 ResolveCallable = Callable[[str], Sequence[str]]
 
+# Only these statuses may carry an honored redirect_to; an error response
+# carrying redirect_to must never bypass status validation.
+_REDIRECT_STATUSES = frozenset({301, 302, 303, 307, 308})
+# Success-family statuses that still cannot represent a complete document:
+# 204 has no body, 206 is a partial body, 304 needs a cached copy we lack.
+_INCOMPLETE_STATUSES = frozenset({204, 206, 304})
+# Declared types that are clearly binary and must not be decoded as UTF-8
+# text. HTML is deliberately NOT blocked: official sources are HTML.
+_BINARY_CONTENT_TYPES = frozenset(
+    {"application/pdf", "application/octet-stream", "application/zip"}
+)
+_BINARY_CONTENT_PREFIXES = ("image/", "audio/", "video/", "font/")
+
 
 @dataclass(frozen=True)
 class RetrievedDocument:
@@ -174,7 +199,12 @@ class SafeSourceReader:
             self._check_deadline(started, limit)
             response = self._fetch(current)
             self._check_deadline(started, limit)
-            if response.redirect_to is not None:
+            status = response.status_code
+            if status in _REDIRECT_STATUSES:
+                if response.redirect_to is None:
+                    raise RedirectRefused(
+                        f"redirect status {status} from {current} carries no target"
+                    )
                 try:
                     self._validate_url(response.redirect_to)
                 except SourceReadRefused as refusal:
@@ -184,6 +214,13 @@ class SafeSourceReader:
                     ) from refusal
                 current = response.redirect_to
                 continue
+            if status in _INCOMPLETE_STATUSES:
+                raise IncompleteContentRefused(
+                    f"HTTP {status} from {current} does not carry a complete document"
+                )
+            if not 200 <= status < 300:
+                raise HttpStatusRefused(f"refusing HTTP status {status} from {current}")
+            self._refuse_binary_content_type(response.headers, current)
             if len(response.body) > self._max_bytes:
                 raise OversizeBodyRefused(f"body of {current} exceeds {self._max_bytes} bytes")
             text = response.body.decode("utf-8", errors="replace")
@@ -192,6 +229,20 @@ class SafeSourceReader:
                 text = text[:max_chars]
             return RetrievedDocument(url=current, text=text, truncated=truncated)
         raise RedirectRefused(f"more than {self._max_redirects} redirects from {url}")
+
+    def _refuse_binary_content_type(self, headers: Mapping[str, str], url: str) -> None:
+        # Refusal messages carry only the media type and URL for diagnosis,
+        # never header values (they may hold credentials).
+        declared = next(
+            (value for name, value in headers.items() if name.lower() == "content-type"), ""
+        )
+        media_type = declared.split(";", 1)[0].strip().lower()
+        if not media_type:
+            return
+        if media_type in _BINARY_CONTENT_TYPES or media_type.startswith(_BINARY_CONTENT_PREFIXES):
+            raise UnsupportedContentTypeRefused(
+                f"refusing to decode binary content type {media_type} from {url}"
+            )
 
     def _check_deadline(self, started: float, limit: float) -> None:
         if self._clock() - started > limit:

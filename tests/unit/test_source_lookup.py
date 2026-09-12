@@ -14,6 +14,8 @@ from appraisal_review.adapters.runtime_sources import (
     FixedSourceDocument,
     FixedUrlCatalog,
     HostNotAllowlisted,
+    HttpStatusRefused,
+    IncompleteContentRefused,
     NullSearchProvider,
     OversizeBodyRefused,
     PrivateAddressRefused,
@@ -25,6 +27,8 @@ from appraisal_review.adapters.runtime_sources import (
     SearchProvider,
     SearchResult,
     SearchUnavailable,
+    SourceReadRefused,
+    UnsupportedContentTypeRefused,
 )
 from appraisal_review.application.source_lookup import (
     LOOKUP_TOOL_CONFIG,
@@ -219,6 +223,166 @@ class TestSafeSourceReader:
         document = reader.read(url, max_chars=4)
         assert document.text == "abcd"
         assert document.truncated is True
+
+
+class RecordingResponses(dict[str, FetchResult]):
+    """Response map that records every URL the reader actually fetched."""
+
+    def __init__(self, responses: dict[str, FetchResult]) -> None:
+        super().__init__(responses)
+        self.requested: list[str] = []
+
+    def __getitem__(self, key: str) -> FetchResult:
+        self.requested.append(key)
+        return super().__getitem__(key)
+
+
+class TestHttpStatusValidation:
+    """Status-blindness defect: read() must validate FetchResult.status_code
+    before treating the body as a document (reproduced with 503 pre-fix)."""
+
+    def test_503_body_is_refused_not_returned(self) -> None:
+        url = "https://example.gov.tw/outage"
+        reader = make_reader(
+            {url: FetchResult(status_code=503, body=b"<html>service unavailable</html>")}
+        )
+        with pytest.raises(HttpStatusRefused) as exc:
+            reader.read(url)
+        assert "503" in str(exc.value)
+
+    @pytest.mark.parametrize("status", [403, 404, 429, 500])
+    def test_client_and_server_error_statuses_are_refused(self, status: int) -> None:
+        url = "https://example.gov.tw/err"
+        reader = make_reader({url: FetchResult(status_code=status, body=b"error page")})
+        with pytest.raises(HttpStatusRefused) as exc:
+            reader.read(url)
+        assert str(status) in str(exc.value)
+
+    def test_unmapped_non_success_status_is_refused(self) -> None:
+        url = "https://example.gov.tw/odd"
+        reader = make_reader({url: FetchResult(status_code=599, body=b"x")})
+        with pytest.raises(HttpStatusRefused):
+            reader.read(url)
+
+    def test_status_refusal_is_a_source_read_refused(self) -> None:
+        url = "https://example.gov.tw/outage"
+        reader = make_reader({url: FetchResult(status_code=503)})
+        with pytest.raises(SourceReadRefused):
+            reader.read(url)
+
+    def test_refusal_message_never_leaks_headers(self) -> None:
+        url = "https://example.gov.tw/outage"
+        reader = make_reader(
+            {
+                url: FetchResult(
+                    status_code=503,
+                    headers={"Authorization": "Bearer top-secret-token"},
+                )
+            }
+        )
+        with pytest.raises(HttpStatusRefused) as exc:
+            reader.read(url)
+        message = str(exc.value)
+        assert "top-secret-token" not in message
+        assert "Authorization" not in message
+
+    def test_error_status_with_redirect_to_is_not_followed(self) -> None:
+        responses = RecordingResponses(
+            {
+                "https://example.gov.tw/a": FetchResult(
+                    status_code=503, redirect_to="https://example.gov.tw/b"
+                ),
+                "https://example.gov.tw/b": FetchResult(status_code=200, body=b"leaked"),
+            }
+        )
+        reader = make_reader(responses)
+        with pytest.raises(HttpStatusRefused):
+            reader.read("https://example.gov.tw/a")
+        assert responses.requested == ["https://example.gov.tw/a"]
+
+    @pytest.mark.parametrize("status", [301, 302, 303, 307, 308])
+    def test_supported_redirect_statuses_are_followed(self, status: int) -> None:
+        reader = make_reader(
+            {
+                "https://example.gov.tw/a": FetchResult(
+                    status_code=status, redirect_to="https://example.gov.tw/b"
+                ),
+                "https://example.gov.tw/b": FetchResult(status_code=200, body=b"final"),
+            }
+        )
+        assert reader.read("https://example.gov.tw/a").text == "final"
+
+    def test_redirect_status_without_target_is_refused(self) -> None:
+        url = "https://example.gov.tw/a"
+        reader = make_reader({url: FetchResult(status_code=301, body=b"moved")})
+        with pytest.raises(RedirectRefused):
+            reader.read(url)
+
+    def test_redirect_to_private_address_is_refused(self) -> None:
+        reader = make_reader(
+            {
+                "https://example.gov.tw/a": FetchResult(
+                    status_code=301, redirect_to="https://intra.gov.tw/b"
+                )
+            },
+            addresses={"intra.gov.tw": ["10.0.0.1"]},
+            allowed_hosts=("example.gov.tw", "intra.gov.tw"),
+        )
+        with pytest.raises(RedirectRefused):
+            reader.read("https://example.gov.tw/a")
+
+    @pytest.mark.parametrize("status", [204, 206, 304])
+    def test_degenerate_success_statuses_are_refused(self, status: int) -> None:
+        url = "https://example.gov.tw/deg"
+        reader = make_reader({url: FetchResult(status_code=status)})
+        with pytest.raises(IncompleteContentRefused) as exc:
+            reader.read(url)
+        assert str(status) in str(exc.value)
+
+
+class TestContentTypeValidation:
+    @pytest.mark.parametrize(
+        "content_type",
+        ["application/pdf", "application/octet-stream", "image/png", "video/mp4"],
+    )
+    def test_binary_content_types_are_refused(self, content_type: str) -> None:
+        url = "https://example.gov.tw/file"
+        reader = make_reader(
+            {
+                url: FetchResult(
+                    status_code=200, body=b"%PDF-1.7", headers={"Content-Type": content_type}
+                )
+            }
+        )
+        with pytest.raises(UnsupportedContentTypeRefused) as exc:
+            reader.read(url)
+        assert content_type in str(exc.value)
+
+    def test_html_content_type_is_allowed(self) -> None:
+        url = "https://example.gov.tw/page"
+        reader = make_reader(
+            {
+                url: FetchResult(
+                    status_code=200,
+                    body=b"<html>official</html>",
+                    headers={"Content-Type": "text/html; charset=utf-8"},
+                )
+            }
+        )
+        assert reader.read(url).text == "<html>official</html>"
+
+    def test_missing_content_type_is_allowed(self) -> None:
+        url = "https://example.gov.tw/plain"
+        reader = make_reader({url: FetchResult(status_code=200, body=b"plain")})
+        assert reader.read(url).text == "plain"
+
+    def test_lowercase_header_name_is_recognized(self) -> None:
+        url = "https://example.gov.tw/file"
+        reader = make_reader(
+            {url: FetchResult(status_code=200, body=b"x", headers={"content-type": "image/jpeg"})}
+        )
+        with pytest.raises(UnsupportedContentTypeRefused):
+            reader.read(url)
 
 
 class TestSearchProviders:
