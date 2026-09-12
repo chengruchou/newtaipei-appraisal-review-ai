@@ -15,6 +15,15 @@ prepare() {
         echo "Preparing a new synthetic workbench in $directory."
         python "$launcher" --directory "$directory" --port "$port" --prepare
     fi
+    # Bind the staged calculation snapshot to the prepared case, when one is baked in.
+    # Registration is idempotent for identical content; a failure leaves exports
+    # answering capability/conflict honestly instead of stopping the whole workbench.
+    snapshot_template="${APPRAISAL_SNAPSHOT_TEMPLATE:-}"
+    if [ -n "$snapshot_template" ] && [ -f "$snapshot_template" ]; then
+        python /app/scripts/register_prepared_snapshot.py \
+            --workbench "$directory" --snapshot "$snapshot_template" \
+            || echo "Snapshot registration failed; exports stay unavailable." >&2
+    fi
 }
 
 case "${1:-serve}" in

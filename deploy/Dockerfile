@@ -30,19 +30,27 @@ RUN pip install --no-cache-dir '.[aws,pdf,documents,privacy]'
 # The reviewer workbench: the synthetic launcher on container loopback, with the
 # built frontend served in front of it by a same-origin proxy.
 FROM base AS workbench
+# nginx fronts the loopback API; libreoffice-calc renders the delivered PDF from the
+# exact filled workbook, and the Noto CJK fonts keep the official forms legible.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends nginx \
+    && apt-get install -y --no-install-recommends nginx libreoffice-calc fonts-noto-cjk fontconfig \
     && rm -rf /var/lib/apt/lists/*
 COPY scripts/ ./scripts/
+COPY configs/ ./configs/
 COPY deploy/probe.py ./deploy/probe.py
 COPY deploy/nginx.conf /etc/nginx/nginx.conf
+# Operator payload staged at build time: official templates and the prepared snapshot.
+# Never committed to Git; the image is private to the team's own registry/storage.
+COPY deploy/payload/ ./deploy/payload/
 COPY deploy/workbench-entrypoint.sh /usr/local/bin/workbench-entrypoint
 COPY --from=webbuild /web/dist/ /usr/share/nginx/html/
 RUN chmod 0755 /usr/local/bin/workbench-entrypoint \
     && mkdir -p /app/artifacts \
     && chown -R reviewer:reviewer /app/artifacts /var/lib/nginx /var/log/nginx
 ENV APPRAISAL_WORKBENCH_DIRECTORY=/app/artifacts/workbench \
-    APPRAISAL_WORKBENCH_PORT=8765
+    APPRAISAL_WORKBENCH_PORT=8765 \
+    REVIEW_TEMPLATES_DIR=/app/deploy/payload/templates \
+    APPRAISAL_SNAPSHOT_TEMPLATE=/app/deploy/payload/snapshot.json
 USER reviewer
 EXPOSE 8080
 HEALTHCHECK --interval=15s --timeout=5s --start-period=120s --retries=10 \
