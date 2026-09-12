@@ -623,6 +623,15 @@ def create_integrated_service(
     if export_assets is not None and export_filler is not None and snapshot_provider is not None:
         export_store = SQLiteExportStore(store)
         approval_store = SQLiteApprovalStore(store)
+
+        def read_confirmed_references(job_id: UUID) -> frozenset[str]:
+            # Absence claims must cite a confirmation a human actually committed:
+            # the answered task ids of this job are the only recognized references.
+            records = asyncio.run(store.list_tasks(job_id=job_id))
+            return frozenset(
+                str(record.task.task_id) for record in records if record.task.state == "answered"
+            )
+
         approval_service = ReportApprovalService(
             jobs=service,
             store=approval_store,
@@ -630,6 +639,7 @@ def create_integrated_service(
             filler=export_filler,
             snapshots=snapshot_provider,
             policy=ReadinessPolicy.default(),
+            confirmed_references=read_confirmed_references,
         )
 
         def read_current_revision(job_id: UUID) -> RevisionReference | None:

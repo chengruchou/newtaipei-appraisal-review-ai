@@ -14,12 +14,18 @@ What v2 refuses to be fooled by (defect P1-A):
 - Arithmetic, not trust. The printed table-4 sums are recomputed from the snapshot's own
   component entries with Decimal arithmetic: the total against its individual-factor
   rows, the adjusted unit price against the pinned date-adjustment rounding convention,
-  the weights against 100, the compared price against the trial-price range. A relation
-  whose official convention is not yet established blocks by name
-  (calculation_policy_unconfirmed) instead of silently passing.
+  the weights against 100. A relation whose official convention the policy marks
+  unconfirmed blocks by name (calculation_policy_unconfirmed) ALWAYS - a value matching
+  some candidate formula, or lying inside the trial-price range, is a diagnostic and
+  never confirmation. Only a confirmed convention's pinned formula can verify a figure.
 - No blanket absences. not_applicable / confirmed_zero pass only where the policy allows
-  them for that key AND a human confirmed the ruling with a recorded trace. The price
-  chain allows neither.
+  them for that key AND origin is human_confirmed AND the trace is found in the
+  caller-supplied receipt registry (confirmed_traces). No registry -> fail closed. This
+  applies to required keys and to the factor component rows feeding a printed sum. The
+  price chain allows no absence at all.
+- Values, typed. A required text/option key needs a non-empty stripped value; a date key
+  follows the mapping's existing 7-digit ROC-date convention (e.g. "1110901"). An empty
+  string never satisfies anything.
 - Open human tasks block. A case with unanswered confirmation tasks is not submittable,
   whatever the snapshot says.
 """
@@ -27,6 +33,7 @@ What v2 refuses to be fooled by (defect P1-A):
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass, field
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from pathlib import Path
@@ -90,6 +97,8 @@ _NON_COMPONENT_LEAVES = frozenset(
         "region_adjustment_pct",
     }
 )
+#: The mapping's existing date convention: 7-digit ROC date strings like "1110901".
+_ROC_DATE = re.compile(r"\d{7}")
 
 
 @dataclass(frozen=True)
@@ -119,6 +128,14 @@ class ReadinessPolicy:
     adjustment_abs_max_pct: Decimal = Decimal("100")
     weight_sum_expected: Decimal = Decimal("100")
     weight_sum_tolerance: Decimal = Decimal("0.01")
+    #: convention name -> confirmed flag, straight from the policy's conventions block.
+    conventions_confirmed: dict[str, bool] = field(default_factory=dict)
+    #: pinned parameter of the abs-sum convention; meaningful only once confirmed.
+    abs_sum_includes_region: bool = False
+
+    def convention_confirmed(self, name: str) -> bool:
+        """False for anything the policy does not explicitly mark confirmed."""
+        return self.conventions_confirmed.get(name, False)
 
     @classmethod
     def load(cls, path: Path) -> ReadinessPolicy:
@@ -162,6 +179,7 @@ class ReadinessPolicy:
                 )
             )
 
+        conventions = data.get("conventions", {})
         bounds = data.get("bounds", {})
         weight_sum = data.get("weight_sum", {})
         return cls(
@@ -177,6 +195,12 @@ class ReadinessPolicy:
             adjustment_abs_max_pct=Decimal(bounds.get("adjustment_abs_max_pct", "100")),
             weight_sum_expected=Decimal(weight_sum.get("expected", "100")),
             weight_sum_tolerance=Decimal(weight_sum.get("tolerance", "0.01")),
+            conventions_confirmed={
+                name: bool(spec.get("confirmed", False)) for name, spec in conventions.items()
+            },
+            abs_sum_includes_region=bool(
+                conventions.get("abs_adjustment_sum", {}).get("include_region", False)
+            ),
         )
 
     @classmethod
@@ -238,10 +262,35 @@ class _Collector:
         )
 
 
+def _absence_confirmed(
+    entry: SnapshotEntry, policy: ReadinessPolicy, confirmed_traces: frozenset[str] | None
+) -> bool:
+    """A trustworthy absence: human origin plus, under a v2 policy, a registered receipt.
+
+    confirmed_traces is the caller-supplied registry of valid human-task receipt
+    references. None means no registry is available, and under a spec-carrying (v2)
+    policy the absence then CANNOT be considered confirmed - fail closed. An arbitrary
+    trace string, or a model-set origin, never suffices. A v1-shape policy (no specs)
+    predates the receipt contract and keeps the origin-plus-trace rule.
+    """
+    if entry.origin != "human_confirmed":
+        return False
+    trace = entry.trace.strip()
+    if not trace:
+        return False
+    if not policy.specs:
+        return True
+    return confirmed_traces is not None and trace in confirmed_traces
+
+
 def _check_absence(
-    out: _Collector, key: str, entry: SnapshotEntry, policy: ReadinessPolicy
+    out: _Collector,
+    key: str,
+    entry: SnapshotEntry,
+    policy: ReadinessPolicy,
+    confirmed_traces: frozenset[str] | None,
 ) -> None:
-    """Rule: a lawful blank needs policy permission, human confirmation and a trace."""
+    """Rule: a lawful blank needs policy permission, human confirmation and a receipt."""
     spec = policy.specs.get(key)
     if entry.state not in policy.justified_absence_states:
         out.add(
@@ -260,8 +309,7 @@ def _check_absence(
             f"provide the actual value for {key}; the policy admits no absence here",
         )
         return
-    confirmed = entry.origin == "human_confirmed" and bool(entry.trace.strip())
-    if confirmed:
+    if _absence_confirmed(entry, policy, confirmed_traces):
         return
     code: _BlockerCode = (
         "unjustified_not_applicable"
@@ -272,7 +320,7 @@ def _check_absence(
         code,
         key,
         entry.state,
-        f"record the ruling basis for {key} through human confirmation",
+        f"record the ruling basis for {key} through human confirmation with a registered receipt",
     )
 
 
@@ -293,6 +341,26 @@ def _check_value(out: _Collector, key: str, entry: SnapshotEntry, policy: Readin
     spec_kind = spec.kind if spec is not None else ""
     numeric = kind in _NUMERIC_KINDS or spec_kind in _NUMERIC_SPEC_KINDS
     if not numeric:
+        if spec is None:
+            return  # typed checks apply to the policy's required keys
+        stripped = ("" if entry.value is None else str(entry.value)).strip()
+        if spec_kind == "date" or kind == "date":
+            if _ROC_DATE.fullmatch(stripped) is None:
+                out.add(
+                    "invalid_value",
+                    key,
+                    entry.state,
+                    f"supply {key} as a 7-digit ROC date string such as 1110901",
+                    detail=f"got {entry.value!r}; the mapping's date convention is 7 ROC digits",
+                )
+        elif not stripped:
+            out.add(
+                "invalid_value",
+                key,
+                entry.state,
+                f"supply a non-empty {spec_kind or 'text'} value for {key}",
+                detail="an empty string satisfies nothing",
+            )
         return
     value = _parse_decimal(entry)
     if value is None:
@@ -339,14 +407,57 @@ def _usable(snapshot: CalculationSnapshot, key: str) -> Decimal | None:
     return _parse_decimal(entry)
 
 
+def _check_component_absences(
+    out: _Collector,
+    snapshot: CalculationSnapshot,
+    policy: ReadinessPolicy,
+    components: tuple[str, ...],
+    confirmed_traces: frozenset[str] | None,
+) -> None:
+    """Factor rows feeding a printed sum are dependencies, not decoration.
+
+    A not_applicable or confirmed_zero row passes only where the policy leaves the
+    state lawful for that factor AND a human confirmed it with a registered receipt
+    (origin human_confirmed, trace found in confirmed_traces). No registry -> block.
+    """
+    for key in components:
+        entry = snapshot.entries.get(key)
+        if entry is None or entry.state not in {"not_applicable", "confirmed_zero"}:
+            continue
+        spec = policy.specs.get(key)
+        if spec is not None and not spec.allow_not_applicable:
+            out.add(
+                "na_not_permitted",
+                key,
+                entry.state,
+                f"provide the actual value for {key}; the policy admits no absence here",
+            )
+            continue
+        if _absence_confirmed(entry, policy, confirmed_traces):
+            continue
+        code: _BlockerCode = (
+            "unjustified_not_applicable"
+            if entry.state == "not_applicable"
+            else "unjustified_confirmed_zero"
+        )
+        out.add(
+            code,
+            key,
+            entry.state,
+            f"record the ruling basis for {key} through human confirmation "
+            "with a registered receipt; the printed sums depend on this row",
+        )
+
+
 def _component_values(
     out: _Collector, snapshot: CalculationSnapshot, keys: tuple[str, ...], target: str
 ) -> list[Decimal] | None:
     """Resolve the component rows a printed sum claims to summarize.
 
-    present -> its value; confirmed_zero -> 0; not_applicable -> excluded;
-    missing or unparseable -> the sum is unverifiable and each missing row is
-    named through the value-missing path (never a silent pass).
+    present -> its value; confirmed (receipted) zero -> 0; confirmed (receipted)
+    not_applicable -> excluded; an unconfirmed absence, a missing or an unparseable
+    row -> the sum is unverifiable (never a silent pass), with each missing row
+    named through the value-missing path.
     """
     values: list[Decimal] = []
     verifiable = True
@@ -362,10 +473,11 @@ def _component_values(
             )
             verifiable = False
             continue
-        if entry.state == "confirmed_zero":
-            values.append(Decimal("0"))
-            continue
-        if entry.state == "not_applicable":
+        if entry.state in {"confirmed_zero", "not_applicable"}:
+            if key in out.blocked_keys:
+                verifiable = False  # the absence itself is unjustified; no arithmetic on it
+            elif entry.state == "confirmed_zero":
+                values.append(Decimal("0"))
             continue
         value = _parse_decimal(entry)
         if value is None:
@@ -376,45 +488,77 @@ def _component_values(
 
 
 def _check_comparable_arithmetic(
-    out: _Collector, snapshot: CalculationSnapshot, policy: ReadinessPolicy, subject: str
+    out: _Collector,
+    snapshot: CalculationSnapshot,
+    policy: ReadinessPolicy,
+    subject: str,
+    confirmed_traces: frozenset[str] | None,
 ) -> None:
     prefix = f"table_4.{subject}."
     components = policy.table4_components.get(subject, ())
+    _check_component_absences(out, snapshot, policy, components, confirmed_traces)
 
     total = _usable(snapshot, prefix + "total_adjustment_pct")
-    if total is not None and components:
-        values = _component_values(out, snapshot, components, prefix + "total_adjustment_pct")
-        if values is not None and sum(values, Decimal("0")) != total:
+    if total is not None:
+        if not policy.convention_confirmed("table_4_total_adjustment"):
             out.add(
-                "arithmetic_mismatch",
+                "calculation_policy_unconfirmed",
                 prefix + "total_adjustment_pct",
                 "present",
-                "reconcile the total with the individual-factor adjustment rows",
-                detail=f"components sum to {sum(values, Decimal('0'))}, table prints {total}",
+                "confirm the individual-factor total convention; until then this "
+                "printed figure cannot be verified",
             )
+        elif components:
+            values = _component_values(out, snapshot, components, prefix + "total_adjustment_pct")
+            if values is not None and sum(values, Decimal("0")) != total:
+                out.add(
+                    "arithmetic_mismatch",
+                    prefix + "total_adjustment_pct",
+                    "present",
+                    "reconcile the total with the individual-factor adjustment rows",
+                    detail=f"components sum to {sum(values, Decimal('0'))}, table prints {total}",
+                )
 
     abs_sum = _usable(snapshot, prefix + "abs_adjustment_sum_pct")
     date_pct = _usable(snapshot, prefix + "date_adjustment_pct")
-    if abs_sum is not None and components and date_pct is not None:
-        values = _component_values(out, snapshot, components, prefix + "abs_adjustment_sum_pct")
-        if values is not None:
-            base = abs(date_pct) + sum((abs(v) for v in values), Decimal("0"))
+    if abs_sum is not None:
+        if not policy.convention_confirmed("abs_adjustment_sum"):
+            # ALWAYS while unconfirmed: matching either candidate formula (with or
+            # without the region factor) is a diagnostic, never confirmation.
+            out.add(
+                "calculation_policy_unconfirmed",
+                prefix + "abs_adjustment_sum_pct",
+                "present",
+                "confirm the absolute-sum convention (region-factor inclusion); "
+                "no candidate-formula match substitutes for confirmation",
+            )
+        elif components and date_pct is not None:
+            values = _component_values(out, snapshot, components, prefix + "abs_adjustment_sum_pct")
             region = _usable(snapshot, prefix + "region_adjustment_pct")
-            with_region = base + abs(region) if region is not None else base
-            if abs_sum not in (base, with_region):
-                out.add(
-                    "calculation_policy_unconfirmed",
-                    prefix + "abs_adjustment_sum_pct",
-                    "present",
-                    "confirm the absolute-sum convention (region-factor inclusion) "
-                    "and reconcile the printed figure",
-                    detail=f"recomputed {base} (or {with_region} with region), "
-                    f"table prints {abs_sum}",
-                )
+            if values is not None and (region is not None or not policy.abs_sum_includes_region):
+                expected = abs(date_pct) + sum((abs(v) for v in values), Decimal("0"))
+                if policy.abs_sum_includes_region and region is not None:
+                    expected += abs(region)
+                if abs_sum != expected:
+                    out.add(
+                        "arithmetic_mismatch",
+                        prefix + "abs_adjustment_sum_pct",
+                        "present",
+                        "reconcile the absolute-sum with the confirmed convention",
+                        detail=f"pinned formula yields {expected}, table prints {abs_sum}",
+                    )
 
     normal = _usable(snapshot, prefix + "normal_unit_price")
     adjusted = _usable(snapshot, prefix + "adjusted_unit_price")
     if normal is not None and adjusted is not None and date_pct is not None:
+        if not policy.convention_confirmed("adjusted_unit_price"):
+            out.add(
+                "calculation_policy_unconfirmed",
+                prefix + "adjusted_unit_price",
+                "present",
+                "confirm the date-adjustment rounding convention for the adjusted unit price",
+            )
+            return
         exact = normal * (Decimal("1") + date_pct / Decimal("100"))
         expected = exact.quantize(Decimal("1"), rounding=ROUND_HALF_UP)
         if adjusted == expected:
@@ -440,10 +584,13 @@ def _check_comparable_arithmetic(
 
 
 def _check_case_arithmetic(
-    out: _Collector, snapshot: CalculationSnapshot, policy: ReadinessPolicy
+    out: _Collector,
+    snapshot: CalculationSnapshot,
+    policy: ReadinessPolicy,
+    confirmed_traces: frozenset[str] | None,
 ) -> None:
     for subject in policy.comparables:
-        _check_comparable_arithmetic(out, snapshot, policy, subject)
+        _check_comparable_arithmetic(out, snapshot, policy, subject, confirmed_traces)
 
     weights = [_usable(snapshot, f"table_4.{subject}.weight_pct") for subject in policy.comparables]
     if policy.comparables and all(w is not None for w in weights):
@@ -458,23 +605,54 @@ def _check_case_arithmetic(
                 detail=f"weights sum to {total}",
             )
 
-    if policy.comparison_base is None:
+    if policy.comparison_base is None or not policy.comparables:
         return
     compared_key = f"table_4.{policy.comparison_base}.compared_price"
     compared = _usable(snapshot, compared_key)
+    if compared is None:
+        return
     trials = [_usable(snapshot, f"table_4.{subject}.trial_price") for subject in policy.comparables]
-    if compared is not None and policy.comparables and all(t is not None for t in trials):
-        trial_values = cast("list[Decimal]", trials)
-        low, high = min(trial_values), max(trial_values)
-        if not (low <= compared <= high):
-            out.add(
-                "calculation_policy_unconfirmed",
-                compared_key,
-                "present",
-                "confirm the official trial-price combination rule; the compared "
-                "price must at least lie within the trial-price range",
-                detail=f"compared {compared} outside trial range [{low}, {high}]",
+    if not policy.convention_confirmed("compared_price_combination"):
+        # ALWAYS while unconfirmed: a value inside the trial range proves nothing
+        # about the combination rule; the range is at most a diagnostic detail.
+        detail = ""
+        if all(t is not None for t in trials):
+            trial_values = cast("list[Decimal]", trials)
+            low, high = min(trial_values), max(trial_values)
+            inside = low <= compared <= high
+            detail = (
+                f"compared {compared} {'inside' if inside else 'outside'} trial "
+                f"range [{low}, {high}]; the range check is diagnostic only"
             )
+        out.add(
+            "calculation_policy_unconfirmed",
+            compared_key,
+            "present",
+            "confirm the official trial-price combination rule; a compared price "
+            "inside the trial range is not confirmation",
+            detail=detail,
+        )
+        return
+    weights = [_usable(snapshot, f"table_4.{subject}.weight_pct") for subject in policy.comparables]
+    if all(t is not None for t in trials) and all(w is not None for w in weights):
+        trial_values = cast("list[Decimal]", trials)
+        weight_values = cast("list[Decimal]", weights)
+        weight_total = sum(weight_values, Decimal("0"))
+        if weight_total > 0:
+            mean = (
+                sum((w * t for w, t in zip(weight_values, trial_values, strict=True)), Decimal("0"))
+                / weight_total
+            )
+            expected = mean.quantize(Decimal("1"), rounding=ROUND_HALF_UP)
+            if compared != expected:
+                out.add(
+                    "arithmetic_mismatch",
+                    compared_key,
+                    "present",
+                    "reconcile the compared price with the confirmed combination "
+                    "rule: weight-averaged trial prices, half-up to 1 TWD",
+                    detail=f"pinned formula yields {expected}, table prints {compared}",
+                )
 
 
 def evaluate_readiness(
@@ -482,7 +660,15 @@ def evaluate_readiness(
     policy: ReadinessPolicy,
     open_task_count: int = 0,
     open_task_ids: tuple[str, ...] = (),
+    confirmed_traces: frozenset[str] | None = None,
 ) -> ReportReadiness:
+    """Judge one snapshot against one policy version.
+
+    confirmed_traces is the registry of valid human-confirmation receipt references
+    the caller (the approval service) resolved from the human-task store. A justified
+    absence is accepted only when its trace is found here; None means no registry is
+    available and every claimed absence fails closed under a v2-shape policy.
+    """
     out = _Collector()
     present: set[str] = set()
 
@@ -501,7 +687,7 @@ def evaluate_readiness(
         if entry.state == "present":
             present.add(key)
             continue
-        _check_absence(out, key, entry, policy)
+        _check_absence(out, key, entry, policy, confirmed_traces)
         if key not in out.blocked_keys:
             present.add(key)  # a lawfully justified absence satisfies the key
 
@@ -509,7 +695,7 @@ def evaluate_readiness(
         if entry.state == "present" and (key in policy.declared_units or key in policy.specs):
             _check_value(out, key, entry, policy)
 
-    _check_case_arithmetic(out, snapshot, policy)
+    _check_case_arithmetic(out, snapshot, policy, confirmed_traces)
 
     open_tasks = max(open_task_count, len(open_task_ids))
     if open_tasks > 0:

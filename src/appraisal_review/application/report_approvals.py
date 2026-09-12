@@ -57,6 +57,7 @@ class ReportApprovalService:
         snapshots: SnapshotProvider,
         policy: ReadinessPolicy,
         clock: Callable[[], int] = lambda: int(time.time()),
+        confirmed_references: Callable[[UUID], frozenset[str]] | None = None,
     ) -> None:
         self.jobs = jobs
         self.store = store
@@ -65,6 +66,10 @@ class ReportApprovalService:
         self.snapshots = snapshots
         self.policy = policy
         self.clock = clock
+        # job_id -> identifiers of confirmations a human actually committed (answered
+        # task ids). Absences claiming human confirmation must cite one of these; with
+        # no registry wired, a spec-carrying policy fails closed on every claimed absence.
+        self.confirmed_references = confirmed_references
 
     async def _current_snapshot(
         self, principal: Principal, job_id: UUID
@@ -82,11 +87,17 @@ class ReportApprovalService:
     def _evaluate(self, status: JobStatusView, snapshot: CalculationSnapshot) -> ReportReadiness:
         # Open human tasks gate submission at the evaluator, not as an afterthought:
         # the job status is the one source that knows them.
+        registry = (
+            self.confirmed_references(status.job.job_id)
+            if self.confirmed_references is not None
+            else None
+        )
         return evaluate_readiness(
             snapshot,
             self.policy,
             open_task_count=len(status.open_task_ids),
             open_task_ids=tuple(str(task_id) for task_id in status.open_task_ids),
+            confirmed_traces=registry,
         )
 
     async def readiness(self, principal: Principal, job_id: UUID) -> ReportReadiness:
