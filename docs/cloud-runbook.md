@@ -90,8 +90,11 @@ state is restorable from the EBS snapshot (create volume, attach, copy
   Never open 0.0.0.0/0; 443 stays closed until real TLS exists (no DNS today).
 - Management: SSM Session Manager / send-command (agent registered).
 - Sign-in: demo fixture token (never expires, full permissions - demo only)
-  or email one-time code (limited principal, 8 h expiry, revocable via
-  DELETE /v1/session). Email login users create their own cases via intake.
+  or registered accounts: request a verification code by mail, verify with
+  code + new password (registration and password reset are the same flow),
+  then sign in with email+password (scrypt-hashed, generic refusals, own
+  rate budget). Sessions run 8 h, revocable via DELETE /v1/session; email
+  users start with zero cases and create their own via intake.
 
 ## Verification quickchecks
 
