@@ -170,8 +170,12 @@ class ReportApprovalService:
         command = ApprovalDecisionCommand.model_validate_json(command.model_dump_json())
         status = await self.jobs.status(principal, job_id)
         # Deciding publishes or blocks a report: it takes the existing publish authority,
-        # resolved from the authenticated session - never from the request body.
+        # resolved from the authenticated session - never from the request body - and,
+        # like human task responses, only a human principal can carry it. A system or
+        # model actor holding publish rights still cannot stand in for a person.
         principal.require(status.job.case_id, Permission.PUBLISH)
+        if principal.actor.kind != "human":
+            raise ServiceFault(ServiceErrorCode.UNAUTHORIZED)
         approval = self.store.read(job_id, approval_id)
         if approval is None:
             raise ServiceFault(ServiceErrorCode.NOT_FOUND)

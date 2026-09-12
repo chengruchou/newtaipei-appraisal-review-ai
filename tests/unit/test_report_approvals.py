@@ -175,6 +175,7 @@ def scene(tmp_path: Path) -> dict[str, Any]:
         clock=lambda: clock["now"],
     )
     export_store = SQLiteExportStore(store)
+    current_revision = {"value": run.revision}
     exports = ExportService(
         jobs=jobs,
         store=export_store,
@@ -183,6 +184,7 @@ def scene(tmp_path: Path) -> dict[str, Any]:
         converter=None,
         snapshots=snapshots,
         approvals=approval_store,
+        current_revision=lambda job: current_revision["value"],
     )
     return dict(
         store=store,
@@ -196,6 +198,7 @@ def scene(tmp_path: Path) -> dict[str, Any]:
         exports=exports,
         export_store=export_store,
         clock=clock,
+        current_revision=current_revision,
     )
 
 
@@ -421,4 +424,138 @@ class TestFormalExports:
         asyncio.run(scene["exports"].run_pending())
         assert (
             scene["export_store"].read(scene["job_id"], operation.export_id).status == "succeeded"
+        )
+
+
+class TestStalePublicationFence:
+    """P1-B: a queued formal export must not publish after the case moved on."""
+
+    def test_prefix_reproduction_queued_v1_publishes_after_revision_change(
+        self, scene: dict[str, Any]
+    ) -> None:
+        approval = submit(scene)
+        decide(scene, approval.approval_id, "approve", "d1")
+        operation = export_formal(scene)
+        # The case advances to a new revision before the worker runs. The old
+        # behaviour consulted nothing current and published V1 as formal.
+        scene["current_revision"]["value"] = scene["run"].revision.model_copy(
+            update={"revision_id": str(uuid4())}
+        )
+        asyncio.run(scene["exports"].run_pending())
+        done = scene["export_store"].read(scene["job_id"], operation.export_id)
+        assert done.status == "failed", "stale queued formal export must not publish"
+        assert done.artifacts == ()
+
+    def test_valid_unchanged_revision_still_publishes(self, scene: dict[str, Any]) -> None:
+        approval = submit(scene)
+        decide(scene, approval.approval_id, "approve", "d1")
+        operation = export_formal(scene)
+        asyncio.run(scene["exports"].run_pending())
+        assert (
+            scene["export_store"].read(scene["job_id"], operation.export_id).status == "succeeded"
+        )
+
+    def test_content_route_refuses_stale_formal_bytes(self, scene: dict[str, Any]) -> None:
+        approval = submit(scene)
+        decide(scene, approval.approval_id, "approve", "d1")
+        operation = export_formal(scene)
+        asyncio.run(scene["exports"].run_pending())
+        # Delivered while V1 was current; then the case advances.
+        done = scene["export_store"].read(scene["job_id"], operation.export_id)
+        artifact = done.artifacts[0]
+        found = scene["export_store"].find_delivered(scene["job_id"], artifact.artifact_id)
+        assert found is not None
+        stale_current = scene["run"].revision.model_copy(update={"revision_id": str(uuid4())})
+        from appraisal_review.adapters.local.integrated_service import formal_delivery_allowed
+
+        assert (
+            formal_delivery_allowed(
+                operation=done,
+                approval_status="approved",
+                current_revision_id=stale_current.revision_id,
+            )
+            is False
+        )
+        assert (
+            formal_delivery_allowed(
+                operation=done,
+                approval_status="approved",
+                current_revision_id=scene["run"].revision.revision_id,
+            )
+            is True
+        )
+        assert (
+            formal_delivery_allowed(
+                operation=done,
+                approval_status="withdrawn",
+                current_revision_id=scene["run"].revision.revision_id,
+            )
+            is False
+        )
+
+
+class TestHumanOnlyApproval:
+    """P2-A: publish permission alone is not enough - the decider must be human."""
+
+    @pytest.mark.parametrize("kind", ["system", "model"])
+    def test_non_human_actor_with_publish_cannot_decide(
+        self, scene: dict[str, Any], kind: str
+    ) -> None:
+        from appraisal_review.domain.service_contracts import ActorReference
+
+        approval = submit(scene)
+        machine = replace(
+            scene["person"],
+            actor=ActorReference(actor_id=f"{kind}-decider", kind=kind),
+        )
+        with pytest.raises(ServiceFault):
+            asyncio.run(
+                scene["approvals"].decide(
+                    machine,
+                    scene["job_id"],
+                    approval.approval_id,
+                    ApprovalDecisionCommand(idempotency_key="dx", decision="approve"),
+                )
+            )
+        assert (
+            scene["approval_store"].current_status(scene["job_id"], approval.approval_id)
+            == "submitted"
+        )
+
+
+class TestDuplicateSubmissionConsistency:
+    """P2-B: resubmitting the same content must not shadow a live approval."""
+
+    def test_second_key_same_binding_reuses_the_live_request(
+        self, scene: dict[str, Any]
+    ) -> None:
+        first = submit(scene, key="a1")
+        second = submit(scene, key="a2")
+        assert second.approval_id == first.approval_id
+
+    def test_resubmission_does_not_shadow_an_approved_binding(
+        self, scene: dict[str, Any]
+    ) -> None:
+        approval = submit(scene, key="a1")
+        decide(scene, approval.approval_id, "approve", "d1")
+        again = submit(scene, key="a3")
+        assert again.approval_id == approval.approval_id
+        assert again.status == "approved"
+        # And formal export still publishes under the original approval.
+        operation = export_formal(scene, key="f-shadow")
+        asyncio.run(scene["exports"].run_pending())
+        assert (
+            scene["export_store"].read(scene["job_id"], operation.export_id).status == "succeeded"
+        )
+
+    def test_after_withdrawal_a_fresh_submission_is_new(self, scene: dict[str, Any]) -> None:
+        approval = submit(scene, key="a1")
+        decide(scene, approval.approval_id, "approve", "d1")
+        decide(scene, approval.approval_id, "withdraw", "d2", reason="teardown")
+        fresh = submit(scene, key="a4")
+        assert fresh.approval_id != approval.approval_id
+        assert fresh.status == "submitted"
+        assert (
+            scene["approval_store"].current_status(scene["job_id"], approval.approval_id)
+            == "withdrawn"
         )

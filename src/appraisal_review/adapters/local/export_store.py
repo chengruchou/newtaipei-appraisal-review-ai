@@ -19,7 +19,7 @@ from uuid import UUID
 from appraisal_review.adapters.local.sqlite_publication import ReviewDatabase, _transaction
 from appraisal_review.application.service_guards import ServiceFault
 from appraisal_review.domain.official_export import ExportOperation, ExportRequest
-from appraisal_review.domain.service_contracts import ServiceErrorCode
+from appraisal_review.domain.service_contracts import ServiceErrorCode, ServiceProblem
 
 _MAX_OBJECT_BYTES = 64 * 1024 * 1024
 
@@ -73,6 +73,32 @@ class SQLiteExportStore:
 
     def save(self, operation: ExportOperation) -> None:
         with _transaction(self.database) as connection:
+            if operation.effective_mode == "formal" and operation.status in {
+                "succeeded",
+                "partial",
+            }:
+                # The successful-formal outcome commits conditionally: the approval row
+                # lives in the same database file, so this SELECT and the UPDATE below
+                # are one serialized transaction - a withdrawal that committed first is
+                # always seen, and one that commits later finds the outcome already
+                # recorded and refuses at the content route instead.
+                row = connection.execute(
+                    "SELECT status FROM report_approvals WHERE approval_id=?",
+                    (str(operation.approval_id),),
+                ).fetchone()
+                if row is None or row[0] != "approved":
+                    operation = operation.model_copy(
+                        update={
+                            "status": "failed",
+                            "tables": tuple(
+                                outcome.model_copy(update={"delivered": False, "artifact_id": None})
+                                for outcome in operation.tables
+                            ),
+                            "artifacts": (),
+                            "problem": ServiceProblem(code=ServiceErrorCode.UNAUTHORIZED),
+                        }
+                    )
+                    operation = ExportOperation.model_validate(operation.model_dump())
             updated = connection.execute(
                 "UPDATE export_operations SET operation=? WHERE export_id=?",
                 (operation.model_dump_json(), str(operation.export_id)),

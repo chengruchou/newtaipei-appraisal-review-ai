@@ -58,6 +58,16 @@ class SQLiteApprovalStore:
                 if row[0] != payload_digest:
                     raise ServiceFault(ServiceErrorCode.CONFLICT)
                 return ReportApproval.model_validate_json(row[1]), False
+            # One live request per exact content: a resubmission of the same binding -
+            # any key, any reviewer - reuses the existing submitted or approved record
+            # instead of inserting a shadow that would mask the live one.
+            live = connection.execute(
+                "SELECT record FROM report_approvals WHERE job_id=? AND binding_digest=? "
+                "AND status IN ('submitted','approved') ORDER BY rowid DESC",
+                (str(approval.job_id), binding_digest),
+            ).fetchone()
+            if live is not None:
+                return ReportApproval.model_validate_json(live[0]), False
             connection.execute(
                 "INSERT INTO report_approvals VALUES(?,?,?,?,?,?,?,?)",
                 (
@@ -85,17 +95,29 @@ class SQLiteApprovalStore:
         return None if row is None else ReportApproval.model_validate_json(row[0])
 
     def latest_for_binding(self, job_id: UUID, binding_digest: str) -> ReportApproval | None:
-        """The approval a formal export must cite: newest record for this exact content."""
+        """The approval a formal export must cite for this exact content.
+
+        The live record (submitted or approved) wins; only when none exists does the
+        newest historical record answer, so a withdrawn approval is reported as
+        withdrawn rather than resurrected or shadowed.
+        """
         connection = self.database._connect()
         try:
+            live = connection.execute(
+                "SELECT record FROM report_approvals WHERE job_id=? AND binding_digest=? "
+                "AND status IN ('submitted','approved') ORDER BY rowid DESC",
+                (str(job_id), binding_digest),
+            ).fetchone()
+            if live is not None:
+                return ReportApproval.model_validate_json(live[0])
             rows = connection.execute(
                 "SELECT record FROM report_approvals WHERE job_id=? AND binding_digest=? "
                 "ORDER BY rowid DESC",
                 (str(job_id), binding_digest),
-            ).fetchall()
+            ).fetchone()
         finally:
             connection.close()
-        return ReportApproval.model_validate_json(rows[0][0]) if rows else None
+        return ReportApproval.model_validate_json(rows[0]) if rows else None
 
     def transition(
         self,

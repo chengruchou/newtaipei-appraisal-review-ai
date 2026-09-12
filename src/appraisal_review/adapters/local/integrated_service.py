@@ -48,6 +48,7 @@ from appraisal_review.application.runtime_worker import (
 from appraisal_review.application.service_guards import Principal, ServiceFault
 from appraisal_review.domain.artifact_publication import PublicationError
 from appraisal_review.domain.document_transfer import DocumentFault, DocumentOperation
+from appraisal_review.domain.official_export import ExportOperation
 from appraisal_review.domain.service_contracts import (
     DocumentReference,
     MaterialRevision,
@@ -418,6 +419,28 @@ class SQLiteDispatchQueue:
                 raise
 
 
+def formal_delivery_allowed(
+    *,
+    operation: ExportOperation,
+    approval_status: str | None,
+    current_revision_id: str,
+) -> bool:
+    """Whether a formal operation's bytes may travel RIGHT NOW.
+
+    Three live facts must all hold at read time: the operation actually committed a
+    delivery, its approval is still approved, and its revision is still the case's
+    current one. Stale bytes from before a correction are refused rather than served
+    as the current formal result; no historical-download semantics exist this round.
+    """
+    if operation.status not in {"succeeded", "partial"}:
+        return False
+    if operation.effective_mode != "formal":
+        return True
+    if approval_status != "approved":
+        return False
+    return bool(operation.run.revision.revision_id == current_revision_id)
+
+
 class LocalContentPlane:
     """Reads authorized bytes for the shared content routes.
 
@@ -483,16 +506,20 @@ class LocalContentPlane:
                 operation, body = found
                 if operation.status not in {"succeeded", "partial"}:
                     raise ServiceFault(ServiceErrorCode.NOT_FOUND)
-                if operation.effective_mode == "formal":
-                    # A withdrawn approval stops the current download authorization; the
-                    # staged bytes stay for history, but they no longer travel.
-                    live = (
-                        None
-                        if self.approvals is None or operation.approval_id is None
-                        else self.approvals.current_status(job_id, operation.approval_id)
-                    )
-                    if live != "approved":
-                        raise ServiceFault(ServiceErrorCode.UNAUTHORIZED)
+                live_status = (
+                    None
+                    if self.approvals is None or operation.approval_id is None
+                    else self.approvals.current_status(job_id, operation.approval_id)
+                )
+                current = status.current_run.revision.revision_id if status.current_run else ""
+                if not formal_delivery_allowed(
+                    operation=operation,
+                    approval_status=live_status,
+                    current_revision_id=current,
+                ):
+                    # Withdrawn approval or superseded revision: the staged bytes stay
+                    # for history, but they no longer travel as current formal output.
+                    raise ServiceFault(ServiceErrorCode.UNAUTHORIZED)
                 delivered = next(a for a in operation.artifacts if a.artifact_id == artifact_id)
                 if hashlib.sha256(body).hexdigest() != delivered.content_hash:
                     raise ServiceFault(ServiceErrorCode.EXECUTION)
@@ -604,6 +631,13 @@ def create_integrated_service(
             snapshots=snapshot_provider,
             policy=ReadinessPolicy.default(),
         )
+
+        def read_current_revision(job_id: UUID) -> RevisionReference | None:
+            record = asyncio.run(store.read_job(job_id=job_id))
+            if record is None or record.current_run is None:
+                return None
+            return record.current_run.revision
+
         export_service = ExportService(
             jobs=service,
             store=export_store,
@@ -612,6 +646,7 @@ def create_integrated_service(
             converter=export_converter,
             snapshots=snapshot_provider,
             approvals=approval_store,
+            current_revision=read_current_revision,
         )
     app = create_app(
         job_service=service,

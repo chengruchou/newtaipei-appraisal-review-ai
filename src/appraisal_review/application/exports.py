@@ -46,6 +46,7 @@ from appraisal_review.domain.official_table_mapping import OfficialTable, TableM
 from appraisal_review.domain.report_approval import ReportApproval, ReportVersionBinding
 from appraisal_review.domain.service_contracts import (
     Permission,
+    RevisionReference,
     RunReference,
     ServiceErrorCode,
     ServiceProblem,
@@ -179,6 +180,7 @@ class ExportService:
         converter: WorkbookConverter | None,
         snapshots: SnapshotProvider,
         approvals: ApprovalAuthority | None = None,
+        current_revision: Callable[[UUID], RevisionReference | None] | None = None,
     ) -> None:
         self.jobs = jobs
         self.store = store
@@ -187,6 +189,9 @@ class ExportService:
         self.converter = converter
         self.snapshots = snapshots
         self.approvals = approvals
+        # Reads the job's CURRENT revision from the durable store, independently of the
+        # operation's own binding, so a queued export cannot publish yesterday's case.
+        self.current_revision = current_revision
         self._lock = asyncio.Lock()
 
     def _version_binding(self, snapshot: CalculationSnapshot) -> ReportVersionBinding:
@@ -302,7 +307,31 @@ class ExportService:
             return False
         return self.approvals.current_status(operation.job_id, operation.approval_id) == "approved"
 
+    def _revision_current(self, operation: ExportOperation) -> bool:
+        """A formal operation is only publishable while its revision is the case's current one."""
+        if operation.effective_mode != "formal":
+            return True
+        if self.current_revision is None:
+            # No reader wired: fail closed for formal output rather than trusting the queue.
+            return False
+        live = self.current_revision(operation.job_id)
+        return live is not None and live == operation.run.revision
+
     def _execute(self, operation: ExportOperation) -> None:
+        if not self._revision_current(operation):
+            # The case advanced (or was corrected) after this operation queued; the old
+            # content needs a fresh approval on the new revision, not a late publication.
+            self.store.save(
+                ExportOperation.model_validate(
+                    operation.model_copy(
+                        update={
+                            "status": "failed",
+                            "problem": ServiceProblem(code=ServiceErrorCode.CONFLICT),
+                        }
+                    ).model_dump()
+                )
+            )
+            return
         if not self._approval_live(operation):
             self.store.save(
                 ExportOperation.model_validate(
@@ -386,9 +415,9 @@ class ExportService:
                 (outcome.problem for outcome in outcomes if outcome.problem is not None),
                 ServiceProblem(code=ServiceErrorCode.EXECUTION),
             )
-        if not self._approval_live(operation):
-            # Withdrawn while converting: the produced bytes stay staged, nothing is
-            # reported delivered, and the content route refuses them independently.
+        if not self._approval_live(operation) or not self._revision_current(operation):
+            # Withdrawn or superseded while converting: the produced bytes stay staged,
+            # nothing is reported delivered, and the content route refuses independently.
             status, outcomes, artifacts = (
                 "failed",
                 [
