@@ -245,9 +245,15 @@ class SearchHit(Protocol):
 
 
 class SearchPort(Protocol):
-    """Search over catalogued official sources; raises SearchUnavailable."""
+    """Search over catalogued official sources; raises SearchUnavailable.
 
-    def search(self, query: str, source_id: str) -> Sequence[SearchHit]: ...
+    timeout_seconds is the wall-clock budget remaining for this one call;
+    the transport must not run longer than that.
+    """
+
+    def search(
+        self, query: str, source_id: str, *, timeout_seconds: float | None = None
+    ) -> Sequence[SearchHit]: ...
 
 
 class ReadDocument(Protocol):
@@ -258,16 +264,30 @@ class ReadDocument(Protocol):
 
 
 class ReaderPort(Protocol):
-    """SSRF-guarded reader; raises SourceReadRefused subclasses."""
+    """SSRF-guarded reader; raises SourceReadRefused subclasses.
 
-    def read(self, url: str, *, max_chars: int | None = None) -> ReadDocument: ...
+    max_seconds, when given, tightens (never loosens) the reader's own
+    per-call wall-clock cap for this one read.
+    """
+
+    def read(
+        self, url: str, *, max_chars: int | None = None, max_seconds: float | None = None
+    ) -> ReadDocument: ...
 
 
 class ConverseClientPort(Protocol):
-    """Minimal Bedrock Converse-shaped client; no boto3 import here."""
+    """Minimal Bedrock Converse-shaped client; no boto3 import here.
+
+    timeout_seconds is the wall-clock budget remaining for this one call;
+    the transport must not wait longer than that for a response.
+    """
 
     def converse(
-        self, *, messages: list[dict[str, Any]], tool_config: dict[str, Any]
+        self,
+        *,
+        messages: list[dict[str, Any]],
+        tool_config: dict[str, Any],
+        timeout_seconds: float | None = None,
     ) -> dict[str, Any]: ...
 
 
@@ -365,6 +385,20 @@ def run_lookup(
         return outcome
 
     started = clock()
+    budget = job.budget
+
+    def elapsed() -> float:
+        return clock() - started
+
+    def remaining() -> float:
+        return budget.max_total_seconds - elapsed()
+
+    def deadline_passed() -> bool:
+        return elapsed() >= budget.max_total_seconds
+
+    def exhausted() -> LookupOutcome:
+        return finish(LookupOutcome(stage="exhausted", candidates=()))
+
     hits_by_id: dict[str, SearchHit] = {}
     read_ids: set[str] = set()
     messages: list[dict[str, Any]] = [
@@ -383,15 +417,26 @@ def run_lookup(
         }
     ]
     while True:
-        try:
-            job.enforce_budget(elapsed_seconds=clock() - started)
-        except BudgetExceeded:
-            return finish(LookupOutcome(stage="exhausted", candidates=()))
+        # START boundary for a model turn: turn count and job deadline. The
+        # document cap deliberately does NOT gate a model turn, so a final
+        # wrap-up after the last lawful read remains possible.
+        if job.model_turns_used >= budget.max_model_turns or deadline_passed():
+            return exhausted()
         job.stage = "model_turn"
         if throttle is not None:
             throttle.acquire()
-        response = model_client.converse(messages=messages, tool_config=LOOKUP_TOOL_CONFIG)
+            # The throttle wait consumed the same job clock; re-check the
+            # START boundary before actually issuing the model call.
+            if deadline_passed():
+                return exhausted()
+        response = model_client.converse(
+            messages=messages, tool_config=LOOKUP_TOOL_CONFIG, timeout_seconds=remaining()
+        )
         job.model_turns_used += 1
+        # ACCEPTANCE boundary: a model response that lands after the job
+        # deadline must never turn into a successful outcome.
+        if deadline_passed():
+            return exhausted()
         message = response["output"]["message"]
         messages.append(message)
         tool_uses = [block["toolUse"] for block in message.get("content", []) if "toolUse" in block]
@@ -411,6 +456,11 @@ def run_lookup(
             def elapsed_ms(call_started: float = call_started) -> int:
                 return max(0, int((clock() - call_started) * 1000))
 
+            # START boundary for any tool action: after the job deadline no
+            # new action may begin, and no later model turn could lawfully
+            # accept its result either, so the job ends exhausted.
+            if deadline_passed():
+                return exhausted()
             if name == "search_official_sources":
                 source_id = str(params.get("source_id", ""))
                 if source_id not in source_catalog:
@@ -425,13 +475,19 @@ def run_lookup(
                     continue
                 job.stage = "searching"
                 try:
-                    hits = search_provider.search(str(params.get("query", "")), source_id)
+                    hits = search_provider.search(
+                        str(params.get("query", "")), source_id, timeout_seconds=remaining()
+                    )
                 except SearchUnavailable:
                     _record(job, name, params, "refused", elapsed_ms())
                     return finish(LookupOutcome(stage="search_unavailable", candidates=()))
+                _record(job, name, params, "ok", elapsed_ms())
+                # ACCEPTANCE boundary: a result landing after the deadline
+                # ends the job exhausted instead of feeding the model.
+                if deadline_passed():
+                    return exhausted()
                 for hit in hits:
                     hits_by_id[hit.result_id] = hit
-                _record(job, name, params, "ok", elapsed_ms())
                 feedback.append(
                     _tool_result(
                         tool_use["toolUseId"],
@@ -457,9 +513,26 @@ def run_lookup(
                         )
                     )
                     continue
+                # START boundary for the document dimension: a read past the
+                # cap is never initiated. The refusal is reported back so
+                # the model may still wrap up within its remaining turns.
+                if job.documents_read >= budget.max_documents:
+                    _record(job, name, params, "refused", elapsed_ms())
+                    feedback.append(
+                        _tool_result(
+                            tool_use["toolUseId"],
+                            {"error": "document budget exhausted; read not initiated"},
+                            error=True,
+                        )
+                    )
+                    continue
                 job.stage = "reading"
                 try:
-                    document = reader.read(chosen.url, max_chars=job.budget.max_document_chars)
+                    document = reader.read(
+                        chosen.url,
+                        max_chars=budget.max_document_chars,
+                        max_seconds=remaining(),
+                    )
                 except SourceReadRefused as refusal:
                     _record(job, name, params, "refused", elapsed_ms())
                     feedback.append(
@@ -473,6 +546,10 @@ def run_lookup(
                 job.documents_read += 1
                 read_ids.add(result_id)
                 _record(job, name, params, "ok", elapsed_ms())
+                # ACCEPTANCE boundary: a document landing after the deadline
+                # ends the job exhausted instead of feeding the model.
+                if deadline_passed():
+                    return exhausted()
                 feedback.append(
                     _tool_result(
                         tool_use["toolUseId"],

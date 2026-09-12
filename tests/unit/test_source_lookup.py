@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime
 from typing import Any, cast
 
@@ -18,6 +19,7 @@ from appraisal_review.adapters.runtime_sources import (
     PrivateAddressRefused,
     ReadTimedOut,
     RedirectRefused,
+    RetrievedDocument,
     SafeSourceReader,
     SchemeRefused,
     SearchProvider,
@@ -339,29 +341,88 @@ def assistant_text(text: str) -> dict[str, object]:
 
 
 class ScriptedModel:
-    def __init__(self, responses: list[dict[str, object]]) -> None:
+    def __init__(
+        self,
+        responses: list[dict[str, object]],
+        *,
+        clock: FakeClock | None = None,
+        cost_seconds: float = 0.0,
+    ) -> None:
         self.responses = list(responses)
         self.calls = 0
         self.seen_messages: list[list[dict[str, object]]] = []
+        self.timeouts: list[float | None] = []
+        self.clock = clock
+        self.cost_seconds = cost_seconds
 
     def converse(
-        self, *, messages: list[dict[str, object]], tool_config: dict[str, object]
+        self,
+        *,
+        messages: list[dict[str, object]],
+        tool_config: dict[str, object],
+        timeout_seconds: float | None = None,
     ) -> dict[str, object]:
         assert tool_config is LOOKUP_TOOL_CONFIG
         self.calls += 1
         self.seen_messages.append([dict(m) for m in messages])
+        self.timeouts.append(timeout_seconds)
+        if self.clock is not None:
+            self.clock.advance(self.cost_seconds)
         return self.responses.pop(0)
 
 
 class FakeSearchProvider:
     def __init__(self, hits: dict[str, list[tuple[str, str]]]) -> None:
         self.hits = hits
+        self.timeouts: list[float | None] = []
 
-    def search(self, query: str, source_id: str) -> list[SearchResult]:
+    def search(
+        self, query: str, source_id: str, *, timeout_seconds: float | None = None
+    ) -> list[SearchResult]:
+        self.timeouts.append(timeout_seconds)
         return [
             SearchResult(result_id=rid, source_id=source_id, title=rid, url=url)
             for rid, url in self.hits.get(source_id, [])
         ]
+
+
+class CountingReader:
+    """ReaderPort fake that records every initiated read and its timeout."""
+
+    def __init__(
+        self,
+        text: str = "area 120.5 m2",
+        *,
+        clock: FakeClock | None = None,
+        cost_seconds: float = 0.0,
+    ) -> None:
+        self.text = text
+        self.calls: list[tuple[str, float | None]] = []
+        self.clock = clock
+        self.cost_seconds = cost_seconds
+
+    def read(
+        self, url: str, *, max_chars: int | None = None, max_seconds: float | None = None
+    ) -> RetrievedDocument:
+        self.calls.append((url, max_seconds))
+        if self.clock is not None:
+            self.clock.advance(self.cost_seconds)
+        return RetrievedDocument(url=url, text=self.text, truncated=False)
+
+
+def assistant_multi_tool_use(calls: list[tuple[str, str, dict[str, object]]]) -> dict[str, object]:
+    return {
+        "stopReason": "tool_use",
+        "output": {
+            "message": {
+                "role": "assistant",
+                "content": [
+                    {"toolUse": {"toolUseId": tid, "name": name, "input": tool_input}}
+                    for tid, name, tool_input in calls
+                ],
+            }
+        },
+    }
 
 
 CANDIDATE_JSON = (
@@ -509,3 +570,156 @@ class TestRunLookup:
         )
         assert outcome.stage == "failed"
         assert outcome.candidates == ()
+
+
+SEVEN_HITS = [(f"res-{i}", f"https://example.gov.tw/doc{i}") for i in range(1, 8)]
+
+
+class TestActionBoundaryBudgets:
+    """R5/P2: budgets must bind BEFORE each action starts and when results land."""
+
+    def test_seventh_read_is_never_initiated_but_wrapup_still_allowed(self) -> None:
+        job = make_job()
+        model = ScriptedModel(
+            [
+                assistant_tool_use(
+                    "t1", "search_official_sources", {"query": "q", "source_id": "moi-registry"}
+                ),
+                assistant_multi_tool_use(
+                    [
+                        (f"t{i + 1}", "read_source", {"result_id": rid})
+                        for i, (rid, _url) in enumerate(SEVEN_HITS)
+                    ]
+                ),
+                assistant_text(CANDIDATE_JSON),
+            ]
+        )
+        provider = FakeSearchProvider({"moi-registry": SEVEN_HITS})
+        reader = CountingReader()
+        outcome = run_lookup(
+            job, model, provider, reader, FakeClock(), source_catalog={"moi-registry"}
+        )
+        # The 7th read is refused at the start boundary: never initiated.
+        assert len(reader.calls) == 6
+        assert job.documents_read == 6
+        outcomes = [c.outcome for c in job.tool_calls]
+        assert outcomes == ["ok"] + ["ok"] * 6 + ["refused"]
+        # The refusal is reported back to the model as an error toolResult.
+        feedback = cast("dict[str, Any]", model.seen_messages[2][-1])
+        seventh = feedback["content"][6]["toolResult"]
+        assert seventh["status"] == "error"
+        assert "budget" in json.dumps(seventh["content"])
+        # After 6 lawful reads the model may still produce a final wrap-up.
+        assert outcome.stage == "candidates_ready"
+        assert outcome.candidates[0].status == "candidate"
+
+    def test_model_response_landing_after_deadline_is_never_candidates_ready(self) -> None:
+        clock = FakeClock()
+        job = make_job()
+        model = ScriptedModel([assistant_text(CANDIDATE_JSON)], clock=clock, cost_seconds=100.0)
+        provider = FakeSearchProvider({})
+        reader = CountingReader()
+        outcome = run_lookup(job, model, provider, reader, clock, source_catalog={"moi-registry"})
+        assert outcome.stage == "exhausted"
+        assert job.stage == "exhausted"
+        assert outcome.candidates == ()
+
+    def test_tool_result_landing_after_deadline_ends_exhausted(self) -> None:
+        clock = FakeClock()
+        job = make_job()
+        model = ScriptedModel(
+            [
+                assistant_tool_use(
+                    "t1", "search_official_sources", {"query": "q", "source_id": "moi-registry"}
+                ),
+                assistant_tool_use("t2", "read_source", {"result_id": "res-1"}),
+                assistant_text(CANDIDATE_JSON),
+            ]
+        )
+        provider = FakeSearchProvider({"moi-registry": SEVEN_HITS[:1]})
+        reader = CountingReader(clock=clock, cost_seconds=95.0)
+        outcome = run_lookup(job, model, provider, reader, clock, source_catalog={"moi-registry"})
+        assert outcome.stage == "exhausted"
+        assert outcome.candidates == ()
+
+    def test_transports_receive_remaining_budget_as_timeout(self) -> None:
+        clock = FakeClock()
+        job = make_job()
+        model = ScriptedModel(
+            [
+                assistant_tool_use(
+                    "t1", "search_official_sources", {"query": "q", "source_id": "moi-registry"}
+                ),
+                assistant_tool_use("t2", "read_source", {"result_id": "res-1"}),
+                assistant_text("[]"),
+            ],
+            clock=clock,
+            cost_seconds=10.0,
+        )
+        provider = FakeSearchProvider({"moi-registry": SEVEN_HITS[:1]})
+        reader = CountingReader()
+        outcome = run_lookup(job, model, provider, reader, clock, source_catalog={"moi-registry"})
+        assert outcome.stage == "candidates_ready"
+        # Model turn 1 starts at t=0 with the full 90s budget.
+        assert model.timeouts[0] == pytest.approx(90.0)
+        # Search starts at t=10 (one model turn consumed): 80s remain.
+        assert provider.timeouts == [pytest.approx(80.0)]
+        # Read starts at t=20 (two model turns consumed): 70s remain.
+        assert reader.calls[0][1] == pytest.approx(70.0)
+
+    def test_throttle_wait_consumes_the_job_clock(self) -> None:
+        clock = FakeClock()
+        sleeps: list[float] = []
+
+        def sleep(seconds: float) -> None:
+            sleeps.append(seconds)
+            clock.advance(seconds)
+
+        throttle = ModelRequestThrottle(1.2, clock=clock, sleep=sleep)
+        job = make_job(budget={"max_total_seconds": 1.0})
+        model = ScriptedModel(
+            [
+                assistant_tool_use("t1", "read_source", {"result_id": "nope"}),
+                assistant_text("[]"),
+            ]
+        )
+        provider = FakeSearchProvider({})
+        reader = CountingReader()
+        outcome = run_lookup(
+            job,
+            model,
+            provider,
+            reader,
+            clock,
+            source_catalog={"moi-registry"},
+            throttle=throttle,
+        )
+        # The 1.2s throttle wait before turn 2 crosses the 1.0s job budget,
+        # so the second model call is never started.
+        assert sleeps == [pytest.approx(1.2)]
+        assert model.calls == 1
+        assert outcome.stage == "exhausted"
+
+
+class TestSafeReaderPerCallTimeout:
+    def test_per_call_max_seconds_binds_tighter_than_default(self) -> None:
+        clock = FakeClock()
+        url = "https://example.gov.tw/slow"
+        reader = make_reader(
+            {url: FetchResult(status_code=200, body=b"late")},
+            clock=clock,
+            fetch_cost_seconds=10.0,
+        )
+        with pytest.raises(ReadTimedOut):
+            reader.read(url, max_seconds=5.0)
+
+    def test_per_call_max_seconds_cannot_loosen_the_default(self) -> None:
+        clock = FakeClock()
+        url = "https://example.gov.tw/slow"
+        reader = make_reader(
+            {url: FetchResult(status_code=200, body=b"late")},
+            clock=clock,
+            fetch_cost_seconds=25.0,
+        )
+        with pytest.raises(ReadTimedOut):
+            reader.read(url, max_seconds=50.0)

@@ -62,15 +62,23 @@ class SearchResult:
 class SearchProvider(Protocol):
     """Port for a real search capability over catalogued official sources."""
 
-    def search(self, query: str, source_id: str) -> tuple[SearchResult, ...]:
-        """Return results or raise SearchUnavailable; never invent hits."""
+    def search(
+        self, query: str, source_id: str, *, timeout_seconds: float | None = None
+    ) -> tuple[SearchResult, ...]:
+        """Return results or raise SearchUnavailable; never invent hits.
+
+        timeout_seconds, when given, is the wall-clock budget remaining for
+        this one call; the transport must not run longer than that.
+        """
         ...
 
 
 class NullSearchProvider:
     """Honest default until a real provider exists: always unavailable."""
 
-    def search(self, query: str, source_id: str) -> tuple[SearchResult, ...]:
+    def search(
+        self, query: str, source_id: str, *, timeout_seconds: float | None = None
+    ) -> tuple[SearchResult, ...]:
         raise SearchUnavailable("no search provider is configured; refusing to fabricate results")
 
 
@@ -153,14 +161,19 @@ class SafeSourceReader:
         self._max_redirects = max_redirects
         self._clock = clock
 
-    def read(self, url: str, *, max_chars: int | None = None) -> RetrievedDocument:
+    def read(
+        self, url: str, *, max_chars: int | None = None, max_seconds: float | None = None
+    ) -> RetrievedDocument:
+        # A per-call override can only tighten the configured cap, never
+        # loosen it: the effective deadline is min(instance cap, override).
+        limit = self._max_seconds if max_seconds is None else min(self._max_seconds, max_seconds)
         started = self._clock()
         current = url
         self._validate_url(current)
         for _hop in range(self._max_redirects + 1):
-            self._check_deadline(started)
+            self._check_deadline(started, limit)
             response = self._fetch(current)
-            self._check_deadline(started)
+            self._check_deadline(started, limit)
             if response.redirect_to is not None:
                 try:
                     self._validate_url(response.redirect_to)
@@ -180,9 +193,9 @@ class SafeSourceReader:
             return RetrievedDocument(url=current, text=text, truncated=truncated)
         raise RedirectRefused(f"more than {self._max_redirects} redirects from {url}")
 
-    def _check_deadline(self, started: float) -> None:
-        if self._clock() - started > self._max_seconds:
-            raise ReadTimedOut(f"read exceeded {self._max_seconds} seconds")
+    def _check_deadline(self, started: float, limit: float) -> None:
+        if self._clock() - started > limit:
+            raise ReadTimedOut(f"read exceeded {limit} seconds")
 
     def _validate_url(self, url: str) -> None:
         parts = urlsplit(url)
