@@ -128,3 +128,186 @@ export function categoryLabel(category: FindingCategory, t: Translate): string {
   };
   return t(...labels[category]);
 }
+
+export type SubjectRole = "target" | "comparable";
+
+/** Roles come from the service's own identifiers, never from document page order. */
+export function subjectRoleText(role: SubjectRole, t: Translate): string {
+  return role === "target" ? t("Target", "比準地") : t("Comparable", "比較標的");
+}
+
+export type BlockerKind =
+  | "coverage_missing"
+  | "coverage_unsupported"
+  | "verification_critical"
+  | "verification_warning"
+  | "selection_missing"
+  | "selection_ambiguous"
+  | "rule_unapproved"
+  | "source_unresolved";
+
+export function blockerKindText(kind: BlockerKind, t: Translate): string {
+  const words: Record<BlockerKind, [string, string]> = {
+    coverage_missing: ["Required check not covered", "必要檢核未覆蓋"],
+    coverage_unsupported: ["Required check unsupported", "必要檢核未支援"],
+    verification_critical: ["Verification blocker", "獨立驗證阻擋"],
+    verification_warning: ["Verification warning", "獨立驗證警示"],
+    selection_missing: ["No applicable rule version", "找不到適用規則版本"],
+    selection_ambiguous: ["Conflicting rule versions", "適用規則版本衝突"],
+    rule_unapproved: ["Rule not approved", "規則尚未核准"],
+    source_unresolved: ["Unresolved source metadata", "來源目錄資料未解決"],
+  };
+  return t(...words[kind]);
+}
+
+/** What the reviewer can actually do next. Never a claim that the service will act. */
+export function blockerActionText(kind: BlockerKind, t: Translate): string {
+  const words: Record<BlockerKind, [string, string]> = {
+    coverage_missing: [
+      "Supply this field's observation and source through the matching human task.",
+      "透過對應人工作業補齊此欄位的觀察值與來源引用。",
+    ],
+    coverage_unsupported: [
+      "This deployment cannot check this item. The operator decides the rule scope; the frontend does not substitute one.",
+      "本部署無法檢核此項目，規則範圍須由管理者確認，前端不會自行替代。",
+    ],
+    verification_critical: [
+      "Read the current findings and the open human tasks before any publication decision.",
+      "在做出任何發布決定前，先檢視本輪發現與待處理人工作業。",
+    ],
+    verification_warning: [
+      "Request human review of this warning; it is not cleared by reloading.",
+      "此警示須由人工複核，重新整理不會將其清除。",
+    ],
+    selection_missing: [
+      "Confirm the applicable rule version for this comparison. No other district's rules are substituted.",
+      "確認此比較情境的適用規則版本；不會改用其他行政區的規則。",
+    ],
+    selection_ambiguous: [
+      "Resolve which pinned rule version applies to this comparison.",
+      "釐清此比較情境應適用哪一個已固定的規則版本。",
+    ],
+    rule_unapproved: [
+      "Rule approval is a separate permission. Confirming an observation does not approve a rule.",
+      "規則核准是獨立權限；確認欄位觀察值不等於已核准規則。",
+    ],
+    source_unresolved: [
+      "The catalog metadata for this source is still unresolved; the operator has to settle it.",
+      "此來源的目錄資料尚未解決，須由管理者處理。",
+    ],
+  };
+  return t(...words[kind]);
+}
+
+export interface OfficialFormDefinition {
+  /** Stable local identifier; not a service artifact identifier. */
+  id: "form3" | "form4" | "form5";
+  officialName: string;
+  visibleSheet: string;
+  /** Present only where the official filename carries a land-use qualifier. */
+  landUseQualifier: string | null;
+  granularity: "section" | "comparison";
+  /** How the workbook stores a difference or correction rate. The frontend never converts. */
+  rateConvention: [string, string];
+}
+
+/**
+ * Read-only facts confirmed against the operator's own workbooks on 2026-09-12. The
+ * files stay out of version control; only their identity and unit conventions are
+ * recorded here so a label cannot silently describe the wrong sheet.
+ */
+export const OFFICIAL_FORMS: OfficialFormDefinition[] = [
+  {
+    id: "form3",
+    officialName: "地價區段勘查表",
+    visibleSheet: "表3區段勘查表",
+    landUseQualifier: null,
+    granularity: "section",
+    rateConvention: [
+      "No difference-rate column is published for this form here.",
+      "此表未在此登錄差異率欄位慣例。",
+    ],
+  },
+  {
+    id: "form4",
+    officialName: "比較法調查估價表",
+    visibleSheet: "表4比較法調查估價表",
+    landUseQualifier: null,
+    granularity: "comparison",
+    rateConvention: [
+      "Difference-rate columns use an Excel percent format: five points is stored as 0.05 and displays as 5.00%.",
+      "差異率欄位採 Excel 百分比格式：五個百分點儲存為 0.05，顯示為 5.00%。",
+    ],
+  },
+  {
+    id: "form5",
+    officialName: "影響地價區域因素分析明細表（住宅用地）",
+    visibleSheet: "表5-1區域因素明細表(住)",
+    landUseQualifier: "住宅用地",
+    granularity: "comparison",
+    rateConvention: [
+      "Correction-percentage columns use a plain numeric format: five points is stored as 5, not 0.05.",
+      "修正率欄位採一般數值格式：五個百分點儲存為 5，而不是 0.05。",
+    ],
+  },
+];
+
+/** A bare form number would mislabel the sheet after a district or land-use change. */
+export function officialFormLabel(form: OfficialFormDefinition, t: Translate): string {
+  const numbers: Record<OfficialFormDefinition["id"], [string, string]> = {
+    form3: ["Form 3", "表 3"],
+    form4: ["Form 4", "表 4"],
+    form5: ["Form 5-1", "表 5-1"],
+  };
+  const number = t(...numbers[form.id]);
+  return form.landUseQualifier && !form.officialName.includes(form.landUseQualifier)
+    ? `${number} · ${form.officialName}（${form.landUseQualifier}）`
+    : `${number} · ${form.officialName}`;
+}
+
+export function officialFormGranularityText(form: OfficialFormDefinition, t: Translate): string {
+  return form.granularity === "section"
+    ? t(
+        "One file per land value section. The number of files depends on how many sections the subjects fall in.",
+        "以地價區段為單位，份數取決於標的分布於幾個區段。",
+      )
+    : t(
+        "One target plus comparable 1, 2 and 3, as the official layout fixes the axis.",
+        "固定為一個比準地加上比較標的 1、2、3，與官方版面一致。",
+      );
+}
+
+export type ConditionField =
+  | "case_id"
+  | "district"
+  | "zone"
+  | "land_use_category"
+  | "effective_date"
+  | "current_use"
+  | "regulatory_zone"
+  | "target_id"
+  | "comparable_id";
+
+export function conditionFieldText(field: ConditionField, t: Translate): string {
+  const words: Record<ConditionField, [string, string]> = {
+    case_id: ["Case", "案件"],
+    district: ["District", "行政區"],
+    zone: ["Section", "區段"],
+    land_use_category: ["Rule use category", "規則用途分類"],
+    effective_date: ["Applicable date", "適用日期"],
+    current_use: ["Current use", "現況用途"],
+    regulatory_zone: ["Regulatory zoning", "法定使用分區"],
+    target_id: ["Target", "比準地"],
+    comparable_id: ["Comparable", "比較標的"],
+  };
+  return t(...words[field]);
+}
+
+export function conditionMethodText(
+  method: "native_proposed" | "manual_proposed",
+  t: Translate,
+): string {
+  return method === "native_proposed"
+    ? t("Native parsed candidate", "原生解析候選")
+    : t("Manual interpretation candidate", "人工解讀候選");
+}

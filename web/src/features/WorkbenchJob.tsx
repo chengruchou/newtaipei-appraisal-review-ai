@@ -18,6 +18,10 @@ import { useText } from "@/ui/Language";
 import { Icon } from "@/ui/Icon";
 import { TaskPage } from "./TaskPage";
 import { CaseContext } from "./CaseContext";
+import { BlockerList } from "./BlockerList";
+import { ConditionEntry } from "./ConditionEntry";
+import { OfficialForms } from "./OfficialForms";
+import { SubjectRoster } from "./SubjectRoster";
 import {
   categoryLabel,
   documentPurposeText,
@@ -185,6 +189,7 @@ export function WorkbenchJob({
     results: ["Review overview", "審查摘要"],
     evidence: ["Source and rule comparison", "來源與規則比對"],
     tasks: ["Human review", "人工作業"],
+    forms: ["Official forms", "官方表格"],
   };
   return (
     <article>
@@ -234,6 +239,8 @@ export function WorkbenchJob({
             />
           ) : page === "evidence" ? (
             <EvidenceComparison data={data} jobId={jobId} client={client} />
+          ) : page === "forms" ? (
+            <OfficialForms context={data.context} />
           ) : page === "tasks" ? (
             taskId ? (
               <TaskPage
@@ -361,6 +368,8 @@ function Progress({ data, jobId }: { data: JobData; jobId: string }) {
           </Link>
         </section>
       </div>
+      <SubjectRoster context={data.context} tasks={data.tasks} jobId={jobId} />
+      <ConditionEntry context={data.context} tasks={data.tasks} jobId={jobId} />
       <section className="panel">
         <h2>{t("Pinned documents", "本輪固定文件")}</h2>
         <ul className="document-list">
@@ -566,22 +575,16 @@ function Results({
           "計數單位是檢核紀錄，包含來源、規則與數值檢核；不是因素數，也不是全案覆蓋率。",
         )}
       </p>
-      {data.assessment ? (
-        <p className="coverage-line">
-          {t("Independent required inventory", "獨立必要檢查清單")}：
-          {data.assessment.coverage.required.length} · {t("Verified", "已核對")}{" "}
-          {data.assessment.coverage.verified.length} · {t("Missing", "未覆蓋")}{" "}
-          {data.assessment.coverage.missing.length} · {t("Unsupported", "未支援")}{" "}
-          {(data.assessment.coverage.unsupported ?? []).length}
-        </p>
-      ) : (
-        <p className="small muted">
-          {t(
-            "The committed-result API does not expose an inventory denominator; no coverage rate is calculated here.",
-            "已提交結果 API 未提供必要清單分母，此處不計算覆蓋率。",
-          )}
-        </p>
-      )}
+      <BlockerList
+        input={{
+          context: data.context,
+          tasks: data.tasks,
+          assessment: data.assessment,
+          result: data.result,
+          assessmentError: data.assessmentError,
+        }}
+        jobId={jobId}
+      />
       <section className="panel">
         <div className="toolbar">
           <label className="search-box">
@@ -965,24 +968,49 @@ function PublishedOutput({
       </p>
       {available ? (
         result.artifacts.map((artifact) => (
-          <div className="artifact-row" key={artifact.artifact_id}>
-            <span>
-              <Icon name="file" />
-              {artifact.page_count} {t("pages", "頁")} ·{" "}
-              {t(
-                "Published local output; formal business acceptance remains separate",
-                "已發布本機輸出；正式業務驗收仍須另行確認",
-              )}
-            </span>
-            <button
-              disabled={busy}
-              data-variant="primary"
-              onClick={() => {
-                void download(artifact);
-              }}
-            >
-              {t("Download verified PDF", "下載已驗證 PDF")}
-            </button>
+          <div key={artifact.artifact_id}>
+            <div className="artifact-row">
+              <span>
+                <Icon name="file" />
+                {artifact.page_count} {t("pages", "頁")} ·{" "}
+                {t(
+                  "Published local output; formal business acceptance remains separate",
+                  "已發布本機輸出；正式業務驗收仍須另行確認",
+                )}
+              </span>
+              <button
+                disabled={busy}
+                data-variant="primary"
+                onClick={() => {
+                  void download(artifact);
+                }}
+              >
+                {t("Download verified PDF", "下載已驗證 PDF")}
+              </button>
+            </div>
+            <div className="table-scroll">
+              <table aria-label={t("Artifact comparison contexts", "成果比較情境")}>
+                <thead>
+                  <tr>
+                    <th>{t("Scope", "比較情境")}</th>
+                    <th>{t("Target", "基準側")}</th>
+                    <th>{t("Comparable", "比較側")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(artifact.schema_version === "artifact-manifest-v2"
+                    ? artifact.contexts
+                    : [artifact.context]
+                  ).map((context) => (
+                    <tr key={JSON.stringify(context)}>
+                      <td>{context.scope}</td>
+                      <td>{context.target_id}</td>
+                      <td>{context.comparable_id}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         ))
       ) : (

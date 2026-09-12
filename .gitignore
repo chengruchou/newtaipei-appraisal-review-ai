@@ -32,6 +32,8 @@ cdk.out/
 
 # Competition and case data: never commit real documents
 /*.pdf
+# Official form templates and the operator's local notes: never committed.
+docs/table/
 datasets/raw/
 datasets/interim/
 datasets/processed/

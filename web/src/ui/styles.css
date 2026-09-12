@@ -1254,6 +1254,82 @@ ul.plain {
     padding: 22px;
   }
 }
+.subject-roster .subject-row,
+.blocker-list .blocker-row {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+}
+.subject-roster .subject-row:last-child,
+.blocker-list .blocker-row:last-child {
+  border-bottom: none;
+}
+.subject-roster .subject-row > div {
+  flex: 1 1 260px;
+  min-width: 0;
+}
+.subject-roster .subject-row strong {
+  display: block;
+  margin: 6px 0 2px;
+  overflow-wrap: anywhere;
+}
+.subject-roster .subject-row p {
+  margin: 0;
+}
+.blocker-list .blocker-row {
+  flex-direction: column;
+  gap: 6px;
+}
+.blocker-list .blocker-head {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.blocker-list .blocker-row p {
+  margin: 0;
+}
+.blocker-list .blocker-fields {
+  overflow-wrap: anywhere;
+}
+.blocker-list .blocker-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+.condition-entry .condition-row .status-pill {
+  margin-right: 6px;
+}
+.condition-entry .condition-row .button {
+  margin-top: 8px;
+}
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+.form-card h3 {
+  margin-top: 0;
+  overflow-wrap: anywhere;
+}
+.form-card .form-instances {
+  border-left: 3px solid var(--border);
+  padding-left: 12px;
+  margin: 10px 0;
+}
+@media (max-width: 760px) {
+  .form-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .subject-roster .subject-row > .button,
+  .subject-roster .subject-row > span {
+    width: 100%;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

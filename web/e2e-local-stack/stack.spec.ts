@@ -13,11 +13,23 @@ const session = JSON.parse(readFileSync(process.env["LOCAL_STACK_SESSION"]!, "ut
 const headers = { Authorization: `Bearer ${session.session_token}` };
 const output = process.env["LOCAL_STACK_EVIDENCE"]!;
 
+/**
+ * The workbench ships in Traditional Chinese unless the reviewer's own stored preference
+ * says otherwise. These checks read the English wording, so they set that same stored
+ * preference the language button writes. Nothing about the service is stubbed.
+ */
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => window.localStorage.setItem("workbench.language", "en"));
+});
+
 test("built workbench retrieves and saves the exact authorized published PDF", async ({ page }) => {
-  await page.goto(`/jobs/${session.completed_job_id}`);
+  // The mounted route for a job is /jobs/:jobId/*; the review overview is what the
+  // application actually renders, and it reads the current result without a separate click.
+  await page.goto(`/jobs/${session.completed_job_id}/results`);
   await page.getByLabel("Session token").fill(session.session_token);
   await page.getByRole("button", { name: "Continue" }).click();
-  await page.getByRole("button", { name: "Load current result" }).click();
+  await expect(page.getByRole("heading", { name: "Review overview" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Download verified PDF" })).toBeVisible();
   const response = await page.request.get(`/v1/review-jobs/${session.completed_job_id}/result`, {
     headers,
   });

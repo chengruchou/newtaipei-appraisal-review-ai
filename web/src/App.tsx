@@ -158,6 +158,7 @@ function Shell({
     ["results", "check", t("Results", "結果總覽")],
     ["evidence", "book", t("Evidence", "證據比對")],
     ["tasks", "person", t("Human review", "人工作業")],
+    ["forms", "file", t("Official forms", "官方表格")],
   ] as const;
   return (
     <div className="app-shell">
@@ -231,7 +232,9 @@ function Shell({
                 ? t("Case entry", "案件入口")
                 : pathname.startsWith("/privacy")
                   ? t("Local privacy", "本機隱私")
-                  : t("Case review", "案件審查")}
+                  : /^\/jobs\/[^/]+\/forms/.test(pathname)
+                    ? t("Official forms (not produced)", "官方表格（尚未產出）")
+                    : t("Case review", "案件審查")}
             </span>
           </div>
           <div className="account">

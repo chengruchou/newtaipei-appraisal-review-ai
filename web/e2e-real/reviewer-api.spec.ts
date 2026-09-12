@@ -19,11 +19,18 @@ interface Fixture {
 const fixture = JSON.parse(readFileSync(process.env["REVIEW_BROWSER_FIXTURE"]!, "utf8")) as Fixture;
 const headers = { Authorization: `Bearer ${fixture.session_token}` };
 
+/** These checks read the English wording, so they set the stored language preference the
+ * language button writes. No route, response or state is simulated. */
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => window.localStorage.setItem("workbench.language", "en"));
+});
+
 test("the real published result downloads exact authorized artifact bytes", async ({ page }) => {
-  await page.goto(`/jobs/${fixture.completed_job_id}`);
+  await page.goto(`/jobs/${fixture.completed_job_id}/results`);
   await page.getByLabel("Session token").fill(fixture.session_token);
   await page.getByRole("button", { name: "Continue" }).click();
-  await page.getByRole("button", { name: "Load current result" }).click();
+  await expect(page.getByRole("heading", { name: "Review overview" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Download verified PDF" })).toBeVisible();
   const response = await page.request.get(`/v1/review-jobs/${fixture.completed_job_id}/result`, {
     headers,
   });
@@ -51,12 +58,27 @@ async function openTask(page: Page, id: string) {
 }
 
 test("an authorized empty job still shows its task list and revision history", async ({ page }) => {
-  await page.goto(`/jobs/${fixture.empty_job_id}`);
+  await page.goto(`/jobs/${fixture.empty_job_id}/tasks`);
   await page.getByLabel("Session token").fill(fixture.session_token);
   await page.getByRole("button", { name: "Continue" }).click();
   await expect(page.getByText("Nothing is waiting for you on this job.")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Revision history" })).toBeVisible();
+  // The mounted workbench keeps revision history in a disclosure rather than a heading.
+  await expect(page.getByText("Revision history")).toBeVisible();
   await expect(page.getByRole("alert")).toHaveCount(0);
+});
+
+test("the mounted workbench names the official forms without offering a download", async ({
+  page,
+}) => {
+  await page.goto(`/jobs/${fixture.completed_job_id}/forms`);
+  await page.getByLabel("Session token").fill(fixture.session_token);
+  await page.getByRole("button", { name: "Continue" }).click();
+  await expect(page.getByRole("region", { name: "Form 3 · 地價區段勘查表" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Form 4 · 比較法調查估價表" })).toBeVisible();
+  await expect(
+    page.getByText("Not available in this deployment: no form download route is published"),
+  ).toHaveCount(3);
+  await expect(page.getByRole("alert")).toContainText("No official form has been produced.");
 });
 
 for (const action of ["confirm", "correct", "reject"] as const) {

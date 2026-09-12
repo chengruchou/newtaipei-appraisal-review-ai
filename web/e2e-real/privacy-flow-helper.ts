@@ -271,6 +271,9 @@ async function originalPrivacyFlow(page: Page, mode: "complete" | "paused") {
     .toBe(true);
   const jobId = handoff.review_job_id!;
   const reviewer = await page.context().newPage();
+  // The reviewer workbench ships in Traditional Chinese unless the stored preference says
+  // otherwise; this sets the same preference its language button writes.
+  await reviewer.addInitScript(() => window.localStorage.setItem("workbench.language", "en"));
   await reviewer.goto(`/jobs/${jobId}`);
   await reviewer.getByLabel("Session token", { exact: true }).fill(reviewFixture.session_token);
   await reviewer.getByRole("button", { name: "Continue", exact: true }).click();
@@ -444,8 +447,10 @@ async function originalPrivacyFlow(page: Page, mode: "complete" | "paused") {
   expect(result.artifacts).toHaveLength(1);
   const artifact = result.artifacts[0]!;
   expect(artifact.schema_version).toBe("artifact-manifest-v2");
-  await reviewer.goto(`/jobs/${jobId}`);
-  await reviewer.getByRole("button", { name: "Load current result", exact: true }).click();
+  await reviewer.goto(`/jobs/${jobId}/results`);
+  await expect(
+    reviewer.getByRole("button", { name: "Download verified PDF", exact: true }),
+  ).toBeVisible();
   if (artifact.schema_version === "artifact-manifest-v2") {
     expect(artifact.contexts.length).toBeGreaterThan(1);
     const table = reviewer.getByRole("table", { name: "Artifact comparison contexts" });
