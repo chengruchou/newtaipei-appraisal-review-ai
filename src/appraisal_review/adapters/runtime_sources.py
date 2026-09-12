@@ -1,0 +1,212 @@
+"""SSRF-safe reading of official web sources. NOT wired into the app.
+
+SafeSourceReader fetches only https URLs on a caller-supplied allowlist,
+re-validating every redirect hop and refusing private, loopback, link-local
+and metadata addresses after DNS resolution. Network and DNS are injected
+callables so unit tests never touch the real network. There are no
+hardcoded case answers anywhere in this module.
+"""
+
+from __future__ import annotations
+
+import ipaddress
+import time
+from collections.abc import Callable, Iterable, Mapping, Sequence
+from dataclasses import dataclass, field
+from typing import Protocol
+from urllib.parse import urlsplit
+
+from appraisal_review.application.source_lookup import (
+    SearchUnavailable as SearchUnavailable,
+)
+from appraisal_review.application.source_lookup import (
+    SourceReadRefused as SourceReadRefused,
+)
+
+
+class SchemeRefused(SourceReadRefused):
+    """URL scheme is not https."""
+
+
+class HostNotAllowlisted(SourceReadRefused):
+    """URL host is not on the configured source allowlist."""
+
+
+class PrivateAddressRefused(SourceReadRefused):
+    """Host resolved to a private, loopback, link-local or metadata address."""
+
+
+class RedirectRefused(SourceReadRefused):
+    """A redirect target failed validation or too many hops occurred."""
+
+
+class OversizeBodyRefused(SourceReadRefused):
+    """Response body exceeded max_bytes."""
+
+
+class ReadTimedOut(SourceReadRefused):
+    """Wall-clock time for the read exceeded max_seconds."""
+
+
+@dataclass(frozen=True)
+class SearchResult:
+    """One hit from an official-source search."""
+
+    result_id: str
+    source_id: str
+    title: str
+    url: str
+    snippet: str = ""
+
+
+class SearchProvider(Protocol):
+    """Port for a real search capability over catalogued official sources."""
+
+    def search(self, query: str, source_id: str) -> tuple[SearchResult, ...]:
+        """Return results or raise SearchUnavailable; never invent hits."""
+        ...
+
+
+class NullSearchProvider:
+    """Honest default until a real provider exists: always unavailable."""
+
+    def search(self, query: str, source_id: str) -> tuple[SearchResult, ...]:
+        raise SearchUnavailable("no search provider is configured; refusing to fabricate results")
+
+
+@dataclass(frozen=True)
+class FixedSourceDocument:
+    """A known document at a fixed URL inside one catalogued source."""
+
+    result_id: str
+    source_id: str
+    title: str
+    url: str
+
+
+class FixedUrlCatalog:
+    """Narrow capability: list known fixed-URL documents per source.
+
+    This is deliberately NOT a SearchProvider. Enumerating a hand-curated
+    catalog must never be presented to the model or to reviewers as if a
+    query had been executed against the source.
+    """
+
+    def __init__(self, documents: Iterable[FixedSourceDocument]) -> None:
+        self._by_source: dict[str, tuple[FixedSourceDocument, ...]] = {}
+        for doc in documents:
+            existing = self._by_source.get(doc.source_id, ())
+            self._by_source[doc.source_id] = (*existing, doc)
+
+    def documents_for(self, source_id: str) -> tuple[FixedSourceDocument, ...]:
+        return self._by_source.get(source_id, ())
+
+
+@dataclass(frozen=True)
+class FetchResult:
+    """Injected fetcher's view of one HTTP response (one hop, no auto-follow)."""
+
+    status_code: int
+    body: bytes = b""
+    redirect_to: str | None = None
+    headers: Mapping[str, str] = field(default_factory=dict)
+
+
+FetchCallable = Callable[[str], FetchResult]
+ResolveCallable = Callable[[str], Sequence[str]]
+
+
+@dataclass(frozen=True)
+class RetrievedDocument:
+    """Successfully read source text plus the final URL it came from."""
+
+    url: str
+    text: str
+    truncated: bool
+
+
+class SafeSourceReader:
+    """Reads https documents from allowlisted hosts with SSRF guards.
+
+    The allowlist is policy configuration passed by the caller; nothing is
+    hardcoded. `fetch` must perform exactly one hop (no automatic redirect
+    following) and `resolve` must return the IP addresses the fetch will
+    actually connect to, so validation and connection see the same answer.
+    """
+
+    def __init__(
+        self,
+        *,
+        allowed_hosts: Iterable[str],
+        fetch: FetchCallable,
+        resolve: ResolveCallable,
+        max_bytes: int = 2_000_000,
+        max_seconds: float = 20.0,
+        max_redirects: int = 3,
+        clock: Callable[[], float] = time.monotonic,
+    ) -> None:
+        self._allowed_hosts = frozenset(host.strip().lower() for host in allowed_hosts)
+        self._fetch = fetch
+        self._resolve = resolve
+        self._max_bytes = max_bytes
+        self._max_seconds = max_seconds
+        self._max_redirects = max_redirects
+        self._clock = clock
+
+    def read(self, url: str, *, max_chars: int | None = None) -> RetrievedDocument:
+        started = self._clock()
+        current = url
+        self._validate_url(current)
+        for _hop in range(self._max_redirects + 1):
+            self._check_deadline(started)
+            response = self._fetch(current)
+            self._check_deadline(started)
+            if response.redirect_to is not None:
+                try:
+                    self._validate_url(response.redirect_to)
+                except SourceReadRefused as refusal:
+                    raise RedirectRefused(
+                        f"redirect from {current} to refused target "
+                        f"{response.redirect_to}: {refusal}"
+                    ) from refusal
+                current = response.redirect_to
+                continue
+            if len(response.body) > self._max_bytes:
+                raise OversizeBodyRefused(f"body of {current} exceeds {self._max_bytes} bytes")
+            text = response.body.decode("utf-8", errors="replace")
+            truncated = max_chars is not None and len(text) > max_chars
+            if truncated and max_chars is not None:
+                text = text[:max_chars]
+            return RetrievedDocument(url=current, text=text, truncated=truncated)
+        raise RedirectRefused(f"more than {self._max_redirects} redirects from {url}")
+
+    def _check_deadline(self, started: float) -> None:
+        if self._clock() - started > self._max_seconds:
+            raise ReadTimedOut(f"read exceeded {self._max_seconds} seconds")
+
+    def _validate_url(self, url: str) -> None:
+        parts = urlsplit(url)
+        if parts.scheme.lower() != "https":
+            raise SchemeRefused(f"refusing non-https scheme: {parts.scheme or '(none)'}")
+        host = (parts.hostname or "").lower()
+        if not host or host not in self._allowed_hosts:
+            raise HostNotAllowlisted(f"host not on source allowlist: {host or '(none)'}")
+        addresses = self._resolve(host)
+        if not addresses:
+            raise PrivateAddressRefused(f"host {host} did not resolve to any address")
+        for raw in addresses:
+            try:
+                address = ipaddress.ip_address(raw)
+            except ValueError as error:
+                raise PrivateAddressRefused(
+                    f"host {host} resolved to unparsable address {raw!r}"
+                ) from error
+            if (
+                address.is_private
+                or address.is_loopback
+                or address.is_link_local
+                or address.is_reserved
+                or address.is_multicast
+                or address.is_unspecified
+            ):
+                raise PrivateAddressRefused(f"host {host} resolved to non-public address {address}")
