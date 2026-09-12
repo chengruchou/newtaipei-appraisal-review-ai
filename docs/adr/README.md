@@ -66,6 +66,10 @@ work is tracked in [the backlog](../implementation-backlog.md).
 | 0045 | [Preserve unknown gateway write outcomes](0045-gateway-write-outcome.md) |
 | 0046 | [Exact local visual review of uncertain restoration OCR](0046-local-ocr-visual-review.md) |
 | 0047 | [Explicit competition runtime composition and atomic spending limits](0047-competition-runtime-composition.md) |
+| 0048 | [Observed model routing evidence and route-dependent capability](0048-observed-model-routing-evidence.md) |
+| 0049 | [Declared case sources are an expectation, never evidence](0049-declared-case-source-manifest.md) |
+| 0050 | [A per-source direct path for document sets that need no privacy processing](0050-direct-non-sensitive-source-path.md) |
+| 0051 | [Faithful workbook to PDF conversion or none](0051-workbook-pdf-conversion.md) |
 
 ## Originating filename migration
 
