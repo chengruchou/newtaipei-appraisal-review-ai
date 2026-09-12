@@ -17,13 +17,17 @@ import { buildExportsClient } from "@/config";
 import { EvidenceList } from "@/ui/Evidence";
 import { renderValue } from "@/ui/Authority";
 import { useText } from "@/ui/Language";
+import { serviceProblemText } from "@/ui/ServiceProblemText";
 import { Icon } from "@/ui/Icon";
 import { TaskPage } from "./TaskPage";
 import { CaseContext } from "./CaseContext";
 import { BlockerList } from "./BlockerList";
 import { ConditionEntry } from "./ConditionEntry";
 import { ApprovalPanel, classifyBasisError, type ExportBasisState } from "./ApprovalPanel";
+import { CandidatePanel } from "./CandidatePanel";
+import { buildCandidateClient } from "./candidate-api";
 import { ExportPanel, type ExportBasis } from "./ExportPanel";
+import { factorLabel, sideLabel, subjectLabel } from "./field-labels";
 import { OfficialForms } from "./OfficialForms";
 import { SubjectRoster } from "./SubjectRoster";
 import {
@@ -101,6 +105,7 @@ export function WorkbenchJob({
   const taskId = route.startsWith("tasks/") ? route.slice("tasks/".length) : null;
   const t = useText();
   const exportsApi = useMemo(() => buildExportsClient(), []);
+  const candidateApi = useMemo(() => buildCandidateClient(), []);
   const [data, setData] = useState<JobData | null>(null);
   const [error, setError] = useState<unknown>(null);
   const [updated, setUpdated] = useState<Date | null>(null);
@@ -259,13 +264,14 @@ export function WorkbenchJob({
               <TaskList data={data} jobId={jobId} />
             )
           ) : (
-            <Progress data={data} jobId={jobId} />
+            <Progress data={data} jobId={jobId} candidateApi={candidateApi} />
           )}
           <p className="update-line">
-            {t("Last confirmed local read", "最近一次本機查詢確認")}：
+            {t("Data refreshed", "資料更新時間")}：
             {updated?.toLocaleTimeString("zh-TW", { timeZone: "Asia/Taipei", hour12: false }) ??
               "—"}{" "}
-            · Asia/Taipei · {t("Checks every 5 seconds while visible", "頁面可見時每 5 秒查詢")}
+            · Asia/Taipei ·{" "}
+            {t("Updates every 5 seconds while this page is open", "頁面開啟時每 5 秒自動更新")}
           </p>
         </>
       )}
@@ -273,7 +279,15 @@ export function WorkbenchJob({
   );
 }
 
-function Progress({ data, jobId }: { data: JobData; jobId: string }) {
+function Progress({
+  data,
+  jobId,
+  candidateApi,
+}: {
+  data: JobData;
+  jobId: string;
+  candidateApi: ReturnType<typeof buildCandidateClient>;
+}) {
   const t = useText();
   const { job } = data;
   const states = ["queued", "running", "waiting_for_human", "succeeded"];
@@ -316,28 +330,34 @@ function Progress({ data, jobId }: { data: JobData; jobId: string }) {
           <p>
             {job.job_status === "waiting_for_human"
               ? t(
-                  "The run is waiting for explicit human responses. It is not an infrastructure failure.",
-                  "本輪正在等待明確的人工作業，這不是基礎服務失敗。",
+                  "This round is waiting for reviewer responses. Continue under Human review.",
+                  "本輪正在等待人工回覆，請至「人工作業」處理。",
                 )
               : job.job_status === "succeeded"
                 ? t(
-                    "Execution succeeded. Business verification and artifact publication are separate checks.",
-                    "執行已成功；業務檢核與成果發布仍是不同狀態。",
+                    "Execution succeeded. Check the review overview for business checks and outputs.",
+                    "執行已成功；請到審查摘要確認業務檢核與成果狀態。",
                   )
                 : job.job_status === "retryable_failed"
                   ? t(
-                      "A retry is eligible, but no retry is claimed to be running. Operator recovery is separate.",
-                      "此工作可重試，但尚未宣稱正在重試，需依管理者復原流程處理。",
+                      "Execution was interrupted and is eligible for a retry by the operator.",
+                      "執行中斷，可由管理者重試；目前尚未重新執行。",
                     )
                   : t(
-                      "This state comes from the durable job API. No completion percentage or ETA is estimated.",
-                      "狀態來自耐久工作 API，不估算完成百分比或剩餘時間。",
+                      "Processing. This page updates automatically when the state changes.",
+                      "系統處理中；狀態變更時此頁會自動更新。",
                     )}
           </p>
           {job.problem ? (
-            <p className="notice" data-tone="danger">
-              {t("Service reported", "服務回報")}：{job.problem.code}
-            </p>
+            <div className="notice" data-tone="danger">
+              <p style={{ margin: 0 }}>{serviceProblemText(job.problem.code, t).title}</p>
+              <details>
+                <summary>{t("Technical record", "技術紀錄")}</summary>
+                <p className="small muted" style={{ margin: "0.25rem 0 0" }}>
+                  <code>{job.problem.code}</code>
+                </p>
+              </details>
+            </div>
           ) : null}
           {job.cancel_requested ? (
             <p className="notice" data-tone="warn">
@@ -347,12 +367,15 @@ function Progress({ data, jobId }: { data: JobData; jobId: string }) {
               )}
             </p>
           ) : null}
-          <dl className="kv">
-            <dt>{t("Execution attempts", "已記錄執行次數")}</dt>
-            <dd>{job.attempt_count}</dd>
-            <dt>{t("Current result version", "已提交結果版本")}</dt>
-            <dd>{job.result_version}</dd>
-          </dl>
+          <details>
+            <summary>{t("Technical record", "技術紀錄")}</summary>
+            <dl className="kv">
+              <dt>{t("Execution attempts", "已記錄執行次數")}</dt>
+              <dd>{job.attempt_count}</dd>
+              <dt>{t("Current result version", "已提交結果版本")}</dt>
+              <dd>{job.result_version}</dd>
+            </dl>
+          </details>
         </section>
         <section className="panel">
           <h2>
@@ -376,8 +399,9 @@ function Progress({ data, jobId }: { data: JobData; jobId: string }) {
       </div>
       <SubjectRoster context={data.context} tasks={data.tasks} jobId={jobId} />
       <ConditionEntry context={data.context} tasks={data.tasks} jobId={jobId} />
+      <CandidatePanel api={candidateApi} caseId={data.context.job.case_id} />
       <section className="panel">
-        <h2>{t("Pinned documents", "本輪固定文件")}</h2>
+        <h2>{t("Original documents", "原始文件")}</h2>
         <ul className="document-list">
           {data.context.documents?.map((document) => (
             <li key={document.document_id}>
@@ -385,18 +409,18 @@ function Progress({ data, jobId }: { data: JobData; jobId: string }) {
               <div>
                 <strong>{document.document_id}</strong>
                 <span className="muted">
-                  {documentPurposeText(document.purpose, t)} · v{document.version}
+                  {documentPurposeText(document.purpose, t)} · v{document.version} ·{" "}
+                  {t("Included in this round", "本輪已收錄")}
                 </span>
               </div>
             </li>
           ))}
         </ul>
-        <p className="small muted">
-          {t(
-            "Document identities come from the revision API; page counts are not inferred.",
-            "文件身分來自修訂 API，不推測頁數或上傳狀態。",
-          )}
-        </p>
+        {!data.context.documents?.length ? (
+          <p className="empty-state">
+            {t("No documents are recorded for this round.", "本輪尚未收錄任何文件。")}
+          </p>
+        ) : null}
       </section>
     </>
   );
@@ -414,8 +438,8 @@ function TaskList({ data, jobId }: { data: JobData; jobId: string }) {
         <h2>{t("Open tasks", "目前待處理")}</h2>
         <p className="muted">
           {t(
-            "Confirmations, corrections and approvals are separate. Raw confidence remains unchanged.",
-            "確認、更正與核准分開；原始擷取信心值保持不變。",
+            "Review the cited evidence for each item, then respond.",
+            "請逐項核對引用證據後回覆。",
           )}
         </p>
         {open.length ? (
@@ -428,13 +452,12 @@ function TaskList({ data, jobId }: { data: JobData; jobId: string }) {
                 <div>
                   <strong>{taskQuestionText(view.task.reason_code, view.task.question, t)}</strong>
                   <p className="muted">
-                    {view.task.side?.factor_id} ·{" "}
-                    {view.task.side?.side === "target"
-                      ? t("Target side", "基準側")
-                      : view.task.side?.side === "comparable"
-                        ? t("Comparable side", "比較側")
-                        : t("See exact subject", "查看精確主體")}{" "}
-                    · {t("Task version", "任務版本")} {view.task.version}
+                    {view.task.side
+                      ? `${factorLabel(view.task.side.factor_id, t)} · ${sideLabel(
+                          view.task.side.side,
+                          t,
+                        )}`
+                      : t("See exact subject", "查看精確主體")}
                   </p>
                 </div>
                 <Link className="button primary" to={`/jobs/${jobId}/tasks/${view.task.task_id}`}>
@@ -468,26 +491,57 @@ function TaskList({ data, jobId }: { data: JobData; jobId: string }) {
       <details className="panel">
         <summary>{t("Revision history", "修訂歷程")}</summary>
         <p className="muted">
-          {t(
-            "Only recorded revisions are listed; no timestamps or approval events are invented.",
-            "僅列服務記錄的修訂，不編造時間或核准事件。",
-          )}
+          {t("Recorded corrections in this case.", "本案件已記錄的更正內容。")}
         </p>
         <ol>
-          {data.revisions.revisions.map((revision) => (
+          {data.revisions.revisions.map((revision, index) => (
             <li key={revision.reference.revision_id}>
-              <code>{revision.reference.revision_id}</code>
+              <strong>
+                {t("Revision", "修訂")} {index + 1}
+              </strong>
               {revision.changes.map((change) => (
                 <p key={change.subject_id}>
-                  {change.subject_id}：{renderValue(change.original, t)} →{" "}
-                  {renderValue(change.corrected, t)} · {t("Raw confidence", "原始信心值")}{" "}
-                  {change.original.confidence ?? t("Unknown", "未知")}
+                  {subjectLabel(change.subject_id, t)}：{renderValue(change.original, t)} →{" "}
+                  {renderValue(change.corrected, t)}
                 </p>
               ))}
+              <details>
+                <summary>{t("Technical record", "技術紀錄")}</summary>
+                <dl className="kv">
+                  <dt>revision_id</dt>
+                  <dd>
+                    <code>{revision.reference.revision_id}</code>
+                  </dd>
+                  {revision.changes.map((change) => (
+                    <ChangeRecord change={change} key={change.subject_id} />
+                  ))}
+                </dl>
+              </details>
             </li>
           ))}
         </ol>
+        {!data.revisions.revisions.length ? (
+          <p className="empty-state">{t("No recorded revisions yet.", "尚無已記錄的修訂。")}</p>
+        ) : null}
       </details>
+    </>
+  );
+}
+
+function ChangeRecord({
+  change,
+}: {
+  change: RevisionListView["revisions"][number]["changes"][number];
+}) {
+  const t = useText();
+  return (
+    <>
+      <dt>
+        <code>{change.subject_id}</code>
+      </dt>
+      <dd>
+        {t("Raw confidence", "原始信心值")}：{change.original.confidence ?? t("Unknown", "未知")}
+      </dd>
     </>
   );
 }
@@ -662,7 +716,9 @@ function Results({
                 <tr key={`${finding.id}:${index}`}>
                   <td>
                     <strong>{findingKindText(finding.kind, t)}</strong>
-                    <small className="muted">{finding.factor_id ?? finding.kind}</small>
+                    <small className="muted">
+                      {finding.factor_id ? factorLabel(finding.factor_id, t) : finding.kind}
+                    </small>
                   </td>
                   <td>
                     <span className="status-pill" data-status={finding.status}>
@@ -804,7 +860,8 @@ export function EvidenceComparison({
           >
             {source.findings.map((item, i) => (
               <option key={i} value={i}>
-                {item.factor_id ?? item.kind} · {statusText(item.status, t)}
+                {item.factor_id ? factorLabel(item.factor_id, t) : item.kind} ·{" "}
+                {statusText(item.status, t)}
               </option>
             ))}
           </select>
@@ -813,12 +870,15 @@ export function EvidenceComparison({
           {categoryLabel(findingCategory(finding), t)}
         </span>
       </div>
-      <p className="small muted">
-        {t(
-          "Local originals are read through the separately paired loopback source provider, with current case authorization. Originals do not fall back to the review API or the separate privacy-review service.",
-          "原件由獨立配對的本機（loopback）來源服務提供，須同時通過配對與案件授權；不會改由審查 API 或另一套隱私檢查服務取得。",
-        )}
-      </p>
+      <details className="small">
+        <summary>{t("Technical notes", "技術說明")}</summary>
+        <p className="small muted">
+          {t(
+            "Local originals are read through the separately paired loopback source provider, with current case authorization. Originals do not fall back to the review API or the separate privacy-review service.",
+            "原件由獨立配對的本機（loopback）來源服務提供，須同時通過配對與案件授權；不會改由審查 API 或另一套隱私檢查服務取得。",
+          )}
+        </p>
+      </details>
       <div className="two-columns evidence-columns">
         <section className="panel">
           <h2>
@@ -836,14 +896,18 @@ export function EvidenceComparison({
             observations.map((item, i) => (
               <div className="observation-row" key={i}>
                 <span>
-                  {item.side.side === "target" ? t("Target", "基準側") : t("Comparable", "比較側")}{" "}
-                  · {item.side.factor_id}
+                  {sideLabel(item.side.side, t)} · {factorLabel(item.side.factor_id, t)}
                 </span>
                 <strong>{renderValue(item.observation, t)}</strong>
-                <small>
-                  {t("Raw confidence", "原始信心值")}：
-                  {item.observation.confidence ?? t("Unknown", "未知")}
-                </small>
+                <details>
+                  <summary>
+                    <small>{t("Technical record", "技術紀錄")}</small>
+                  </summary>
+                  <small>
+                    <code>{item.side.factor_id}</code> · {t("Raw confidence", "原始信心值")}：
+                    {item.observation.confidence ?? t("Unknown", "未知")}
+                  </small>
+                </details>
               </div>
             ))
           ) : (

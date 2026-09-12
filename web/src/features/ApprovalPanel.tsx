@@ -83,6 +83,45 @@ export function approvalStatusText(
 }
 
 /**
+ * The named status sentence for the main view. Actor identifiers and policy versions
+ * stay out of it on purpose; they live in the 版本證據 disclosure below.
+ */
+export function approvalStatusSentence(
+  approval: ReportApproval,
+  t: (english: string, chinese: string) => string,
+): string {
+  const submitted = formatServerSeconds(approval.submitted_at);
+  const decided = approval.decision ? formatServerSeconds(approval.decision.decided_at) : null;
+  switch (approval.status) {
+    case "submitted":
+      return t(
+        `Submitted for approval on ${submitted}; awaiting a person with approval permission.`,
+        `已送核（${submitted}），等待具核准權限人員核准。`,
+      );
+    case "approved":
+      return t(
+        `Approved${decided ? ` (approved at ${decided})` : ""}.`,
+        `已核准${decided ? `（核准時間 ${decided}）` : ""}。`,
+      );
+    case "returned":
+      return t(
+        `Returned${decided ? ` on ${decided}` : ""}; correct and submit again.`,
+        `已退回${decided ? `（${decided}）` : ""}，請依理由修正後重新送核。`,
+      );
+    case "withdrawn":
+      return t(
+        `Withdrawn${decided ? ` on ${decided}` : ""}; submit a new request for a formal export.`,
+        `已撤回${decided ? `（${decided}）` : ""}，如需正式匯出請重新送核。`,
+      );
+    case "superseded":
+      return t(
+        "The approved content has changed since approval; submit again.",
+        "核准後內容版本已變更，需重新送核。",
+      );
+  }
+}
+
+/**
  * Why a formal export would be refused right now, or null when a current approved
  * approval exists. Shared with the export panel's 正式 option.
  */
@@ -347,8 +386,8 @@ export function ApprovalPanel({
       <h2>{t("Report and approval", "報表與核准")}</h2>
       <p className="small muted">
         {t(
-          "A formal export requires an approved request for the current content. Readiness, requests and decisions below come from the service.",
-          "正式匯出須先完成本內容版本的核准。以下就緒狀態、申請與決定皆來自服務紀錄。",
+          "A formal export requires an approved request for the current content.",
+          "正式匯出須先完成本內容版本的核准。",
         )}
       </p>
       {state.kind === "loading" ? (
@@ -362,9 +401,12 @@ export function ApprovalPanel({
             {basisIssueText(state.issue, t)}
           </p>
           {state.issue.serviceMessage ? (
-            <p className="small muted" style={{ margin: "0.25rem 0 0" }}>
-              {t("Service message", "服務回覆")}：{state.issue.serviceMessage}
-            </p>
+            <details>
+              <summary>{t("Diagnostics", "診斷資訊")}</summary>
+              <p className="small muted" style={{ margin: "0.25rem 0 0" }}>
+                {t("Service message", "服務回覆")}：{state.issue.serviceMessage}
+              </p>
+            </details>
           ) : null}
           <button type="button" disabled={busy} onClick={onRefresh}>
             {t("Read again", "重新讀取")}
@@ -439,10 +481,13 @@ export function ApprovalPanel({
                   </ul>
                 </div>
               ) : null}
-              <p className="small muted">
-                {t("Readiness policy version", "就緒判定政策版本")}：
-                <code>{readiness.policy_version}</code>
-              </p>
+              <details className="small">
+                <summary>{t("Version evidence", "版本證據")}</summary>
+                <p className="small muted">
+                  {t("Readiness policy version", "就緒判定政策版本")}：
+                  <code>{readiness.policy_version}</code>
+                </p>
+              </details>
             </div>
           ) : (
             <p className="notice" data-tone="warn" role="status">
@@ -473,25 +518,9 @@ export function ApprovalPanel({
               <p role="status" aria-live="polite">
                 <span className="status-pill" data-status={approval.status}>
                   {approvalStatusText(approval.status, t)}
-                </span>
+                </span>{" "}
+                {approvalStatusSentence(approval, t)}
               </p>
-              <dl className="kv">
-                <dt>{t("Submitted by", "送核者")}</dt>
-                <dd>
-                  {approval.submitted_by.actor_id}（{approval.submitted_by.kind}）
-                </dd>
-                <dt>{t("Submitted at", "送核時間")}</dt>
-                <dd>{formatServerSeconds(approval.submitted_at)} · Asia/Taipei</dd>
-                {approval.decision ? (
-                  <>
-                    <dt>{t("Decided at", "決定時間")}</dt>
-                    <dd>
-                      {formatServerSeconds(approval.decision.decided_at)} ·{" "}
-                      {approval.decision.actor.actor_id}
-                    </dd>
-                  </>
-                ) : null}
-              </dl>
               {(approval.status === "returned" || approval.status === "withdrawn") &&
               approval.decision?.reason ? (
                 <p className="notice" data-tone="warn" role="status">
@@ -565,13 +594,31 @@ export function ApprovalPanel({
               ) : null}
               <details>
                 <summary>
-                  {t("Technical reference (binding digests)", "技術參考（綁定雜湊）")}
+                  {t(
+                    "Version evidence (identities and binding digests)",
+                    "版本證據（識別碼與綁定雜湊）",
+                  )}
                 </summary>
                 <dl className="kv">
                   <dt>{t("Approval id", "核准申請識別碼")}</dt>
                   <dd>
                     <code>{approval.approval_id}</code>
                   </dd>
+                  <dt>{t("Submitted by", "送核者")}</dt>
+                  <dd>
+                    <code>{approval.submitted_by.actor_id}</code>（{approval.submitted_by.kind}）·{" "}
+                    {formatServerSeconds(approval.submitted_at)} · Asia/Taipei
+                  </dd>
+                  {approval.decision ? (
+                    <>
+                      <dt>{t("Decided by", "決定者")}</dt>
+                      <dd>
+                        <code>{approval.decision.actor.actor_id}</code>（
+                        {approval.decision.actor.kind}）·{" "}
+                        {formatServerSeconds(approval.decision.decided_at)} · Asia/Taipei
+                      </dd>
+                    </>
+                  ) : null}
                   <dt>{t("Calculation snapshot digest", "計算快照雜湊")}</dt>
                   <dd>
                     <code>{approval.binding.calculation_snapshot_digest}</code>
@@ -685,8 +732,8 @@ function ApprovalNotice({
   const { error, on } = notice;
   const decisionWords: Partial<Record<typeof error.code, [string, string]>> = {
     unauthorized: [
-      "You do not have approval permission (publish_artifact).",
-      "您沒有核准權限（publish_artifact）。",
+      "You do not have approval permission. Ask a person with approval permission to record this decision.",
+      "您沒有核准權限，請由具核准權限的人員執行此決定。",
     ],
     version_conflict: [
       "The request state changed first, or this decision already exists. Read the current state again.",
@@ -725,13 +772,25 @@ function ApprovalNotice({
     (on === "decision" ? decisionWords[error.code] : submitWords[error.code]) ??
     shared[error.code] ??
     shared.execution_failed;
+  const showDiagnostics =
+    error.serviceMessage !== null || (on === "decision" && error.code === "unauthorized");
   return (
     <div className="notice" data-tone="danger" role="alert">
       <p style={{ margin: 0 }}>{pair ? t(...pair) : error.code}</p>
-      {error.serviceMessage ? (
-        <p className="small muted" style={{ margin: "0.25rem 0 0" }}>
-          {t("Service message", "服務回覆")}：{error.serviceMessage}
-        </p>
+      {showDiagnostics ? (
+        <details>
+          <summary>{t("Diagnostics", "診斷資訊")}</summary>
+          {on === "decision" && error.code === "unauthorized" ? (
+            <p className="small muted" style={{ margin: "0.25rem 0 0" }}>
+              {t("Required permission", "所需權限")}：<code>publish_artifact</code>
+            </p>
+          ) : null}
+          {error.serviceMessage ? (
+            <p className="small muted" style={{ margin: "0.25rem 0 0" }}>
+              {t("Service message", "服務回覆")}：{error.serviceMessage}
+            </p>
+          ) : null}
+        </details>
       ) : null}
     </div>
   );

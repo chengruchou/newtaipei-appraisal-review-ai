@@ -284,10 +284,19 @@ export function ExportPanel({
       </h2>
       <p className="small muted">
         {t(
-          "The service produces the official tables from the committed calculation snapshot. Nothing here recomputes a value.",
-          "由服務依已提交的計算快照產出官方表格；此面板不重新計算任何數值。",
+          "Pick a file format and a version, then generate and download the official tables.",
+          "選擇檔案格式與申請版本後，即可產生並下載官方表格。",
         )}
       </p>
+      <details className="small">
+        <summary>{t("Technical notes", "技術說明")}</summary>
+        <p className="small muted">
+          {t(
+            "The service produces the official tables from the committed calculation snapshot. Nothing here recomputes a value. Switching format starts a new export operation under a new key; an existing operation keeps its format.",
+            "由服務依已提交的計算快照產出官方表格；此面板不重新計算任何數值。切換格式會以新的識別碼建立新的匯出作業；既有作業的格式不會改變。",
+          )}
+        </p>
+      </details>
       {!basis ? (
         <p className="notice" data-tone="warn" role="status">
           {t(
@@ -320,12 +329,6 @@ export function ExportPanel({
               />{" "}
               PDF (.pdf)
             </label>
-            <p className="small muted">
-              {t(
-                "Switching format starts a new export operation under a new key; an existing operation keeps its format.",
-                "切換格式會以新的識別碼建立新的匯出作業；既有作業的格式不會改變。",
-              )}
-            </p>
           </fieldset>
           <fieldset disabled={busy}>
             <legend>{t("Requested mode", "申請版本")}</legend>
@@ -381,10 +384,7 @@ export function ExportPanel({
                   {statusWords(operation.status, t)}
                 </span>{" "}
                 {inProgress
-                  ? t(
-                      "Reading the actual state from the service every 2 seconds.",
-                      "每 2 秒向服務讀取實際狀態。",
-                    )
+                  ? t("Generating; this status updates automatically.", "產生中，狀態將自動更新。")
                   : null}
               </p>
               {operation.status === "failed" ? (
@@ -625,9 +625,12 @@ function NoticeView({
     <div className="notice" data-tone="danger" role="alert">
       <p style={{ margin: 0 }}>{sentence}</p>
       {error.serviceMessage ? (
-        <p className="small muted" style={{ margin: "0.25rem 0 0" }}>
-          {t("Service message", "服務回覆")}：{error.serviceMessage}
-        </p>
+        <details>
+          <summary>{t("Diagnostics", "診斷資訊")}</summary>
+          <p className="small muted" style={{ margin: "0.25rem 0 0" }}>
+            {t("Service message", "服務回覆")}：{error.serviceMessage}
+          </p>
+        </details>
       ) : null}
     </div>
   );

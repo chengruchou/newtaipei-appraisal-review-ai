@@ -222,7 +222,10 @@ describe("approval decisions", () => {
     show(service, ready(serverBasis({ approval: approval() })));
     await user.click(screen.getByRole("button", { name: "核准" }));
     await user.click(screen.getByRole("button", { name: "確認送出決定" }));
-    await screen.findByText(/您沒有核准權限（publish_artifact）/);
+    await screen.findByText(/您沒有核准權限，請由具核准權限的人員執行此決定/);
+    // The raw permission name stays available, but behind the diagnostics fold.
+    expect(screen.getByText("publish_artifact")).toBeInTheDocument();
+    expect(screen.getByText("publish_artifact")).not.toBeVisible();
     expect(screen.getByText("待核准")).toBeInTheDocument();
   });
 });

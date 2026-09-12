@@ -15,6 +15,7 @@ import { serviceProblemText } from "@/ui/ServiceProblemText";
 import { useCallback } from "react";
 
 import { ResponseForm, subjectMatches } from "./ResponseForm";
+import { factorLabel, looksOpaque, parseSubjectId, sideLabel, subjectLabel } from "./field-labels";
 import { taskQuestionText } from "./workbench-state";
 
 type Load =
@@ -107,6 +108,24 @@ export function TaskPage({
 
   const { view } = load;
   const task = view.task;
+  // Readable identity for the main copy; the raw identifiers stay verbatim in 技術紀錄.
+  const parsedSubject = parseSubjectId(view.subject_id);
+  const rawFactor = task.side?.factor_id ?? parsedSubject?.factorId ?? null;
+  const factor = factorLabel(rawFactor, t);
+  const sideValue = task.side?.side ?? parsedSubject?.side ?? null;
+  const targetId = task.side?.context.target_id ?? parsedSubject?.targetId ?? null;
+  const comparableId = task.side?.context.comparable_id ?? parsedSubject?.comparableId ?? null;
+  const identityLine = [
+    looksOpaque(task.run.revision.case_id)
+      ? null
+      : `${t("Case", "案件")} ${task.run.revision.case_id}`,
+    targetId && comparableId ? `${t("Subjects", "標的")} ${targetId} × ${comparableId}` : null,
+    factor
+      ? `${t("Field to confirm", "待確認欄位")} ${factor}${
+          sideValue ? `（${sideLabel(sideValue, t)}）` : ""
+        }`
+      : null,
+  ].filter((piece): piece is string => piece !== null);
   return (
     <article>
       <h2>
@@ -124,10 +143,7 @@ export function TaskPage({
           )[task.kind] ?? task.kind,
         )}
       </h2>
-      <p className="muted">
-        {t("Case", "案件")} {task.run.revision.case_id} · {t("revision", "修訂")}{" "}
-        {task.run.revision.revision_id} · {t("task version", "任務版本")} {task.version}
-      </p>
+      {identityLine.length ? <p className="muted">{identityLine.join(" · ")}</p> : null}
 
       <p style={{ fontSize: "1.05rem" }}>{taskQuestionText(task.reason_code, task.question, t)}</p>
 
@@ -137,7 +153,9 @@ export function TaskPage({
         <ValueAuthority
           change={{
             schema_version: "service-v1",
-            subject_id: subject.subject_id,
+            // Presentation only: the heading speaks the readable field name; the exact
+            // canonical subject_id stays verbatim in 技術紀錄 and in every submission.
+            subject_id: subjectLabel(subject.subject_id, t) ?? subject.subject_id,
             original: subject.observation,
             proposed: null,
             corrected: null,
@@ -155,14 +173,47 @@ export function TaskPage({
       <h3>{t("Evidence", "核對來源證據")}</h3>
       <EvidenceList citations={task.evidence} loadSource={loadSource} />
 
-      <h3>{t("Findings this task answers", "本次回覆對應的檢核紀錄")}</h3>
-      <ul>
-        {task.finding_ids.map((id) => (
-          <li key={id}>
-            <code>{id}</code>
-          </li>
-        ))}
-      </ul>
+      <details>
+        <summary>{t("Technical record", "技術紀錄")}</summary>
+        <dl className="kv">
+          <dt>{t("Case", "案件識別碼")}</dt>
+          <dd>
+            <code>{task.run.revision.case_id}</code>
+          </dd>
+          <dt>{t("Revision", "修訂識別碼")}</dt>
+          <dd>
+            <code>{task.run.revision.revision_id}</code>
+          </dd>
+          <dt>{t("Task version", "任務版本")}</dt>
+          <dd>{task.version}</dd>
+          {view.subject_id ? (
+            <>
+              <dt>subject_id</dt>
+              <dd>
+                <code>{view.subject_id}</code>
+              </dd>
+            </>
+          ) : null}
+          {rawFactor ? (
+            <>
+              <dt>factor_id</dt>
+              <dd>
+                <code>{rawFactor}</code>
+              </dd>
+            </>
+          ) : null}
+          <dt>{t("Findings this task answers", "本次回覆對應的檢核紀錄")}</dt>
+          <dd>
+            <ul>
+              {task.finding_ids.map((id) => (
+                <li key={id}>
+                  <code>{id}</code>
+                </li>
+              ))}
+            </ul>
+          </dd>
+        </dl>
+      </details>
 
       <h3>{t("Respond", "回覆此任務")}</h3>
       <ResponseForm

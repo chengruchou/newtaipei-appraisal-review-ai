@@ -15,6 +15,7 @@ Content-Type.
 """
 
 from typing import Annotated, Any
+from urllib.parse import unquote
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, Request
@@ -102,10 +103,14 @@ async def upload_material(
 ) -> MaterialRecord:
     """Store one raw-body upload durably; the response sha256 verifies the bytes."""
     data = await request.body()
+    # Browsers cannot put non-ISO-8859-1 header values on the wire, so the client
+    # percent-encodes Chinese filenames; decode here so the stored record carries
+    # the real name. A plain ASCII name passes through unchanged.
+    filename = unquote(x_upload_filename)
     return await service.add_material(
         principal,
         str(case_id),
-        filename=x_upload_filename,
+        filename=filename,
         media_type=content_type,
         data=data,
         idempotency_key=x_idempotency_key,

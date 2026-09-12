@@ -211,7 +211,10 @@ describe("evidence selection and scope (unit regression)", () => {
     expect(
       screen.getByRole("heading", { name: "Rule references for this comparison scope" }),
     ).toBeVisible();
-    expect(screen.getByText(/separately paired loopback source provider/)).toBeVisible();
+    // The loopback provenance moved behind the 技術說明 fold; it stays available verbatim
+    // but is no longer part of the main copy.
+    expect(screen.getByText(/separately paired loopback source provider/)).toBeInTheDocument();
+    expect(screen.getByText(/separately paired loopback source provider/)).not.toBeVisible();
   });
 
   it("changes only the requested finding query and performs no writes or source fetches", async () => {
