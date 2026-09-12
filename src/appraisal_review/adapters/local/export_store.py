@@ -14,11 +14,17 @@ a key silently.
 from __future__ import annotations
 
 import hashlib
+import sqlite3
 from uuid import UUID
 
 from appraisal_review.adapters.local.sqlite_publication import ReviewDatabase, _transaction
 from appraisal_review.application.service_guards import ServiceFault
-from appraisal_review.domain.official_export import ExportOperation, ExportRequest
+from appraisal_review.domain.official_export import (
+    ConvertedPDFArtifact,
+    ExportOperation,
+    ExportRequest,
+)
+from appraisal_review.domain.report_approval import ReportApproval
 from appraisal_review.domain.service_contracts import ServiceErrorCode, ServiceProblem
 
 _MAX_OBJECT_BYTES = 64 * 1024 * 1024
@@ -71,6 +77,68 @@ class SQLiteExportStore:
             )
         return operation, True
 
+    def _current_revision_blocker(
+        self, connection: sqlite3.Connection, operation: ExportOperation
+    ) -> ServiceProblem | None:
+        """The authoritative current-revision check, on the SAME open transaction.
+
+        The review state singleton in this database file is the source of truth for
+        which run and revision a job currently stands on; corrections, withdrawals
+        and resumptions all commit there. Anything unreadable fails closed: a formal
+        outcome never commits on a revision this transaction cannot verify.
+        """
+        try:
+            row = connection.execute(
+                "SELECT payload FROM review_state WHERE singleton=1"
+            ).fetchone()
+            if row is None:
+                return ServiceProblem(code=ServiceErrorCode.CONFLICT)
+            state = self.database._decode(row[0]).model_dump(mode="json")
+            if state.get("schema_version") != "sqlite-review-v1":
+                return ServiceProblem(code=ServiceErrorCode.CONFLICT)
+            job = state["jobs"].get(str(operation.job_id))
+            if job is None or job["current_run_id"] != str(operation.run.run_id):
+                return ServiceProblem(code=ServiceErrorCode.CONFLICT)
+            runs = [
+                r["value"]
+                for r in state["runs"]
+                if r["job_id"] == str(operation.job_id)
+                and r["value"]["run_id"] == job["current_run_id"]
+            ]
+            if len(runs) != 1 or runs[0]["revision"] != operation.run.revision.model_dump(
+                mode="json"
+            ):
+                return ServiceProblem(code=ServiceErrorCode.CONFLICT)
+        except (KeyError, TypeError, ValueError, sqlite3.Error):
+            return ServiceProblem(code=ServiceErrorCode.CONFLICT)
+        return None
+
+    @staticmethod
+    def _approval_blocker(
+        connection: sqlite3.Connection, operation: ExportOperation
+    ) -> ServiceProblem | None:
+        """Approval status AND binding, re-read inside the committing transaction."""
+        row = connection.execute(
+            "SELECT status, job_id, record FROM report_approvals WHERE approval_id=?",
+            (str(operation.approval_id),),
+        ).fetchone()
+        if row is None or row[1] != str(operation.job_id) or row[0] != "approved":
+            return ServiceProblem(code=ServiceErrorCode.UNAUTHORIZED)
+        try:
+            approved = ReportApproval.model_validate_json(row[2])
+        except ValueError:
+            return ServiceProblem(code=ServiceErrorCode.UNAUTHORIZED)
+        hashes = approved.binding.workbook_hashes
+        for artifact in operation.artifacts:
+            produced = (
+                artifact.source_workbook_hash
+                if isinstance(artifact, ConvertedPDFArtifact)
+                else artifact.content_hash
+            )
+            if hashes.get(artifact.table) != produced:
+                return ServiceProblem(code=ServiceErrorCode.CONFLICT)
+        return None
+
     def save(self, operation: ExportOperation) -> None:
         with _transaction(self.database) as connection:
             if operation.effective_mode == "formal" and operation.status in {
@@ -78,15 +146,16 @@ class SQLiteExportStore:
                 "partial",
             }:
                 # The successful-formal outcome commits conditionally: the approval row
-                # lives in the same database file, so this SELECT and the UPDATE below
-                # are one serialized transaction - a withdrawal that committed first is
-                # always seen, and one that commits later finds the outcome already
-                # recorded and refuses at the content route instead.
-                row = connection.execute(
-                    "SELECT status FROM report_approvals WHERE approval_id=?",
-                    (str(operation.approval_id),),
-                ).fetchone()
-                if row is None or row[0] != "approved":
+                # and the job's authoritative current revision live in the same database
+                # file, so these reads and the UPDATE below are one serialized BEGIN
+                # IMMEDIATE transaction - a withdrawal or correction that committed
+                # first is always seen, and one that commits later finds the outcome
+                # already recorded and refuses at the content route instead. No cached
+                # or second-connection value participates in this decision.
+                blocker = self._approval_blocker(
+                    connection, operation
+                ) or self._current_revision_blocker(connection, operation)
+                if blocker is not None:
                     operation = operation.model_copy(
                         update={
                             "status": "failed",
@@ -95,7 +164,7 @@ class SQLiteExportStore:
                                 for outcome in operation.tables
                             ),
                             "artifacts": (),
-                            "problem": ServiceProblem(code=ServiceErrorCode.UNAUTHORIZED),
+                            "problem": blocker,
                         }
                     )
                     operation = ExportOperation.model_validate(operation.model_dump())

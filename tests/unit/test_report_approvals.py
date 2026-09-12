@@ -39,7 +39,11 @@ from appraisal_review.domain.report_approval import (
     ApprovalDecisionCommand,
     SubmitReportApproval,
 )
-from appraisal_review.domain.service_contracts import Permission, RunReference
+from appraisal_review.domain.service_contracts import (
+    Permission,
+    RunReference,
+    ServiceErrorCode,
+)
 from appraisal_review.testing.job_store_contract import principal, submission
 
 TABLES = ("table_3", "table_4", "table_5")
@@ -434,6 +438,52 @@ class TestFormalExports:
 class TestStalePublicationFence:
     """P1-B: a queued formal export must not publish after the case moved on."""
 
+    @staticmethod
+    def _commit_revision_change(store: Any, job_id: Any, revision_id: str) -> None:
+        """A concurrent correction committing to the authoritative review state."""
+        connection = store._connect()
+        try:
+            connection.execute("BEGIN IMMEDIATE")
+            payload = connection.execute(
+                "SELECT payload FROM review_state WHERE singleton=1"
+            ).fetchone()[0]
+            state = json.loads(payload)
+            job = state["jobs"][str(job_id)]
+            for run in state["runs"]:
+                if run["job_id"] == str(job_id) and run["value"]["run_id"] == job["current_run_id"]:
+                    run["value"]["revision"]["revision_id"] = revision_id
+            connection.execute(
+                "UPDATE review_state SET payload=? WHERE singleton=1", (json.dumps(state),)
+            )
+            connection.commit()
+        except BaseException:
+            connection.rollback()
+            raise
+        finally:
+            connection.close()
+
+    def test_save_recheck_catches_revision_committed_after_last_worker_read(
+        self, scene: dict[str, Any]
+    ) -> None:
+        """R3/P1 reproduction: the worker's every application-level read answered V1
+        (the wired reader is a cached snapshot here, exactly like a worker whose last
+        callback ran before the correction); V2 commits to the authoritative store
+        before save(). Only an in-transaction re-check can refuse the formal success."""
+        approval = submit(scene)
+        decide(scene, approval.approval_id, "approve", "d1")
+        operation = export_formal(scene)
+        self._commit_revision_change(scene["store"], scene["job_id"], str(uuid4()))
+        asyncio.run(scene["exports"].run_pending())
+        done = scene["export_store"].read(scene["job_id"], operation.export_id)
+        assert done.status == "failed", "stale formal success must not persist at V1"
+        assert done.artifacts == ()
+        assert done.problem is not None and done.problem.code == ServiceErrorCode.CONFLICT
+        # History is preserved: the approval record itself was never rewritten.
+        assert (
+            scene["approval_store"].current_status(scene["job_id"], approval.approval_id)
+            == "approved"
+        )
+
     def test_prefix_reproduction_queued_v1_publishes_after_revision_change(
         self, scene: dict[str, Any]
     ) -> None:
@@ -559,3 +609,39 @@ class TestDuplicateSubmissionConsistency:
             scene["approval_store"].current_status(scene["job_id"], approval.approval_id)
             == "withdrawn"
         )
+
+    def test_replayed_reused_key_after_withdrawal_returns_the_original(
+        self, scene: dict[str, Any]
+    ) -> None:
+        """R4/P2 reproduction: a2 reused A1 live but recorded nothing; after the
+        withdrawal, a network retry of a2 must replay A1 as withdrawn, never
+        create a new submitted approval."""
+        first = submit(scene, key="a1")
+        second = submit(scene, key="a2")
+        assert second.approval_id == first.approval_id
+        decide(scene, first.approval_id, "approve", "d1")
+        decide(scene, first.approval_id, "withdraw", "d2", reason="figure disputed")
+        replay = submit(scene, key="a2")
+        assert replay.approval_id == first.approval_id, "a retry must never become a new request"
+        assert replay.status == "withdrawn"
+        assert (
+            scene["approval_store"].current_status(scene["job_id"], first.approval_id)
+            == "withdrawn"
+        )
+
+    def test_reused_key_with_a_changed_payload_conflicts(self, scene: dict[str, Any]) -> None:
+        first = submit(scene, key="a1")
+        assert submit(scene, key="a2").approval_id == first.approval_id
+        drifted = {key: entry() for key in REQUIRED}
+        drifted[REQUIRED[0]] = entry("7")
+        scene["snapshots"].snapshot = snapshot_for(scene["run"], drifted)
+        with pytest.raises(ServiceFault):
+            submit(scene, key="a2")
+
+    def test_creator_key_replay_still_returns_current_record(self, scene: dict[str, Any]) -> None:
+        first = submit(scene, key="a1")
+        decide(scene, first.approval_id, "approve", "d1")
+        decide(scene, first.approval_id, "withdraw", "d2", reason="teardown")
+        replay = submit(scene, key="a1")
+        assert replay.approval_id == first.approval_id
+        assert replay.status == "withdrawn"

@@ -38,6 +38,16 @@ class SQLiteApprovalStore:
                 "record TEXT NOT NULL, "
                 "PRIMARY KEY(approval_id, actor_id, idempotency_key))"
             )
+            # Additive migration: every submission key maps to the approval it produced
+            # or reused, so a replayed retry always finds its original outcome even
+            # after the approval left the live set. Existing rows are never touched.
+            connection.execute(
+                "CREATE TABLE IF NOT EXISTS report_approval_submissions ("
+                "job_id TEXT NOT NULL, actor_id TEXT NOT NULL, "
+                "idempotency_key TEXT NOT NULL, approval_id TEXT NOT NULL, "
+                "payload_digest TEXT NOT NULL, "
+                "PRIMARY KEY(job_id, actor_id, idempotency_key))"
+            )
 
     def create(
         self,
@@ -49,6 +59,24 @@ class SQLiteApprovalStore:
         binding_digest: str,
     ) -> tuple[ReportApproval, bool]:
         with _transaction(self.database) as connection:
+            # Every key ever answered has a durable mapping to the approval it named:
+            # a network retry replays the original outcome (whatever its status is
+            # now), it never becomes a new request. A changed payload conflicts.
+            mapped = connection.execute(
+                "SELECT approval_id, payload_digest FROM report_approval_submissions "
+                "WHERE job_id=? AND actor_id=? AND idempotency_key=?",
+                (str(approval.job_id), actor_id, idempotency_key),
+            ).fetchone()
+            if mapped is not None:
+                if mapped[1] != payload_digest:
+                    raise ServiceFault(ServiceErrorCode.CONFLICT)
+                original = connection.execute(
+                    "SELECT record FROM report_approvals WHERE approval_id=?",
+                    (mapped[0],),
+                ).fetchone()
+                if original is None:
+                    raise ServiceFault(ServiceErrorCode.CONFLICT)
+                return ReportApproval.model_validate_json(original[0]), False
             row = connection.execute(
                 "SELECT payload_digest, record FROM report_approvals "
                 "WHERE job_id=? AND actor_id=? AND idempotency_key=?",
@@ -60,14 +88,26 @@ class SQLiteApprovalStore:
                 return ReportApproval.model_validate_json(row[1]), False
             # One live request per exact content: a resubmission of the same binding -
             # any key, any reviewer - reuses the existing submitted or approved record
-            # instead of inserting a shadow that would mask the live one.
+            # instead of inserting a shadow that would mask the live one. The reused
+            # key is recorded in the same transaction so its replay stays exact.
             live = connection.execute(
-                "SELECT record FROM report_approvals WHERE job_id=? AND binding_digest=? "
+                "SELECT approval_id, record FROM report_approvals "
+                "WHERE job_id=? AND binding_digest=? "
                 "AND status IN ('submitted','approved') ORDER BY rowid DESC",
                 (str(approval.job_id), binding_digest),
             ).fetchone()
             if live is not None:
-                return ReportApproval.model_validate_json(live[0]), False
+                connection.execute(
+                    "INSERT INTO report_approval_submissions VALUES(?,?,?,?,?)",
+                    (
+                        str(approval.job_id),
+                        actor_id,
+                        idempotency_key,
+                        live[0],
+                        payload_digest,
+                    ),
+                )
+                return ReportApproval.model_validate_json(live[1]), False
             connection.execute(
                 "INSERT INTO report_approvals VALUES(?,?,?,?,?,?,?,?)",
                 (
@@ -79,6 +119,16 @@ class SQLiteApprovalStore:
                     approval.status,
                     binding_digest,
                     approval.model_dump_json(),
+                ),
+            )
+            connection.execute(
+                "INSERT INTO report_approval_submissions VALUES(?,?,?,?,?)",
+                (
+                    str(approval.job_id),
+                    actor_id,
+                    idempotency_key,
+                    str(approval.approval_id),
+                    payload_digest,
                 ),
             )
         return approval, True
