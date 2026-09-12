@@ -30,8 +30,8 @@ from appraisal_review.adapters.local.document_authority import (
 )
 from appraisal_review.adapters.local.document_storage import SQLiteDocumentStorage
 from appraisal_review.adapters.local.export_composition import (
-    discover_converter,
     discover_export_assets,
+    discover_render_converter,
 )
 from appraisal_review.adapters.local.integrated_publication import (
     IntegratedResultProjection,
@@ -285,7 +285,7 @@ class SyntheticWorkbench:
             resolver=self.resolver,
             export_assets=export_assets,
             export_filler=fill_workbook if export_assets is not None else None,
-            export_converter=discover_converter(),
+            export_converter=discover_render_converter(),
             snapshot_provider=self.snapshots,
         )
         self.app.state.workbench_data_mode = "synthetic"

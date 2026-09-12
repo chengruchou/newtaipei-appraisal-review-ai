@@ -19,8 +19,10 @@ import shutil
 from pathlib import Path
 
 from appraisal_review.adapters.local.workbook_pdf import LocalWorkbookConverter
+from appraisal_review.adapters.local.workbook_render import visible_only_copy
 from appraisal_review.application.exports import ExportAssets
 from appraisal_review.domain.official_table_mapping import OfficialTable, TableMapping
+from appraisal_review.ports.workbook_conversion import ConvertedWorkbook
 
 TEMPLATES_DIR_VARIABLE = "REVIEW_TEMPLATES_DIR"
 CONVERTER_VARIABLE = "REVIEW_SOFFICE"
@@ -64,6 +66,41 @@ def discover_export_assets(
     )
 
 
+class RenderPreparedConverter:
+    """Rasterize a visibility-pruned derived copy instead of the full workbook.
+
+    The installed headless converter renders hidden sheets, which would leak the
+    template's 23 legacy example sheets into every delivered PDF. The wrapper checks
+    the caller's digest against the true filled workbook, derives the render copy,
+    and delegates with the copy's own digest, so the inner converter's guarantee
+    still binds the exact bytes it rasterized. The returned workbook_sha256 is the
+    render copy's hash; the operation records both.
+    """
+
+    def __init__(self, inner: LocalWorkbookConverter) -> None:
+        self.inner = inner
+
+    def convert(
+        self,
+        workbook: bytes,
+        *,
+        expected_sha256: str,
+        verify_text: tuple[str, ...] = (),
+        expected_page_count: int | None = None,
+    ) -> ConvertedWorkbook:
+        if hashlib.sha256(workbook).hexdigest() != expected_sha256:
+            from appraisal_review.ports.workbook_conversion import ConversionUnavailable
+
+            raise ConversionUnavailable("workbook_digest_mismatch")
+        prepared = visible_only_copy(workbook)
+        return self.inner.convert(
+            prepared,
+            expected_sha256=hashlib.sha256(prepared).hexdigest(),
+            verify_text=verify_text,
+            expected_page_count=expected_page_count,
+        )
+
+
 def discover_converter() -> LocalWorkbookConverter | None:
     override = os.environ.get(CONVERTER_VARIABLE)
     if override:
@@ -76,3 +113,8 @@ def discover_converter() -> LocalWorkbookConverter | None:
     if _MAC_SOFFICE.is_file():
         return LocalWorkbookConverter(executable=_MAC_SOFFICE)
     return None
+
+
+def discover_render_converter() -> RenderPreparedConverter | None:
+    inner = discover_converter()
+    return None if inner is None else RenderPreparedConverter(inner)

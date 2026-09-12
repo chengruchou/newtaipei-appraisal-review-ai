@@ -154,6 +154,10 @@ class ConvertedPDFArtifact(_ExportArtifact):
     # Nothing inside a PDF proves which workbook produced it, so the hash is recorded
     # provenance the conversion step asserts and the operation checks for consistency.
     source_workbook_hash: Digest
+    #: The exact bytes rasterized: a render-only derived copy of the filled workbook with
+    #: hidden legacy sheets removed, per the organizer's print-setup-on-derived-copy rule.
+    #: None means the workbook itself was rasterized unmodified.
+    render_input_hash: Digest | None = None
     page_count: int = Field(ge=1, strict=True)
     font_hash: Digest | None = None
     verification: Literal["converted_pdf_reopened"] = "converted_pdf_reopened"

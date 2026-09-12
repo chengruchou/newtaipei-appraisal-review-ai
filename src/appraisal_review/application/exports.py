@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import logging
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -52,6 +53,8 @@ from appraisal_review.ports.workbook_conversion import (
 )
 
 WRITER_VERSION = "workbook-writer-1"
+
+logger = logging.getLogger(__name__)
 
 
 class FilledWorkbookLike(Protocol):
@@ -194,10 +197,10 @@ class ExportService:
         if snapshot.digest() != request.calculation_snapshot_digest:
             raise ServiceFault(ServiceErrorCode.CONFLICT)
 
-        blockers: list[str] = []
         if request.requested_mode == "formal":
-            blockers.append("Formal eligibility is not established this round; delivering a draft.")
-        blockers.extend(f"{key}: {reason}" for key, reason in sorted(snapshot.gaps.items()))
+            # The formal gate is not established this round: refusing is honest, quietly
+            # downgrading is not. The page keeps its draft path; nothing is promoted.
+            raise ServiceFault(ServiceErrorCode.CONFLICT)
         operation = ExportOperation(
             export_id=uuid5(
                 NAMESPACE_URL,
@@ -213,7 +216,6 @@ class ExportService:
             payload_digest=request.payload_digest(),
             calculation_snapshot_digest=request.calculation_snapshot_digest,
             template_bundle=self.assets.bundle,
-            blockers=tuple(blockers),
         )
         stored, _created = self.store.create(operation, request, principal.actor.actor_id)
         return stored
@@ -299,6 +301,10 @@ class ExportService:
                 )
                 _ = unavailable
             except Exception:
+                # The operation records only the sanitized problem; the reason goes to the
+                # server log so an operator can see why a sheet failed without the client
+                # ever receiving internal detail.
+                logger.exception("Export %s failed filling %s", operation.export_id, table)
                 outcome, produced = (
                     TableOutcome(
                         table=table,
@@ -322,21 +328,17 @@ class ExportService:
                 (outcome.problem for outcome in outcomes if outcome.problem is not None),
                 ServiceProblem(code=ServiceErrorCode.EXECUTION),
             )
-        blockers = operation.blockers
-        if status == "succeeded" and blockers:
-            # The domain refuses a succeeded operation carrying blockers; a still-blocked
-            # export is at best partial. Downgrade honestly rather than dropping the list.
-            status = "partial"
-        self.store.save(
-            operation.model_copy(
-                update={
-                    "status": status,
-                    "tables": tuple(outcomes),
-                    "artifacts": tuple(artifacts),
-                    "problem": problem,
-                }
-            )
+        updated = operation.model_copy(
+            update={
+                "status": status,
+                "tables": tuple(outcomes),
+                "artifacts": tuple(artifacts),
+                "problem": problem,
+            }
         )
+        # model_copy skips validators; re-validate so an incoherent outcome fails here,
+        # in this process, instead of poisoning the stored row for every later reader.
+        self.store.save(ExportOperation.model_validate(updated.model_dump()))
 
     def _table(
         self,
@@ -407,6 +409,9 @@ class ExportService:
             snapshot_digest=operation.calculation_snapshot_digest,
             writer_version=WRITER_VERSION,
             source_workbook_hash=workbook_digest,
+            render_input_hash=(
+                converted.workbook_sha256 if converted.workbook_sha256 != workbook_digest else None
+            ),
             page_count=converted.page_count,
         )
         produced.append(pdf_artifact)

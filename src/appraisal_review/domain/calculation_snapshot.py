@@ -51,7 +51,12 @@ class SnapshotEntry(ServiceModel):
     """One value a mapping's CellBinding.source can address."""
 
     state: ValueState
-    value: Decimal | str | None = None
+    # str first, resolved left to right: JSON cannot say "this string is a date, that one
+    # is a number", and smart-union picks Decimal for numeric-looking strings only when
+    # loading from JSON - so the same file parsed two ways produced two types. Every
+    # consumer that needs arithmetic coerces through Decimal(str) anyway; a date string
+    # must survive as exactly the text the source stated.
+    value: str | Decimal | None = Field(default=None, union_mode="left_to_right")
     unit: str | None = Field(default=None, min_length=1, max_length=64)
     origin: ValueOrigin | None = None
     trace: str = Field(default="", max_length=2048)

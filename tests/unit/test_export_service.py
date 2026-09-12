@@ -73,6 +73,9 @@ class FakeConverter:
 
 
 class Snapshots:
+    """Round-trips through JSON exactly like the on-disk registry, so a value that
+    changes type across serialization fails here and not on a live workbench."""
+
     def __init__(self, snapshot: CalculationSnapshot) -> None:
         self.snapshot = snapshot
 
@@ -80,7 +83,7 @@ class Snapshots:
         reference = self.snapshot.revision
         if (case_id, revision_id) != (reference.case_id, reference.revision_id):
             return None
-        return self.snapshot
+        return CalculationSnapshot.model_validate_json(self.snapshot.model_dump_json())
 
 
 def mapping(table: str, digest: str) -> TableMapping:
@@ -97,7 +100,13 @@ def mapping(table: str, digest: str) -> TableMapping:
                     "label": "example",
                     "value_kind": "decimal",
                     "precision": 2,
-                }
+                },
+                {
+                    "cell": "L1",
+                    "source": f"{table}.case.survey_date",
+                    "label": "survey date",
+                    "value_kind": "date",
+                },
             ],
         }
     )
@@ -133,14 +142,25 @@ def scene(tmp_path: Path) -> dict[str, Any]:
             SnapshotSubject(subject_id="P002", role="comparable", label="c1"),
         ),
         entries={
-            f"{table}.case.example": SnapshotEntry(
-                state="present",
-                value=Decimal("5"),
-                unit="percentage_points",
-                origin="computed",
-                trace="matrix row excellent vs inferior",
-            )
+            key: entry
             for table in TABLES
+            for key, entry in {
+                f"{table}.case.example": SnapshotEntry(
+                    state="present",
+                    value=Decimal("5"),
+                    unit="percentage_points",
+                    origin="computed",
+                    trace="matrix row excellent vs inferior",
+                ),
+                # A ROC-calendar date is numeric-looking text; it must stay text through
+                # every serialization boundary or date cells refuse to render.
+                f"{table}.case.survey_date": SnapshotEntry(
+                    state="present",
+                    value="1110901",
+                    origin="given_input",
+                    trace="assignment cover page",
+                ),
+            }.items()
         },
     )
     filled: dict[str, int] = {"count": 0}
@@ -236,10 +256,31 @@ class TestSubmitAndReplay:
         with pytest.raises(ServiceFault):
             asyncio.run(scene["service"].submit(scene["person"], scene["job_id"], request))
 
-    def test_formal_request_is_delivered_as_a_blocked_draft(self, scene: dict[str, Any]) -> None:
-        operation = submit(scene, "xlsx", mode="formal")
-        assert operation.effective_mode == "draft"
-        assert any("Formal" in blocker for blocker in operation.blockers)
+    def test_formal_request_is_refused_while_no_gate_exists(self, scene: dict[str, Any]) -> None:
+        # The round has no formal-approval gate, and a draft must never be promoted to
+        # stand in for one, so asking for formal output conflicts instead of downgrading.
+        with pytest.raises(ServiceFault):
+            submit(scene, "xlsx", mode="formal")
+
+    def test_draft_with_snapshot_gaps_still_succeeds_and_lists_none(
+        self, scene: dict[str, Any]
+    ) -> None:
+        gapped = type(scene["snapshot"]).model_validate(
+            scene["snapshot"]
+            .model_copy(
+                update={"gaps": {"table_4.P002.example_gap": "not provided by the assignment"}}
+            )
+            .model_dump()
+        )
+        scene["service"].snapshots.snapshot = gapped
+        scene["snapshot"] = gapped  # request_for pins the digest of what the server holds
+        operation = submit(scene, "xlsx", key="k-gapped")
+        run_pending(scene)
+        done = read(scene, operation.export_id)
+        # Gaps are content states rendered blank inside the sheets and listed by the
+        # basis route; the operation itself delivered everything the format asked for.
+        assert done.status == "succeeded"
+        assert done.blockers == ()
 
 
 class TestExecution:
