@@ -19,6 +19,10 @@ dependencies = [
 [project.optional-dependencies]
 privacy = ["cryptography>=46,<51"]
 documents = ["pymupdf>=1.28.2,<2"]
+# Reading a workbook's structure needs no dependency; filling a copy while preserving
+# merged anchors, styles and hidden sheets does. Installing this grants no PDF capability:
+# the converter and its fonts are a separate, separately verified concern.
+workbook = ["openpyxl>=3.1,<4"]
 pdf = [
   "pypdf>=6,<7",
   "reportlab>=4.4,<5",
@@ -38,11 +42,13 @@ dev = [
   "boto3-stubs>=1.40,<2",
   "mypy>=1.17,<2",
   "moto[dynamodb,s3,sqs]>=5.1,<6",
+  "openpyxl>=3.1,<4",
   "pypdf>=6,<7",
   "pytest>=9.0.3,<10",
   "pytest-cov>=6.2,<7",
   "reportlab>=4.4,<5",
   "ruff>=0.12,<1",
+  "types-openpyxl>=3.1,<4",
   "types-PyYAML>=6.0,<7",
   "types-reportlab>=4.4,<5",
 ]
