@@ -637,3 +637,28 @@ def test_valid_model_usage_is_optional_but_never_partially_recorded() -> None:
     )
     proposal = asyncio.run(selector.select(selector_input))
     assert proposal.input_tokens is proposal.output_tokens is None
+
+
+class TestJsonBody:
+    """Fence-tolerant extraction keeps the schema contract, only trimming decoration."""
+
+    def test_bare_object_unchanged(self) -> None:
+        from appraisal_review.adapters.aws.action_selector import _json_body
+
+        assert _json_body('{"a": 1}') == '{"a": 1}'
+
+    def test_fenced_object_extracted(self) -> None:
+        from appraisal_review.adapters.aws.action_selector import _json_body
+
+        fenced = '```json\n{"action": "review", "why": "fence"}\n```'
+        assert _json_body(fenced) == '{"action": "review", "why": "fence"}'
+
+    def test_prefixed_object_extracted(self) -> None:
+        from appraisal_review.adapters.aws.action_selector import _json_body
+
+        assert _json_body('Here is the JSON:\n{"a": {"b": 2}}') == '{"a": {"b": 2}}'
+
+    def test_no_object_left_honest(self) -> None:
+        from appraisal_review.adapters.aws.action_selector import _json_body
+
+        assert _json_body("no json here") == "no json here"

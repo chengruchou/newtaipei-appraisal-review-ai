@@ -63,6 +63,25 @@ class ModelSelectorConfig(BaseModel):
     retry_backoff_seconds: float = Field(default=0.25, ge=0, le=5)
 
 
+def _json_body(text: str) -> str:
+    """The selector's JSON object, tolerating a fenced or prefixed answer.
+
+    Providers differ in how strictly they honor "answer with JSON only": some wrap
+    the object in a markdown code fence or lead with a sentence. The contract stays
+    the same - exactly one JSON object is accepted, judged by the schema afterwards;
+    this only trims decoration around the outermost object. No object -> the
+    original text, so the schema error stays honest.
+    """
+    stripped = text.strip()
+    if stripped.startswith("{") and stripped.endswith("}"):
+        return stripped
+    start = stripped.find("{")
+    end = stripped.rfind("}")
+    if start != -1 and end > start:
+        return stripped[start : end + 1]
+    return text
+
+
 class _SelectionPayload(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -267,7 +286,7 @@ class BedrockActionSelector:
             blocks = response["output"]["message"]["content"]
             if len(blocks) != 1 or set(blocks[0]) != {"text"}:
                 raise ValueError("A selector response must contain exactly one text block")
-            selected = _SelectionPayload.model_validate_json(blocks[0]["text"])
+            selected = _SelectionPayload.model_validate_json(_json_body(blocks[0]["text"]))
         except (KeyError, TypeError, ValueError, ValidationError) as error:
             raise self._error(
                 SelectorErrorCode.MALFORMED_OUTPUT,
