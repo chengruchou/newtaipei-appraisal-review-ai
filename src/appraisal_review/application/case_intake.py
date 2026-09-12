@@ -122,6 +122,10 @@ class CaseMaterialList(ServiceModel):
     materials: tuple[MaterialRecord, ...] = ()
 
 
+class CaseListView(ServiceModel):
+    cases: tuple[CaseRecord, ...] = ()
+
+
 class CaseIntakeStore(Protocol):
     """Durable records with exact idempotent replay, same rules as approval_store.
 
@@ -138,6 +142,10 @@ class CaseIntakeStore(Protocol):
     ) -> tuple[CaseRecord, bool]: ...
 
     def read_case(self, case_id: str) -> CaseRecord | None: ...
+
+    def memberships(self) -> tuple[tuple[str, str], ...]:
+        """(case_id, creator actor_id) pairs for boot-time re-grants and listings."""
+        ...
 
     def add_material(
         self,
@@ -258,3 +266,20 @@ class CaseIntakeService:
         if self.store.read_case(case_id) is None:
             raise ServiceFault(ServiceErrorCode.NOT_FOUND)
         return CaseMaterialList(case_id=case_id, materials=self.store.list_materials(case_id))
+
+    async def read_case(self, principal: Principal, case_id: str) -> CaseRecord:
+        principal.require(case_id, Permission.REVIEW)
+        record = self.store.read_case(case_id)
+        if record is None:
+            raise ServiceFault(ServiceErrorCode.NOT_FOUND)
+        return record
+
+    async def list_cases(self, principal: Principal) -> CaseListView:
+        """The caller's own intake cases: membership decides, never the creator field."""
+        records = tuple(
+            record
+            for case_id, _creator in self.store.memberships()
+            if case_id in principal.case_ids
+            and (record := self.store.read_case(case_id)) is not None
+        )
+        return CaseListView(cases=records)

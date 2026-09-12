@@ -23,6 +23,7 @@ from fastapi import APIRouter, Depends, Header, Request
 from appraisal_review.api.dependencies import get_principal
 from appraisal_review.application.case_intake import (
     CaseIntakeService,
+    CaseListView,
     CaseMaterialList,
     CaseRecord,
     CreateCaseCommand,
@@ -131,4 +132,25 @@ async def list_materials(
     return await service.list_materials(principal, str(case_id))
 
 
-CASE_INTAKE_ENDPOINTS = frozenset({create_case, upload_material, list_materials})
+@router.get("", response_model=CaseListView, responses=INTAKE_RESPONSES)
+async def list_cases(
+    principal: PrincipalDependency,
+    service: ServiceDependency,
+) -> CaseListView:
+    """The caller's own intake cases, so a fresh sign-in finds them again."""
+    return await service.list_cases(principal)
+
+
+@router.get("/{case_id}", response_model=CaseRecord, responses=INTAKE_RESPONSES)
+async def read_case(
+    case_id: UUID,
+    principal: PrincipalDependency,
+    service: ServiceDependency,
+) -> CaseRecord:
+    """One case record for its members; unknown or unauthorized answers 404/403."""
+    return await service.read_case(principal, str(case_id))
+
+
+CASE_INTAKE_ENDPOINTS = frozenset(
+    {create_case, upload_material, list_materials, list_cases, read_case}
+)

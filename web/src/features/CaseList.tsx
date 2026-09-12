@@ -294,6 +294,7 @@ export function CaseList({
 /** Create a case, then upload and list its materials. */
 function CaseIntake({ client }: { client: ReviewClient }) {
   const t = useText();
+  const navigate = useNavigate();
   const [title, setTitle] = useState("");
   const [district, setDistrict] = useState("");
   const [valuationDate, setValuationDate] = useState("");
@@ -301,6 +302,27 @@ function CaseIntake({ client }: { client: ReviewClient }) {
   const [createError, setCreateError] = useState("");
   const [createdCases, setCreatedCases] = useState<CaseRecord[]>([]);
   const [activeCase, setActiveCase] = useState<CaseRecord | null>(null);
+
+  // Durable listing: a fresh sign-in finds the caller's own intake cases again.
+  // A load failure keeps whatever was created in this session; it never claims
+  // an empty account.
+  useEffect(() => {
+    let active = true;
+    void client
+      .listCases()
+      .then((cases) => {
+        if (!active) return;
+        setCreatedCases((current) => {
+          const merged = new Map(cases.map((record) => [record.case_id, record]));
+          for (const record of current) merged.set(record.case_id, record);
+          return [...merged.values()];
+        });
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, [client]);
   const [materials, setMaterials] = useState<MaterialRecord[]>([]);
   const [materialsNote, setMaterialsNote] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -473,6 +495,13 @@ function CaseIntake({ client }: { client: ReviewClient }) {
                     <code>{record.case_id}</code>
                   </details>
                 </div>
+                <button
+                  data-variant="primary"
+                  onClick={() => navigate(`/cases/${record.case_id}`)}
+                >
+                  {t("Open case", "開啟案件")}
+                  <Icon name="arrow" />
+                </button>
                 <button
                   aria-pressed={activeCase?.case_id === record.case_id}
                   onClick={() => {

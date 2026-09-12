@@ -15,6 +15,7 @@ import { ServiceError } from "./api/problems";
 import { TaskPage } from "./features/TaskPage";
 import { PrivacyRoute } from "./features/PrivacyRoute";
 import { CaseEntry } from "./features/CaseEntry";
+import { CaseDetail } from "./features/CaseDetail";
 import { CaseList } from "./features/CaseList";
 import { WorkbenchJob } from "./features/WorkbenchJob";
 import { truncateMiddle } from "./features/intake";
@@ -330,6 +331,10 @@ export function App() {
                       logout={logout}
                     />
                   }
+                />
+                <Route
+                  path="/cases/:caseId"
+                  element={<CaseDetail client={connection.client} />}
                 />
                 <Route
                   path="/jobs/:jobId/*"

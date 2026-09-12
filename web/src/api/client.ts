@@ -246,6 +246,18 @@ export class ReviewClient {
     return parseCaseRecord(await this.intakeJson("POST", "/v1/cases", { json: command }));
   }
 
+  /** GET /v1/cases — the caller's own intake cases, durable across sign-ins. */
+  async listCases(): Promise<CaseRecord[]> {
+    const payload = await this.intakeJson("GET", "/v1/cases");
+    if (!isRecord(payload)) throw new TransportError(INTAKE_MALFORMED);
+    return Array.isArray(payload.cases) ? payload.cases.map(parseCaseRecord) : [];
+  }
+
+  /** GET /v1/cases/{id} — one case record for its members. */
+  async readCase(caseId: string): Promise<CaseRecord> {
+    return parseCaseRecord(await this.intakeJson("GET", `/v1/cases/${encode(caseId)}`));
+  }
+
   /** GET /v1/cases/{id}/materials — what the service actually holds for this case. */
   async listCaseMaterials(caseId: string): Promise<MaterialListView> {
     const payload = await this.intakeJson("GET", `/v1/cases/${encode(caseId)}/materials`);
