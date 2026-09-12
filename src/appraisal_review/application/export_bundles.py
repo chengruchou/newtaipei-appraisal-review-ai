@@ -105,7 +105,8 @@ class ExportReaderPort(Protocol):
 
 
 class DeliveredBytes(Protocol):
-    data: bytes
+    @property
+    def data(self) -> bytes: ...
 
 
 class ContentReaderPort(Protocol):
