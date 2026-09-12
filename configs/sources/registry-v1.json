@@ -161,16 +161,16 @@
       "title": "新北市公園",
       "publisher": "新北市政府資料開放平台 (data.ntpc.gov.tw)",
       "portal_url": "https://data.ntpc.gov.tw/datasets/5fe3a136-29cc-4695-a17e-6636a32c3342",
-      "status": "metadata_verified",
-      "status_reason": "Dataset id and JSON API endpoint pattern recorded from the NTPC open data platform; no live row fetch has been performed. data_verified requires the integrator's real fetch.",
-      "checked_at": "2026-09-12T22:30:00+08:00",
+      "status": "data_verified",
+      "status_reason": "Live fetch through SafeSourceReader + production transport on the operator's machine (user-executed): sha256 d9999200b2fd5b9807f5129d2b41046f48133f81a454b1fe21c16a03844c4792, retrieved_at 1789227745, 5 sample rows parsed; declared field names verified against real rows.",
+      "checked_at": "2026-09-12T23:43:46+08:00",
       "api_endpoint": "https://data.ntpc.gov.tw/api/datasets/5fe3a136-29cc-4695-a17e-6636a32c3342/json",
       "dataset_id": "5fe3a136-29cc-4695-a17e-6636a32c3342",
       "declared_fields": {
         "name_field": "name",
-        "lat_field": "latitude",
-        "lng_field": "longitude",
-        "unverified_until_live_fetch": true
+        "lat_field": null,
+        "lng_field": null,
+        "unverified_until_live_fetch": false
       },
       "notes": [
         "Endpoint accepts ?page=<n>&size=<n> paging.",
@@ -192,16 +192,16 @@
       "title": "公車站位資訊",
       "publisher": "新北市政府資料開放平台 (data.ntpc.gov.tw)",
       "portal_url": "https://data.ntpc.gov.tw/datasets/34b402a8-53d9-483d-9406-24a682c2d6dc",
-      "status": "metadata_verified",
-      "status_reason": "Dataset id and JSON API endpoint pattern recorded from the NTPC open data platform; no live row fetch has been performed. data_verified requires the integrator's real fetch.",
-      "checked_at": "2026-09-12T22:30:00+08:00",
+      "status": "data_verified",
+      "status_reason": "Live fetch through SafeSourceReader + production transport on the operator's machine (user-executed): sha256 7b1c8f847ffe155c0e5d9b77fd930214553d1516297a1144aae22398f698429d, retrieved_at 1789227745, 5 sample rows parsed; declared field names verified against real rows.",
+      "checked_at": "2026-09-12T23:43:46+08:00",
       "api_endpoint": "https://data.ntpc.gov.tw/api/datasets/34b402a8-53d9-483d-9406-24a682c2d6dc/json",
       "dataset_id": "34b402a8-53d9-483d-9406-24a682c2d6dc",
       "declared_fields": {
-        "name_field": "nameZh",
+        "name_field": "namezh",
         "lat_field": "latitude",
         "lng_field": "longitude",
-        "unverified_until_live_fetch": true
+        "unverified_until_live_fetch": false
       },
       "notes": [
         "Endpoint accepts ?page=<n>&size=<n> paging.",

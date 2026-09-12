@@ -54,15 +54,17 @@ def test_shipped_registry_marks_only_the_two_implemented_sources_verified() -> N
     verified = {e.source_id: e for e in registry.entries if e.status != "listed"}
     assert set(verified) == {"ntpc-parks", "ntpc-bus-stops"}
     for entry in verified.values():
-        assert entry.status == "metadata_verified"
+        # Both adapters were exercised against live rows on 2026-09-12 night
+        # (user-executed fetch; sha256 evidence in the registry reasons).
+        assert entry.status == "data_verified"
         assert entry.api_endpoint is not None
         assert entry.dataset_id is not None
         assert entry.api_endpoint == (
             f"https://data.ntpc.gov.tw/api/datasets/{entry.dataset_id}/json"
         )
         assert entry.declared_fields is not None
-        # Nobody has seen live rows yet; the field map must say so.
-        assert entry.declared_fields.unverified_until_live_fetch is True
+        # Live rows were inspected on 2026-09-12 night; the flag is cleared.
+        assert entry.declared_fields.unverified_until_live_fetch is False
 
 
 def test_duplicate_source_ids_are_refused() -> None:
@@ -117,7 +119,7 @@ def test_update_status_returns_a_new_registry_and_keeps_the_original() -> None:
         checked_at="2026-09-12T23:00:00+08:00",
     )
 
-    assert get_entry(registry, "ntpc-parks").status == "metadata_verified"
+    assert get_entry(registry, "ntpc-parks").status == "data_verified"
     assert get_entry(updated, "ntpc-parks").status == "data_verified"
     assert get_entry(updated, "ntpc-bus-stops") == get_entry(registry, "ntpc-bus-stops")
     # The helper's JSON is what the integrator persists; it must round-trip.
