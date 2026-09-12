@@ -497,7 +497,9 @@ function CaseIntake({ client }: { client: ReviewClient }) {
                 </div>
                 <button
                   data-variant="primary"
-                  onClick={() => navigate(`/cases/${record.case_id}`)}
+                  onClick={() => {
+                    void navigate(`/cases/${record.case_id}`);
+                  }}
                 >
                   {t("Open case", "開啟案件")}
                   <Icon name="arrow" />

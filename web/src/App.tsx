@@ -332,10 +332,7 @@ export function App() {
                     />
                   }
                 />
-                <Route
-                  path="/cases/:caseId"
-                  element={<CaseDetail client={connection.client} />}
-                />
+                <Route path="/cases/:caseId" element={<CaseDetail client={connection.client} />} />
                 <Route
                   path="/jobs/:jobId/*"
                   element={<WorkbenchJob client={connection.client} recent={recent.current} />}

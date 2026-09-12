@@ -220,10 +220,7 @@ export function CaseEntry({
           <h2>{heading}</h2>
           <p className="muted">
             {mode === "login"
-              ? t(
-                  "Sign in with your email and password.",
-                  "輸入電子郵件與密碼登入工作台。",
-                )
+              ? t("Sign in with your email and password.", "輸入電子郵件與密碼登入工作台。")
               : mode === "register"
                 ? t(
                     "Enter your email; the service sends a verification mail to create the account.",
@@ -333,7 +330,11 @@ export function CaseEntry({
                 <Icon name="arrow" />
               </button>
               <div className="input-action" style={{ flexWrap: "wrap" }}>
-                <button type="button" disabled={working} onClick={() => void sendVerificationMail()}>
+                <button
+                  type="button"
+                  disabled={working}
+                  onClick={() => void sendVerificationMail()}
+                >
                   {t("Resend the verification mail", "重新寄送驗證信")}
                 </button>
                 <button

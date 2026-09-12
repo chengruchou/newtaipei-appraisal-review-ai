@@ -96,8 +96,14 @@ export function CaseDetail({ client }: { client: ReviewClient }) {
     } catch (error) {
       setUploadNote(
         error instanceof ServiceError && error.code === "unauthorized"
-          ? t("Not signed in or no access; sign in and retry.", "未登入或無存取權限，請重新登入後再試。")
-          : t("The upload did not complete; the list shows what is saved.", "上傳未完成；清單顯示的才是已保存內容。"),
+          ? t(
+              "Not signed in or no access; sign in and retry.",
+              "未登入或無存取權限，請重新登入後再試。",
+            )
+          : t(
+              "The upload did not complete; the list shows what is saved.",
+              "上傳未完成；清單顯示的才是已保存內容。",
+            ),
       );
     } finally {
       setUploading(false);

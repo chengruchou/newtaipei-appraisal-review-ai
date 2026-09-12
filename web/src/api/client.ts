@@ -573,10 +573,7 @@ export class IntakeRequestError extends Error {
  * a wrong code/password, and the UI must keep that indistinguishability.
  */
 export type LoginRefusalKind =
-  | "code_rejected"
-  | "credentials_rejected"
-  | "rate_limited"
-  | "unavailable";
+  "code_rejected" | "credentials_rejected" | "rate_limited" | "unavailable";
 
 export class LoginRefusedError extends Error {
   readonly kind: LoginRefusalKind;
