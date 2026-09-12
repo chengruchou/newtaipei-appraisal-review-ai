@@ -27,6 +27,7 @@ from starlette.middleware.base import RequestResponseEndpoint
 
 from appraisal_review.adapters.local.approval_store import SQLiteApprovalStore
 from appraisal_review.adapters.local.artifact_publication import CommittedResultResolver
+from appraisal_review.adapters.local.candidate_store import SQLiteCandidateStore
 from appraisal_review.adapters.local.case_intake_store import SQLiteCaseIntakeStore
 from appraisal_review.adapters.local.export_store import SQLiteExportStore
 from appraisal_review.adapters.local.sqlite_review_store import SQLiteReviewStore
@@ -39,6 +40,7 @@ from appraisal_review.application.exports import (
     WorkbookConverter,
     WorkbookFiller,
 )
+from appraisal_review.application.fact_candidates import CandidateService
 from appraisal_review.application.human_tasks import HumanTaskService
 from appraisal_review.application.outbox import DispatchMessage, JobReconciler, OutboxDispatcher
 from appraisal_review.application.report_approvals import ReportApprovalService
@@ -782,6 +784,9 @@ def create_integrated_service(
         for intake_case_id, creator_actor_id in intake_store.memberships():
             with suppress(ServiceFault, ValueError):
                 directory.grant_case(creator_actor_id, intake_case_id)
+        # External lookups become CANDIDATES here; adoption into facts or tables
+        # stays a separate named-human path and is not wired by this plane.
+        app.state.fact_candidates = CandidateService(store=SQLiteCandidateStore(store))
     app.state.material_catalog = catalog
     app.state.runtime_worker = worker
     app.state.worker_problem = None
