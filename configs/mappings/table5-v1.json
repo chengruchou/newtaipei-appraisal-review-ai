@@ -1,0 +1,5409 @@
+{
+ "schema_version": "official-table-mapping-v1",
+ "table": "table_5",
+ "template_name": "表5影響地價區域因素分析明細表(住宅用地).xlsx 的副本.xlsx",
+ "template_digest": "d2ab663222fbd401c639be02e6bace069dc8f76f4331f8347a2b858e36d15b39",
+ "sheet_name": "表5-1區域因素明細表(住)",
+ "bindings": [
+  {
+   "cell": "B2",
+   "source": "table_5.case.case_number",
+   "label": "案號",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "B40",
+   "source": "table_5.case.other_factor_description",
+   "label": "其他影響因素修正細項",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "C3",
+   "source": "table_5.P001.zone_number",
+   "label": "比準地地價區段號",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "C43",
+   "source": "table_5.P001.note",
+   "label": "備註(比準地)",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "C44",
+   "source": "table_5.case.note",
+   "label": "備註(全案)",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "C5",
+   "source": "table_5.P001.urban_plan_grade",
+   "label": "比準地都市計畫(內、外)優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "D5",
+   "source": "table_5.P001.urban_plan_grade_label",
+   "label": "比準地都市計畫(內、外)優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "C6",
+   "source": "table_5.P001.zoning_grade",
+   "label": "比準地使用分區(使用地類別)優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "D6",
+   "source": "table_5.P001.zoning_grade_label",
+   "label": "比準地使用分區(使用地類別)優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "C7",
+   "source": "table_5.P001.building_coverage_grade",
+   "label": "比準地建蔽率優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "D7",
+   "source": "table_5.P001.building_coverage_grade_label",
+   "label": "比準地建蔽率優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "C8",
+   "source": "table_5.P001.floor_area_ratio_grade",
+   "label": "比準地容積率優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "D8",
+   "source": "table_5.P001.floor_area_ratio_grade_label",
+   "label": "比準地容積率優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "C9",
+   "source": "table_5.P001.building_prohibition_grade",
+   "label": "比準地有無禁止建築優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "D9",
+   "source": "table_5.P001.building_prohibition_grade_label",
+   "label": "比準地有無禁止建築優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "C10",
+   "source": "table_5.P001.building_restriction_grade",
+   "label": "比準地有無限制建築優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "D10",
+   "source": "table_5.P001.building_restriction_grade_label",
+   "label": "比準地有無限制建築優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "C12",
+   "source": "table_5.P001.main_road_width_grade",
+   "label": "比準地主要道路寬度優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "D12",
+   "source": "table_5.P001.main_road_width_grade_label",
+   "label": "比準地主要道路寬度優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "C13",
+   "source": "table_5.P001.avg_road_width_grade",
+   "label": "比準地區段內道路平均寬度優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "D13",
+   "source": "table_5.P001.avg_road_width_grade_label",
+   "label": "比準地區段內道路平均寬度優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "C14",
+   "source": "table_5.P001.major_station_access_grade",
+   "label": "比準地接近大型車站之程度優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "D14",
+   "source": "table_5.P001.major_station_access_grade_label",
+   "label": "比準地接近大型車站之程度優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "C15",
+   "source": "table_5.P001.bus_stop_access_grade",
+   "label": "比準地站牌之接近程度或密集程度優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "D15",
+   "source": "table_5.P001.bus_stop_access_grade_label",
+   "label": "比準地站牌之接近程度或密集程度優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "C16",
+   "source": "table_5.P001.interchange_access_grade",
+   "label": "比準地交流道之有無及接近程度優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "D16",
+   "source": "table_5.P001.interchange_access_grade_label",
+   "label": "比準地交流道之有無及接近程度優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "C17",
+   "source": "table_5.P001.road_development_grade",
+   "label": "比準地區段內道路規劃及闢建程度優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "D17",
+   "source": "table_5.P001.road_development_grade_label",
+   "label": "比準地區段內道路規劃及闢建程度優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "C19",
+   "source": "table_5.P001.sunlight_grade",
+   "label": "比準地日照優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "D19",
+   "source": "table_5.P001.sunlight_grade_label",
+   "label": "比準地日照優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "C20",
+   "source": "table_5.P001.landscape_grade",
+   "label": "比準地景觀優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "D20",
+   "source": "table_5.P001.landscape_grade_label",
+   "label": "比準地景觀優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "C21",
+   "source": "table_5.P001.slope_grade",
+   "label": "比準地傾斜度優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "D21",
+   "source": "table_5.P001.slope_grade_label",
+   "label": "比準地傾斜度優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "C22",
+   "source": "table_5.P001.drainage_grade",
+   "label": "比準地排水之良否優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "D22",
+   "source": "table_5.P001.drainage_grade_label",
+   "label": "比準地排水之良否優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "C23",
+   "source": "table_5.P001.terrain_grade",
+   "label": "比準地地勢優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "D23",
+   "source": "table_5.P001.terrain_grade_label",
+   "label": "比準地地勢優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "C25",
+   "source": "table_5.P001.land_improvement_grade",
+   "label": "比準地土地改良優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "D25",
+   "source": "table_5.P001.land_improvement_grade_label",
+   "label": "比準地土地改良優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "C27",
+   "source": "table_5.P001.school_access_grade",
+   "label": "比準地接近學校之程度優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "D27",
+   "source": "table_5.P001.school_access_grade_label",
+   "label": "比準地接近學校之程度優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "C28",
+   "source": "table_5.P001.market_access_grade",
+   "label": "比準地接近市場之程度優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "D28",
+   "source": "table_5.P001.market_access_grade_label",
+   "label": "比準地接近市場之程度優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "C29",
+   "source": "table_5.P001.park_access_grade",
+   "label": "比準地接近公園、廣場之程度優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "D29",
+   "source": "table_5.P001.park_access_grade_label",
+   "label": "比準地接近公園、廣場之程度優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "C30",
+   "source": "table_5.P001.tourism_access_grade",
+   "label": "比準地接近觀光遊憩設施之程度優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "D30",
+   "source": "table_5.P001.tourism_access_grade_label",
+   "label": "比準地接近觀光遊憩設施之程度優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "C31",
+   "source": "table_5.P001.parking_access_grade",
+   "label": "比準地停車場地之便利程度優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "D31",
+   "source": "table_5.P001.parking_access_grade_label",
+   "label": "比準地停車場地之便利程度優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "C32",
+   "source": "table_5.P001.service_facility_access_grade",
+   "label": "比準地接近服務性設施的程度優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "D32",
+   "source": "table_5.P001.service_facility_access_grade_label",
+   "label": "比準地接近服務性設施的程度優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "C34",
+   "source": "table_5.P001.utility_facility_grade",
+   "label": "比準地電業設施及公用氣體燃料設施優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "D34",
+   "source": "table_5.P001.utility_facility_grade_label",
+   "label": "比準地電業設施及公用氣體燃料設施優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "C35",
+   "source": "table_5.P001.funeral_facility_grade",
+   "label": "比準地殯葬設施優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "D35",
+   "source": "table_5.P001.funeral_facility_grade_label",
+   "label": "比準地殯葬設施優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "C36",
+   "source": "table_5.P001.waste_facility_grade",
+   "label": "比準地廢棄物處理設施優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "D36",
+   "source": "table_5.P001.waste_facility_grade_label",
+   "label": "比準地廢棄物處理設施優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "C38",
+   "source": "table_5.P001.pollution_grade",
+   "label": "比準地環境污染優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "D38",
+   "source": "table_5.P001.pollution_grade_label",
+   "label": "比準地環境污染優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "C40",
+   "source": "table_5.P001.other_factor_grade",
+   "label": "比準地其他影響因素優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "D40",
+   "source": "table_5.P001.other_factor_grade_label",
+   "label": "比準地其他影響因素優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "G2",
+   "source": "table_5.P002.sample_number",
+   "label": "比較標的1實例編號",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "E3",
+   "source": "table_5.P002.zone_number",
+   "label": "比較標的1地價區段號",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "E5",
+   "source": "table_5.P002.urban_plan_grade",
+   "label": "比較標的1都市計畫(內、外)優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "F5",
+   "source": "table_5.P002.urban_plan_grade_label",
+   "label": "比較標的1都市計畫(內、外)優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "G5",
+   "source": "table_5.P002.urban_plan_adjustment_pct",
+   "label": "比較標的1都市計畫(內、外)修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "E6",
+   "source": "table_5.P002.zoning_grade",
+   "label": "比較標的1使用分區(使用地類別)優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "F6",
+   "source": "table_5.P002.zoning_grade_label",
+   "label": "比較標的1使用分區(使用地類別)優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "G6",
+   "source": "table_5.P002.zoning_adjustment_pct",
+   "label": "比較標的1使用分區(使用地類別)修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "E7",
+   "source": "table_5.P002.building_coverage_grade",
+   "label": "比較標的1建蔽率優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "F7",
+   "source": "table_5.P002.building_coverage_grade_label",
+   "label": "比較標的1建蔽率優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "G7",
+   "source": "table_5.P002.building_coverage_adjustment_pct",
+   "label": "比較標的1建蔽率修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "E8",
+   "source": "table_5.P002.floor_area_ratio_grade",
+   "label": "比較標的1容積率優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "F8",
+   "source": "table_5.P002.floor_area_ratio_grade_label",
+   "label": "比較標的1容積率優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "G8",
+   "source": "table_5.P002.floor_area_ratio_adjustment_pct",
+   "label": "比較標的1容積率修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "E9",
+   "source": "table_5.P002.building_prohibition_grade",
+   "label": "比較標的1有無禁止建築優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "F9",
+   "source": "table_5.P002.building_prohibition_grade_label",
+   "label": "比較標的1有無禁止建築優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "G9",
+   "source": "table_5.P002.building_prohibition_adjustment_pct",
+   "label": "比較標的1有無禁止建築修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "E10",
+   "source": "table_5.P002.building_restriction_grade",
+   "label": "比較標的1有無限制建築優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "F10",
+   "source": "table_5.P002.building_restriction_grade_label",
+   "label": "比較標的1有無限制建築優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "G10",
+   "source": "table_5.P002.building_restriction_adjustment_pct",
+   "label": "比較標的1有無限制建築修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "E12",
+   "source": "table_5.P002.main_road_width_grade",
+   "label": "比較標的1主要道路寬度優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "F12",
+   "source": "table_5.P002.main_road_width_grade_label",
+   "label": "比較標的1主要道路寬度優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "G12",
+   "source": "table_5.P002.main_road_width_adjustment_pct",
+   "label": "比較標的1主要道路寬度修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "E13",
+   "source": "table_5.P002.avg_road_width_grade",
+   "label": "比較標的1區段內道路平均寬度優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "F13",
+   "source": "table_5.P002.avg_road_width_grade_label",
+   "label": "比較標的1區段內道路平均寬度優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "G13",
+   "source": "table_5.P002.avg_road_width_adjustment_pct",
+   "label": "比較標的1區段內道路平均寬度修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "E14",
+   "source": "table_5.P002.major_station_access_grade",
+   "label": "比較標的1接近大型車站之程度優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "F14",
+   "source": "table_5.P002.major_station_access_grade_label",
+   "label": "比較標的1接近大型車站之程度優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "G14",
+   "source": "table_5.P002.major_station_access_adjustment_pct",
+   "label": "比較標的1接近大型車站之程度修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "E15",
+   "source": "table_5.P002.bus_stop_access_grade",
+   "label": "比較標的1站牌之接近程度或密集程度優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "F15",
+   "source": "table_5.P002.bus_stop_access_grade_label",
+   "label": "比較標的1站牌之接近程度或密集程度優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "G15",
+   "source": "table_5.P002.bus_stop_access_adjustment_pct",
+   "label": "比較標的1站牌之接近程度或密集程度修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "E16",
+   "source": "table_5.P002.interchange_access_grade",
+   "label": "比較標的1交流道之有無及接近程度優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "F16",
+   "source": "table_5.P002.interchange_access_grade_label",
+   "label": "比較標的1交流道之有無及接近程度優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "G16",
+   "source": "table_5.P002.interchange_access_adjustment_pct",
+   "label": "比較標的1交流道之有無及接近程度修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "E17",
+   "source": "table_5.P002.road_development_grade",
+   "label": "比較標的1區段內道路規劃及闢建程度優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "F17",
+   "source": "table_5.P002.road_development_grade_label",
+   "label": "比較標的1區段內道路規劃及闢建程度優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "G17",
+   "source": "table_5.P002.road_development_adjustment_pct",
+   "label": "比較標的1區段內道路規劃及闢建程度修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "E19",
+   "source": "table_5.P002.sunlight_grade",
+   "label": "比較標的1日照優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "F19",
+   "source": "table_5.P002.sunlight_grade_label",
+   "label": "比較標的1日照優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "G19",
+   "source": "table_5.P002.sunlight_adjustment_pct",
+   "label": "比較標的1日照修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "E20",
+   "source": "table_5.P002.landscape_grade",
+   "label": "比較標的1景觀優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "F20",
+   "source": "table_5.P002.landscape_grade_label",
+   "label": "比較標的1景觀優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "G20",
+   "source": "table_5.P002.landscape_adjustment_pct",
+   "label": "比較標的1景觀修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "E21",
+   "source": "table_5.P002.slope_grade",
+   "label": "比較標的1傾斜度優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "F21",
+   "source": "table_5.P002.slope_grade_label",
+   "label": "比較標的1傾斜度優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "G21",
+   "source": "table_5.P002.slope_adjustment_pct",
+   "label": "比較標的1傾斜度修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "E22",
+   "source": "table_5.P002.drainage_grade",
+   "label": "比較標的1排水之良否優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "F22",
+   "source": "table_5.P002.drainage_grade_label",
+   "label": "比較標的1排水之良否優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "G22",
+   "source": "table_5.P002.drainage_adjustment_pct",
+   "label": "比較標的1排水之良否修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "E23",
+   "source": "table_5.P002.terrain_grade",
+   "label": "比較標的1地勢優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "F23",
+   "source": "table_5.P002.terrain_grade_label",
+   "label": "比較標的1地勢優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "G23",
+   "source": "table_5.P002.terrain_adjustment_pct",
+   "label": "比較標的1地勢修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "E25",
+   "source": "table_5.P002.land_improvement_grade",
+   "label": "比較標的1土地改良優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "F25",
+   "source": "table_5.P002.land_improvement_grade_label",
+   "label": "比較標的1土地改良優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "G25",
+   "source": "table_5.P002.land_improvement_adjustment_pct",
+   "label": "比較標的1土地改良修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "E27",
+   "source": "table_5.P002.school_access_grade",
+   "label": "比較標的1接近學校之程度優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "F27",
+   "source": "table_5.P002.school_access_grade_label",
+   "label": "比較標的1接近學校之程度優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "G27",
+   "source": "table_5.P002.school_access_adjustment_pct",
+   "label": "比較標的1接近學校之程度修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "E28",
+   "source": "table_5.P002.market_access_grade",
+   "label": "比較標的1接近市場之程度優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "F28",
+   "source": "table_5.P002.market_access_grade_label",
+   "label": "比較標的1接近市場之程度優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "G28",
+   "source": "table_5.P002.market_access_adjustment_pct",
+   "label": "比較標的1接近市場之程度修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "E29",
+   "source": "table_5.P002.park_access_grade",
+   "label": "比較標的1接近公園、廣場之程度優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "F29",
+   "source": "table_5.P002.park_access_grade_label",
+   "label": "比較標的1接近公園、廣場之程度優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "G29",
+   "source": "table_5.P002.park_access_adjustment_pct",
+   "label": "比較標的1接近公園、廣場之程度修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "E30",
+   "source": "table_5.P002.tourism_access_grade",
+   "label": "比較標的1接近觀光遊憩設施之程度優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "F30",
+   "source": "table_5.P002.tourism_access_grade_label",
+   "label": "比較標的1接近觀光遊憩設施之程度優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "G30",
+   "source": "table_5.P002.tourism_access_adjustment_pct",
+   "label": "比較標的1接近觀光遊憩設施之程度修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "E31",
+   "source": "table_5.P002.parking_access_grade",
+   "label": "比較標的1停車場地之便利程度優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "F31",
+   "source": "table_5.P002.parking_access_grade_label",
+   "label": "比較標的1停車場地之便利程度優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "G31",
+   "source": "table_5.P002.parking_access_adjustment_pct",
+   "label": "比較標的1停車場地之便利程度修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "E32",
+   "source": "table_5.P002.service_facility_access_grade",
+   "label": "比較標的1接近服務性設施的程度優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "F32",
+   "source": "table_5.P002.service_facility_access_grade_label",
+   "label": "比較標的1接近服務性設施的程度優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "G32",
+   "source": "table_5.P002.service_facility_access_adjustment_pct",
+   "label": "比較標的1接近服務性設施的程度修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "E34",
+   "source": "table_5.P002.utility_facility_grade",
+   "label": "比較標的1電業設施及公用氣體燃料設施優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "F34",
+   "source": "table_5.P002.utility_facility_grade_label",
+   "label": "比較標的1電業設施及公用氣體燃料設施優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "G34",
+   "source": "table_5.P002.utility_facility_adjustment_pct",
+   "label": "比較標的1電業設施及公用氣體燃料設施修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "E35",
+   "source": "table_5.P002.funeral_facility_grade",
+   "label": "比較標的1殯葬設施優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "F35",
+   "source": "table_5.P002.funeral_facility_grade_label",
+   "label": "比較標的1殯葬設施優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "G35",
+   "source": "table_5.P002.funeral_facility_adjustment_pct",
+   "label": "比較標的1殯葬設施修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "E36",
+   "source": "table_5.P002.waste_facility_grade",
+   "label": "比較標的1廢棄物處理設施優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "F36",
+   "source": "table_5.P002.waste_facility_grade_label",
+   "label": "比較標的1廢棄物處理設施優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "G36",
+   "source": "table_5.P002.waste_facility_adjustment_pct",
+   "label": "比較標的1廢棄物處理設施修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "E38",
+   "source": "table_5.P002.pollution_grade",
+   "label": "比較標的1環境污染優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "F38",
+   "source": "table_5.P002.pollution_grade_label",
+   "label": "比較標的1環境污染優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "G38",
+   "source": "table_5.P002.pollution_adjustment_pct",
+   "label": "比較標的1環境污染修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "E40",
+   "source": "table_5.P002.other_factor_grade",
+   "label": "比較標的1其他影響因素優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "F40",
+   "source": "table_5.P002.other_factor_grade_label",
+   "label": "比較標的1其他影響因素優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "G40",
+   "source": "table_5.P002.other_factor_adjustment_pct",
+   "label": "比較標的1其他影響因素修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "E11",
+   "source": "table_5.P002.group1_subtotal_pct",
+   "label": "比較標的1百分比小計(1)",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "E18",
+   "source": "table_5.P002.group2_subtotal_pct",
+   "label": "比較標的1百分比小計(2)",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "E24",
+   "source": "table_5.P002.group3_subtotal_pct",
+   "label": "比較標的1百分比小計(3)",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "E26",
+   "source": "table_5.P002.group4_subtotal_pct",
+   "label": "比較標的1百分比小計(4)",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "E33",
+   "source": "table_5.P002.group5_subtotal_pct",
+   "label": "比較標的1百分比小計(5)",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "E37",
+   "source": "table_5.P002.group6_subtotal_pct",
+   "label": "比較標的1百分比小計(6)",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "E39",
+   "source": "table_5.P002.group7_subtotal_pct",
+   "label": "比較標的1百分比小計(7)",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "E41",
+   "source": "table_5.P002.group8_subtotal_pct",
+   "label": "比較標的1百分比小計(8)",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "E42",
+   "source": "table_5.P002.total_adjustment_pct",
+   "label": "比較標的1影響地價區域因素總修正數",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "E43",
+   "source": "table_5.P002.note",
+   "label": "比較標的1備註",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "J2",
+   "source": "table_5.P003.sample_number",
+   "label": "比較標的2實例編號",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "H3",
+   "source": "table_5.P003.zone_number",
+   "label": "比較標的2地價區段號",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "H5",
+   "source": "table_5.P003.urban_plan_grade",
+   "label": "比較標的2都市計畫(內、外)優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "I5",
+   "source": "table_5.P003.urban_plan_grade_label",
+   "label": "比較標的2都市計畫(內、外)優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "J5",
+   "source": "table_5.P003.urban_plan_adjustment_pct",
+   "label": "比較標的2都市計畫(內、外)修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "H6",
+   "source": "table_5.P003.zoning_grade",
+   "label": "比較標的2使用分區(使用地類別)優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "I6",
+   "source": "table_5.P003.zoning_grade_label",
+   "label": "比較標的2使用分區(使用地類別)優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "J6",
+   "source": "table_5.P003.zoning_adjustment_pct",
+   "label": "比較標的2使用分區(使用地類別)修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "H7",
+   "source": "table_5.P003.building_coverage_grade",
+   "label": "比較標的2建蔽率優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "I7",
+   "source": "table_5.P003.building_coverage_grade_label",
+   "label": "比較標的2建蔽率優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "J7",
+   "source": "table_5.P003.building_coverage_adjustment_pct",
+   "label": "比較標的2建蔽率修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "H8",
+   "source": "table_5.P003.floor_area_ratio_grade",
+   "label": "比較標的2容積率優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "I8",
+   "source": "table_5.P003.floor_area_ratio_grade_label",
+   "label": "比較標的2容積率優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "J8",
+   "source": "table_5.P003.floor_area_ratio_adjustment_pct",
+   "label": "比較標的2容積率修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "H9",
+   "source": "table_5.P003.building_prohibition_grade",
+   "label": "比較標的2有無禁止建築優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "I9",
+   "source": "table_5.P003.building_prohibition_grade_label",
+   "label": "比較標的2有無禁止建築優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "J9",
+   "source": "table_5.P003.building_prohibition_adjustment_pct",
+   "label": "比較標的2有無禁止建築修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "H10",
+   "source": "table_5.P003.building_restriction_grade",
+   "label": "比較標的2有無限制建築優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "I10",
+   "source": "table_5.P003.building_restriction_grade_label",
+   "label": "比較標的2有無限制建築優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "J10",
+   "source": "table_5.P003.building_restriction_adjustment_pct",
+   "label": "比較標的2有無限制建築修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "H12",
+   "source": "table_5.P003.main_road_width_grade",
+   "label": "比較標的2主要道路寬度優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "I12",
+   "source": "table_5.P003.main_road_width_grade_label",
+   "label": "比較標的2主要道路寬度優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "J12",
+   "source": "table_5.P003.main_road_width_adjustment_pct",
+   "label": "比較標的2主要道路寬度修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "H13",
+   "source": "table_5.P003.avg_road_width_grade",
+   "label": "比較標的2區段內道路平均寬度優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "I13",
+   "source": "table_5.P003.avg_road_width_grade_label",
+   "label": "比較標的2區段內道路平均寬度優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "J13",
+   "source": "table_5.P003.avg_road_width_adjustment_pct",
+   "label": "比較標的2區段內道路平均寬度修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "H14",
+   "source": "table_5.P003.major_station_access_grade",
+   "label": "比較標的2接近大型車站之程度優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "I14",
+   "source": "table_5.P003.major_station_access_grade_label",
+   "label": "比較標的2接近大型車站之程度優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "J14",
+   "source": "table_5.P003.major_station_access_adjustment_pct",
+   "label": "比較標的2接近大型車站之程度修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "H15",
+   "source": "table_5.P003.bus_stop_access_grade",
+   "label": "比較標的2站牌之接近程度或密集程度優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "I15",
+   "source": "table_5.P003.bus_stop_access_grade_label",
+   "label": "比較標的2站牌之接近程度或密集程度優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "J15",
+   "source": "table_5.P003.bus_stop_access_adjustment_pct",
+   "label": "比較標的2站牌之接近程度或密集程度修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "H16",
+   "source": "table_5.P003.interchange_access_grade",
+   "label": "比較標的2交流道之有無及接近程度優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "I16",
+   "source": "table_5.P003.interchange_access_grade_label",
+   "label": "比較標的2交流道之有無及接近程度優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "J16",
+   "source": "table_5.P003.interchange_access_adjustment_pct",
+   "label": "比較標的2交流道之有無及接近程度修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "H17",
+   "source": "table_5.P003.road_development_grade",
+   "label": "比較標的2區段內道路規劃及闢建程度優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "I17",
+   "source": "table_5.P003.road_development_grade_label",
+   "label": "比較標的2區段內道路規劃及闢建程度優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "J17",
+   "source": "table_5.P003.road_development_adjustment_pct",
+   "label": "比較標的2區段內道路規劃及闢建程度修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "H19",
+   "source": "table_5.P003.sunlight_grade",
+   "label": "比較標的2日照優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "I19",
+   "source": "table_5.P003.sunlight_grade_label",
+   "label": "比較標的2日照優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "J19",
+   "source": "table_5.P003.sunlight_adjustment_pct",
+   "label": "比較標的2日照修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "H20",
+   "source": "table_5.P003.landscape_grade",
+   "label": "比較標的2景觀優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "I20",
+   "source": "table_5.P003.landscape_grade_label",
+   "label": "比較標的2景觀優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "J20",
+   "source": "table_5.P003.landscape_adjustment_pct",
+   "label": "比較標的2景觀修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "H21",
+   "source": "table_5.P003.slope_grade",
+   "label": "比較標的2傾斜度優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "I21",
+   "source": "table_5.P003.slope_grade_label",
+   "label": "比較標的2傾斜度優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "J21",
+   "source": "table_5.P003.slope_adjustment_pct",
+   "label": "比較標的2傾斜度修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "H22",
+   "source": "table_5.P003.drainage_grade",
+   "label": "比較標的2排水之良否優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "I22",
+   "source": "table_5.P003.drainage_grade_label",
+   "label": "比較標的2排水之良否優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "J22",
+   "source": "table_5.P003.drainage_adjustment_pct",
+   "label": "比較標的2排水之良否修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "H23",
+   "source": "table_5.P003.terrain_grade",
+   "label": "比較標的2地勢優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "I23",
+   "source": "table_5.P003.terrain_grade_label",
+   "label": "比較標的2地勢優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "J23",
+   "source": "table_5.P003.terrain_adjustment_pct",
+   "label": "比較標的2地勢修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "H25",
+   "source": "table_5.P003.land_improvement_grade",
+   "label": "比較標的2土地改良優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "I25",
+   "source": "table_5.P003.land_improvement_grade_label",
+   "label": "比較標的2土地改良優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "J25",
+   "source": "table_5.P003.land_improvement_adjustment_pct",
+   "label": "比較標的2土地改良修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "H27",
+   "source": "table_5.P003.school_access_grade",
+   "label": "比較標的2接近學校之程度優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "I27",
+   "source": "table_5.P003.school_access_grade_label",
+   "label": "比較標的2接近學校之程度優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "J27",
+   "source": "table_5.P003.school_access_adjustment_pct",
+   "label": "比較標的2接近學校之程度修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "H28",
+   "source": "table_5.P003.market_access_grade",
+   "label": "比較標的2接近市場之程度優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "I28",
+   "source": "table_5.P003.market_access_grade_label",
+   "label": "比較標的2接近市場之程度優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "J28",
+   "source": "table_5.P003.market_access_adjustment_pct",
+   "label": "比較標的2接近市場之程度修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "H29",
+   "source": "table_5.P003.park_access_grade",
+   "label": "比較標的2接近公園、廣場之程度優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "I29",
+   "source": "table_5.P003.park_access_grade_label",
+   "label": "比較標的2接近公園、廣場之程度優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "J29",
+   "source": "table_5.P003.park_access_adjustment_pct",
+   "label": "比較標的2接近公園、廣場之程度修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "H30",
+   "source": "table_5.P003.tourism_access_grade",
+   "label": "比較標的2接近觀光遊憩設施之程度優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "I30",
+   "source": "table_5.P003.tourism_access_grade_label",
+   "label": "比較標的2接近觀光遊憩設施之程度優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "J30",
+   "source": "table_5.P003.tourism_access_adjustment_pct",
+   "label": "比較標的2接近觀光遊憩設施之程度修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "H31",
+   "source": "table_5.P003.parking_access_grade",
+   "label": "比較標的2停車場地之便利程度優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "I31",
+   "source": "table_5.P003.parking_access_grade_label",
+   "label": "比較標的2停車場地之便利程度優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "J31",
+   "source": "table_5.P003.parking_access_adjustment_pct",
+   "label": "比較標的2停車場地之便利程度修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "H32",
+   "source": "table_5.P003.service_facility_access_grade",
+   "label": "比較標的2接近服務性設施的程度優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "I32",
+   "source": "table_5.P003.service_facility_access_grade_label",
+   "label": "比較標的2接近服務性設施的程度優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "J32",
+   "source": "table_5.P003.service_facility_access_adjustment_pct",
+   "label": "比較標的2接近服務性設施的程度修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "H34",
+   "source": "table_5.P003.utility_facility_grade",
+   "label": "比較標的2電業設施及公用氣體燃料設施優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "I34",
+   "source": "table_5.P003.utility_facility_grade_label",
+   "label": "比較標的2電業設施及公用氣體燃料設施優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "J34",
+   "source": "table_5.P003.utility_facility_adjustment_pct",
+   "label": "比較標的2電業設施及公用氣體燃料設施修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "H35",
+   "source": "table_5.P003.funeral_facility_grade",
+   "label": "比較標的2殯葬設施優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "I35",
+   "source": "table_5.P003.funeral_facility_grade_label",
+   "label": "比較標的2殯葬設施優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "J35",
+   "source": "table_5.P003.funeral_facility_adjustment_pct",
+   "label": "比較標的2殯葬設施修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "H36",
+   "source": "table_5.P003.waste_facility_grade",
+   "label": "比較標的2廢棄物處理設施優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "I36",
+   "source": "table_5.P003.waste_facility_grade_label",
+   "label": "比較標的2廢棄物處理設施優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "J36",
+   "source": "table_5.P003.waste_facility_adjustment_pct",
+   "label": "比較標的2廢棄物處理設施修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "H38",
+   "source": "table_5.P003.pollution_grade",
+   "label": "比較標的2環境污染優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "I38",
+   "source": "table_5.P003.pollution_grade_label",
+   "label": "比較標的2環境污染優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "J38",
+   "source": "table_5.P003.pollution_adjustment_pct",
+   "label": "比較標的2環境污染修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "H40",
+   "source": "table_5.P003.other_factor_grade",
+   "label": "比較標的2其他影響因素優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "I40",
+   "source": "table_5.P003.other_factor_grade_label",
+   "label": "比較標的2其他影響因素優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "J40",
+   "source": "table_5.P003.other_factor_adjustment_pct",
+   "label": "比較標的2其他影響因素修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "H11",
+   "source": "table_5.P003.group1_subtotal_pct",
+   "label": "比較標的2百分比小計(1)",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "H18",
+   "source": "table_5.P003.group2_subtotal_pct",
+   "label": "比較標的2百分比小計(2)",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "H24",
+   "source": "table_5.P003.group3_subtotal_pct",
+   "label": "比較標的2百分比小計(3)",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "H26",
+   "source": "table_5.P003.group4_subtotal_pct",
+   "label": "比較標的2百分比小計(4)",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "H33",
+   "source": "table_5.P003.group5_subtotal_pct",
+   "label": "比較標的2百分比小計(5)",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "H37",
+   "source": "table_5.P003.group6_subtotal_pct",
+   "label": "比較標的2百分比小計(6)",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "H39",
+   "source": "table_5.P003.group7_subtotal_pct",
+   "label": "比較標的2百分比小計(7)",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "H41",
+   "source": "table_5.P003.group8_subtotal_pct",
+   "label": "比較標的2百分比小計(8)",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "H42",
+   "source": "table_5.P003.total_adjustment_pct",
+   "label": "比較標的2影響地價區域因素總修正數",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "H43",
+   "source": "table_5.P003.note",
+   "label": "比較標的2備註",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "M2",
+   "source": "table_5.P004.sample_number",
+   "label": "比較標的3實例編號",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "K3",
+   "source": "table_5.P004.zone_number",
+   "label": "比較標的3地價區段號",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "K5",
+   "source": "table_5.P004.urban_plan_grade",
+   "label": "比較標的3都市計畫(內、外)優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "L5",
+   "source": "table_5.P004.urban_plan_grade_label",
+   "label": "比較標的3都市計畫(內、外)優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "M5",
+   "source": "table_5.P004.urban_plan_adjustment_pct",
+   "label": "比較標的3都市計畫(內、外)修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "K6",
+   "source": "table_5.P004.zoning_grade",
+   "label": "比較標的3使用分區(使用地類別)優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "L6",
+   "source": "table_5.P004.zoning_grade_label",
+   "label": "比較標的3使用分區(使用地類別)優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "M6",
+   "source": "table_5.P004.zoning_adjustment_pct",
+   "label": "比較標的3使用分區(使用地類別)修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "K7",
+   "source": "table_5.P004.building_coverage_grade",
+   "label": "比較標的3建蔽率優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "L7",
+   "source": "table_5.P004.building_coverage_grade_label",
+   "label": "比較標的3建蔽率優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "M7",
+   "source": "table_5.P004.building_coverage_adjustment_pct",
+   "label": "比較標的3建蔽率修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "K8",
+   "source": "table_5.P004.floor_area_ratio_grade",
+   "label": "比較標的3容積率優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "L8",
+   "source": "table_5.P004.floor_area_ratio_grade_label",
+   "label": "比較標的3容積率優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "M8",
+   "source": "table_5.P004.floor_area_ratio_adjustment_pct",
+   "label": "比較標的3容積率修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "K9",
+   "source": "table_5.P004.building_prohibition_grade",
+   "label": "比較標的3有無禁止建築優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "L9",
+   "source": "table_5.P004.building_prohibition_grade_label",
+   "label": "比較標的3有無禁止建築優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "M9",
+   "source": "table_5.P004.building_prohibition_adjustment_pct",
+   "label": "比較標的3有無禁止建築修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "K10",
+   "source": "table_5.P004.building_restriction_grade",
+   "label": "比較標的3有無限制建築優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "L10",
+   "source": "table_5.P004.building_restriction_grade_label",
+   "label": "比較標的3有無限制建築優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "M10",
+   "source": "table_5.P004.building_restriction_adjustment_pct",
+   "label": "比較標的3有無限制建築修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "K12",
+   "source": "table_5.P004.main_road_width_grade",
+   "label": "比較標的3主要道路寬度優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "L12",
+   "source": "table_5.P004.main_road_width_grade_label",
+   "label": "比較標的3主要道路寬度優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "M12",
+   "source": "table_5.P004.main_road_width_adjustment_pct",
+   "label": "比較標的3主要道路寬度修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "K13",
+   "source": "table_5.P004.avg_road_width_grade",
+   "label": "比較標的3區段內道路平均寬度優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "L13",
+   "source": "table_5.P004.avg_road_width_grade_label",
+   "label": "比較標的3區段內道路平均寬度優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "M13",
+   "source": "table_5.P004.avg_road_width_adjustment_pct",
+   "label": "比較標的3區段內道路平均寬度修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "K14",
+   "source": "table_5.P004.major_station_access_grade",
+   "label": "比較標的3接近大型車站之程度優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "L14",
+   "source": "table_5.P004.major_station_access_grade_label",
+   "label": "比較標的3接近大型車站之程度優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "M14",
+   "source": "table_5.P004.major_station_access_adjustment_pct",
+   "label": "比較標的3接近大型車站之程度修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "K15",
+   "source": "table_5.P004.bus_stop_access_grade",
+   "label": "比較標的3站牌之接近程度或密集程度優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "L15",
+   "source": "table_5.P004.bus_stop_access_grade_label",
+   "label": "比較標的3站牌之接近程度或密集程度優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "M15",
+   "source": "table_5.P004.bus_stop_access_adjustment_pct",
+   "label": "比較標的3站牌之接近程度或密集程度修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "K16",
+   "source": "table_5.P004.interchange_access_grade",
+   "label": "比較標的3交流道之有無及接近程度優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "L16",
+   "source": "table_5.P004.interchange_access_grade_label",
+   "label": "比較標的3交流道之有無及接近程度優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "M16",
+   "source": "table_5.P004.interchange_access_adjustment_pct",
+   "label": "比較標的3交流道之有無及接近程度修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "K17",
+   "source": "table_5.P004.road_development_grade",
+   "label": "比較標的3區段內道路規劃及闢建程度優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "L17",
+   "source": "table_5.P004.road_development_grade_label",
+   "label": "比較標的3區段內道路規劃及闢建程度優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "M17",
+   "source": "table_5.P004.road_development_adjustment_pct",
+   "label": "比較標的3區段內道路規劃及闢建程度修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "K19",
+   "source": "table_5.P004.sunlight_grade",
+   "label": "比較標的3日照優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "L19",
+   "source": "table_5.P004.sunlight_grade_label",
+   "label": "比較標的3日照優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "M19",
+   "source": "table_5.P004.sunlight_adjustment_pct",
+   "label": "比較標的3日照修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "K20",
+   "source": "table_5.P004.landscape_grade",
+   "label": "比較標的3景觀優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "L20",
+   "source": "table_5.P004.landscape_grade_label",
+   "label": "比較標的3景觀優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "M20",
+   "source": "table_5.P004.landscape_adjustment_pct",
+   "label": "比較標的3景觀修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "K21",
+   "source": "table_5.P004.slope_grade",
+   "label": "比較標的3傾斜度優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "L21",
+   "source": "table_5.P004.slope_grade_label",
+   "label": "比較標的3傾斜度優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "M21",
+   "source": "table_5.P004.slope_adjustment_pct",
+   "label": "比較標的3傾斜度修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "K22",
+   "source": "table_5.P004.drainage_grade",
+   "label": "比較標的3排水之良否優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "L22",
+   "source": "table_5.P004.drainage_grade_label",
+   "label": "比較標的3排水之良否優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "M22",
+   "source": "table_5.P004.drainage_adjustment_pct",
+   "label": "比較標的3排水之良否修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "K23",
+   "source": "table_5.P004.terrain_grade",
+   "label": "比較標的3地勢優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "L23",
+   "source": "table_5.P004.terrain_grade_label",
+   "label": "比較標的3地勢優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "M23",
+   "source": "table_5.P004.terrain_adjustment_pct",
+   "label": "比較標的3地勢修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "K25",
+   "source": "table_5.P004.land_improvement_grade",
+   "label": "比較標的3土地改良優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "L25",
+   "source": "table_5.P004.land_improvement_grade_label",
+   "label": "比較標的3土地改良優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "M25",
+   "source": "table_5.P004.land_improvement_adjustment_pct",
+   "label": "比較標的3土地改良修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "K27",
+   "source": "table_5.P004.school_access_grade",
+   "label": "比較標的3接近學校之程度優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "L27",
+   "source": "table_5.P004.school_access_grade_label",
+   "label": "比較標的3接近學校之程度優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "M27",
+   "source": "table_5.P004.school_access_adjustment_pct",
+   "label": "比較標的3接近學校之程度修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "K28",
+   "source": "table_5.P004.market_access_grade",
+   "label": "比較標的3接近市場之程度優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "L28",
+   "source": "table_5.P004.market_access_grade_label",
+   "label": "比較標的3接近市場之程度優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "M28",
+   "source": "table_5.P004.market_access_adjustment_pct",
+   "label": "比較標的3接近市場之程度修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "K29",
+   "source": "table_5.P004.park_access_grade",
+   "label": "比較標的3接近公園、廣場之程度優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "L29",
+   "source": "table_5.P004.park_access_grade_label",
+   "label": "比較標的3接近公園、廣場之程度優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "M29",
+   "source": "table_5.P004.park_access_adjustment_pct",
+   "label": "比較標的3接近公園、廣場之程度修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "K30",
+   "source": "table_5.P004.tourism_access_grade",
+   "label": "比較標的3接近觀光遊憩設施之程度優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "L30",
+   "source": "table_5.P004.tourism_access_grade_label",
+   "label": "比較標的3接近觀光遊憩設施之程度優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "M30",
+   "source": "table_5.P004.tourism_access_adjustment_pct",
+   "label": "比較標的3接近觀光遊憩設施之程度修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "K31",
+   "source": "table_5.P004.parking_access_grade",
+   "label": "比較標的3停車場地之便利程度優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "L31",
+   "source": "table_5.P004.parking_access_grade_label",
+   "label": "比較標的3停車場地之便利程度優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "M31",
+   "source": "table_5.P004.parking_access_adjustment_pct",
+   "label": "比較標的3停車場地之便利程度修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "K32",
+   "source": "table_5.P004.service_facility_access_grade",
+   "label": "比較標的3接近服務性設施的程度優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "L32",
+   "source": "table_5.P004.service_facility_access_grade_label",
+   "label": "比較標的3接近服務性設施的程度優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "M32",
+   "source": "table_5.P004.service_facility_access_adjustment_pct",
+   "label": "比較標的3接近服務性設施的程度修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "K34",
+   "source": "table_5.P004.utility_facility_grade",
+   "label": "比較標的3電業設施及公用氣體燃料設施優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "L34",
+   "source": "table_5.P004.utility_facility_grade_label",
+   "label": "比較標的3電業設施及公用氣體燃料設施優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "M34",
+   "source": "table_5.P004.utility_facility_adjustment_pct",
+   "label": "比較標的3電業設施及公用氣體燃料設施修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "K35",
+   "source": "table_5.P004.funeral_facility_grade",
+   "label": "比較標的3殯葬設施優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "L35",
+   "source": "table_5.P004.funeral_facility_grade_label",
+   "label": "比較標的3殯葬設施優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "M35",
+   "source": "table_5.P004.funeral_facility_adjustment_pct",
+   "label": "比較標的3殯葬設施修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "K36",
+   "source": "table_5.P004.waste_facility_grade",
+   "label": "比較標的3廢棄物處理設施優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "L36",
+   "source": "table_5.P004.waste_facility_grade_label",
+   "label": "比較標的3廢棄物處理設施優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "M36",
+   "source": "table_5.P004.waste_facility_adjustment_pct",
+   "label": "比較標的3廢棄物處理設施修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "K38",
+   "source": "table_5.P004.pollution_grade",
+   "label": "比較標的3環境污染優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "L38",
+   "source": "table_5.P004.pollution_grade_label",
+   "label": "比較標的3環境污染優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "M38",
+   "source": "table_5.P004.pollution_adjustment_pct",
+   "label": "比較標的3環境污染修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "K40",
+   "source": "table_5.P004.other_factor_grade",
+   "label": "比較標的3其他影響因素優劣等級",
+   "value_kind": "integer",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "L40",
+   "source": "table_5.P004.other_factor_grade_label",
+   "label": "比較標的3其他影響因素優劣註記",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "M40",
+   "source": "table_5.P004.other_factor_adjustment_pct",
+   "label": "比較標的3其他影響因素修正百分比",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "K11",
+   "source": "table_5.P004.group1_subtotal_pct",
+   "label": "比較標的3百分比小計(1)",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "K18",
+   "source": "table_5.P004.group2_subtotal_pct",
+   "label": "比較標的3百分比小計(2)",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "K24",
+   "source": "table_5.P004.group3_subtotal_pct",
+   "label": "比較標的3百分比小計(3)",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "K26",
+   "source": "table_5.P004.group4_subtotal_pct",
+   "label": "比較標的3百分比小計(4)",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "K33",
+   "source": "table_5.P004.group5_subtotal_pct",
+   "label": "比較標的3百分比小計(5)",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "K37",
+   "source": "table_5.P004.group6_subtotal_pct",
+   "label": "比較標的3百分比小計(6)",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "K39",
+   "source": "table_5.P004.group7_subtotal_pct",
+   "label": "比較標的3百分比小計(7)",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "K41",
+   "source": "table_5.P004.group8_subtotal_pct",
+   "label": "比較標的3百分比小計(8)",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "K42",
+   "source": "table_5.P004.total_adjustment_pct",
+   "label": "比較標的3影響地價區域因素總修正數",
+   "value_kind": "percentage_points",
+   "unit": "percent_points",
+   "precision": 2,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  },
+  {
+   "cell": "K43",
+   "source": "table_5.P004.note",
+   "label": "比較標的3備註",
+   "value_kind": "text",
+   "unit": null,
+   "precision": null,
+   "absence": {
+    "missing": "blank",
+    "not_applicable": "blank",
+    "not_applicable_text": null,
+    "confirmed_zero": "zero",
+    "confirmed_zero_text": null
+   }
+  }
+ ]
+}

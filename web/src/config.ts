@@ -1,4 +1,5 @@
 import { ReviewClient } from "./api/client";
+import { ExportsClient } from "./api/exports";
 
 /**
  * The API origin is a build-time setting, never a value the page discovers at runtime.
@@ -55,6 +56,14 @@ export function writeToken(token: string | null): void {
     // A browser with site data blocked simply has no session; that is not an error worth
     // interrupting the reviewer over.
   }
+}
+
+/**
+ * Same origin and session as the main client. The token is read per request so a
+ * re-verified session does not leave the export panel holding a stale credential.
+ */
+export function buildExportsClient(): ExportsClient {
+  return new ExportsClient({ baseUrl: BASE_URL, token: () => Promise.resolve(readToken()) });
 }
 
 export function buildClient(

@@ -8,6 +8,7 @@ from appraisal_review.application.review_jobs import ReviewJobService
 from appraisal_review.application.service_guards import Principal, ServiceFault
 from appraisal_review.domain.service_contracts import ServiceErrorCode
 from appraisal_review.ports.content import ContentPlane
+from appraisal_review.ports.exports import ExportOperations
 from appraisal_review.ports.service import PrincipalResolver
 
 
@@ -38,6 +39,14 @@ def get_content_plane(request: Request) -> ContentPlane:
     if plane is None:
         raise ServiceFault(ServiceErrorCode.CAPABILITY)
     return plane
+
+
+def get_export_operations(request: Request) -> ExportOperations:
+    """An unwired export executor reports capability_unavailable, never a fake operation."""
+    operations: ExportOperations | None = getattr(request.app.state, "export_operations", None)
+    if operations is None:
+        raise ServiceFault(ServiceErrorCode.CAPABILITY)
+    return operations
 
 
 async def get_principal(request: Request) -> Principal:

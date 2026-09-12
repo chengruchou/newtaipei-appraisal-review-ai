@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, NavLink, useParams, useSearchParams } from "react-router-dom";
 import type {
   ArtifactManifest,
@@ -12,6 +12,8 @@ import type {
   TaskListView,
 } from "@/api/client";
 import { ServiceError } from "@/api/problems";
+import type { ExportsApi } from "@/api/exports";
+import { buildExportsClient } from "@/config";
 import { EvidenceList } from "@/ui/Evidence";
 import { renderValue } from "@/ui/Authority";
 import { useText } from "@/ui/Language";
@@ -20,6 +22,7 @@ import { TaskPage } from "./TaskPage";
 import { CaseContext } from "./CaseContext";
 import { BlockerList } from "./BlockerList";
 import { ConditionEntry } from "./ConditionEntry";
+import { ExportPanel, type ExportBasis } from "./ExportPanel";
 import { OfficialForms } from "./OfficialForms";
 import { SubjectRoster } from "./SubjectRoster";
 import {
@@ -96,6 +99,7 @@ export function WorkbenchJob({
   const page = route.split("/")[0] || "progress";
   const taskId = route.startsWith("tasks/") ? route.slice("tasks/".length) : null;
   const t = useText();
+  const exportsApi = useMemo(() => buildExportsClient(), []);
   const [data, setData] = useState<JobData | null>(null);
   const [error, setError] = useState<unknown>(null);
   const [updated, setUpdated] = useState<Date | null>(null);
@@ -232,6 +236,7 @@ export function WorkbenchJob({
               data={data}
               jobId={jobId}
               client={client}
+              exportsApi={exportsApi}
               onUnavailable={() => {
                 setData(null);
                 reload();
@@ -511,17 +516,34 @@ function Results({
   data,
   jobId,
   client,
+  exportsApi,
   onUnavailable,
 }: {
   data: JobData;
   jobId: string;
   client: ReviewClient;
+  exportsApi: ExportsApi;
   onUnavailable: () => void;
 }) {
   const t = useText();
   const [filter, setFilter] = useState<FindingCategory | "all">("all");
   const [search, setSearch] = useState("");
   const source = data.result ?? data.assessment;
+  // The export request is assembled only from identities the service already answered
+  // with; when any of them is missing the panel says so instead of inventing one.
+  const exportRun = data.job.current_run ?? data.result?.run ?? data.assessment?.run ?? null;
+  const exportBasis: ExportBasis | null =
+    exportRun && data.context.rule_bundle && data.context.rule_bundle_id
+      ? {
+          run: exportRun,
+          calculationSnapshotDigest: data.context.revision.material_digest,
+          templateBundle: {
+            bundle_id: data.context.rule_bundle_id,
+            version: data.context.rule_bundle.catalog_version,
+            bundle_hash: data.context.rule_bundle.catalog_digest,
+          },
+        }
+      : null;
   if (!source) return <FindingsUnavailable data={data} />;
   const findings = source.findings;
   const categories: FindingCategory[] = ["matched", "content", "rules", "evidence", "uncovered"];
@@ -687,6 +709,7 @@ function Results({
           )}
         </p>
       )}
+      <ExportPanel api={exportsApi} jobId={jobId} basis={exportBasis} />
       <Link className="button primary" to={`/jobs/${jobId}/tasks`}>
         {t("Continue to human tasks", "接續人工作業")}
         <Icon name="arrow" />
