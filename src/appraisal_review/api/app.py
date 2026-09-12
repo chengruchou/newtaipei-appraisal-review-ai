@@ -15,6 +15,8 @@ from appraisal_review.api.routes.export_bundles import BUNDLE_ENDPOINTS
 from appraisal_review.api.routes.export_bundles import router as bundle_router
 from appraisal_review.api.routes.exports import EXPORT_ENDPOINTS
 from appraisal_review.api.routes.exports import router as export_router
+from appraisal_review.api.routes.fact_adoption import ADOPTION_ENDPOINTS
+from appraisal_review.api.routes.fact_adoption import router as fact_adoption_router
 from appraisal_review.api.routes.fact_candidates import FACT_CANDIDATE_ENDPOINTS
 from appraisal_review.api.routes.fact_candidates import router as fact_candidate_router
 from appraisal_review.api.routes.human_tasks import HUMAN_TASK_ENDPOINTS
@@ -129,6 +131,7 @@ def create_app(
     app.include_router(approval_router)
     app.include_router(case_intake_router)
     app.include_router(fact_candidate_router)
+    app.include_router(fact_adoption_router)
     app.include_router(email_login_router)
     app.include_router(bundle_router)
 
@@ -162,6 +165,7 @@ def create_app(
             or endpoint in APPROVAL_ENDPOINTS
             or endpoint in CASE_INTAKE_ENDPOINTS
             or endpoint in FACT_CANDIDATE_ENDPOINTS
+            or endpoint in ADOPTION_ENDPOINTS
             or endpoint in EMAIL_LOGIN_ENDPOINTS
             or endpoint in BUNDLE_ENDPOINTS
         ):

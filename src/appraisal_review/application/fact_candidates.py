@@ -40,7 +40,7 @@ from appraisal_review.domain.service_contracts import (
     ServiceModel,
 )
 
-CandidateStatus = Literal["candidate", "confirmed", "rejected", "superseded"]
+CandidateStatus = Literal["candidate", "confirmed", "rejected", "superseded", "adopted"]
 ConfirmationDecision = Literal["accept", "reject"]
 
 #: Mean Earth radius in meters (IUGG, consistent with the WGS84 ellipsoid axes),

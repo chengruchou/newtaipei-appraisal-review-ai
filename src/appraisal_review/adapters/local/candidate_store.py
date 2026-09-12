@@ -12,6 +12,8 @@ happen in ONE transaction.
 
 from __future__ import annotations
 
+import sqlite3
+
 from appraisal_review.adapters.local.sqlite_publication import ReviewDatabase, _transaction
 from appraisal_review.application.fact_candidates import CandidateConfirmation, FactCandidate
 from appraisal_review.application.service_guards import ServiceFault
@@ -94,8 +96,9 @@ class SQLiteCandidateStore:
         return tuple(FactCandidate.model_validate_json(row[0]) for row in rows)
 
     def confirmed_unadopted(self, case_id: str) -> tuple[FactCandidate, ...]:
-        # Every confirmed candidate is unadopted here by construction: no code in
-        # this component writes snapshots or the three official tables.
+        # Adoption (application.fact_adoption) flips a row to "adopted" via
+        # mark_adopted below, so filtering on "confirmed" is exactly the
+        # awaiting-adoption set.
         connection = self.database._connect()
         try:
             rows = connection.execute(
@@ -106,6 +109,25 @@ class SQLiteCandidateStore:
         finally:
             connection.close()
         return tuple(FactCandidate.model_validate_json(row[0]) for row in rows)
+
+    @staticmethod
+    def mark_adopted(connection: sqlite3.Connection, adopted: FactCandidate) -> bool:
+        """Flip one CONFIRMED candidate to adopted inside the CALLER's transaction.
+
+        The adoption store calls this with the connection of the review-state
+        transaction that also advances the job revision and inserts the adoption
+        record, so the flip commits or rolls back with everything else. The UPDATE
+        is conditional on the stored status still being ``confirmed``; a False
+        return means someone else decided first and the caller must conflict.
+        """
+        if adopted.status != "adopted":
+            raise ValueError("mark_adopted persists only records already marked adopted")
+        changed = connection.execute(
+            "UPDATE fact_candidates SET status=?, record=? "
+            "WHERE candidate_id=? AND case_id=? AND status='confirmed'",
+            (adopted.status, adopted.model_dump_json(), adopted.candidate_id, adopted.case_id),
+        ).rowcount
+        return changed == 1
 
     def confirm(
         self,

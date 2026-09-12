@@ -25,12 +25,14 @@ from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import RequestResponseEndpoint
 
+from appraisal_review.adapters.local.adoption_store import SQLiteAdoptionStore
 from appraisal_review.adapters.local.approval_store import SQLiteApprovalStore
 from appraisal_review.adapters.local.artifact_publication import CommittedResultResolver
 from appraisal_review.adapters.local.bundle_store import SQLiteBundleStore
 from appraisal_review.adapters.local.candidate_store import SQLiteCandidateStore
 from appraisal_review.adapters.local.case_intake_store import SQLiteCaseIntakeStore
 from appraisal_review.adapters.local.export_store import SQLiteExportStore
+from appraisal_review.adapters.local.snapshot_registry import RegisteredSnapshots
 from appraisal_review.adapters.local.sqlite_review_store import SQLiteReviewStore
 from appraisal_review.api.app import create_app
 from appraisal_review.application.case_intake import CaseIntakeService
@@ -42,6 +44,7 @@ from appraisal_review.application.exports import (
     WorkbookConverter,
     WorkbookFiller,
 )
+from appraisal_review.application.fact_adoption import FactAdoptionService
 from appraisal_review.application.fact_candidates import CandidateService
 from appraisal_review.application.human_tasks import HumanTaskService
 from appraisal_review.application.outbox import DispatchMessage, JobReconciler, OutboxDispatcher
@@ -795,8 +798,20 @@ def create_integrated_service(
             with suppress(ServiceFault, ValueError):
                 directory.grant_case(creator_actor_id, intake_case_id)
         # External lookups become CANDIDATES here; adoption into facts or tables
-        # stays a separate named-human path and is not wired by this plane.
-        app.state.fact_candidates = CandidateService(store=SQLiteCandidateStore(store))
+        # is the separate named-human plane wired below, never this one.
+        candidate_store = SQLiteCandidateStore(store)
+        app.state.fact_candidates = CandidateService(store=candidate_store)
+        # Adoption writes confirmed values into a new snapshot and advances the job's
+        # revision, so it needs the concrete registry (read AND register), not the
+        # read-only provider. A composition without one simply offers no adoption
+        # plane: the route then answers capability_unavailable instead of pretending.
+        if isinstance(snapshot_provider, RegisteredSnapshots):
+            app.state.fact_adoption = FactAdoptionService(
+                candidates=candidate_store,
+                snapshots=snapshot_provider,
+                jobs=service,
+                store=SQLiteAdoptionStore(store, snapshots=snapshot_provider),
+            )
 
     mail_from = os.environ.get("REVIEW_MAIL_FROM", "").strip()
     if os.environ.get("REVIEW_EMAIL_LOGIN") == "ses":
