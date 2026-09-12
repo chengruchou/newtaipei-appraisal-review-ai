@@ -193,6 +193,86 @@
         "title": "AgentReviewRun",
         "type": "object"
       },
+      "ApprovalDecision": {
+        "additionalProperties": false,
+        "properties": {
+          "actor": {
+            "$ref": "#/components/schemas/ActorReference"
+          },
+          "decided_at": {
+            "description": "Server unix seconds; never client-supplied",
+            "minimum": 0.0,
+            "title": "Decided At",
+            "type": "integer"
+          },
+          "decision": {
+            "enum": [
+              "approve",
+              "return",
+              "withdraw"
+            ],
+            "title": "Decision",
+            "type": "string"
+          },
+          "reason": {
+            "default": "",
+            "maxLength": 1024,
+            "title": "Reason",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": "service-v1",
+            "default": "service-v1",
+            "title": "Schema Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "decision",
+          "actor",
+          "decided_at"
+        ],
+        "title": "ApprovalDecision",
+        "type": "object"
+      },
+      "ApprovalDecisionCommand": {
+        "additionalProperties": false,
+        "description": "approve / return / withdraw, by the authenticated caller, never a named body.",
+        "properties": {
+          "decision": {
+            "enum": [
+              "approve",
+              "return",
+              "withdraw"
+            ],
+            "title": "Decision",
+            "type": "string"
+          },
+          "idempotency_key": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+            "title": "Idempotency Key",
+            "type": "string"
+          },
+          "reason": {
+            "default": "",
+            "maxLength": 1024,
+            "title": "Reason",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": "service-v1",
+            "default": "service-v1",
+            "title": "Schema Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "idempotency_key",
+          "decision"
+        ],
+        "title": "ApprovalDecisionCommand",
+        "type": "object"
+      },
       "ArtifactManifest": {
         "additionalProperties": false,
         "properties": {
@@ -1204,54 +1284,22 @@
         "title": "ExecutionStatus",
         "type": "string"
       },
-      "ExportBasis": {
-        "additionalProperties": false,
-        "description": "Everything a client needs to compose a valid export request, served, not guessed.\n\nThe page must not invent the snapshot digest or the template bundle: both identify\nserver-held state, and a wrong guess turns into a confusing conflict. This view hands\nthem over for the job's current run, together with the snapshot's open gaps so the\nformat chooser can show what a draft will still be missing.",
-        "properties": {
-          "blockers": {
-            "default": [],
-            "items": {
-              "type": "string"
-            },
-            "title": "Blockers",
-            "type": "array"
-          },
-          "calculation_snapshot_digest": {
-            "pattern": "^[a-f0-9]{64}$",
-            "title": "Calculation Snapshot Digest",
-            "type": "string"
-          },
-          "job_id": {
-            "format": "uuid",
-            "title": "Job Id",
-            "type": "string"
-          },
-          "run": {
-            "$ref": "#/components/schemas/RunReference"
-          },
-          "schema_version": {
-            "const": "service-v1",
-            "default": "service-v1",
-            "title": "Schema Version",
-            "type": "string"
-          },
-          "template_bundle": {
-            "$ref": "#/components/schemas/TemplateBundleReference"
-          }
-        },
-        "required": [
-          "job_id",
-          "run",
-          "calculation_snapshot_digest",
-          "template_bundle"
-        ],
-        "title": "ExportBasis",
-        "type": "object"
-      },
       "ExportOperation": {
         "additionalProperties": false,
         "description": "Immutable format plus the current state of one export request.",
         "properties": {
+          "approval_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approval Id"
+          },
           "artifacts": {
             "default": [],
             "items": {
@@ -1822,6 +1870,70 @@
           "message"
         ],
         "title": "Finding",
+        "type": "object"
+      },
+      "FormalExportBasis": {
+        "additionalProperties": false,
+        "description": "The basis view plus formal readiness and the approval for the current content.",
+        "properties": {
+          "approval": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReportApproval"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "blockers": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Blockers",
+            "type": "array"
+          },
+          "calculation_snapshot_digest": {
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Calculation Snapshot Digest",
+            "type": "string"
+          },
+          "job_id": {
+            "format": "uuid",
+            "title": "Job Id",
+            "type": "string"
+          },
+          "readiness": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReportReadiness"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "run": {
+            "$ref": "#/components/schemas/RunReference"
+          },
+          "schema_version": {
+            "const": "service-v1",
+            "default": "service-v1",
+            "title": "Schema Version",
+            "type": "string"
+          },
+          "template_bundle": {
+            "$ref": "#/components/schemas/TemplateBundleReference"
+          }
+        },
+        "required": [
+          "job_id",
+          "run",
+          "calculation_snapshot_digest",
+          "template_bundle"
+        ],
+        "title": "FormalExportBasis",
         "type": "object"
       },
       "Grade": {
@@ -2836,6 +2948,282 @@
         "title": "PublicValue",
         "type": "object"
       },
+      "ReadinessBlocker": {
+        "additionalProperties": false,
+        "description": "One concrete reason a formal request cannot be submitted yet.",
+        "properties": {
+          "action": {
+            "maxLength": 512,
+            "minLength": 1,
+            "title": "Action",
+            "type": "string"
+          },
+          "code": {
+            "enum": [
+              "required_value_missing",
+              "unjustified_not_applicable",
+              "unjustified_confirmed_zero",
+              "snapshot_not_registered",
+              "stale_snapshot",
+              "bundle_mismatch",
+              "human_task_open"
+            ],
+            "title": "Code",
+            "type": "string"
+          },
+          "current_state": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current State"
+          },
+          "message": {
+            "maxLength": 512,
+            "minLength": 1,
+            "title": "Message",
+            "type": "string"
+          },
+          "needed": {
+            "maxLength": 512,
+            "minLength": 1,
+            "title": "Needed",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": "service-v1",
+            "default": "service-v1",
+            "title": "Schema Version",
+            "type": "string"
+          },
+          "source_key": {
+            "anyOf": [
+              {
+                "maxLength": 256,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Key"
+          },
+          "subject_id": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subject Id"
+          },
+          "table": {
+            "anyOf": [
+              {
+                "enum": [
+                  "table_3",
+                  "table_4",
+                  "table_5"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Table"
+          }
+        },
+        "required": [
+          "code",
+          "message",
+          "needed",
+          "action"
+        ],
+        "title": "ReadinessBlocker",
+        "type": "object"
+      },
+      "ReportApproval": {
+        "additionalProperties": false,
+        "description": "The durable approval request with its immutable content binding.",
+        "properties": {
+          "approval_id": {
+            "format": "uuid",
+            "title": "Approval Id",
+            "type": "string"
+          },
+          "binding": {
+            "$ref": "#/components/schemas/ReportVersionBinding"
+          },
+          "decision": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApprovalDecision"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "job_id": {
+            "format": "uuid",
+            "title": "Job Id",
+            "type": "string"
+          },
+          "payload_digest": {
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Payload Digest",
+            "type": "string"
+          },
+          "readiness_policy_version": {
+            "default": "formal-readiness-v1",
+            "title": "Readiness Policy Version",
+            "type": "string"
+          },
+          "run": {
+            "$ref": "#/components/schemas/RunReference"
+          },
+          "schema_version": {
+            "const": "service-v1",
+            "default": "service-v1",
+            "title": "Schema Version",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "submitted",
+              "approved",
+              "returned",
+              "withdrawn",
+              "superseded"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "submitted_at": {
+            "minimum": 0.0,
+            "title": "Submitted At",
+            "type": "integer"
+          },
+          "submitted_by": {
+            "$ref": "#/components/schemas/ActorReference"
+          }
+        },
+        "required": [
+          "approval_id",
+          "job_id",
+          "run",
+          "binding",
+          "status",
+          "submitted_by",
+          "submitted_at",
+          "payload_digest"
+        ],
+        "title": "ReportApproval",
+        "type": "object"
+      },
+      "ReportReadiness": {
+        "additionalProperties": false,
+        "description": "Evaluated against the live snapshot; never cached across revisions.",
+        "properties": {
+          "blockers": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ReadinessBlocker"
+            },
+            "title": "Blockers",
+            "type": "array"
+          },
+          "policy_version": {
+            "default": "formal-readiness-v1",
+            "title": "Policy Version",
+            "type": "string"
+          },
+          "required_satisfied": {
+            "minimum": 0.0,
+            "title": "Required Satisfied",
+            "type": "integer"
+          },
+          "required_total": {
+            "minimum": 0.0,
+            "title": "Required Total",
+            "type": "integer"
+          },
+          "schema_version": {
+            "const": "service-v1",
+            "default": "service-v1",
+            "title": "Schema Version",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "pending_data",
+              "ready_to_submit"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "state",
+          "required_total",
+          "required_satisfied"
+        ],
+        "title": "ReportReadiness",
+        "type": "object"
+      },
+      "ReportVersionBinding": {
+        "additionalProperties": false,
+        "description": "The exact content a person approves: one hash per official table.\n\nDeliberately content-only: the snapshot digest, the template bundle and the three\nfilled-workbook hashes. Which readiness policy admitted the submission is recorded\non the approval itself, so two services computing the binding from the same bytes\nalways agree on its identity.",
+        "properties": {
+          "calculation_snapshot_digest": {
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Calculation Snapshot Digest",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": "service-v1",
+            "default": "service-v1",
+            "title": "Schema Version",
+            "type": "string"
+          },
+          "template_bundle": {
+            "$ref": "#/components/schemas/TemplateBundleReference"
+          },
+          "workbook_hashes": {
+            "additionalProperties": {
+              "pattern": "^[a-f0-9]{64}$",
+              "type": "string"
+            },
+            "maxProperties": 3,
+            "minProperties": 3,
+            "propertyNames": {
+              "enum": [
+                "table_3",
+                "table_4",
+                "table_5"
+              ]
+            },
+            "title": "Workbook Hashes",
+            "type": "object"
+          }
+        },
+        "required": [
+          "calculation_snapshot_digest",
+          "template_bundle",
+          "workbook_hashes"
+        ],
+        "title": "ReportVersionBinding",
+        "type": "object"
+      },
       "ResponseAction": {
         "enum": [
           "confirm",
@@ -3746,6 +4134,42 @@
           "excerpt"
         ],
         "title": "SourceCitation",
+        "type": "object"
+      },
+      "SubmitReportApproval": {
+        "additionalProperties": false,
+        "description": "Untrusted command; the server computes the binding it will be judged by.",
+        "properties": {
+          "calculation_snapshot_digest": {
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Calculation Snapshot Digest",
+            "type": "string"
+          },
+          "idempotency_key": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+            "title": "Idempotency Key",
+            "type": "string"
+          },
+          "run": {
+            "$ref": "#/components/schemas/RunReference"
+          },
+          "schema_version": {
+            "const": "service-v1",
+            "default": "service-v1",
+            "title": "Schema Version",
+            "type": "string"
+          },
+          "template_bundle": {
+            "$ref": "#/components/schemas/TemplateBundleReference"
+          }
+        },
+        "required": [
+          "idempotency_key",
+          "run",
+          "calculation_snapshot_digest",
+          "template_bundle"
+        ],
+        "title": "SubmitReportApproval",
         "type": "object"
       },
       "TableOutcome": {
@@ -5125,7 +5549,7 @@
     },
     "/v1/review-jobs/{job_id}/exports/basis": {
       "get": {
-        "description": "The snapshot digest and template bundle a request for this job must pin.",
+        "description": "The pins a request needs, plus formal readiness and the current approval.",
         "operationId": "read_export_basis_v1_review_jobs__job_id__exports_basis_get",
         "parameters": [
           {
@@ -5144,7 +5568,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ExportBasis"
+                  "$ref": "#/components/schemas/FormalExportBasis"
                 }
               }
             },
@@ -5298,6 +5722,307 @@
         "summary": "Read Export",
         "tags": [
           "exports"
+        ]
+      }
+    },
+    "/v1/review-jobs/{job_id}/report-approvals": {
+      "post": {
+        "description": "Pin the current content as one report version and submit it for approval.",
+        "operationId": "submit_report_approval_v1_review_jobs__job_id__report_approvals_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitReportApproval"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportApproval"
+                }
+              }
+            },
+            "description": "Exact replay of a known submission"
+          },
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportApproval"
+                }
+              }
+            },
+            "description": "The version is submitted for approval"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceProblem"
+                }
+              }
+            },
+            "description": "Missing case or publish permission"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceProblem"
+                }
+              }
+            },
+            "description": "No such job or approval"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceProblem"
+                }
+              }
+            },
+            "description": "Not ready, stale content, wrong state, or a reused key"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceProblem"
+                }
+              }
+            },
+            "description": "Invalid command"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceProblem"
+                }
+              }
+            },
+            "description": "Approvals are not configured"
+          }
+        },
+        "summary": "Submit Report Approval",
+        "tags": [
+          "report-approvals"
+        ]
+      }
+    },
+    "/v1/review-jobs/{job_id}/report-approvals/{approval_id}": {
+      "get": {
+        "operationId": "read_report_approval_v1_review_jobs__job_id__report_approvals__approval_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Job Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "approval_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Approval Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportApproval"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceProblem"
+                }
+              }
+            },
+            "description": "Missing case or publish permission"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceProblem"
+                }
+              }
+            },
+            "description": "No such job or approval"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceProblem"
+                }
+              }
+            },
+            "description": "Not ready, stale content, wrong state, or a reused key"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceProblem"
+                }
+              }
+            },
+            "description": "Invalid command"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceProblem"
+                }
+              }
+            },
+            "description": "Approvals are not configured"
+          }
+        },
+        "summary": "Read Report Approval",
+        "tags": [
+          "report-approvals"
+        ]
+      }
+    },
+    "/v1/review-jobs/{job_id}/report-approvals/{approval_id}/decisions": {
+      "post": {
+        "description": "Approve, return or withdraw - by the authenticated publish-permission holder.",
+        "operationId": "decide_report_approval_v1_review_jobs__job_id__report_approvals__approval_id__decisions_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Job Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "approval_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Approval Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApprovalDecisionCommand"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportApproval"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceProblem"
+                }
+              }
+            },
+            "description": "Missing case or publish permission"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceProblem"
+                }
+              }
+            },
+            "description": "No such job or approval"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceProblem"
+                }
+              }
+            },
+            "description": "Not ready, stale content, wrong state, or a reused key"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceProblem"
+                }
+              }
+            },
+            "description": "Invalid command"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceProblem"
+                }
+              }
+            },
+            "description": "Approvals are not configured"
+          }
+        },
+        "summary": "Decide Report Approval",
+        "tags": [
+          "report-approvals"
         ]
       }
     },

@@ -14,15 +14,15 @@ An unwired composition answers capability_unavailable, never an empty operation.
 from typing import Annotated, Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 
 from appraisal_review.api.dependencies import get_export_operations, get_principal
 from appraisal_review.application.service_guards import Principal
 from appraisal_review.domain.official_export import (
-    ExportBasis,
     ExportOperation,
     ExportRequest,
 )
+from appraisal_review.domain.report_approval import FormalExportBasis
 from appraisal_review.domain.service_contracts import ServiceProblem
 from appraisal_review.ports.exports import ExportOperations
 
@@ -63,14 +63,21 @@ async def submit_export(
     return await operations.submit(principal, job_id, request)
 
 
-@router.get("/basis", response_model=ExportBasis, responses=EXPORT_RESPONSES)
+@router.get("/basis", response_model=FormalExportBasis, responses=EXPORT_RESPONSES)
 async def read_export_basis(
     job_id: UUID,
+    request: Request,
     principal: PrincipalDependency,
     operations: OperationsDependency,
-) -> ExportBasis:
-    """The snapshot digest and template bundle a request for this job must pin."""
-    return await operations.basis(principal, job_id)
+) -> FormalExportBasis:
+    """The pins a request needs, plus formal readiness and the current approval."""
+    basis = await operations.basis(principal, job_id)
+    approvals = getattr(request.app.state, "report_approvals", None)
+    readiness = approval = None
+    if approvals is not None:
+        readiness = await approvals.readiness(principal, job_id)
+        approval = await approvals.latest_for_current_binding(principal, job_id)
+    return FormalExportBasis.from_basis(basis, readiness, approval)
 
 
 @router.get("/{export_id}", response_model=ExportOperation, responses=EXPORT_RESPONSES)

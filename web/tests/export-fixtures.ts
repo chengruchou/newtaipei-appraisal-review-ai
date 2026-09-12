@@ -3,7 +3,11 @@ import type {
   CreateExportCommand,
   ExportArtifact,
   ExportOperation,
+  ExportReadiness,
+  ExportReadinessBlocker,
   ExportRunReference,
+  ReportApproval,
+  ServerExportBasis,
 } from "@/api/exports";
 import type { ExportBasis } from "@/features/ExportPanel";
 
@@ -58,6 +62,71 @@ export function artifact(overrides: Partial<ExportArtifact> = {}): ExportArtifac
     filename: "表3_地價區段勘查表.xlsx",
     size_bytes: 1024,
     content_hash: "d".repeat(64),
+    ...overrides,
+  };
+}
+
+export function readinessBlocker(
+  overrides: Partial<ExportReadinessBlocker> = {},
+): ExportReadinessBlocker {
+  return {
+    code: "missing_condition",
+    message: "表4 R-01 尚未確認交易條件",
+    source_key: "table_4:R-01:condition",
+    table: "table_4",
+    subject_id: "R-01",
+    current_state: "missing",
+    needed: "已確認的交易條件值",
+    action: "請於人工作業完成確認",
+    ...overrides,
+  };
+}
+
+export function readiness(overrides: Partial<ExportReadiness> = {}): ExportReadiness {
+  return {
+    policy_version: "readiness-v1",
+    state: "ready_to_submit",
+    blockers: [],
+    required_total: 5,
+    required_satisfied: 5,
+    ...overrides,
+  };
+}
+
+export function approval(overrides: Partial<ReportApproval> = {}): ReportApproval {
+  return {
+    approval_id: "appr-1",
+    job_id: "job-1",
+    run: RUN,
+    binding: {
+      calculation_snapshot_digest: SNAPSHOT_DIGEST,
+      template_bundle: basis().templateBundle,
+      workbook_hashes: {
+        table_3: "e".repeat(64),
+        table_4: "f".repeat(64),
+        table_5: "0".repeat(64),
+      },
+      readiness_policy_version: "readiness-v1",
+    },
+    status: "submitted",
+    submitted_by: { actor_id: "reviewer-1", kind: "human" },
+    submitted_at: 1_757_600_000,
+    payload_digest: "1".repeat(64),
+    decision: null,
+    ...overrides,
+  };
+}
+
+export function serverBasis(overrides: Partial<ServerExportBasis> = {}): ServerExportBasis {
+  const base = basis();
+  return {
+    job_id: "job-1",
+    run: base.run,
+    calculation_snapshot_digest: base.calculationSnapshotDigest,
+    template_bundle: base.templateBundle,
+    blockers: [],
+    readiness: readiness(),
+    approval: null,
     ...overrides,
   };
 }

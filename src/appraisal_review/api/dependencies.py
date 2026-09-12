@@ -4,6 +4,7 @@ from fastapi import Request
 
 from appraisal_review.application.bootstrap import ControllerFactory
 from appraisal_review.application.human_tasks import HumanTaskService
+from appraisal_review.application.report_approvals import ReportApprovalService
 from appraisal_review.application.review_jobs import ReviewJobService
 from appraisal_review.application.service_guards import Principal, ServiceFault
 from appraisal_review.domain.service_contracts import ServiceErrorCode
@@ -47,6 +48,14 @@ def get_export_operations(request: Request) -> ExportOperations:
     if operations is None:
         raise ServiceFault(ServiceErrorCode.CAPABILITY)
     return operations
+
+
+def get_report_approvals(request: Request) -> ReportApprovalService:
+    """An unwired approval plane reports capability_unavailable, never a silent grant."""
+    service: ReportApprovalService | None = getattr(request.app.state, "report_approvals", None)
+    if service is None:
+        raise ServiceFault(ServiceErrorCode.CAPABILITY)
+    return service
 
 
 async def get_principal(request: Request) -> Principal:

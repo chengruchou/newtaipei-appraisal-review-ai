@@ -22,6 +22,7 @@ from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import RequestResponseEndpoint
 
+from appraisal_review.adapters.local.approval_store import SQLiteApprovalStore
 from appraisal_review.adapters.local.artifact_publication import CommittedResultResolver
 from appraisal_review.adapters.local.export_store import SQLiteExportStore
 from appraisal_review.adapters.local.sqlite_review_store import SQLiteReviewStore
@@ -35,6 +36,8 @@ from appraisal_review.application.exports import (
 )
 from appraisal_review.application.human_tasks import HumanTaskService
 from appraisal_review.application.outbox import DispatchMessage, JobReconciler, OutboxDispatcher
+from appraisal_review.application.report_approvals import ReportApprovalService
+from appraisal_review.application.report_readiness import ReadinessPolicy
 from appraisal_review.application.revisions import RevisionSnapshot
 from appraisal_review.application.runtime_sources import SnapshotJobService, source_fault
 from appraisal_review.application.runtime_worker import (
@@ -434,9 +437,11 @@ class LocalContentPlane:
         resolver: CommittedResultResolver | None,
         source_delivery_enabled: bool = True,
         exports: SQLiteExportStore | None = None,
+        approvals: SQLiteApprovalStore | None = None,
     ) -> None:
         self.catalog, self.documents, self.jobs = catalog, documents, jobs
         self.exports = exports
+        self.approvals = approvals
         # A composition that publishes nothing, or deliberately withholds source bytes,
         # keeps answering capability_unavailable. Moving the routes behind this port must
         # not quietly re-enable delivery the local original stack chose to switch off.
@@ -476,6 +481,18 @@ class LocalContentPlane:
             found = await asyncio.to_thread(self.exports.find_delivered, job_id, artifact_id)
             if found is not None:
                 operation, body = found
+                if operation.status not in {"succeeded", "partial"}:
+                    raise ServiceFault(ServiceErrorCode.NOT_FOUND)
+                if operation.effective_mode == "formal":
+                    # A withdrawn approval stops the current download authorization; the
+                    # staged bytes stay for history, but they no longer travel.
+                    live = (
+                        None
+                        if self.approvals is None or operation.approval_id is None
+                        else self.approvals.current_status(job_id, operation.approval_id)
+                    )
+                    if live != "approved":
+                        raise ServiceFault(ServiceErrorCode.UNAUTHORIZED)
                 delivered = next(a for a in operation.artifacts if a.artifact_id == artifact_id)
                 if hashlib.sha256(body).hexdigest() != delivered.content_hash:
                     raise ServiceFault(ServiceErrorCode.EXECUTION)
@@ -574,8 +591,19 @@ def create_integrated_service(
 
     export_store: SQLiteExportStore | None = None
     export_service: ExportService | None = None
+    approval_store: SQLiteApprovalStore | None = None
+    approval_service: ReportApprovalService | None = None
     if export_assets is not None and export_filler is not None and snapshot_provider is not None:
         export_store = SQLiteExportStore(store)
+        approval_store = SQLiteApprovalStore(store)
+        approval_service = ReportApprovalService(
+            jobs=service,
+            store=approval_store,
+            assets=export_assets,
+            filler=export_filler,
+            snapshots=snapshot_provider,
+            policy=ReadinessPolicy.default(),
+        )
         export_service = ExportService(
             jobs=service,
             store=export_store,
@@ -583,6 +611,7 @@ def create_integrated_service(
             filler=export_filler,
             converter=export_converter,
             snapshots=snapshot_provider,
+            approvals=approval_store,
         )
     app = create_app(
         job_service=service,
@@ -600,8 +629,10 @@ def create_integrated_service(
             resolver=resolver,
             source_delivery_enabled=source_delivery_enabled,
             exports=export_store,
+            approvals=approval_store,
         ),
         export_operations=export_service,
+        report_approvals=approval_service,
     )
     app.state.material_catalog = catalog
     app.state.runtime_worker = worker

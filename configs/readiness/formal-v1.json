@@ -1,0 +1,38 @@
+{
+  "policy_version": "formal-readiness-v1",
+  "description": "The complete pricing chain a formal report must carry: each comparable's normal unit price, date/region/total adjustments, adjusted unit and trial prices, weight and absolute-adjustment sum on table 4; each comparable's regional total on table 5; and the comparison-base compared price. Every other bound cell may stay blank only under a justified absence.",
+  "required": [
+    "table_4.P001.compared_price",
+    "table_4.P002.abs_adjustment_sum_pct",
+    "table_4.P002.adjusted_unit_price",
+    "table_4.P002.date_adjustment_pct",
+    "table_4.P002.normal_unit_price",
+    "table_4.P002.region_adjustment_pct",
+    "table_4.P002.total_adjustment_pct",
+    "table_4.P002.trial_price",
+    "table_4.P002.weight_pct",
+    "table_4.P003.abs_adjustment_sum_pct",
+    "table_4.P003.adjusted_unit_price",
+    "table_4.P003.date_adjustment_pct",
+    "table_4.P003.normal_unit_price",
+    "table_4.P003.region_adjustment_pct",
+    "table_4.P003.total_adjustment_pct",
+    "table_4.P003.trial_price",
+    "table_4.P003.weight_pct",
+    "table_4.P004.abs_adjustment_sum_pct",
+    "table_4.P004.adjusted_unit_price",
+    "table_4.P004.date_adjustment_pct",
+    "table_4.P004.normal_unit_price",
+    "table_4.P004.region_adjustment_pct",
+    "table_4.P004.total_adjustment_pct",
+    "table_4.P004.trial_price",
+    "table_4.P004.weight_pct",
+    "table_5.P002.total_adjustment_pct",
+    "table_5.P003.total_adjustment_pct",
+    "table_5.P004.total_adjustment_pct"
+  ],
+  "justified_absence_states": [
+    "not_applicable",
+    "confirmed_zero"
+  ]
+}

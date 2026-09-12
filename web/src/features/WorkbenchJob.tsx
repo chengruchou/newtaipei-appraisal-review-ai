@@ -22,6 +22,7 @@ import { TaskPage } from "./TaskPage";
 import { CaseContext } from "./CaseContext";
 import { BlockerList } from "./BlockerList";
 import { ConditionEntry } from "./ConditionEntry";
+import { ApprovalPanel, classifyBasisError, type ExportBasisState } from "./ApprovalPanel";
 import { ExportPanel, type ExportBasis } from "./ExportPanel";
 import { OfficialForms } from "./OfficialForms";
 import { SubjectRoster } from "./SubjectRoster";
@@ -530,29 +531,35 @@ function Results({
   const [search, setSearch] = useState("");
   const source = data.result ?? data.assessment;
   // The snapshot digest and template bundle are server-held facts: the page asks the
-  // exports/basis route for them and never assembles its own. A 409 simply means no
-  // calculation snapshot is registered for this revision yet.
-  const [exportBasis, setExportBasis] = useState<ExportBasis | null>(null);
+  // exports/basis route for them and never assembles its own. A failed read is kept as a
+  // distinguishable problem for the panels rather than collapsed to a silent null: a 409
+  // means the data or version is not ready yet, not that the panels should disappear.
+  const [basisState, setBasisState] = useState<ExportBasisState>({ kind: "loading" });
+  const [basisRefresh, setBasisRefresh] = useState(0);
+  const refreshBasis = useCallback(() => setBasisRefresh((n) => n + 1), []);
   useEffect(() => {
     let active = true;
-    setExportBasis(null);
+    setBasisState({ kind: "loading" });
     exportsApi
       .readBasis(jobId)
       .then((served) => {
-        if (!active) return;
-        setExportBasis({
-          run: served.run,
-          calculationSnapshotDigest: served.calculation_snapshot_digest,
-          templateBundle: served.template_bundle,
-        });
+        if (active) setBasisState({ kind: "ready", basis: served });
       })
-      .catch(() => {
-        if (active) setExportBasis(null);
+      .catch((cause: unknown) => {
+        if (active) setBasisState({ kind: "error", issue: classifyBasisError(cause) });
       });
     return () => {
       active = false;
     };
-  }, [exportsApi, jobId, data.context.revision.revision_id]);
+  }, [exportsApi, jobId, data.context.revision.revision_id, basisRefresh]);
+  const exportBasis: ExportBasis | null =
+    basisState.kind === "ready"
+      ? {
+          run: basisState.basis.run,
+          calculationSnapshotDigest: basisState.basis.calculation_snapshot_digest,
+          templateBundle: basisState.basis.template_bundle,
+        }
+      : null;
   if (!source) return <FindingsUnavailable data={data} />;
   const findings = source.findings;
   const categories: FindingCategory[] = ["matched", "content", "rules", "evidence", "uncovered"];
@@ -718,7 +725,15 @@ function Results({
           )}
         </p>
       )}
-      <ExportPanel api={exportsApi} jobId={jobId} basis={exportBasis} />
+      <ApprovalPanel api={exportsApi} jobId={jobId} state={basisState} onRefresh={refreshBasis} />
+      <ExportPanel
+        api={exportsApi}
+        jobId={jobId}
+        basis={exportBasis}
+        approval={basisState.kind === "ready" ? (basisState.basis.approval ?? null) : null}
+        readiness={basisState.kind === "ready" ? (basisState.basis.readiness ?? null) : null}
+        basisIssue={basisState.kind === "error" ? basisState.issue : null}
+      />
       <Link className="button primary" to={`/jobs/${jobId}/tasks`}>
         {t("Continue to human tasks", "接續人工作業")}
         <Icon name="arrow" />

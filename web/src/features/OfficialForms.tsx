@@ -81,6 +81,12 @@ export function OfficialForms({ context }: { context: CaseContextView }) {
           </p>
         </div>
       </div>
+      <p className="notice" role="status">
+        {t(
+          "A formal report first requires an approval: submit and decide under the 報表與核准 section on the results page (審查摘要), then request the formal mode under 報表匯出.",
+          "正式報表須先完成核准：請至「審查摘要」頁的「報表與核准」區送出核准申請並完成決定，再於「報表匯出」申請正式版本。",
+        )}
+      </p>
       <div className="form-grid">
         {OFFICIAL_FORMS.map((form) => (
           <FormCard key={form.id} form={form} context={context} />

@@ -88,6 +88,88 @@ export interface ExportDownload {
   contentType: string;
 }
 
+/* ------------------------------------------------------------------------- *
+ * Formal report approval (report-approvals routes)
+ * ------------------------------------------------------------------------- */
+
+export type ExportReadinessState = "pending_data" | "ready_to_submit";
+
+export interface ExportReadinessBlocker {
+  code: string;
+  message: string;
+  source_key?: string | null;
+  table?: ExportTableId | null;
+  subject_id?: string | null;
+  current_state?: string | null;
+  needed: string;
+  action: string;
+}
+
+export interface ExportReadiness {
+  policy_version: string;
+  state: ExportReadinessState;
+  blockers: ExportReadinessBlocker[];
+  required_total: number;
+  required_satisfied: number;
+}
+
+export type ReportApprovalStatus =
+  | "submitted"
+  | "approved"
+  | "returned"
+  | "withdrawn"
+  | "superseded";
+
+export type ApprovalDecisionKind = "approve" | "return" | "withdraw";
+
+export interface ReportApprovalActor {
+  actor_id: string;
+  kind: string;
+}
+
+export interface ReportApprovalBinding {
+  calculation_snapshot_digest: string;
+  template_bundle: TemplateBundleReference;
+  workbook_hashes: Record<ExportTableId, string>;
+  readiness_policy_version: string;
+}
+
+export interface ReportApprovalDecision {
+  decision: ApprovalDecisionKind;
+  actor: ReportApprovalActor;
+  decided_at: number;
+  reason?: string | null;
+}
+
+export interface ReportApproval {
+  approval_id: string;
+  job_id: string;
+  run: ExportRunReference;
+  binding: ReportApprovalBinding;
+  status: ReportApprovalStatus;
+  submitted_by: ReportApprovalActor;
+  /** Server clock, in seconds since the epoch. */
+  submitted_at: number;
+  payload_digest: string;
+  decision?: ReportApprovalDecision | null;
+}
+
+export interface SubmitApprovalCommand {
+  schema_version: "service-v1";
+  idempotency_key: string;
+  run: ExportRunReference;
+  calculation_snapshot_digest: string;
+  template_bundle: TemplateBundleReference;
+}
+
+export interface ApprovalDecisionCommand {
+  schema_version: "service-v1";
+  idempotency_key: string;
+  decision: ApprovalDecisionKind;
+  /** Required by the service for "return" and "withdraw". */
+  reason?: string;
+}
+
 /**
  * A definitive refusal from the service, carrying the service's own sentence when one was
  * sent, so a 503 can show what the deployment itself says rather than a mock.
@@ -229,6 +311,131 @@ export function parseExportOperation(payload: unknown): ExportOperation {
   };
 }
 
+const READINESS_STATES: readonly string[] = ["pending_data", "ready_to_submit"];
+const APPROVAL_STATUSES: readonly string[] = [
+  "submitted",
+  "approved",
+  "returned",
+  "withdrawn",
+  "superseded",
+];
+const DECISION_KINDS: readonly string[] = ["approve", "return", "withdraw"];
+
+function optionalString(value: unknown): string | null {
+  return typeof value === "string" ? value : null;
+}
+
+function parseReadinessBlocker(value: unknown): ExportReadinessBlocker {
+  if (
+    !isRecord(value) ||
+    typeof value.code !== "string" ||
+    typeof value.message !== "string" ||
+    typeof value.needed !== "string" ||
+    typeof value.action !== "string"
+  )
+    throw new TransportError(MALFORMED);
+  const table = typeof value.table === "string" && TABLES.includes(value.table) ? value.table : null;
+  return {
+    code: value.code,
+    message: value.message,
+    source_key: optionalString(value.source_key),
+    table: table as ExportTableId | null,
+    subject_id: optionalString(value.subject_id),
+    current_state: optionalString(value.current_state),
+    needed: value.needed,
+    action: value.action,
+  };
+}
+
+export function parseExportReadiness(payload: unknown): ExportReadiness {
+  if (
+    !isRecord(payload) ||
+    typeof payload.policy_version !== "string" ||
+    typeof payload.state !== "string" ||
+    !READINESS_STATES.includes(payload.state) ||
+    typeof payload.required_total !== "number" ||
+    typeof payload.required_satisfied !== "number"
+  )
+    throw new TransportError(MALFORMED);
+  return {
+    policy_version: payload.policy_version,
+    state: payload.state as ExportReadinessState,
+    blockers: Array.isArray(payload.blockers) ? payload.blockers.map(parseReadinessBlocker) : [],
+    required_total: payload.required_total,
+    required_satisfied: payload.required_satisfied,
+  };
+}
+
+function parseActor(value: unknown): ReportApprovalActor {
+  if (!isRecord(value) || typeof value.actor_id !== "string" || typeof value.kind !== "string")
+    throw new TransportError(MALFORMED);
+  return { actor_id: value.actor_id, kind: value.kind };
+}
+
+function parseApprovalBinding(value: unknown): ReportApprovalBinding {
+  if (
+    !isRecord(value) ||
+    typeof value.calculation_snapshot_digest !== "string" ||
+    !isRecord(value.template_bundle) ||
+    !isRecord(value.workbook_hashes) ||
+    typeof value.readiness_policy_version !== "string"
+  )
+    throw new TransportError(MALFORMED);
+  const hashes: Partial<Record<ExportTableId, string>> = {};
+  for (const table of TABLES) {
+    const hash = value.workbook_hashes[table];
+    if (typeof hash !== "string") throw new TransportError(MALFORMED);
+    hashes[table as ExportTableId] = hash;
+  }
+  return {
+    calculation_snapshot_digest: value.calculation_snapshot_digest,
+    template_bundle: value.template_bundle as unknown as TemplateBundleReference,
+    workbook_hashes: hashes as Record<ExportTableId, string>,
+    readiness_policy_version: value.readiness_policy_version,
+  };
+}
+
+export function parseReportApproval(payload: unknown): ReportApproval {
+  if (
+    !isRecord(payload) ||
+    typeof payload.approval_id !== "string" ||
+    typeof payload.job_id !== "string" ||
+    !isRecord(payload.run) ||
+    typeof payload.status !== "string" ||
+    !APPROVAL_STATUSES.includes(payload.status) ||
+    typeof payload.submitted_at !== "number" ||
+    typeof payload.payload_digest !== "string"
+  )
+    throw new TransportError(MALFORMED);
+  let decision: ReportApprovalDecision | null = null;
+  if (isRecord(payload.decision)) {
+    const raw = payload.decision;
+    if (
+      typeof raw.decision !== "string" ||
+      !DECISION_KINDS.includes(raw.decision) ||
+      typeof raw.decided_at !== "number"
+    )
+      throw new TransportError(MALFORMED);
+    decision = {
+      decision: raw.decision as ApprovalDecisionKind,
+      actor: parseActor(raw.actor),
+      decided_at: raw.decided_at,
+      reason: optionalString(raw.reason),
+    };
+  }
+  return {
+    approval_id: payload.approval_id,
+    job_id: payload.job_id,
+    run: payload.run as unknown as ExportRunReference,
+    binding: parseApprovalBinding(payload.binding),
+    status: payload.status as ReportApprovalStatus,
+    submitted_by: parseActor(payload.submitted_by),
+    submitted_at: payload.submitted_at,
+    payload_digest: payload.payload_digest,
+    decision,
+  };
+}
+
 export interface ExportsClientOptions {
   baseUrl: string;
   token: () => Promise<string | null>;
@@ -242,6 +449,10 @@ export interface ServerExportBasis {
   calculation_snapshot_digest: string;
   template_bundle: TemplateBundleReference;
   blockers: string[];
+  /** Absent on an older server; null and undefined both mean "not supplied". */
+  readiness?: ExportReadiness | null;
+  /** Latest approval for the CURRENT content binding; absent on an older server. */
+  approval?: ReportApproval | null;
 }
 
 /**
@@ -335,6 +546,13 @@ export interface ExportsApi {
   createExport(jobId: string, command: CreateExportCommand): Promise<ExportOperation>;
   readExport(jobId: string, exportId: string): Promise<ExportOperation>;
   downloadArtifact(jobId: string, artifact: ExportArtifact): Promise<ExportDownload>;
+  submitApproval(jobId: string, command: SubmitApprovalCommand): Promise<ReportApproval>;
+  readApproval(jobId: string, approvalId: string): Promise<ReportApproval>;
+  decideApproval(
+    jobId: string,
+    approvalId: string,
+    command: ApprovalDecisionCommand,
+  ): Promise<ReportApproval>;
 }
 
 const DEFAULT_TIMEOUT_MS = 15_000;
@@ -367,7 +585,44 @@ export class ExportsClient implements ExportsApi {
       calculation_snapshot_digest: body.calculation_snapshot_digest,
       template_bundle: body.template_bundle,
       blockers: Array.isArray(body.blockers) ? body.blockers : [],
+      // Both fields are new; an older server simply does not send them.
+      readiness: body.readiness == null ? null : parseExportReadiness(body.readiness),
+      approval: body.approval == null ? null : parseReportApproval(body.approval),
     };
+  }
+
+  /**
+   * 202/200 acceptance. Replaying the same key and payload returns the original approval;
+   * a 409 is the service's own refusal (not ready, stale content, or a key conflict).
+   */
+  async submitApproval(jobId: string, command: SubmitApprovalCommand): Promise<ReportApproval> {
+    return parseReportApproval(
+      await this.json("POST", `/v1/review-jobs/${encode(jobId)}/report-approvals`, command),
+    );
+  }
+
+  async readApproval(jobId: string, approvalId: string): Promise<ReportApproval> {
+    return parseReportApproval(
+      await this.json(
+        "GET",
+        `/v1/review-jobs/${encode(jobId)}/report-approvals/${encode(approvalId)}`,
+      ),
+    );
+  }
+
+  /** 403 means no approval permission; 409 means wrong state or a key conflict. */
+  async decideApproval(
+    jobId: string,
+    approvalId: string,
+    command: ApprovalDecisionCommand,
+  ): Promise<ReportApproval> {
+    return parseReportApproval(
+      await this.json(
+        "POST",
+        `/v1/review-jobs/${encode(jobId)}/report-approvals/${encode(approvalId)}/decisions`,
+        command,
+      ),
+    );
   }
 
   async createExport(jobId: string, command: CreateExportCommand): Promise<ExportOperation> {

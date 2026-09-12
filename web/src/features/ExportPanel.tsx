@@ -7,11 +7,14 @@ import {
   type ExportFormat,
   type ExportMode,
   type ExportOperation,
+  type ExportReadiness,
   type ExportRunReference,
   type ExportsApi,
   type ExportTableDelivery,
+  type ReportApproval,
   type TemplateBundleReference,
 } from "@/api/exports";
+import { basisIssueText, formalRefusalText, type BasisIssue } from "./ApprovalPanel";
 import { useText } from "@/ui/Language";
 import { Icon } from "@/ui/Icon";
 
@@ -56,15 +59,32 @@ function DraftBadge() {
   );
 }
 
+function FormalBadge() {
+  const t = useText();
+  return (
+    <span className="status-pill" data-status="formal">
+      {t("Formal (approved)", "正式（已核准）")}
+    </span>
+  );
+}
+
 export function ExportPanel({
   api,
   jobId,
   basis,
+  approval = null,
+  readiness = null,
+  basisIssue = null,
   pollIntervalMs = 2000,
 }: {
   api: ExportsApi;
   jobId: string;
   basis: ExportBasis | null;
+  /** Latest approval for the current content binding, from the exports basis. */
+  approval?: ReportApproval | null;
+  readiness?: ExportReadiness | null;
+  /** Why the basis read failed, when it did; shown instead of a silent null. */
+  basisIssue?: BasisIssue | null;
   pollIntervalMs?: number;
 }) {
   const t = useText();
@@ -222,14 +242,34 @@ export function ExportPanel({
 
   const inProgress = operation !== null && !terminal;
   const draft = operation !== null && operation.effective_mode === "draft";
+  const formal = operation !== null && operation.effective_mode === "formal";
   const artifactById = new Map((operation?.artifacts ?? []).map((a) => [a.artifact_id, a]));
   const missing = (operation?.tables ?? []).filter((row) => !row.delivered);
   const blockers = operation ? [...new Set(operation.blockers)] : [];
+  const formalRefusal = formalRefusalText(readiness, approval, t);
+  const formalConflict =
+    attempt?.command.requested_mode === "formal"
+      ? approval?.status === "superseded"
+        ? t(
+            "The formal export was refused: the approval is superseded (content changed). Submit for approval again.",
+            "正式匯出遭拒：核准已失效（版本已變更），請重新送核。",
+          )
+        : approval?.status === "approved"
+          ? t(
+              "The formal export was refused: the content has changed since approval. Read the current state and submit for approval again.",
+              "正式匯出遭拒：內容已變更，請重新讀取狀態並重新送核。",
+            )
+          : t(
+              "The formal export was refused: no current approval exists. Complete the approval under 報表與核准 first.",
+              "正式匯出遭拒：尚未核准，請先於「報表與核准」完成核准。",
+            )
+      : null;
 
   return (
     <section className="panel" aria-label={t("Report export", "報表匯出")}>
       <h2>
         {t("Report export", "報表匯出")} {draft ? <DraftBadge /> : null}
+        {formal ? <FormalBadge /> : null}
       </h2>
       <p className="small muted">
         {t(
@@ -243,6 +283,7 @@ export function ExportPanel({
             "The current job state does not yet carry the run and bundle identity an export request requires.",
             "目前狀態尚未提供匯出所需的執行輪次與範本版本資訊，暫時無法建立匯出。",
           )}
+          {basisIssue ? <> {basisIssueText(basisIssue, t)}</> : null}
         </p>
       ) : (
         <>
@@ -297,6 +338,11 @@ export function ExportPanel({
               />{" "}
               {t("Formal (only if unblocked)", "正式（僅於無阻擋時）")}
             </label>
+            {formalRefusal ? (
+              <p className="small muted" role="status">
+                {formalRefusal}
+              </p>
+            ) : null}
           </fieldset>
           <button
             type="button"
@@ -309,7 +355,14 @@ export function ExportPanel({
             {t("Generate and download", "產生並下載")}
             <Icon name="arrow" />
           </button>
-          {notice ? <NoticeView notice={notice} pending={pending} retry={generate} /> : null}
+          {notice ? (
+            <NoticeView
+              notice={notice}
+              pending={pending}
+              retry={generate}
+              formalConflict={formalConflict}
+            />
+          ) : null}
           {operation ? (
             <div aria-label={t("Export operation status", "匯出作業狀態")}>
               <p role="status" aria-live="polite">
@@ -356,7 +409,8 @@ export function ExportPanel({
                         </span>
                         {row.delivered && artifact ? (
                           <span>
-                            {draft ? <DraftBadge /> : null}{" "}
+                            {draft ? <DraftBadge /> : null}
+                            {formal ? <FormalBadge /> : null}{" "}
                             <button
                               type="button"
                               disabled={busy}
@@ -471,10 +525,13 @@ function NoticeView({
   notice,
   pending,
   retry,
+  formalConflict = null,
 }: {
   notice: Notice;
   pending: Attempt | null;
   retry: () => Promise<void>;
+  /** The real meaning of a 409 when the refused request asked for a formal export. */
+  formalConflict?: string | null;
 }) {
   const t = useText();
   if (notice.kind === "unknown") {
@@ -537,9 +594,15 @@ function NoticeView({
     ],
   };
   const pair = words[error.code] ?? words.execution_failed;
+  const sentence =
+    error.code === "version_conflict" && formalConflict !== null
+      ? formalConflict
+      : pair
+        ? t(...pair)
+        : error.code;
   return (
     <div className="notice" data-tone="danger" role="alert">
-      <p style={{ margin: 0 }}>{pair ? t(...pair) : error.code}</p>
+      <p style={{ margin: 0 }}>{sentence}</p>
       {error.serviceMessage ? (
         <p className="small muted" style={{ margin: "0.25rem 0 0" }}>
           {t("Service message", "服務回覆")}：{error.serviceMessage}
