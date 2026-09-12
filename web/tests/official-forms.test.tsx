@@ -69,7 +69,9 @@ describe("OfficialForms shell (unit regression)", () => {
   });
   it("offers no download and claims no draft, ready or completed file", () => {
     show();
-    expect(screen.getAllByText(/本部署尚未提供：服務未發布此表的下載路由/)).toHaveLength(3);
+    expect(
+      screen.getAllByText(/由「結果總覽」頁的「報表匯出」面板依已提交的計算快照產出/),
+    ).toHaveLength(3);
     expect(screen.getByRole("alert")).toHaveTextContent("尚未產出任何官方表格");
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
