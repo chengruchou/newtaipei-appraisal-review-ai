@@ -184,7 +184,7 @@ export interface paths {
     };
     /**
      * Read Export Basis
-     * @description The snapshot digest and template bundle a request for this job must pin.
+     * @description The pins a request needs, plus formal readiness and the current approval.
      */
     get: operations["read_export_basis_v1_review_jobs__job_id__exports_basis_get"];
     put?: never;
@@ -209,6 +209,63 @@ export interface paths {
     get: operations["read_export_v1_review_jobs__job_id__exports__export_id__get"];
     put?: never;
     post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/review-jobs/{job_id}/report-approvals": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Submit Report Approval
+     * @description Pin the current content as one report version and submit it for approval.
+     */
+    post: operations["submit_report_approval_v1_review_jobs__job_id__report_approvals_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/review-jobs/{job_id}/report-approvals/{approval_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Read Report Approval */
+    get: operations["read_report_approval_v1_review_jobs__job_id__report_approvals__approval_id__get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/review-jobs/{job_id}/report-approvals/{approval_id}/decisions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Decide Report Approval
+     * @description Approve, return or withdraw - by the authenticated publish-permission holder.
+     */
+    post: operations["decide_report_approval_v1_review_jobs__job_id__report_approvals__approval_id__decisions_post"];
     delete?: never;
     options?: never;
     head?: never;
@@ -455,6 +512,55 @@ export interface components {
       review?: components["schemas"]["FactorReviewResult"] | null;
       status: components["schemas"]["WorkflowStatus"];
       verification?: components["schemas"]["VerificationReport"] | null;
+    };
+    /** ApprovalDecision */
+    ApprovalDecision: {
+      actor: components["schemas"]["ActorReference"];
+      /**
+       * Decided At
+       * @description Server unix seconds; never client-supplied
+       */
+      decided_at: number;
+      /**
+       * Decision
+       * @enum {string}
+       */
+      decision: "approve" | "return" | "withdraw";
+      /**
+       * Reason
+       * @default
+       */
+      reason: string;
+      /**
+       * Schema Version
+       * @default service-v1
+       * @constant
+       */
+      schema_version: "service-v1";
+    };
+    /**
+     * ApprovalDecisionCommand
+     * @description approve / return / withdraw, by the authenticated caller, never a named body.
+     */
+    ApprovalDecisionCommand: {
+      /**
+       * Decision
+       * @enum {string}
+       */
+      decision: "approve" | "return" | "withdraw";
+      /** Idempotency Key */
+      idempotency_key: string;
+      /**
+       * Reason
+       * @default
+       */
+      reason: string;
+      /**
+       * Schema Version
+       * @default service-v1
+       * @constant
+       */
+      schema_version: "service-v1";
     };
     /** ArtifactManifest */
     ArtifactManifest: {
@@ -881,41 +987,12 @@ export interface components {
      */
     ExecutionStatus: "queued" | "running" | "succeeded" | "failed";
     /**
-     * ExportBasis
-     * @description Everything a client needs to compose a valid export request, served, not guessed.
-     *
-     *     The page must not invent the snapshot digest or the template bundle: both identify
-     *     server-held state, and a wrong guess turns into a confusing conflict. This view hands
-     *     them over for the job's current run, together with the snapshot's open gaps so the
-     *     format chooser can show what a draft will still be missing.
-     */
-    ExportBasis: {
-      /**
-       * Blockers
-       * @default []
-       */
-      blockers: string[];
-      /** Calculation Snapshot Digest */
-      calculation_snapshot_digest: string;
-      /**
-       * Job Id
-       * Format: uuid
-       */
-      job_id: string;
-      run: components["schemas"]["RunReference"];
-      /**
-       * Schema Version
-       * @default service-v1
-       * @constant
-       */
-      schema_version: "service-v1";
-      template_bundle: components["schemas"]["TemplateBundleReference"];
-    };
-    /**
      * ExportOperation
      * @description Immutable format plus the current state of one export request.
      */
     ExportOperation: {
+      /** Approval Id */
+      approval_id?: string | null;
       /**
        * Artifacts
        * @default []
@@ -1154,6 +1231,34 @@ export interface components {
        */
       severity: "info" | "warning" | "error";
       status: components["schemas"]["CheckStatus"];
+    };
+    /**
+     * FormalExportBasis
+     * @description The basis view plus formal readiness and the approval for the current content.
+     */
+    FormalExportBasis: {
+      approval?: components["schemas"]["ReportApproval"] | null;
+      /**
+       * Blockers
+       * @default []
+       */
+      blockers: string[];
+      /** Calculation Snapshot Digest */
+      calculation_snapshot_digest: string;
+      /**
+       * Job Id
+       * Format: uuid
+       */
+      job_id: string;
+      readiness?: components["schemas"]["ReportReadiness"] | null;
+      run: components["schemas"]["RunReference"];
+      /**
+       * Schema Version
+       * @default service-v1
+       * @constant
+       */
+      schema_version: "service-v1";
+      template_bundle: components["schemas"]["TemplateBundleReference"];
     };
     /**
      * Grade
@@ -1594,6 +1699,139 @@ export interface components {
       value?: components["schemas"]["NormalizedValue"] | string | null;
     };
     /**
+     * ReadinessBlocker
+     * @description One concrete reason a formal request cannot be submitted yet.
+     */
+    ReadinessBlocker: {
+      /** Action */
+      action: string;
+      /**
+       * Code
+       * @enum {string}
+       */
+      code:
+        | "required_value_missing"
+        | "unjustified_not_applicable"
+        | "unjustified_confirmed_zero"
+        | "snapshot_not_registered"
+        | "stale_snapshot"
+        | "bundle_mismatch"
+        | "human_task_open";
+      /** Current State */
+      current_state?: string | null;
+      /** Message */
+      message: string;
+      /** Needed */
+      needed: string;
+      /**
+       * Schema Version
+       * @default service-v1
+       * @constant
+       */
+      schema_version: "service-v1";
+      /** Source Key */
+      source_key?: string | null;
+      /** Subject Id */
+      subject_id?: string | null;
+      /** Table */
+      table?: ("table_3" | "table_4" | "table_5") | null;
+    };
+    /**
+     * ReportApproval
+     * @description The durable approval request with its immutable content binding.
+     */
+    ReportApproval: {
+      /**
+       * Approval Id
+       * Format: uuid
+       */
+      approval_id: string;
+      binding: components["schemas"]["ReportVersionBinding"];
+      decision?: components["schemas"]["ApprovalDecision"] | null;
+      /**
+       * Job Id
+       * Format: uuid
+       */
+      job_id: string;
+      /** Payload Digest */
+      payload_digest: string;
+      /**
+       * Readiness Policy Version
+       * @default formal-readiness-v1
+       */
+      readiness_policy_version: string;
+      run: components["schemas"]["RunReference"];
+      /**
+       * Schema Version
+       * @default service-v1
+       * @constant
+       */
+      schema_version: "service-v1";
+      /**
+       * Status
+       * @enum {string}
+       */
+      status: "submitted" | "approved" | "returned" | "withdrawn" | "superseded";
+      /** Submitted At */
+      submitted_at: number;
+      submitted_by: components["schemas"]["ActorReference"];
+    };
+    /**
+     * ReportReadiness
+     * @description Evaluated against the live snapshot; never cached across revisions.
+     */
+    ReportReadiness: {
+      /**
+       * Blockers
+       * @default []
+       */
+      blockers: components["schemas"]["ReadinessBlocker"][];
+      /**
+       * Policy Version
+       * @default formal-readiness-v1
+       */
+      policy_version: string;
+      /** Required Satisfied */
+      required_satisfied: number;
+      /** Required Total */
+      required_total: number;
+      /**
+       * Schema Version
+       * @default service-v1
+       * @constant
+       */
+      schema_version: "service-v1";
+      /**
+       * State
+       * @enum {string}
+       */
+      state: "pending_data" | "ready_to_submit";
+    };
+    /**
+     * ReportVersionBinding
+     * @description The exact content a person approves: one hash per official table.
+     *
+     *     Deliberately content-only: the snapshot digest, the template bundle and the three
+     *     filled-workbook hashes. Which readiness policy admitted the submission is recorded
+     *     on the approval itself, so two services computing the binding from the same bytes
+     *     always agree on its identity.
+     */
+    ReportVersionBinding: {
+      /** Calculation Snapshot Digest */
+      calculation_snapshot_digest: string;
+      /**
+       * Schema Version
+       * @default service-v1
+       * @constant
+       */
+      schema_version: "service-v1";
+      template_bundle: components["schemas"]["TemplateBundleReference"];
+      /** Workbook Hashes */
+      workbook_hashes: {
+        [key: string]: string;
+      };
+    };
+    /**
      * ResponseAction
      * @enum {string}
      */
@@ -1990,6 +2228,24 @@ export interface components {
       region_id: string;
       /** Version */
       version: string;
+    };
+    /**
+     * SubmitReportApproval
+     * @description Untrusted command; the server computes the binding it will be judged by.
+     */
+    SubmitReportApproval: {
+      /** Calculation Snapshot Digest */
+      calculation_snapshot_digest: string;
+      /** Idempotency Key */
+      idempotency_key: string;
+      run: components["schemas"]["RunReference"];
+      /**
+       * Schema Version
+       * @default service-v1
+       * @constant
+       */
+      schema_version: "service-v1";
+      template_bundle: components["schemas"]["TemplateBundleReference"];
     };
     /**
      * TableOutcome
@@ -2882,7 +3138,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ExportBasis"];
+          "application/json": components["schemas"]["FormalExportBasis"];
         };
       };
       /** @description The principal lacks the case permission */
@@ -2990,6 +3246,226 @@ export interface operations {
         };
       };
       /** @description No export executor is configured */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+    };
+  };
+  submit_report_approval_v1_review_jobs__job_id__report_approvals_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        job_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SubmitReportApproval"];
+      };
+    };
+    responses: {
+      /** @description Exact replay of a known submission */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ReportApproval"];
+        };
+      };
+      /** @description The version is submitted for approval */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ReportApproval"];
+        };
+      };
+      /** @description Missing case or publish permission */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description No such job or approval */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description Not ready, stale content, wrong state, or a reused key */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description Invalid command */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description Approvals are not configured */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+    };
+  };
+  read_report_approval_v1_review_jobs__job_id__report_approvals__approval_id__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        job_id: string;
+        approval_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ReportApproval"];
+        };
+      };
+      /** @description Missing case or publish permission */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description No such job or approval */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description Not ready, stale content, wrong state, or a reused key */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description Invalid command */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description Approvals are not configured */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+    };
+  };
+  decide_report_approval_v1_review_jobs__job_id__report_approvals__approval_id__decisions_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        job_id: string;
+        approval_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ApprovalDecisionCommand"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ReportApproval"];
+        };
+      };
+      /** @description Missing case or publish permission */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description No such job or approval */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description Not ready, stale content, wrong state, or a reused key */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description Invalid command */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceProblem"];
+        };
+      };
+      /** @description Approvals are not configured */
       503: {
         headers: {
           [name: string]: unknown;

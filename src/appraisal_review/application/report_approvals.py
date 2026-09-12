@@ -87,13 +87,25 @@ class ReportApprovalService:
     ) -> ReportApproval | None:
         """The approval the current content would publish under, if any."""
         _, snapshot, _current = await self._current_snapshot(principal, job_id)
-        binding = self._binding(snapshot)
+        try:
+            binding = self._binding(snapshot)
+        except ServiceFault:
+            # An unfillable snapshot has no approvals to show; the readiness view and
+            # the export draft path carry the actionable errors.
+            return None
         return self.store.latest_for_binding(job_id, binding.digest())
 
     def _binding(self, snapshot: CalculationSnapshot) -> ReportVersionBinding:
         hashes: dict[OfficialTable, str] = {}
         for table, asset in sorted(self.assets.tables.items()):
-            filled = self.filler(asset.template_path.read_bytes(), asset.mapping, snapshot)
+            try:
+                filled = self.filler(asset.template_path.read_bytes(), asset.mapping, snapshot)
+            except ServiceFault:
+                raise
+            except Exception as error:
+                # A snapshot the writer refuses (unit mismatch, bad shape) cannot become
+                # a report version; the caller sees a validation refusal, not a 500.
+                raise ServiceFault(ServiceErrorCode.VALIDATION) from error
             hashes[table] = hashlib.sha256(filled.content).hexdigest()
         return ReportVersionBinding(
             calculation_snapshot_digest=snapshot.digest(),

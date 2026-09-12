@@ -114,11 +114,7 @@ export interface ExportReadiness {
 }
 
 export type ReportApprovalStatus =
-  | "submitted"
-  | "approved"
-  | "returned"
-  | "withdrawn"
-  | "superseded";
+  "submitted" | "approved" | "returned" | "withdrawn" | "superseded";
 
 export type ApprovalDecisionKind = "approve" | "return" | "withdraw";
 
@@ -334,7 +330,8 @@ function parseReadinessBlocker(value: unknown): ExportReadinessBlocker {
     typeof value.action !== "string"
   )
     throw new TransportError(MALFORMED);
-  const table = typeof value.table === "string" && TABLES.includes(value.table) ? value.table : null;
+  const table =
+    typeof value.table === "string" && TABLES.includes(value.table) ? value.table : null;
   return {
     code: value.code,
     message: value.message,

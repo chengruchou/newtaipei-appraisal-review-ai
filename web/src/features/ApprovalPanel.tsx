@@ -44,19 +44,10 @@ export function basisIssueText(
   t: (english: string, chinese: string) => string,
 ): string {
   const words: Record<BasisIssue["code"], [string, string]> = {
-    unauthorized: [
-      "Sign in again or confirm your permissions.",
-      "請重新登入或確認權限。",
-    ],
+    unauthorized: ["Sign in again or confirm your permissions.", "請重新登入或確認權限。"],
     not_found: ["This case does not exist for this session.", "案件不存在。"],
-    version_conflict: [
-      "The data or version is not ready yet.",
-      "資料或版本尚未就緒。",
-    ],
-    capability_unavailable: [
-      "The export service is not assembled yet.",
-      "匯出服務尚未組裝。",
-    ],
+    version_conflict: ["The data or version is not ready yet.", "資料或版本尚未就緒。"],
+    capability_unavailable: ["The export service is not assembled yet.", "匯出服務尚未組裝。"],
     invalid_request: [
       "The service rejected the basis request.",
       "服務未接受這次讀取，請重新整理後再試。",

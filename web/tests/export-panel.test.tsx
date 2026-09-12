@@ -18,6 +18,9 @@ function api(overrides: Partial<ExportsApi> = {}): ExportsApi {
     createExport: vi.fn(() => Promise.reject(new Error("createExport not scripted"))),
     readExport: vi.fn(() => Promise.reject(new Error("readExport not scripted"))),
     downloadArtifact: vi.fn(() => Promise.reject(new Error("downloadArtifact not scripted"))),
+    submitApproval: vi.fn(() => Promise.reject(new Error("submitApproval not scripted"))),
+    readApproval: vi.fn(() => Promise.reject(new Error("readApproval not scripted"))),
+    decideApproval: vi.fn(() => Promise.reject(new Error("decideApproval not scripted"))),
     ...overrides,
   };
 }

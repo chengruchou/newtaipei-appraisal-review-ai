@@ -192,7 +192,12 @@ class ExportService:
     def _version_binding(self, snapshot: CalculationSnapshot) -> ReportVersionBinding:
         hashes: dict[OfficialTable, str] = {}
         for table, asset in sorted(self.assets.tables.items()):
-            filled = self.filler(asset.template_path.read_bytes(), asset.mapping, snapshot)
+            try:
+                filled = self.filler(asset.template_path.read_bytes(), asset.mapping, snapshot)
+            except ServiceFault:
+                raise
+            except Exception as error:
+                raise ServiceFault(ServiceErrorCode.VALIDATION) from error
             hashes[table] = hashlib.sha256(filled.content).hexdigest()
         return ReportVersionBinding(
             calculation_snapshot_digest=snapshot.digest(),
