@@ -132,7 +132,7 @@ def metadata_endpoint(discovered, *, kind="SYSTEM_DEFINED", failures=0, on_failu
                         "modelArn": arn,
                         "inputModalities": ["TEXT", "IMAGE"],
                         "outputModalities": ["TEXT"],
-                        "inferenceTypesSupported": ["ON_DEMAND"],
+                        "inferenceTypesSupported": ["ON_DEMAND", "INFERENCE_PROFILE"],
                         "modelLifecycle": {"status": "ACTIVE"},
                     }
                 }
