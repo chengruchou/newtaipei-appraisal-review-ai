@@ -2,9 +2,17 @@
 
 The response ledger keeps the submitted proposal separately and derives its
 corrected value from the committed observation and stored citations. A request
-cannot raise raw confidence, substitute evidence, erase an authoritative unit,
+cannot alter raw confidence, substitute evidence, erase an authoritative unit,
 or reinterpret a numeric value under a different type. Explicit confirmation of
 eligible confidence-zero observations remains a separate supported operation.
+The submitted confidence remains in the proposal ledger; the corrected projection
+retains the stored measured score exactly, including zero.
+
+Response replay requires current job/task visibility, REVIEW, the task's own
+write permission and a human actor before receipt lookup. Revoked write permission
+returns unauthorized even when the same key and payload already committed. An
+authorized retry still reads the original receipt before stale-version admission.
+See [the response authority decision](adr/0052-response-replay-authority-and-raw-confidence.md).
 
 Collection and task authorization reads the owning job independently of task
 rows. An owned queued or successful job can return an empty task list and its

@@ -32,6 +32,7 @@ cdk.out/
 
 # Competition and case data: never commit real documents
 /*.pdf
+*.xlsx
 datasets/raw/
 datasets/interim/
 datasets/processed/
