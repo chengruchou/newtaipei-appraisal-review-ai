@@ -702,3 +702,112 @@ class TestAsyncConfirmedReferences:
         readiness = asyncio.run(service.readiness(scene["person"], scene["job_id"]))
         # The fixture snapshot claims no absences, so an empty registry blocks nothing.
         assert readiness.state == "ready_to_submit"
+
+
+class TestExportBundles:
+    """Parent pdf/excel/both requests over the existing single-format children."""
+
+    @staticmethod
+    def _service(scene: dict[str, Any]) -> Any:
+        from appraisal_review.adapters.local.bundle_store import SQLiteBundleStore
+        from appraisal_review.application.export_bundles import ExportBundleService
+
+        class _Content:
+            def __init__(self, store: Any) -> None:
+                self.store = store
+
+            async def read_artifact(self, principal: Any, *, job_id: Any, artifact_id: Any):
+                found = self.store.find_delivered(job_id, artifact_id)
+                assert found is not None
+
+                class _Delivered:
+                    def __init__(self, data: bytes) -> None:
+                        self.data = data
+
+                return _Delivered(found[1])
+
+        return ExportBundleService(
+            exports=scene["exports"],
+            export_reader=scene["export_store"],
+            store=SQLiteBundleStore(scene["store"]),
+            content=_Content(scene["export_store"]),
+        )
+
+    @staticmethod
+    def _command(scene: dict[str, Any], key: str, formats: tuple[str, ...]) -> Any:
+        from appraisal_review.application.export_bundles import BundleCommand
+
+        run: RunReference = scene["run"]
+        return BundleCommand(
+            idempotency_key=key,
+            run=RunReference(run_id=run.run_id, revision=run.revision),
+            calculation_snapshot_digest=scene["snapshots"].snapshot.digest(),
+            template_bundle=scene["assets"].bundle,
+            requested_mode="draft",
+            formats=formats,
+        )
+
+    def test_xlsx_bundle_completes_and_zips_with_manifest(self, scene: dict[str, Any]) -> None:
+        import io
+        import zipfile
+
+        service = self._service(scene)
+        view = asyncio.run(
+            service.submit(scene["person"], scene["job_id"], self._command(scene, "b1", ("xlsx",)))
+        )
+        assert view.status == "pending"
+        asyncio.run(scene["exports"].run_pending())
+        done = asyncio.run(service.read(scene["person"], scene["job_id"], view.bundle.bundle_id))
+        assert done.status == "succeeded"
+        data, filename = asyncio.run(
+            service.content(scene["person"], scene["job_id"], view.bundle.bundle_id)
+        )
+        assert filename.endswith(".zip")
+        with zipfile.ZipFile(io.BytesIO(data)) as archive:
+            names = sorted(archive.namelist())
+            assert names == ["manifest.json", "table_3.xlsx", "table_4.xlsx", "table_5.xlsx"]
+            manifest = json.loads(archive.read("manifest.json"))
+        assert manifest["revision_id"] == scene["run"].revision.revision_id
+        assert len(manifest["files"]) == 3
+        for entry in manifest["files"]:
+            assert entry["format"] == "xlsx" and len(entry["sha256"]) == 64
+
+    def test_both_without_converter_fails_and_refuses_content(
+        self, scene: dict[str, Any]
+    ) -> None:
+        service = self._service(scene)
+        view = asyncio.run(
+            service.submit(
+                scene["person"], scene["job_id"], self._command(scene, "b2", ("pdf", "xlsx"))
+            )
+        )
+        asyncio.run(scene["exports"].run_pending())
+        done = asyncio.run(service.read(scene["person"], scene["job_id"], view.bundle.bundle_id))
+        # No converter in this scene: the pdf child fails, so the parent is failed
+        # and the ZIP is refused - partial never reports complete.
+        assert done.status == "failed"
+        with pytest.raises(ServiceFault):
+            asyncio.run(service.content(scene["person"], scene["job_id"], view.bundle.bundle_id))
+
+    def test_replay_returns_the_same_bundle_and_children(self, scene: dict[str, Any]) -> None:
+        service = self._service(scene)
+        first = asyncio.run(
+            service.submit(scene["person"], scene["job_id"], self._command(scene, "b3", ("xlsx",)))
+        )
+        replay = asyncio.run(
+            service.submit(scene["person"], scene["job_id"], self._command(scene, "b3", ("xlsx",)))
+        )
+        assert replay.bundle.bundle_id == first.bundle.bundle_id
+        assert replay.bundle.child_exports == first.bundle.child_exports
+
+    def test_same_key_different_formats_conflicts(self, scene: dict[str, Any]) -> None:
+        service = self._service(scene)
+        asyncio.run(
+            service.submit(scene["person"], scene["job_id"], self._command(scene, "b4", ("xlsx",)))
+        )
+        with pytest.raises(ServiceFault):
+            asyncio.run(
+                service.submit(
+                    scene["person"], scene["job_id"], self._command(scene, "b4", ("pdf", "xlsx"))
+                )
+            )

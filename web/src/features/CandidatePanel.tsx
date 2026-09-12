@@ -10,6 +10,7 @@ import {
   type FactCandidate,
 } from "./candidate-api";
 import { fieldKeyLabel } from "./field-labels";
+import { MapVerifySection } from "./MapVerify";
 
 /**
  * 資料核對: externally fetched candidate values for the current case. Every value here is
@@ -228,6 +229,7 @@ export function CandidatePanel({ api, caseId }: { api: CandidateApi; caseId: str
                   <dt>{t("Retrieved at", "取得時間")}</dt>
                   <dd>{formatServerSeconds(candidate.evidence.retrieved_at)} · Asia/Taipei</dd>
                 </dl>
+                <MapVerifySection candidate={candidate} />
                 {receipt ? (
                   <p role="status">
                     {receipt.decision === "accept"

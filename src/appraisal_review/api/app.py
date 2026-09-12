@@ -11,6 +11,8 @@ from appraisal_review.api.routes.content import CONTENT_ENDPOINTS
 from appraisal_review.api.routes.content import router as content_router
 from appraisal_review.api.routes.email_login import EMAIL_LOGIN_ENDPOINTS
 from appraisal_review.api.routes.email_login import router as email_login_router
+from appraisal_review.api.routes.export_bundles import BUNDLE_ENDPOINTS
+from appraisal_review.api.routes.export_bundles import router as bundle_router
 from appraisal_review.api.routes.exports import EXPORT_ENDPOINTS
 from appraisal_review.api.routes.exports import router as export_router
 from appraisal_review.api.routes.fact_candidates import FACT_CANDIDATE_ENDPOINTS
@@ -128,6 +130,7 @@ def create_app(
     app.include_router(case_intake_router)
     app.include_router(fact_candidate_router)
     app.include_router(email_login_router)
+    app.include_router(bundle_router)
 
     @app.exception_handler(ServiceFault)
     async def service_fault(request: Request, fault: ServiceFault) -> JSONResponse:
@@ -160,6 +163,7 @@ def create_app(
             or endpoint in CASE_INTAKE_ENDPOINTS
             or endpoint in FACT_CANDIDATE_ENDPOINTS
             or endpoint in EMAIL_LOGIN_ENDPOINTS
+            or endpoint in BUNDLE_ENDPOINTS
         ):
             # These routes answer with the sanitized service envelope and never echo the
             # rejected payload, which may quote document text or a proposed correction.

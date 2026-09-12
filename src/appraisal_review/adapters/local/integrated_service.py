@@ -27,12 +27,14 @@ from starlette.middleware.base import RequestResponseEndpoint
 
 from appraisal_review.adapters.local.approval_store import SQLiteApprovalStore
 from appraisal_review.adapters.local.artifact_publication import CommittedResultResolver
+from appraisal_review.adapters.local.bundle_store import SQLiteBundleStore
 from appraisal_review.adapters.local.candidate_store import SQLiteCandidateStore
 from appraisal_review.adapters.local.case_intake_store import SQLiteCaseIntakeStore
 from appraisal_review.adapters.local.export_store import SQLiteExportStore
 from appraisal_review.adapters.local.sqlite_review_store import SQLiteReviewStore
 from appraisal_review.api.app import create_app
 from appraisal_review.application.case_intake import CaseIntakeService
+from appraisal_review.application.export_bundles import ExportBundleService
 from appraisal_review.application.exports import (
     ExportAssets,
     ExportService,
@@ -749,6 +751,15 @@ def create_integrated_service(
             approvals=approval_store,
             current_revision=read_current_revision,
         )
+    content_plane = LocalContentPlane(
+        catalog=catalog,
+        documents=documents,
+        jobs=service,
+        resolver=resolver,
+        source_delivery_enabled=source_delivery_enabled,
+        exports=export_store,
+        approvals=approval_store,
+    )
     app = create_app(
         job_service=service,
         human_task_service=HumanTaskService(
@@ -758,18 +769,17 @@ def create_integrated_service(
             workbench_access=access,
         ),
         principal_resolver=directory,
-        content_plane=LocalContentPlane(
-            catalog=catalog,
-            documents=documents,
-            jobs=service,
-            resolver=resolver,
-            source_delivery_enabled=source_delivery_enabled,
-            exports=export_store,
-            approvals=approval_store,
-        ),
+        content_plane=content_plane,
         export_operations=export_service,
         report_approvals=approval_service,
     )
+    if export_service is not None and export_store is not None:
+        app.state.export_bundles = ExportBundleService(
+            exports=export_service,
+            export_reader=export_store,
+            store=SQLiteBundleStore(store),
+            content=content_plane,
+        )
     if intake_root is not None:
         # Real case intake: durable case records plus raw uploaded materials under the
         # persistent workbench tree; membership comes from the directory's own grant.
