@@ -34,6 +34,7 @@ cdk.out/
 /*.pdf
 # Official form templates and the operator's local notes: never committed.
 docs/table/
+*.xlsx
 datasets/raw/
 datasets/interim/
 datasets/processed/

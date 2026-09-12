@@ -377,6 +377,11 @@ class HumanTaskService:
             # this route, and answering either of them would be a guess.
             raise ServiceFault(ServiceErrorCode.NOT_FOUND)
         record = await self._authorized(principal, task_id)
+        # A committed receipt is not a lasting grant to answer this task. Recheck
+        # present authority without applying the consumed version's admission gate.
+        principal.require(record.case_id, record.task.required_permission)
+        if principal.actor.kind != "human":
+            raise ServiceFault(ServiceErrorCode.UNAUTHORIZED)
         digest = response_digest(command)
 
         # Replay before admission, deliberately. The first use of this key already moved
@@ -500,12 +505,9 @@ class HumanTaskService:
                 raise ServiceFault(ServiceErrorCode.VALIDATION)
         observation.value = proposed.value if proposed.state == "present" else None
         observation.raw_text = proposed.raw_text or None
-        # A correction never raises a raw score: human authority is recorded as a
-        # confirmation on the next round, not by inflating the extractor's confidence.
-        observation.confidence = min(
-            observation.confidence,
-            proposed.confidence if proposed.confidence is not None else observation.confidence,
-        )
+        # Keep the extractor's measured score unchanged, including zero. The
+        # submitted score stays in the proposal ledger and grants no authority;
+        # the revised value still requires its own explicit confirmation.
         if accepted.command.action == ResponseAction.SUPPLY_EVIDENCE:
             registry = material.policy.registry
             if not proposed.evidence or any(
