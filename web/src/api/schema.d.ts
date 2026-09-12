@@ -763,6 +763,8 @@ export interface components {
       object_version?: string | null;
       /** Page Count */
       page_count: number;
+      /** Render Input Hash */
+      render_input_hash?: string | null;
       /**
        * Schema Version
        * @default service-v1

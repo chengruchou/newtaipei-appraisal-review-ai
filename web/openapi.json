@@ -868,6 +868,18 @@
             "title": "Page Count",
             "type": "integer"
           },
+          "render_input_hash": {
+            "anyOf": [
+              {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Render Input Hash"
+          },
           "schema_version": {
             "const": "service-v1",
             "default": "service-v1",
