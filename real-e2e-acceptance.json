@@ -2,7 +2,7 @@
   "generated_at": "2026-09-13T08:45:00+08:00",
   "deadline": "2026-09-13T08:10:00+08:00 (user-extended from 08:00)",
   "deployed_site": "http://54.212.57.12 (IP-whitelisted, 8 /32s)",
-  "deployed_image": "appraisal-workbench:cand-8f1b73e (commit 8f1b73e; uuid5 actor wall removed)",
+  "deployed_image": "appraisal-workbench:cand-e72eed6 (goal B: case member can start a review from the case page)",
   "real_e2e_complete": false,
   "verdict_zh": "未達最低完整流程要求（正式核准被資料就緒閘門誠實拒絕、模型鏈提案預檢未完成），但具名人類全鏈已於部署站實跑：登入→開 job→採納（收據、換 revision、合併快照）→三表產出→PDF＋Excel 六檔 ZIP 下載。",
   "steps": [
@@ -94,5 +94,11 @@
     "model_route": "mistral.mistral-large-3-675b-instruct ON_DEMAND us-west-2; us-east-2 excluded fail-closed in IAM",
     "mail": "SES sandbox, identity chengruchou@gmail.com verified; teammate verification sent"
   },
-  "post_deadline_update": "User-authorized continuation after the 08:10 close for demo-day content."
+  "post_deadline_update": "User-authorized continuation after the 08:10 close for demo-day content.",
+  "goal_b": {
+    "status": "DEPLOYED",
+    "what": "A case member sees a 'Cases you can review' list and a 'Start review' button on the case page. The button reads the server-described basis (admitted revision + document references) and submits a review job with a case-derived idempotency key, so pressing it on any device reopens the same job instead of creating duplicates.",
+    "endpoints": "GET /v1/review-cases, GET /v1/cases/{id}/review-basis; submission goes to POST /v1/review-jobs which re-validates membership, admitted material and documents.",
+    "honest_limit": "Only cases with an operator-admitted material revision show as ready. The user's own uploaded-PDF intake cases have no admitted revision yet (that is goal C, the parse bridge), so today the reviewable case is the prepared demo case 55642f92."
+  }
 }
