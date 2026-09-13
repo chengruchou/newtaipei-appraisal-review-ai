@@ -42,7 +42,7 @@ def built():
 
 
 def test_snapshot_validates_and_partitions(built):
-    module, builder, snapshot = built
+    _module, builder, snapshot = built
     from appraisal_review.domain.calculation_snapshot import CalculationSnapshot
 
     # round-trips through JSON-mode validation
@@ -99,7 +99,8 @@ def test_blockers_stay_gaps(built):
     # P001 zoning ambiguity and the FAR method question await human confirmation
     assert "awaiting human confirmation" in snapshot.gaps["table_4.P001.zoning"]
     assert "awaiting human confirmation" in snapshot.gaps["table_4.P002.zoning_adjustment_pct"]
-    assert "awaiting human confirmation" in snapshot.gaps["table_4.P002.floor_area_ratio_adjustment_pct"]
+    far_key = "table_4.P002.floor_area_ratio_adjustment_pct"
+    assert "awaiting human confirmation" in snapshot.gaps[far_key]
     # partial regional totals must not pose as the 區域因素調整百分率
     assert "PARTIAL" in snapshot.gaps["table_5.P002.total_adjustment_pct"]
     assert "table_4.P002.region_adjustment_pct" in snapshot.gaps

@@ -10,22 +10,34 @@ import asyncio
 import hashlib
 import hmac
 import json
+import os
+import secrets
+import time
 from collections.abc import AsyncIterator, Callable, Mapping
 from contextlib import asynccontextmanager, closing, suppress
 from contextvars import ContextVar
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import cast, get_args
-from uuid import UUID, uuid4
+from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
 
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import RequestResponseEndpoint
 
+from appraisal_review.adapters.local.adoption_store import SQLiteAdoptionStore
+from appraisal_review.adapters.local.approval_store import SQLiteApprovalStore
 from appraisal_review.adapters.local.artifact_publication import CommittedResultResolver
+from appraisal_review.adapters.local.bundle_store import SQLiteBundleStore
+from appraisal_review.adapters.local.candidate_store import SQLiteCandidateStore
+from appraisal_review.adapters.local.case_intake_store import SQLiteCaseIntakeStore
 from appraisal_review.adapters.local.export_store import SQLiteExportStore
+from appraisal_review.adapters.local.snapshot_registry import RegisteredSnapshots
 from appraisal_review.adapters.local.sqlite_review_store import SQLiteReviewStore
 from appraisal_review.api.app import create_app
+from appraisal_review.application.case_intake import CaseIntakeService
+from appraisal_review.application.case_review import CaseReviewService
+from appraisal_review.application.export_bundles import ExportBundleService
 from appraisal_review.application.exports import (
     ExportAssets,
     ExportService,
@@ -33,8 +45,12 @@ from appraisal_review.application.exports import (
     WorkbookConverter,
     WorkbookFiller,
 )
+from appraisal_review.application.fact_adoption import FactAdoptionService
+from appraisal_review.application.fact_candidates import CandidateService
 from appraisal_review.application.human_tasks import HumanTaskService
 from appraisal_review.application.outbox import DispatchMessage, JobReconciler, OutboxDispatcher
+from appraisal_review.application.report_approvals import ReportApprovalService
+from appraisal_review.application.report_readiness import ReadinessPolicy
 from appraisal_review.application.revisions import RevisionSnapshot
 from appraisal_review.application.runtime_sources import SnapshotJobService, source_fault
 from appraisal_review.application.runtime_worker import (
@@ -45,6 +61,7 @@ from appraisal_review.application.runtime_worker import (
 from appraisal_review.application.service_guards import Principal, ServiceFault
 from appraisal_review.domain.artifact_publication import PublicationError
 from appraisal_review.domain.document_transfer import DocumentFault, DocumentOperation
+from appraisal_review.domain.official_export import ExportOperation
 from appraisal_review.domain.service_contracts import (
     DocumentReference,
     MaterialRevision,
@@ -58,15 +75,73 @@ from appraisal_review.ports.jobs import ClaimedAttempt, JobRecord
 from appraisal_review.ports.runtime_documents import RuntimeDocuments
 
 _request_principal: ContextVar[Principal | None] = ContextVar("review_principal", default=None)
+_request_token: ContextVar[str | None] = ContextVar("review_session_token", default=None)
+
+
+def _write_private(path: Path, value: object) -> None:
+    """Atomically replace an owned private file inside the private data directory."""
+    temporary = path.with_name(path.name + "." + secrets.token_hex(8) + ".tmp")
+    descriptor = os.open(temporary, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+    try:
+        with os.fdopen(descriptor, "w") as stream:
+            json.dump(value, stream, ensure_ascii=False, indent=2)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, path)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 class LocalDirectory:
-    """Trusted session configuration; requests cannot supply actor or permission fields."""
+    """Trusted session configuration; requests cannot supply actor or permission fields.
 
-    def __init__(self, sessions: Mapping[str, Principal]) -> None:
+    A session value may carry an expiry (epoch seconds); ``None`` keeps the legacy
+    non-expiring behavior, so baked fixture tokens continue to authenticate. Revoked
+    token digests optionally persist to ``revocations_path`` and survive a reload of
+    the directory from bootstrap state; without a path revocation is process-lifetime.
+    """
+
+    def __init__(
+        self,
+        sessions: Mapping[str, Principal | tuple[Principal, int | None]],
+        *,
+        clock: Callable[[], float] = time.time,
+        revocations_path: Path | None = None,
+    ) -> None:
         if not sessions or any(len(token) < 32 for token in sessions):
             raise ValueError("Explicit server-issued local sessions are required")
-        self._sessions = dict(sessions)
+        self._sessions: dict[str, Principal] = {}
+        self._expiries: dict[str, int | None] = {}
+        self._clock = clock
+        self._revocations_path = revocations_path
+        self._revoked: set[str] = set()
+        if revocations_path is not None and revocations_path.exists():
+            loaded = json.loads(revocations_path.read_text())
+            if not isinstance(loaded, list) or any(type(item) is not str for item in loaded):
+                raise ValueError("The revocation list must be a JSON array of token digests")
+            self._revoked = set(loaded)
+        for token, value in sessions.items():
+            principal, expires_at = value if isinstance(value, tuple) else (value, None)
+            self.add_session(token, principal, expires_at)
+
+    def add_session(self, token: str, principal: Principal, expires_at: int | None) -> None:
+        """Trusted local setup only; tokens are server-minted, never request-chosen."""
+        if len(token) < 32:
+            raise ValueError("Explicit server-issued local sessions are required")
+        if expires_at is not None and expires_at <= 0:
+            raise ValueError("A session expiry must be a positive epoch second")
+        self._sessions[token] = principal
+        self._expiries[token] = expires_at
+
+    @staticmethod
+    def _digest(token: str) -> str:
+        return hashlib.sha256(token.encode()).hexdigest()
+
+    def _inactive(self, token: str) -> bool:
+        if self._digest(token) in self._revoked:
+            return True
+        expires_at = self._expiries.get(token)
+        return expires_at is not None and self._clock() >= expires_at
 
     def authenticate(self, header: str) -> Principal:
         scheme, _, token = header.partition(" ")
@@ -74,11 +149,31 @@ class LocalDirectory:
             raise ServiceFault(ServiceErrorCode.UNAUTHORIZED)
         for expected, principal in self._sessions.items():
             if hmac.compare_digest(expected, token):
+                # Expired or revoked sessions answer exactly like unknown tokens.
+                if self._inactive(expected):
+                    break
                 return principal
         raise ServiceFault(ServiceErrorCode.UNAUTHORIZED)
 
+    def session_view(self, token: str) -> tuple[Principal, int | None]:
+        """Post-authentication projection of the presented token; never echoes it."""
+        for expected, principal in self._sessions.items():
+            if hmac.compare_digest(expected, token) and not self._inactive(expected):
+                return principal, self._expiries.get(expected)
+        raise ServiceFault(ServiceErrorCode.UNAUTHORIZED)
+
+    def revoke_token(self, token: str) -> None:
+        """Revoke the exact presented bearer token, durably when a path is configured."""
+        self._revoked.add(self._digest(token))
+        self._sessions.pop(token, None)
+        self._expiries.pop(token, None)
+        if self._revocations_path is not None:
+            _write_private(self._revocations_path, sorted(self._revoked))
+
     async def read(self, principal_id: str, case_id: str) -> Principal:
-        for principal in self._sessions.values():
+        for token, principal in self._sessions.items():
+            if self._inactive(token):
+                continue
             if principal.actor.actor_id == principal_id and case_id in principal.case_ids:
                 principal.require(case_id, Permission.REVIEW)
                 return principal
@@ -89,6 +184,9 @@ class LocalDirectory:
         before()
         self._sessions = {
             token: p for token, p in self._sessions.items() if p.actor.actor_id != actor_id
+        }
+        self._expiries = {
+            token: expiry for token, expiry in self._expiries.items() if token in self._sessions
         }
 
     def grant_case(self, actor_id: str, case_id: str) -> Principal:
@@ -169,6 +267,22 @@ class LocalMaterialCatalog:
             except BaseException:
                 connection.rollback()
                 raise
+
+    def latest_for_case(self, case_id: str) -> MaterialRevision | None:
+        """The admitted material a review of this case would pin, if any.
+
+        Authorization is the caller's job: this is a durable-state lookup, and the
+        only caller gates on case membership before asking. Rows are written by
+        register() from an already-authorized preparation, so the stored revision
+        is replayed as-is and never rebuilt from caller input.
+        """
+        with closing(self.store._connect()) as connection:
+            row = connection.execute(
+                "SELECT revision FROM prepared_materials WHERE case_id=? "
+                "ORDER BY revision_id LIMIT 1",
+                (case_id,),
+            ).fetchone()
+        return None if row is None else MaterialRevision.model_validate_json(row[0])
 
     async def snapshot(
         self, principal: Principal, reference: RevisionReference
@@ -415,6 +529,28 @@ class SQLiteDispatchQueue:
                 raise
 
 
+def formal_delivery_allowed(
+    *,
+    operation: ExportOperation,
+    approval_status: str | None,
+    current_revision_id: str,
+) -> bool:
+    """Whether a formal operation's bytes may travel RIGHT NOW.
+
+    Three live facts must all hold at read time: the operation actually committed a
+    delivery, its approval is still approved, and its revision is still the case's
+    current one. Stale bytes from before a correction are refused rather than served
+    as the current formal result; no historical-download semantics exist this round.
+    """
+    if operation.status not in {"succeeded", "partial"}:
+        return False
+    if operation.effective_mode != "formal":
+        return True
+    if approval_status != "approved":
+        return False
+    return bool(operation.run.revision.revision_id == current_revision_id)
+
+
 class LocalContentPlane:
     """Reads authorized bytes for the shared content routes.
 
@@ -434,9 +570,11 @@ class LocalContentPlane:
         resolver: CommittedResultResolver | None,
         source_delivery_enabled: bool = True,
         exports: SQLiteExportStore | None = None,
+        approvals: SQLiteApprovalStore | None = None,
     ) -> None:
         self.catalog, self.documents, self.jobs = catalog, documents, jobs
         self.exports = exports
+        self.approvals = approvals
         # A composition that publishes nothing, or deliberately withholds source bytes,
         # keeps answering capability_unavailable. Moving the routes behind this port must
         # not quietly re-enable delivery the local original stack chose to switch off.
@@ -476,6 +614,22 @@ class LocalContentPlane:
             found = await asyncio.to_thread(self.exports.find_delivered, job_id, artifact_id)
             if found is not None:
                 operation, body = found
+                if operation.status not in {"succeeded", "partial"}:
+                    raise ServiceFault(ServiceErrorCode.NOT_FOUND)
+                live_status = (
+                    None
+                    if self.approvals is None or operation.approval_id is None
+                    else self.approvals.current_status(job_id, operation.approval_id)
+                )
+                current = status.current_run.revision.revision_id if status.current_run else ""
+                if not formal_delivery_allowed(
+                    operation=operation,
+                    approval_status=live_status,
+                    current_revision_id=current,
+                ):
+                    # Withdrawn approval or superseded revision: the staged bytes stay
+                    # for history, but they no longer travel as current formal output.
+                    raise ServiceFault(ServiceErrorCode.UNAUTHORIZED)
                 delivered = next(a for a in operation.artifacts if a.artifact_id == artifact_id)
                 if hashlib.sha256(body).hexdigest() != delivered.content_hash:
                     raise ServiceFault(ServiceErrorCode.EXECUTION)
@@ -536,6 +690,7 @@ def create_integrated_service(
     legacy_review_enabled: bool = True,
     poll_interval: float = 0.1,
     attempt_scoped_reviews: bool = False,
+    intake_root: Path | None = None,
 ) -> FastAPI:
     if not authority.startswith("127.0.0.1:"):
         raise ValueError("This configured local service requires a numeric loopback authority")
@@ -574,8 +729,38 @@ def create_integrated_service(
 
     export_store: SQLiteExportStore | None = None
     export_service: ExportService | None = None
+    approval_store: SQLiteApprovalStore | None = None
+    approval_service: ReportApprovalService | None = None
     if export_assets is not None and export_filler is not None and snapshot_provider is not None:
         export_store = SQLiteExportStore(store)
+        approval_store = SQLiteApprovalStore(store)
+
+        async def read_confirmed_references(job_id: UUID) -> frozenset[str]:
+            # Absence claims must cite a confirmation a human actually committed:
+            # the answered task ids of this job are the only recognized references.
+            # Awaited by the approval service on the request loop - asyncio.run here
+            # would abort every basis/readiness call with a nested-event-loop error.
+            records = await store.list_tasks(job_id=job_id)
+            return frozenset(
+                str(record.task.task_id) for record in records if record.task.state == "answered"
+            )
+
+        approval_service = ReportApprovalService(
+            jobs=service,
+            store=approval_store,
+            assets=export_assets,
+            filler=export_filler,
+            snapshots=snapshot_provider,
+            policy=ReadinessPolicy.default(),
+            confirmed_references=read_confirmed_references,
+        )
+
+        def read_current_revision(job_id: UUID) -> RevisionReference | None:
+            record = asyncio.run(store.read_job(job_id=job_id))
+            if record is None or record.current_run is None:
+                return None
+            return record.current_run.revision
+
         export_service = ExportService(
             jobs=service,
             store=export_store,
@@ -583,7 +768,18 @@ def create_integrated_service(
             filler=export_filler,
             converter=export_converter,
             snapshots=snapshot_provider,
+            approvals=approval_store,
+            current_revision=read_current_revision,
         )
+    content_plane = LocalContentPlane(
+        catalog=catalog,
+        documents=documents,
+        jobs=service,
+        resolver=resolver,
+        source_delivery_enabled=source_delivery_enabled,
+        exports=export_store,
+        approvals=approval_store,
+    )
     app = create_app(
         job_service=service,
         human_task_service=HumanTaskService(
@@ -593,21 +789,144 @@ def create_integrated_service(
             workbench_access=access,
         ),
         principal_resolver=directory,
-        content_plane=LocalContentPlane(
-            catalog=catalog,
-            documents=documents,
-            jobs=service,
-            resolver=resolver,
-            source_delivery_enabled=source_delivery_enabled,
-            exports=export_store,
-        ),
+        content_plane=content_plane,
         export_operations=export_service,
+        report_approvals=approval_service,
     )
+    if export_service is not None and export_store is not None:
+        app.state.export_bundles = ExportBundleService(
+            exports=export_service,
+            export_reader=export_store,
+            store=SQLiteBundleStore(store),
+            content=content_plane,
+        )
+    if intake_root is not None:
+        # Real case intake: durable case records plus raw uploaded materials under the
+        # persistent workbench tree; membership comes from the directory's own grant.
+        intake_store = SQLiteCaseIntakeStore(store, root=intake_root)
+        app.state.case_intake = CaseIntakeService(
+            store=intake_store,
+            grant=directory.grant_case,
+        )
+        # The directory is rebuilt in memory on every boot; intake memberships are
+        # durable state, so re-grant them to their creators. An actor whose session
+        # no longer exists simply stays without access - never a startup failure.
+        for intake_case_id, creator_actor_id in intake_store.memberships():
+            with suppress(ServiceFault, ValueError):
+                directory.grant_case(creator_actor_id, intake_case_id)
+        # External lookups become CANDIDATES here; adoption into facts or tables
+        # is the separate named-human plane wired below, never this one.
+        candidate_store = SQLiteCandidateStore(store)
+        app.state.fact_candidates = CandidateService(store=candidate_store)
+        # Adoption writes confirmed values into a new snapshot and advances the job's
+        # revision, so it needs the concrete registry (read AND register), not the
+        # read-only provider. A composition without one simply offers no adoption
+        # plane: the route then answers capability_unavailable instead of pretending.
+        if isinstance(snapshot_provider, RegisteredSnapshots):
+            app.state.fact_adoption = FactAdoptionService(
+                candidates=candidate_store,
+                snapshots=snapshot_provider,
+                jobs=service,
+                store=SQLiteAdoptionStore(store, snapshots=snapshot_provider),
+            )
+
+    # What a case member may submit to start a review. Read-only: it describes the
+    # admitted material, and the job route re-validates every part of the submission.
+    app.state.case_review = CaseReviewService(materials=catalog, jobs=store, status=service)
+
+    mail_from = os.environ.get("REVIEW_MAIL_FROM", "").strip()
+    if os.environ.get("REVIEW_EMAIL_LOGIN") == "ses":
+        if not mail_from or "@" not in mail_from:
+            raise ValueError("REVIEW_EMAIL_LOGIN=ses requires REVIEW_MAIL_FROM to be set")
+        mail_region = os.environ.get("REVIEW_MAIL_REGION", "us-west-2").strip()
+        from appraisal_review.adapters.aws.ses_mailer import SesMailer, sesv2_client_factory
+        from appraisal_review.adapters.local.email_login_store import SQLiteEmailLoginStore
+        from appraisal_review.application.email_login import EmailLoginService
+        from appraisal_review.domain.service_contracts import ActorReference
+
+        approver_emails = frozenset(
+            entry.strip().lower()
+            for entry in os.environ.get("REVIEW_APPROVER_EMAILS", "").split(",")
+            if entry.strip()
+        )
+        approver_case_grants = frozenset(
+            entry.strip()
+            for entry in os.environ.get("REVIEW_APPROVER_CASE_IDS", "").split(",")
+            if entry.strip()
+        )
+
+        def issue_session(email: str) -> tuple[str, int, str]:
+            # A verified mailbox proves control of the mailbox, nothing more: the
+            # principal starts with NO case memberships and only baseline working
+            # permissions. Publication authority comes solely from the deploy-time
+            # operator configuration naming the trusted approvers - the trusted
+            # management mechanism - never from the verification itself. The actor
+            # id is stable per mailbox so a returning user keeps their case history.
+            normalized = email.strip().lower()
+            actor_id = str(uuid5(NAMESPACE_URL, "email-login/" + normalized))
+            permissions = {Permission.REVIEW, Permission.CONFIRM, Permission.CORRECT}
+            memberships: set[str] = set()
+            if normalized in approver_emails:
+                permissions.add(Permission.PUBLISH)
+                memberships.update(approver_case_grants)
+            session_principal = Principal(
+                actor=ActorReference(actor_id=actor_id, kind="human"),
+                case_ids=frozenset(memberships),
+                permissions=frozenset(permissions),
+            )
+            token = secrets.token_urlsafe(36)
+            expires_at = int(time.time()) + 8 * 3600
+            directory.add_session(token, session_principal, expires_at)
+            for intake_case_id, creator_actor_id in (
+                () if intake_root is None else intake_store.memberships()
+            ):
+                if creator_actor_id == actor_id:
+                    with suppress(ServiceFault, ValueError):
+                        directory.grant_case(actor_id, intake_case_id)
+            return token, expires_at, actor_id
+
+        app.state.email_login = EmailLoginService(
+            store=SQLiteEmailLoginStore(store),
+            mailer=SesMailer(sesv2_client_factory(mail_region), sender=mail_from),
+            issue_session=issue_session,
+        )
     app.state.material_catalog = catalog
     app.state.runtime_worker = worker
     app.state.worker_problem = None
     queue = SQLiteDispatchQueue(store)
     app.state.dispatch_queue = queue
+
+    def _current_session() -> tuple[Principal, str]:
+        principal = _request_principal.get()
+        bearer = _request_token.get()
+        if principal is None or bearer is None:
+            raise ServiceFault(ServiceErrorCode.UNAUTHORIZED)
+        return principal, bearer
+
+    async def read_session() -> JSONResponse:
+        """Describe the authenticated session; the token itself never travels back."""
+        principal, bearer = _current_session()
+        _, expires_at = directory.session_view(bearer)
+        return JSONResponse(
+            {
+                "actor_id": principal.actor.actor_id,
+                "kind": principal.actor.kind,
+                "expires_at": expires_at,
+                "permissions_summary": {
+                    "case_count": len(principal.case_ids),
+                    "permission_count": len(principal.permissions),
+                },
+            }
+        )
+
+    async def delete_session() -> Response:
+        """Revoke the CURRENT bearer token; no route mints or rotates tokens."""
+        _, bearer = _current_session()
+        directory.revoke_token(bearer)
+        return Response(status_code=204)
+
+    app.add_api_route("/v1/session", read_session, methods=["GET"])
+    app.add_api_route("/v1/session", delete_session, methods=["DELETE"], status_code=204)
     if not legacy_review_enabled:
         # The local-original composition admits only configured revision references.
         # It must not expose the legacy caller-URI execution entry point.
@@ -654,16 +973,23 @@ def create_integrated_service(
             return Response(status_code=403)
         if not request.url.path.startswith("/v1/"):
             return await call_next(request)
+        if request.url.path in {"/v1/auth/request-code", "/v1/auth/verify", "/v1/auth/login"}:
+            # The sign-in handshake is pre-auth by design; the login service owns
+            # its own rate limits, and neither route ever reveals account existence.
+            return await call_next(request)
+        header = request.headers.get("authorization", "")
         try:
-            principal = directory.authenticate(request.headers.get("authorization", ""))
+            principal = directory.authenticate(header)
         except ServiceFault as fault:
             return JSONResponse(status_code=403, content=fault.problem.model_dump(mode="json"))
         token = _request_principal.set(principal)
+        bearer = _request_token.set(header.partition(" ")[2])
         try:
             response: Response = await call_next(request)
             response.headers["Cache-Control"] = "no-store"
             return response
         finally:
+            _request_token.reset(bearer)
             _request_principal.reset(token)
 
     return app

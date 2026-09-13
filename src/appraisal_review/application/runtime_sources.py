@@ -82,10 +82,22 @@ class SnapshotJobService(ReviewJobService):
                 principal, submission, job_id=self.new_id(), run_id=run.run_id, now=self.clock()
             )
             if not created:
-                for reference in submission.documents:
-                    await asyncio.to_thread(
-                        self.documents.read_snapshot, principal, record.current_run, reference
-                    )
+                if record.current_run == run:
+                    for reference in submission.documents:
+                        await asyncio.to_thread(
+                            self.documents.read_snapshot, principal, record.current_run, reference
+                        )
+                else:
+                    # The job has advanced past the submitted run (a human correction
+                    # or a fact adoption), and only executed runs carry per-run
+                    # document snapshots. The replay check's purpose - the caller is
+                    # still authorized for exactly this material - holds through the
+                    # same registered-material read a fresh submit starts with; the
+                    # advanced revision carries its documents forward unchanged.
+                    current = await self.revisions.read(principal, record.current_run.revision)
+                    current = MaterialRevision.model_validate_json(current.model_dump_json())
+                    if set(current.documents) != set(submission.documents):
+                        raise ServiceFault(ServiceErrorCode.CONFLICT)
         except DocumentFault as error:
             raise source_fault(error) from None
         view = status_view(record)

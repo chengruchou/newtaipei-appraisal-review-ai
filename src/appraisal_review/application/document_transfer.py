@@ -60,8 +60,11 @@ def checked_boundary(
 
 
 def opaque_uuid(value: str) -> UUID:
+    # v4 is random server-minted identity; v5 is the deterministic server-derived
+    # identity the email-login directory mints per mailbox. Both are server-authored
+    # opaque ids - the canonical-form check still rejects any dressed-up variant.
     parsed = UUID(value)
-    if parsed.version != 4 or str(parsed) != value:
+    if parsed.version not in (4, 5) or str(parsed) != value:
         raise DocumentFault(DocumentErrorCode.INVALID)
     return parsed
 

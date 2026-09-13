@@ -10,11 +10,13 @@ from __future__ import annotations
 import json
 import os
 import secrets
+import time
+from collections.abc import Callable, Mapping
 from contextlib import closing
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, cast
-from uuid import UUID, uuid4
+from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
 
 from pydantic import BaseModel, ConfigDict
 
@@ -100,6 +102,79 @@ from appraisal_review.testing.integration_fixture import (
 )
 
 SCENARIOS = ("empty", "completed", "confirm", "correct", "reject", "conflict", "lost_response")
+
+
+def compose_action_selector(
+    store: SQLiteReviewStore,
+    *,
+    environ: Mapping[str, str] | None = None,
+    dispatch_store_path: Path | None = None,
+    synthetic_case_ids: Callable[[], frozenset[str]] | None = None,
+) -> BedrockActionSelector:
+    """Env-gated selector composition; misconfiguration refuses to launch.
+
+    Unset or ``REVIEW_MODEL_CLIENT=synthetic`` keeps today's fixed mock Converse
+    client exactly. ``bedrock`` requires ``REVIEW_MODEL_ID`` and
+    ``REVIEW_MODEL_REGION`` and composes the live guarded client; missing or
+    invalid configuration raises here rather than silently falling back to the
+    synthetic selector. Diagnostics name environment variables, never values of
+    credentials.
+    """
+    env: Mapping[str, str] = os.environ if environ is None else environ
+    mode = env.get("REVIEW_MODEL_CLIENT") or "synthetic"
+    if mode == "synthetic":
+        return BedrockActionSelector(
+            SyntheticConverseClient(store),
+            ModelSelectorConfig(model_id="fixed-synthetic-converse-v1", attempts=1),
+        )
+    if mode != "bedrock":
+        raise ValueError(
+            "REVIEW_MODEL_CLIENT must be unset, 'synthetic' or 'bedrock'; got " + repr(mode)
+        )
+    model_id = (env.get("REVIEW_MODEL_ID") or "").strip()
+    region = (env.get("REVIEW_MODEL_REGION") or "").strip()
+    if not model_id:
+        raise ValueError("REVIEW_MODEL_CLIENT=bedrock requires REVIEW_MODEL_ID to be set")
+    if not region:
+        raise ValueError("REVIEW_MODEL_CLIENT=bedrock requires REVIEW_MODEL_REGION to be set")
+    from appraisal_review.adapters.aws import live_selector
+    from appraisal_review.adapters.aws.assembled_admission import TrustedAssemblyAdmission
+
+    print(
+        f"Action selector: live Bedrock Converse (model_id={model_id}, region={region})",
+        flush=True,
+    )
+
+    # Cases whose materials are exactly the admitted official document batch may
+    # send their assembled content to the model. This is deploy-time operator
+    # configuration implementing the recorded batch-admission decision; unlisted
+    # real cases stay undeclared and the admission refuses their sends outright.
+    official_batch_cases = frozenset(
+        case.strip()
+        for case in (env.get("REVIEW_OFFICIAL_BATCH_CASE_IDS") or "").split(",")
+        if case.strip()
+    )
+
+    def provenance(case_id: str) -> str | None:
+        # Only content assembled from this workbench's own synthetic fixture cases
+        # or the operator-listed official-batch cases may leave for the model; any
+        # other case answers None, the selector leaves the send undeclared and the
+        # admission refuses it outright.
+        if synthetic_case_ids is not None and case_id in synthetic_case_ids():
+            return "synthetic_fixture"
+        if case_id in official_batch_cases:
+            return "official_batch"
+        return None
+
+    return live_selector.live_action_selector(
+        model_id,
+        region,
+        dispatch_store_path=dispatch_store_path,
+        competition_admission=TrustedAssemblyAdmission(
+            frozenset({"synthetic_fixture", "official_batch"})
+        ),
+        provenance_for_case=provenance,
+    )
 
 
 def _private_json(path: Path, value: Any) -> None:
@@ -231,7 +306,16 @@ class SyntheticWorkbench:
             name: f.snapshot.revision.reference.case_id for name, f in fixtures.items()
         }
         self.principal = next(iter(fixtures.values())).principal
-        self.directory = LocalDirectory({state["session_token"]: self.principal})
+        sessions: dict[str, Principal | tuple[Principal, int | None]] = {
+            state["session_token"]: self.principal
+        }
+        for record in state.get("operator_tokens", []):
+            granted = frozenset(Permission(name) for name in record["permissions"])
+            sessions[record["token"]] = (
+                replace(self.principal, permissions=granted),
+                int(record["expires_at"]),
+            )
+        self.directory = LocalDirectory(sessions, revocations_path=root / "revoked_tokens.json")
         self.store = SQLiteReviewStore(root / "state/review.sqlite")
         with closing(self.store._connect()) as db:
             db.execute(
@@ -287,8 +371,19 @@ class SyntheticWorkbench:
             export_filler=fill_workbook if export_assets is not None else None,
             export_converter=discover_render_converter(),
             snapshot_provider=self.snapshots,
+            intake_root=self.root / "intake",
         )
-        self.app.state.workbench_data_mode = "synthetic"
+        # The launcher is synthetic, but the data mode describes the DOCUMENTS. A
+        # deployment that pins official-batch cases is running on staged official
+        # material with local rules and human review, and saying "synthetic" there
+        # would mislabel real receipts; a deployment without them stays synthetic.
+        # Neither label claims model execution, formal approval or real-case
+        # acceptance - the banner text carries that caveat in both modes.
+        self.app.state.workbench_data_mode = (
+            "local_original"
+            if (os.environ.get("REVIEW_OFFICIAL_BATCH_CASE_IDS") or "").strip()
+            else "synthetic"
+        )
         self.app.state.configured_workbench_jobs = lambda: tuple(
             self.state.get("job_ids", {}).values()
         )
@@ -318,9 +413,10 @@ class SyntheticWorkbench:
             registration=self.guard,
             controllers=self.controller,
             reviews=SQLiteWorkflowReviews(self.store),
-            selector=BedrockActionSelector(
-                SyntheticConverseClient(self.store),
-                ModelSelectorConfig(model_id="fixed-synthetic-converse-v1", attempts=1),
+            selector=compose_action_selector(
+                self.store,
+                dispatch_store_path=self.root / "state" / "model_dispatch.sqlite3",
+                synthetic_case_ids=lambda: frozenset(self.case_ids.values()),
             ),
             ledger=SqliteWorkflowRunLedger(self.root / "state/workflow.sqlite"),
             trace=SQLiteDecisionTrace(self.store),
@@ -328,6 +424,35 @@ class SyntheticWorkbench:
             budget=Budget(steps_remaining=8, model_calls_remaining=8, retries_remaining=0),
             project_result=self.projection,
         )
+
+    def mint_operator_token(
+        self, ttl_seconds: int, permissions: frozenset[Permission] | None = None
+    ) -> str:
+        """Mint a time-limited operator session via a trusted management command.
+
+        Deliberately not an HTTP route: only the deployer holding the workbench
+        process may issue tokens. The token persists like the fixture token in
+        the private ``bootstrap.json`` (section ``operator_tokens``) with its
+        expiry, so it survives restart and expires server-side.
+        """
+        if type(ttl_seconds) is not int or ttl_seconds < 1:
+            raise ValueError("A positive integer ttl_seconds is required")
+        granted = frozenset(permissions) if permissions is not None else self.principal.permissions
+        if not granted or not granted <= self.principal.permissions:
+            raise ValueError("Operator permissions must be a non-empty subset of the fixture's")
+        token = secrets.token_urlsafe(36)
+        expires_at = int(time.time()) + ttl_seconds
+        self.directory.add_session(token, replace(self.principal, permissions=granted), expires_at)
+        records = self.state.setdefault("operator_tokens", [])
+        records.append(
+            {
+                "token": token,
+                "expires_at": expires_at,
+                "permissions": sorted(permission.value for permission in granted),
+            }
+        )
+        _private_json(self.root / "bootstrap.json", self.state)
+        return token
 
     async def register_synthetic_case(
         self,
@@ -676,6 +801,33 @@ class SyntheticWorkbench:
         )
 
 
+def operator_document_grants(case_id: UUID) -> tuple[DocumentGrant, ...]:
+    """Deploy-time trusted configuration, mirroring the session-issue anchor: approver
+    mailboxes named in REVIEW_APPROVER_EMAILS may snapshot and read the documents of
+    the cases pinned in REVIEW_APPROVER_CASE_IDS. Actor ids are the email-login
+    directory's deterministic uuid5 per mailbox; least privilege - no ingest."""
+    pinned = {
+        entry.strip()
+        for entry in os.environ.get("REVIEW_APPROVER_CASE_IDS", "").split(",")
+        if entry.strip()
+    }
+    if str(case_id) not in pinned:
+        return ()
+    return tuple(
+        DocumentGrant(
+            uuid5(NAMESPACE_URL, "email-login/" + email),
+            case_id,
+            frozenset({"criteria", "forms"}),
+            frozenset({DocumentOperation.SNAPSHOT, DocumentOperation.READ}),
+        )
+        for email in sorted(
+            entry.strip().lower()
+            for entry in os.environ.get("REVIEW_APPROVER_EMAILS", "").split(",")
+            if entry.strip()
+        )
+    )
+
+
 async def prepare_workbench(directory: Path, *, port: int = 8765) -> SyntheticWorkbench:
     if not 1 <= port <= 65535:
         raise ValueError("A valid local port is required")
@@ -718,6 +870,7 @@ async def prepare_workbench(directory: Path, *, port: int = 8765) -> SyntheticWo
                         frozenset({"criteria", "forms"}),
                         frozenset(DocumentOperation),
                     ),
+                    *operator_document_grants(UUID(revision.reference.case_id)),
                 )
             )
             documents = DocumentTransferService(

@@ -23,6 +23,7 @@
   "dependencies": {
     "ajv": "^8.20.0",
     "ajv-formats": "^3.0.1",
+    "leaflet": "1.9.4",
     "pdfjs-dist": "^6.3.289",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
@@ -35,6 +36,7 @@
     "@testing-library/jest-dom": "^6.5.0",
     "@testing-library/react": "^16.0.1",
     "@testing-library/user-event": "^14.5.2",
+    "@types/leaflet": "1.9.22",
     "@types/node": "^22.20.2",
     "@types/react": "^18.3.10",
     "@types/react-dom": "^18.3.0",

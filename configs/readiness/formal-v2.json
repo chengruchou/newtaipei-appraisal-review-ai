@@ -1,0 +1,300 @@
+{
+ "policy_version": "formal-readiness-v2",
+ "description": "v2 of the formal readiness gate. Beyond v1's presence check it validates each required value against the mapping's declared unit and kind, recomputes the printed table-4 sums from the snapshot's own component entries, requires the table-3 zone basis (the structural case-identity fields bound in table3-v1: year_term, zone_number, zone_extent, survey_date, urban_plan, zoning), forbids the not-applicable escape on the whole price chain, and accepts a justified absence only when a human confirmed it with a recorded trace. Only table_3.case.urban_plan may be not_applicable: a zone outside any urban plan lawfully leaves that row blank, per the mapping's absence policy.",
+ "justified_absence_states": [
+  "not_applicable",
+  "confirmed_zero"
+ ],
+ "mapping_files": [
+  "../mappings/table3-v1.json",
+  "../mappings/table4-v1.json",
+  "../mappings/table5-v1.json"
+ ],
+ "required_entries": [
+  {
+   "key": "table_3.case.survey_date",
+   "kind": "date",
+   "unit": null,
+   "allow_not_applicable": false,
+   "na_requires": "human_confirmed"
+  },
+  {
+   "key": "table_3.case.urban_plan",
+   "kind": "text",
+   "unit": null,
+   "allow_not_applicable": true,
+   "na_requires": "human_confirmed"
+  },
+  {
+   "key": "table_3.case.year_term",
+   "kind": "text",
+   "unit": null,
+   "allow_not_applicable": false,
+   "na_requires": "human_confirmed"
+  },
+  {
+   "key": "table_3.case.zone_extent",
+   "kind": "text",
+   "unit": null,
+   "allow_not_applicable": false,
+   "na_requires": "human_confirmed"
+  },
+  {
+   "key": "table_3.case.zone_number",
+   "kind": "text",
+   "unit": null,
+   "allow_not_applicable": false,
+   "na_requires": "human_confirmed"
+  },
+  {
+   "key": "table_3.case.zoning",
+   "kind": "text",
+   "unit": null,
+   "allow_not_applicable": false,
+   "na_requires": "human_confirmed"
+  },
+  {
+   "key": "table_4.P001.compared_price",
+   "kind": "price",
+   "unit": "TWD_per_m2",
+   "allow_not_applicable": false,
+   "na_requires": "human_confirmed"
+  },
+  {
+   "key": "table_4.P002.abs_adjustment_sum_pct",
+   "kind": "percent_points",
+   "unit": "percent_points",
+   "allow_not_applicable": false,
+   "na_requires": "human_confirmed"
+  },
+  {
+   "key": "table_4.P002.adjusted_unit_price",
+   "kind": "price",
+   "unit": "TWD_per_m2",
+   "allow_not_applicable": false,
+   "na_requires": "human_confirmed"
+  },
+  {
+   "key": "table_4.P002.date_adjustment_pct",
+   "kind": "percent_points",
+   "unit": "percent_points",
+   "allow_not_applicable": false,
+   "na_requires": "human_confirmed"
+  },
+  {
+   "key": "table_4.P002.normal_unit_price",
+   "kind": "price",
+   "unit": "TWD_per_m2",
+   "allow_not_applicable": false,
+   "na_requires": "human_confirmed"
+  },
+  {
+   "key": "table_4.P002.region_adjustment_pct",
+   "kind": "percent_points",
+   "unit": "percent_points",
+   "allow_not_applicable": false,
+   "na_requires": "human_confirmed"
+  },
+  {
+   "key": "table_4.P002.total_adjustment_pct",
+   "kind": "percent_points",
+   "unit": "percent_points",
+   "allow_not_applicable": false,
+   "na_requires": "human_confirmed"
+  },
+  {
+   "key": "table_4.P002.trial_price",
+   "kind": "price",
+   "unit": "TWD_per_m2",
+   "allow_not_applicable": false,
+   "na_requires": "human_confirmed"
+  },
+  {
+   "key": "table_4.P002.weight_pct",
+   "kind": "weight_percent",
+   "unit": "percent_points",
+   "allow_not_applicable": false,
+   "na_requires": "human_confirmed"
+  },
+  {
+   "key": "table_4.P003.abs_adjustment_sum_pct",
+   "kind": "percent_points",
+   "unit": "percent_points",
+   "allow_not_applicable": false,
+   "na_requires": "human_confirmed"
+  },
+  {
+   "key": "table_4.P003.adjusted_unit_price",
+   "kind": "price",
+   "unit": "TWD_per_m2",
+   "allow_not_applicable": false,
+   "na_requires": "human_confirmed"
+  },
+  {
+   "key": "table_4.P003.date_adjustment_pct",
+   "kind": "percent_points",
+   "unit": "percent_points",
+   "allow_not_applicable": false,
+   "na_requires": "human_confirmed"
+  },
+  {
+   "key": "table_4.P003.normal_unit_price",
+   "kind": "price",
+   "unit": "TWD_per_m2",
+   "allow_not_applicable": false,
+   "na_requires": "human_confirmed"
+  },
+  {
+   "key": "table_4.P003.region_adjustment_pct",
+   "kind": "percent_points",
+   "unit": "percent_points",
+   "allow_not_applicable": false,
+   "na_requires": "human_confirmed"
+  },
+  {
+   "key": "table_4.P003.total_adjustment_pct",
+   "kind": "percent_points",
+   "unit": "percent_points",
+   "allow_not_applicable": false,
+   "na_requires": "human_confirmed"
+  },
+  {
+   "key": "table_4.P003.trial_price",
+   "kind": "price",
+   "unit": "TWD_per_m2",
+   "allow_not_applicable": false,
+   "na_requires": "human_confirmed"
+  },
+  {
+   "key": "table_4.P003.weight_pct",
+   "kind": "weight_percent",
+   "unit": "percent_points",
+   "allow_not_applicable": false,
+   "na_requires": "human_confirmed"
+  },
+  {
+   "key": "table_4.P004.abs_adjustment_sum_pct",
+   "kind": "percent_points",
+   "unit": "percent_points",
+   "allow_not_applicable": false,
+   "na_requires": "human_confirmed"
+  },
+  {
+   "key": "table_4.P004.adjusted_unit_price",
+   "kind": "price",
+   "unit": "TWD_per_m2",
+   "allow_not_applicable": false,
+   "na_requires": "human_confirmed"
+  },
+  {
+   "key": "table_4.P004.date_adjustment_pct",
+   "kind": "percent_points",
+   "unit": "percent_points",
+   "allow_not_applicable": false,
+   "na_requires": "human_confirmed"
+  },
+  {
+   "key": "table_4.P004.normal_unit_price",
+   "kind": "price",
+   "unit": "TWD_per_m2",
+   "allow_not_applicable": false,
+   "na_requires": "human_confirmed"
+  },
+  {
+   "key": "table_4.P004.region_adjustment_pct",
+   "kind": "percent_points",
+   "unit": "percent_points",
+   "allow_not_applicable": false,
+   "na_requires": "human_confirmed"
+  },
+  {
+   "key": "table_4.P004.total_adjustment_pct",
+   "kind": "percent_points",
+   "unit": "percent_points",
+   "allow_not_applicable": false,
+   "na_requires": "human_confirmed"
+  },
+  {
+   "key": "table_4.P004.trial_price",
+   "kind": "price",
+   "unit": "TWD_per_m2",
+   "allow_not_applicable": false,
+   "na_requires": "human_confirmed"
+  },
+  {
+   "key": "table_4.P004.weight_pct",
+   "kind": "weight_percent",
+   "unit": "percent_points",
+   "allow_not_applicable": false,
+   "na_requires": "human_confirmed"
+  },
+  {
+   "key": "table_5.P002.total_adjustment_pct",
+   "kind": "percent_points",
+   "unit": "percent_points",
+   "allow_not_applicable": false,
+   "na_requires": "human_confirmed"
+  },
+  {
+   "key": "table_5.P003.total_adjustment_pct",
+   "kind": "percent_points",
+   "unit": "percent_points",
+   "allow_not_applicable": false,
+   "na_requires": "human_confirmed"
+  },
+  {
+   "key": "table_5.P004.total_adjustment_pct",
+   "kind": "percent_points",
+   "unit": "percent_points",
+   "allow_not_applicable": false,
+   "na_requires": "human_confirmed"
+  }
+ ],
+ "case_sections": {
+  "table_3_basis": [
+   "table_3.case.year_term",
+   "table_3.case.zone_number",
+   "table_3.case.zone_extent",
+   "table_3.case.survey_date",
+   "table_3.case.urban_plan",
+   "table_3.case.zoning"
+  ],
+  "comparison_base": "P001",
+  "comparables": [
+   "P002",
+   "P003",
+   "P004"
+  ]
+ },
+ "bounds": {
+  "adjustment_abs_max_pct": "100",
+  "weight_min_pct": "0",
+  "weight_max_pct": "100",
+  "price_min_exclusive": "0"
+ },
+ "weight_sum": {
+  "expected": "100",
+  "tolerance": "0.01"
+ },
+ "conventions": {
+  "adjusted_unit_price": {
+   "rule": "normal_unit_price x (1 + date_adjustment_pct/100), ROUND_HALF_UP to 1 TWD",
+   "evidence": "artifacts/shulin-case/computed.json price_date_adjustment_checks: 3/3 MATCH",
+   "confirmed": true
+  },
+  "table_4_total_adjustment": {
+   "rule": "sum of the individual-factor *_adjustment_pct rows; date/region stages excluded",
+   "evidence": "sample form 表4: 1+2+5+3+2 = 13 (合計)",
+   "confirmed": true
+  },
+  "abs_adjustment_sum": {
+   "rule": "|date_adjustment_pct| + sum of |individual components|; whether the region factor joins is unconfirmed (0 in the sample)",
+   "evidence": "sample form 表4: 13 + 2 = 15 (絕對值加總)",
+   "confirmed": false
+  },
+  "compared_price_combination": {
+   "rule": "must lie within [min, max] of the trial prices; the exact weighting rule is not pinned",
+   "confirmed": false
+  }
+ }
+}

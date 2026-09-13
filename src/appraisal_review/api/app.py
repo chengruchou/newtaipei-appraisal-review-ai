@@ -5,12 +5,26 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict
 
+from appraisal_review.api.routes.case_intake import CASE_INTAKE_ENDPOINTS
+from appraisal_review.api.routes.case_intake import router as case_intake_router
+from appraisal_review.api.routes.case_review import CASE_REVIEW_ENDPOINTS
+from appraisal_review.api.routes.case_review import router as case_review_router
 from appraisal_review.api.routes.content import CONTENT_ENDPOINTS
 from appraisal_review.api.routes.content import router as content_router
+from appraisal_review.api.routes.email_login import EMAIL_LOGIN_ENDPOINTS
+from appraisal_review.api.routes.email_login import router as email_login_router
+from appraisal_review.api.routes.export_bundles import BUNDLE_ENDPOINTS
+from appraisal_review.api.routes.export_bundles import router as bundle_router
 from appraisal_review.api.routes.exports import EXPORT_ENDPOINTS
 from appraisal_review.api.routes.exports import router as export_router
+from appraisal_review.api.routes.fact_adoption import ADOPTION_ENDPOINTS
+from appraisal_review.api.routes.fact_adoption import router as fact_adoption_router
+from appraisal_review.api.routes.fact_candidates import FACT_CANDIDATE_ENDPOINTS
+from appraisal_review.api.routes.fact_candidates import router as fact_candidate_router
 from appraisal_review.api.routes.human_tasks import HUMAN_TASK_ENDPOINTS
 from appraisal_review.api.routes.human_tasks import router as human_task_router
+from appraisal_review.api.routes.report_approvals import APPROVAL_ENDPOINTS
+from appraisal_review.api.routes.report_approvals import router as approval_router
 from appraisal_review.api.routes.review_jobs import JOB_ENDPOINTS
 from appraisal_review.api.routes.review_jobs import router as job_router
 from appraisal_review.api.routes.reviews import review, router
@@ -21,6 +35,7 @@ from appraisal_review.application.bootstrap import (
 )
 from appraisal_review.application.entrypoint import EntryError, EntryProblem
 from appraisal_review.application.human_tasks import HumanTaskService
+from appraisal_review.application.report_approvals import ReportApprovalService
 from appraisal_review.application.review_jobs import ReviewJobService
 from appraisal_review.application.service_guards import ServiceFault
 from appraisal_review.config import Settings
@@ -68,6 +83,7 @@ def create_app(
     principal_resolver: PrincipalResolver | None = None,
     content_plane: ContentPlane | None = None,
     export_operations: ExportOperations | None = None,
+    report_approvals: "ReportApprovalService | None" = None,
 ) -> FastAPI:
     if controller_factory is not None and (settings is not None or adapters is not None):
         raise ValueError("Choose an explicit factory or settings/adapters, not both")
@@ -91,6 +107,8 @@ def create_app(
         raise ValueError("Content delivery requires a principal resolver")
     if export_operations is not None and principal_resolver is None:
         raise ValueError("Export operations require a principal resolver")
+    if report_approvals is not None and principal_resolver is None:
+        raise ValueError("Report approvals require a principal resolver")
     app = FastAPI(
         title="Agentic AI Real Estate Valuation Reviewer",
         version="0.1.0",
@@ -106,11 +124,19 @@ def create_app(
     app.state.principal_resolver = principal_resolver
     app.state.content_plane = content_plane
     app.state.export_operations = export_operations
+    app.state.report_approvals = report_approvals
     app.include_router(router)
     app.include_router(job_router)
     app.include_router(human_task_router)
     app.include_router(content_router)
     app.include_router(export_router)
+    app.include_router(approval_router)
+    app.include_router(case_intake_router)
+    app.include_router(fact_candidate_router)
+    app.include_router(fact_adoption_router)
+    app.include_router(case_review_router)
+    app.include_router(email_login_router)
+    app.include_router(bundle_router)
 
     @app.exception_handler(ServiceFault)
     async def service_fault(request: Request, fault: ServiceFault) -> JSONResponse:
@@ -139,6 +165,13 @@ def create_app(
             or endpoint in HUMAN_TASK_ENDPOINTS
             or endpoint in CONTENT_ENDPOINTS
             or endpoint in EXPORT_ENDPOINTS
+            or endpoint in APPROVAL_ENDPOINTS
+            or endpoint in CASE_INTAKE_ENDPOINTS
+            or endpoint in FACT_CANDIDATE_ENDPOINTS
+            or endpoint in ADOPTION_ENDPOINTS
+            or endpoint in CASE_REVIEW_ENDPOINTS
+            or endpoint in EMAIL_LOGIN_ENDPOINTS
+            or endpoint in BUNDLE_ENDPOINTS
         ):
             # These routes answer with the sanitized service envelope and never echo the
             # rejected payload, which may quote document text or a proposed correction.

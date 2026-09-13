@@ -1,0 +1,222 @@
+{
+  "schema_version": "source-registry-v1",
+  "registry_id": "registry-v1",
+  "entries": [
+    {
+      "source_id": "moenv-soil-groundwater-sites",
+      "title": "土壤及地下水列管資訊",
+      "publisher": "政府資料開放平臺 (data.gov.tw)",
+      "portal_url": "https://data.gov.tw/dataset/122974",
+      "status": "listed",
+      "status_reason": "Listed from the user-supplied official source appendix; endpoint and data not yet verified.",
+      "checked_at": "2026-09-12T22:30:00+08:00",
+      "notes": [
+        "Publisher recorded as the hosting open-data portal; the specific agency is unverified offline."
+      ]
+    },
+    {
+      "source_id": "moenv-stationary-air-pollution-sources",
+      "title": "空氣污染物監測設施之固定污染源",
+      "publisher": "政府資料開放平臺 (data.gov.tw)",
+      "portal_url": "https://data.gov.tw/dataset/123721",
+      "status": "listed",
+      "status_reason": "Listed from the user-supplied official source appendix; endpoint and data not yet verified.",
+      "checked_at": "2026-09-12T22:30:00+08:00",
+      "notes": [
+        "Publisher recorded as the hosting open-data portal; the specific agency is unverified offline."
+      ]
+    },
+    {
+      "source_id": "moi-funeral-facilities",
+      "title": "殯葬設施",
+      "publisher": "政府資料開放平臺 (data.gov.tw)",
+      "portal_url": "https://data.gov.tw/dataset/7052",
+      "status": "listed",
+      "status_reason": "Listed from the user-supplied official source appendix; endpoint and data not yet verified.",
+      "checked_at": "2026-09-12T22:30:00+08:00",
+      "notes": [
+        "Publisher recorded as the hosting open-data portal; the specific agency is unverified offline."
+      ]
+    },
+    {
+      "source_id": "taipower-secondary-substation-capacity",
+      "title": "二次變電所主變壓器裝置容量及負載",
+      "publisher": "政府資料開放平臺 (data.gov.tw)",
+      "portal_url": "https://data.gov.tw/dataset/16960",
+      "status": "listed",
+      "status_reason": "Listed from the user-supplied official source appendix; endpoint and data not yet verified.",
+      "checked_at": "2026-09-12T22:30:00+08:00",
+      "notes": [
+        "Publisher recorded as the hosting open-data portal; the specific agency is unverified offline."
+      ]
+    },
+    {
+      "source_id": "ntpc-legal-hotels",
+      "title": "新北市合法一般旅館名冊",
+      "publisher": "新北市政府資料開放平台 (data.ntpc.gov.tw)",
+      "portal_url": "https://data.ntpc.gov.tw/datasets/8565597e-a174-4907-99c7-adb5ddee1326",
+      "status": "listed",
+      "status_reason": "Listed from the user-supplied official source appendix; endpoint and data not yet verified.",
+      "checked_at": "2026-09-12T22:30:00+08:00",
+      "notes": []
+    },
+    {
+      "source_id": "fsc-financial-institutions",
+      "title": "金融機構基本資料查詢",
+      "publisher": "政府資料開放平臺 (data.gov.tw)",
+      "portal_url": "https://data.gov.tw/dataset/6041",
+      "status": "listed",
+      "status_reason": "Listed from the user-supplied official source appendix; endpoint and data not yet verified.",
+      "checked_at": "2026-09-12T22:30:00+08:00",
+      "notes": [
+        "Publisher recorded as the hosting open-data portal; the specific agency is unverified offline."
+      ]
+    },
+    {
+      "source_id": "freeway-interchange-coordinates",
+      "title": "高速公路交流道座標",
+      "publisher": "政府資料開放平臺 (data.gov.tw)",
+      "portal_url": "https://data.gov.tw/dataset/166496",
+      "status": "listed",
+      "status_reason": "Listed from the user-supplied official source appendix; endpoint and data not yet verified.",
+      "checked_at": "2026-09-12T22:30:00+08:00",
+      "notes": [
+        "Publisher recorded as the hosting open-data portal; the specific agency is unverified offline."
+      ]
+    },
+    {
+      "source_id": "moea-department-store-registrations",
+      "title": "公司登記－百貨公司業",
+      "publisher": "政府資料開放平臺 (data.gov.tw)",
+      "portal_url": "https://data.gov.tw/dataset/45654",
+      "status": "listed",
+      "status_reason": "Listed from the user-supplied official source appendix; endpoint and data not yet verified.",
+      "checked_at": "2026-09-12T22:30:00+08:00",
+      "notes": [
+        "Publisher recorded as the hosting open-data portal; the specific agency is unverified offline."
+      ]
+    },
+    {
+      "source_id": "ntpc-waste-incineration-plants",
+      "title": "垃圾焚化廠位置",
+      "publisher": "新北市政府資料開放平台 (data.ntpc.gov.tw)",
+      "portal_url": "https://data.ntpc.gov.tw/datasets/39e17852-9ac9-45b7-bc60-d8d0ed7e3161",
+      "status": "listed",
+      "status_reason": "Listed from the user-supplied official source appendix; endpoint and data not yet verified.",
+      "checked_at": "2026-09-12T22:30:00+08:00",
+      "notes": []
+    },
+    {
+      "source_id": "ntpc-public-cemeteries-columbaria",
+      "title": "公立公墓納骨塔查詢",
+      "publisher": "新北市政府資料開放平台 (data.ntpc.gov.tw)",
+      "portal_url": "https://data.ntpc.gov.tw/datasets/1d228eab-23d4-41a6-bd33-f4014dd44660",
+      "status": "listed",
+      "status_reason": "Listed from the user-supplied official source appendix; endpoint and data not yet verified.",
+      "checked_at": "2026-09-12T22:30:00+08:00",
+      "notes": []
+    },
+    {
+      "source_id": "ntpc-funeral-service-providers",
+      "title": "禮儀服務業者查詢",
+      "publisher": "新北市政府資料開放平台 (data.ntpc.gov.tw)",
+      "portal_url": "https://data.ntpc.gov.tw/datasets/77676118-d894-4527-b88a-6d236a462923",
+      "status": "listed",
+      "status_reason": "Listed from the user-supplied official source appendix; endpoint and data not yet verified.",
+      "checked_at": "2026-09-12T22:30:00+08:00",
+      "notes": []
+    },
+    {
+      "source_id": "ntpc-tourist-attractions",
+      "title": "新北市觀光旅遊景點（中文）",
+      "publisher": "新北市政府資料開放平台 (data.ntpc.gov.tw)",
+      "portal_url": "https://data.ntpc.gov.tw/datasets/b3a30a19-4b89-4da2-8d99-18200dc5dfde",
+      "status": "listed",
+      "status_reason": "Listed from the user-supplied official source appendix; endpoint and data not yet verified.",
+      "checked_at": "2026-09-12T22:30:00+08:00",
+      "notes": []
+    },
+    {
+      "source_id": "ntpc-riverside-parks",
+      "title": "河濱公園位置",
+      "publisher": "新北市政府資料開放平台 (data.ntpc.gov.tw)",
+      "portal_url": "https://data.ntpc.gov.tw/datasets/c3867812-6188-4b0a-a487-03bb4d93238d",
+      "status": "listed",
+      "status_reason": "Listed from the user-supplied official source appendix; endpoint and data not yet verified.",
+      "checked_at": "2026-09-12T22:30:00+08:00",
+      "notes": []
+    },
+    {
+      "source_id": "ntpc-public-markets",
+      "title": "新北市公有市場及超市清冊",
+      "publisher": "新北市政府資料開放平台 (data.ntpc.gov.tw)",
+      "portal_url": "https://data.ntpc.gov.tw/datasets/785be91a-caaf-4e1c-91d6-f7d616d31a45",
+      "status": "listed",
+      "status_reason": "Listed from the user-supplied official source appendix; endpoint and data not yet verified.",
+      "checked_at": "2026-09-12T22:30:00+08:00",
+      "notes": []
+    },
+    {
+      "source_id": "ntpc-parks",
+      "title": "新北市公園",
+      "publisher": "新北市政府資料開放平台 (data.ntpc.gov.tw)",
+      "portal_url": "https://data.ntpc.gov.tw/datasets/5fe3a136-29cc-4695-a17e-6636a32c3342",
+      "status": "data_verified",
+      "status_reason": "Live fetch through SafeSourceReader + production transport on the operator's machine (user-executed): sha256 d9999200b2fd5b9807f5129d2b41046f48133f81a454b1fe21c16a03844c4792, retrieved_at 1789227745, 5 sample rows parsed; declared field names verified against real rows.",
+      "checked_at": "2026-09-12T23:43:46+08:00",
+      "api_endpoint": "https://data.ntpc.gov.tw/api/datasets/5fe3a136-29cc-4695-a17e-6636a32c3342/json",
+      "dataset_id": "5fe3a136-29cc-4695-a17e-6636a32c3342",
+      "declared_fields": {
+        "name_field": "name",
+        "lat_field": null,
+        "lng_field": null,
+        "unverified_until_live_fetch": false
+      },
+      "notes": [
+        "Endpoint accepts ?page=<n>&size=<n> paging.",
+        "Field names are configuration guesses; verify against the first live payload before relying on them."
+      ]
+    },
+    {
+      "source_id": "ntpc-off-street-parking",
+      "title": "新北市路外公共停車場資訊",
+      "publisher": "新北市政府資料開放平台 (data.ntpc.gov.tw)",
+      "portal_url": "https://data.ntpc.gov.tw/datasets/b1464ef0-9c7c-4a6f-abf7-6bdf32847e68",
+      "status": "listed",
+      "status_reason": "Listed from the user-supplied official source appendix; endpoint and data not yet verified.",
+      "checked_at": "2026-09-12T22:30:00+08:00",
+      "notes": []
+    },
+    {
+      "source_id": "ntpc-bus-stops",
+      "title": "公車站位資訊",
+      "publisher": "新北市政府資料開放平台 (data.ntpc.gov.tw)",
+      "portal_url": "https://data.ntpc.gov.tw/datasets/34b402a8-53d9-483d-9406-24a682c2d6dc",
+      "status": "data_verified",
+      "status_reason": "Live fetch through SafeSourceReader + production transport on the operator's machine (user-executed): sha256 7b1c8f847ffe155c0e5d9b77fd930214553d1516297a1144aae22398f698429d, retrieved_at 1789227745, 5 sample rows parsed; declared field names verified against real rows.",
+      "checked_at": "2026-09-12T23:43:46+08:00",
+      "api_endpoint": "https://data.ntpc.gov.tw/api/datasets/34b402a8-53d9-483d-9406-24a682c2d6dc/json",
+      "dataset_id": "34b402a8-53d9-483d-9406-24a682c2d6dc",
+      "declared_fields": {
+        "name_field": "namezh",
+        "lat_field": "latitude",
+        "lng_field": "longitude",
+        "unverified_until_live_fetch": false
+      },
+      "notes": [
+        "Endpoint accepts ?page=<n>&size=<n> paging.",
+        "Field names are configuration guesses; verify against the first live payload before relying on them."
+      ]
+    },
+    {
+      "source_id": "ntpc-landmarks",
+      "title": "新北市重要地標資訊",
+      "publisher": "新北市政府資料開放平台 (data.ntpc.gov.tw)",
+      "portal_url": "https://data.ntpc.gov.tw/datasets/6dcff24a-838c-40fb-a9df-f1160afafe84",
+      "status": "listed",
+      "status_reason": "Listed from the user-supplied official source appendix; endpoint and data not yet verified.",
+      "checked_at": "2026-09-12T22:30:00+08:00",
+      "notes": []
+    }
+  ]
+}

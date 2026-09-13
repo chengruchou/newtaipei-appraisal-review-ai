@@ -3,7 +3,9 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import {
   ExportServiceError,
+  type CreateBundleCommand,
   type CreateExportCommand,
+  type ExportBundleView,
   type ExportOperation,
   type ExportsApi,
 } from "@/api/exports";
@@ -18,6 +20,12 @@ function api(overrides: Partial<ExportsApi> = {}): ExportsApi {
     createExport: vi.fn(() => Promise.reject(new Error("createExport not scripted"))),
     readExport: vi.fn(() => Promise.reject(new Error("readExport not scripted"))),
     downloadArtifact: vi.fn(() => Promise.reject(new Error("downloadArtifact not scripted"))),
+    submitBundle: vi.fn(() => Promise.reject(new Error("submitBundle not scripted"))),
+    readBundle: vi.fn(() => Promise.reject(new Error("readBundle not scripted"))),
+    downloadBundle: vi.fn(() => Promise.reject(new Error("downloadBundle not scripted"))),
+    submitApproval: vi.fn(() => Promise.reject(new Error("submitApproval not scripted"))),
+    readApproval: vi.fn(() => Promise.reject(new Error("readApproval not scripted"))),
+    decideApproval: vi.fn(() => Promise.reject(new Error("decideApproval not scripted"))),
     ...overrides,
   };
 }
@@ -237,5 +245,84 @@ describe("export panel operation tracking", () => {
     show(api(), null);
     expect(screen.getByText(/暫時無法建立匯出/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /產生並下載/ })).not.toBeInTheDocument();
+  });
+});
+
+describe("bundled zip download", () => {
+  it("submits the chosen formats once, polls to completion and downloads the zip", async () => {
+    const submitted: CreateBundleCommand[] = [];
+    const view = (status: "pending" | "succeeded"): ExportBundleView => ({
+      bundle_id: "bundle-1",
+      status,
+      formats: ["pdf", "xlsx"],
+      children: [
+        operation({
+          export_id: "e-pdf",
+          export_format: "pdf",
+          status: status === "succeeded" ? "succeeded" : "running",
+        }),
+        operation({
+          export_id: "e-xlsx",
+          export_format: "xlsx",
+          status: status === "succeeded" ? "succeeded" : "running",
+        }),
+      ],
+    });
+    const downloadBundle = vi.fn(() =>
+      Promise.resolve({
+        bytes: new ArrayBuffer(4),
+        filename: "official-tables-bundle-1.zip",
+        contentType: "application/zip",
+      }),
+    );
+    const service = api({
+      submitBundle: vi.fn((_job: string, sent: CreateBundleCommand) => {
+        submitted.push(sent);
+        return Promise.resolve(view("pending"));
+      }),
+      readBundle: vi.fn(() => Promise.resolve(view("succeeded"))),
+      downloadBundle,
+    });
+    const user = userEvent.setup();
+    show(service);
+    await user.click(screen.getByRole("button", { name: /PDF＋Excel（6 個檔案打包）/ }));
+    expect(submitted).toHaveLength(1);
+    expect(submitted[0]?.formats).toEqual(["pdf", "xlsx"]);
+    expect(submitted[0]?.requested_mode).toBe("draft");
+    expect(submitted[0]?.idempotency_key).not.toBe("");
+    const downloadButton = await screen.findByRole("button", { name: /下載 ZIP/ });
+    const createObjectURL = vi.fn(() => "blob:zip");
+    const revokeObjectURL = vi.fn();
+    vi.stubGlobal("URL", { createObjectURL, revokeObjectURL });
+    try {
+      await user.click(downloadButton);
+      await screen.findByText(/已下載 official-tables-bundle-1\.zip/);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+    expect(downloadBundle).toHaveBeenCalledWith("job-1", "bundle-1");
+  });
+
+  it("surfaces a failed bundle with the failing format's reason and offers no zip", async () => {
+    const failed: ExportBundleView = {
+      bundle_id: "bundle-2",
+      status: "failed",
+      formats: ["pdf"],
+      children: [
+        operation({
+          export_id: "e-pdf",
+          export_format: "pdf",
+          status: "failed",
+          problem: { code: "conversion_unavailable", message: "PDF 轉換器未配置" },
+        }),
+      ],
+    };
+    const service = api({ submitBundle: vi.fn(() => Promise.resolve(failed)) });
+    const user = userEvent.setup();
+    show(service);
+    await user.click(screen.getByRole("button", { name: /PDF（3 個 PDF 打包）/ }));
+    await screen.findByText(/打包未能完成/);
+    expect(screen.getByText(/PDF 轉換器未配置/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /下載 ZIP/ })).not.toBeInTheDocument();
   });
 });

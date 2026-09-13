@@ -7,11 +7,13 @@ exactly or conflicts, with the format inside the payload digest. And it executes
 of the three tables independently, so one broken sheet degrades the operation to a
 named partial instead of poisoning the other two.
 
-Nothing here upgrades a draft. A formal request without an established formal gate is
-delivered as a draft with the refusal listed, which is the honest version of "you asked
-for formal and the system cannot certify that yet". PDF is produced by converting the
-exact workbook bytes this same execution filled; the workbook is stored for traceability
-either way, but the operation delivers only the chosen format.
+Nothing here upgrades or downgrades silently. A draft request follows the draft policy.
+A formal request must cite content a person already approved: the service rebuilds the
+exact report-version binding from the live snapshot, requires a currently approved
+approval for it, re-verifies every filled workbook hash against what was approved, and
+re-checks the approval's live status again at publication time - so "approved, then
+changed" and "withdrawn during conversion" both refuse instead of shipping. PDF is
+produced by converting the exact workbook bytes this same execution filled.
 """
 
 from __future__ import annotations
@@ -41,8 +43,10 @@ from appraisal_review.domain.official_export import (
     WorkbookArtifact,
 )
 from appraisal_review.domain.official_table_mapping import OfficialTable, TableMapping
+from appraisal_review.domain.report_approval import ReportApproval, ReportVersionBinding
 from appraisal_review.domain.service_contracts import (
     Permission,
+    RevisionReference,
     RunReference,
     ServiceErrorCode,
     ServiceProblem,
@@ -84,6 +88,14 @@ class WorkbookConverter(Protocol):
 
 class SnapshotProvider(Protocol):
     def read(self, case_id: str, revision_id: str) -> CalculationSnapshot | None: ...
+
+
+class ApprovalAuthority(Protocol):
+    """The live approval record a formal publication must keep re-checking."""
+
+    def latest_for_binding(self, job_id: UUID, binding_digest: str) -> ReportApproval | None: ...
+
+    def current_status(self, job_id: UUID, approval_id: UUID) -> str | None: ...
 
 
 class ExportStore(Protocol):
@@ -167,6 +179,8 @@ class ExportService:
         filler: WorkbookFiller,
         converter: WorkbookConverter | None,
         snapshots: SnapshotProvider,
+        approvals: ApprovalAuthority | None = None,
+        current_revision: Callable[[UUID], RevisionReference | None] | None = None,
     ) -> None:
         self.jobs = jobs
         self.store = store
@@ -174,7 +188,27 @@ class ExportService:
         self.filler = filler
         self.converter = converter
         self.snapshots = snapshots
+        self.approvals = approvals
+        # Reads the job's CURRENT revision from the durable store, independently of the
+        # operation's own binding, so a queued export cannot publish yesterday's case.
+        self.current_revision = current_revision
         self._lock = asyncio.Lock()
+
+    def _version_binding(self, snapshot: CalculationSnapshot) -> ReportVersionBinding:
+        hashes: dict[OfficialTable, str] = {}
+        for table, asset in sorted(self.assets.tables.items()):
+            try:
+                filled = self.filler(asset.template_path.read_bytes(), asset.mapping, snapshot)
+            except ServiceFault:
+                raise
+            except Exception as error:
+                raise ServiceFault(ServiceErrorCode.VALIDATION) from error
+            hashes[table] = hashlib.sha256(filled.content).hexdigest()
+        return ReportVersionBinding(
+            calculation_snapshot_digest=snapshot.digest(),
+            template_bundle=self.assets.bundle,
+            workbook_hashes=hashes,
+        )
 
     async def submit(
         self, principal: Principal, job_id: UUID, request: ExportRequest
@@ -197,10 +231,19 @@ class ExportService:
         if snapshot.digest() != request.calculation_snapshot_digest:
             raise ServiceFault(ServiceErrorCode.CONFLICT)
 
+        approval: ReportApproval | None = None
         if request.requested_mode == "formal":
-            # The formal gate is not established this round: refusing is honest, quietly
-            # downgrading is not. The page keeps its draft path; nothing is promoted.
-            raise ServiceFault(ServiceErrorCode.CONFLICT)
+            # Formal output must cite content a person already approved. No approval, a
+            # non-approved status, or content that drifted from the approved hashes all
+            # conflict; nothing is silently downgraded to a draft.
+            if self.approvals is None:
+                raise ServiceFault(ServiceErrorCode.CAPABILITY)
+            binding = self._version_binding(snapshot)
+            approval = self.approvals.latest_for_binding(job_id, binding.digest())
+            if approval is None or not approval.authorizes_publication():
+                raise ServiceFault(ServiceErrorCode.CONFLICT)
+            if approval.binding.workbook_hashes != binding.workbook_hashes:
+                raise ServiceFault(ServiceErrorCode.CONFLICT)
         operation = ExportOperation(
             export_id=uuid5(
                 NAMESPACE_URL,
@@ -211,7 +254,8 @@ class ExportService:
             run=request.run,
             export_format=request.export_format,
             requested_mode=request.requested_mode,
-            effective_mode="draft",
+            effective_mode="formal" if approval is not None else "draft",
+            approval_id=approval.approval_id if approval is not None else None,
             status="queued",
             payload_digest=request.payload_digest(),
             calculation_snapshot_digest=request.calculation_snapshot_digest,
@@ -256,7 +300,50 @@ class ExportService:
                 await asyncio.to_thread(self._execute, operation)
             return len(pending)
 
+    def _approval_live(self, operation: ExportOperation) -> bool:
+        if operation.effective_mode != "formal":
+            return True
+        if self.approvals is None or operation.approval_id is None:
+            return False
+        return self.approvals.current_status(operation.job_id, operation.approval_id) == "approved"
+
+    def _revision_current(self, operation: ExportOperation) -> bool:
+        """A formal operation is only publishable while its revision is the case's current one."""
+        if operation.effective_mode != "formal":
+            return True
+        if self.current_revision is None:
+            # No reader wired: fail closed for formal output rather than trusting the queue.
+            return False
+        live = self.current_revision(operation.job_id)
+        return live is not None and live == operation.run.revision
+
     def _execute(self, operation: ExportOperation) -> None:
+        if not self._revision_current(operation):
+            # The case advanced (or was corrected) after this operation queued; the old
+            # content needs a fresh approval on the new revision, not a late publication.
+            self.store.save(
+                ExportOperation.model_validate(
+                    operation.model_copy(
+                        update={
+                            "status": "failed",
+                            "problem": ServiceProblem(code=ServiceErrorCode.CONFLICT),
+                        }
+                    ).model_dump()
+                )
+            )
+            return
+        if not self._approval_live(operation):
+            self.store.save(
+                ExportOperation.model_validate(
+                    operation.model_copy(
+                        update={
+                            "status": "failed",
+                            "problem": ServiceProblem(code=ServiceErrorCode.UNAUTHORIZED),
+                        }
+                    ).model_dump()
+                )
+            )
+            return
         snapshot = self.snapshots.read(
             operation.run.revision.case_id, operation.run.revision.revision_id
         )
@@ -328,6 +415,22 @@ class ExportService:
                 (outcome.problem for outcome in outcomes if outcome.problem is not None),
                 ServiceProblem(code=ServiceErrorCode.EXECUTION),
             )
+        if not self._approval_live(operation) or not self._revision_current(operation):
+            # Withdrawn or superseded while converting: the produced bytes stay staged,
+            # nothing is reported delivered, and the content route refuses independently.
+            status, outcomes, artifacts = (
+                "failed",
+                [
+                    TableOutcome(
+                        table=outcome.table,
+                        delivered=False,
+                        problem=ServiceProblem(code=ServiceErrorCode.UNAUTHORIZED),
+                    )
+                    for outcome in outcomes
+                ],
+                [],
+            )
+            problem = ServiceProblem(code=ServiceErrorCode.UNAUTHORIZED)
         updated = operation.model_copy(
             update={
                 "status": status,
@@ -352,6 +455,19 @@ class ExportService:
         filled = self.filler(template, asset.mapping, snapshot)
         workbook_bytes = filled.content
         workbook_digest = hashlib.sha256(workbook_bytes).hexdigest()
+        if operation.effective_mode == "formal":
+            assert self.approvals is not None and operation.approval_id is not None
+            record = (
+                None
+                if operation.approval_id is None
+                else self.approvals.current_status(operation.job_id, operation.approval_id)
+            )
+            if record != "approved":
+                raise ServiceFault(ServiceErrorCode.UNAUTHORIZED)
+            live = self._approved_hash(operation, asset.table)
+            if live is None or live != workbook_digest:
+                # The content drifted from what the person approved; never publish it.
+                raise ServiceFault(ServiceErrorCode.CONFLICT)
         run = self._export_run(operation)
         workbook_id = _artifact_id(operation.export_id, asset.table, "official_workbook")
         workbook_key = ArtifactKey.for_run(run, workbook_id, suffix="xlsx").key()
@@ -416,6 +532,20 @@ class ExportService:
         )
         produced.append(pdf_artifact)
         return TableOutcome(table=asset.table, delivered=True, artifact_id=pdf_id), produced
+
+    def _approved_hash(self, operation: ExportOperation, table: OfficialTable) -> str | None:
+        if self.approvals is None or operation.approval_id is None:
+            return None
+        snapshot = self.snapshots.read(
+            operation.run.revision.case_id, operation.run.revision.revision_id
+        )
+        if snapshot is None:
+            return None
+        binding = self._version_binding(snapshot)
+        approval = self.approvals.latest_for_binding(operation.job_id, binding.digest())
+        if approval is None or approval.approval_id != operation.approval_id:
+            return None
+        return approval.binding.workbook_hashes.get(table)
 
     @staticmethod
     def _export_run(operation: ExportOperation) -> RunReference:

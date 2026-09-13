@@ -9,10 +9,22 @@ from enum import StrEnum
 from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import UUID4, AwareDatetime, Field, model_validator
+from pydantic import UUID4, AfterValidator, AwareDatetime, Field, model_validator
 
 from appraisal_review.domain.privacy_models import Digest, PrivacyManifest, PrivacyModel
 from appraisal_review.domain.service_contracts import DocumentReference, RevisionReference
+
+
+def _server_actor_uuid(value: UUID) -> UUID:
+    """Principal identities are server-minted: random v4 (fixtures, operators) or
+    deterministic v5 (the email-login directory's per-mailbox actor). Object and
+    run identifiers elsewhere stay strictly v4."""
+    if value.version not in (4, 5):
+        raise ValueError("Actor ids are server-minted uuid4 or uuid5")
+    return value
+
+
+ActorUUID = Annotated[UUID, AfterValidator(_server_actor_uuid)]
 
 Purpose = Literal["criteria", "forms", "reference", "brief", "template"]
 
@@ -61,7 +73,7 @@ class ExportClaims(PrivacyModel):
     schema_version: Literal["document-export-v1"] = "document-export-v1"
     key_id: UUID4
     export_id: UUID4
-    principal_id: UUID4
+    principal_id: ActorUUID
     manifest: PrivacyManifest
     purpose: Purpose
     confirmed_at: AwareDatetime
@@ -90,7 +102,7 @@ class DocumentMetadata(PrivacyModel):
     schema_version: Literal["document-v1"] = "document-v1"
     reference: DocumentReference
     attestation: PrivacyAttestation
-    uploaded_by: UUID4
+    uploaded_by: ActorUUID
     created_at: AwareDatetime
     classification: Literal["sanitized"] = "sanitized"
     content_type: Literal["application/pdf"] = "application/pdf"
@@ -151,7 +163,7 @@ class RunSourceSnapshot(PrivacyModel):
     run_id: UUID4
     revision: RevisionReference
     created_at: AwareDatetime
-    created_by: UUID4
+    created_by: ActorUUID
     documents: tuple[SnapshotEntry, ...] = Field(min_length=1, max_length=100)
 
     @model_validator(mode="after")
@@ -180,7 +192,7 @@ class DocumentOperation(StrEnum):
 class DocumentAuditEvent(PrivacyModel):
     event_id: UUID4
     occurred_at: AwareDatetime
-    actor_id: UUID4
+    actor_id: ActorUUID
     case_id: UUID4
     operation: DocumentOperation
     outcome: Literal["succeeded", "rejected"]
@@ -193,7 +205,7 @@ class ObjectLabels(PrivacyModel):
     """Exact allowlist for object metadata; no names, addresses or custom labels."""
 
     case_id: UUID4
-    uploader: UUID4
+    uploader: ActorUUID
     created_at: AwareDatetime
     content_hash: Digest
     byte_size: int = Field(gt=0)

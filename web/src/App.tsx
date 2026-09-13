@@ -9,124 +9,22 @@ import {
   useLocation,
   useParams,
 } from "react-router-dom";
-import {
-  buildClient,
-  readToken,
-  writeToken,
-  readPairToken,
-  writePairToken,
-  ORIGINAL_PREVIEW_URL,
-} from "./config";
+import { buildClient, readToken, writeToken, readPairToken, writePairToken } from "./config";
 import type { ReviewClient, ReviewSessionView } from "./api/client";
 import { ServiceError } from "./api/problems";
 import { TaskPage } from "./features/TaskPage";
 import { PrivacyRoute } from "./features/PrivacyRoute";
 import { CaseEntry } from "./features/CaseEntry";
+import { CaseDetail } from "./features/CaseDetail";
+import { CaseList } from "./features/CaseList";
 import { WorkbenchJob } from "./features/WorkbenchJob";
+import { truncateMiddle } from "./features/intake";
 import { Icon } from "./ui/Icon";
 import { DataModeNotice } from "./ui/DataModeNotice";
 import { LanguageProvider, useText, type Language } from "./ui/Language";
 import { RouteTransition } from "./ui/RouteTransition";
 
 type Connection = { client: ReviewClient; session: ReviewSessionView };
-
-function SignIn({
-  connect,
-  busy,
-  error,
-}: {
-  connect: (token: string, pairing?: string | null) => Promise<void>;
-  busy: boolean;
-  error: string;
-}) {
-  const [value, setValue] = useState("");
-  const [pairing, setPairing] = useState("");
-  const t = useText();
-  return (
-    <section className="sign-in-layout">
-      <div className="intro">
-        <span className="eyebrow">LOCAL REVIEW WORKSPACE</span>
-        <h1>{t("Every conclusion starts with evidence.", "讓每個審查結論，\n都有依據。")}</h1>
-        <p>
-          {t(
-            "Read the source. Review the rule. Record an explicit decision.",
-            "從文件與規則出發，核對差異，留下可追溯的決定。",
-          )}
-        </p>
-        <div className="intro-notes">
-          <Icon name="shield" />
-          <span>
-            {t(
-              "Originals stay on your device. Local pairing is checked separately.",
-              "原件留在本機；文件配對與案件授權分開驗證。",
-            )}
-          </span>
-        </div>
-      </div>
-      <form
-        className="panel sign-in-panel"
-        onSubmit={(event) => {
-          event.preventDefault();
-          if (!busy) void connect(value.trim(), pairing.trim() || null);
-        }}
-      >
-        <span className="eyebrow">{t("CONTROLLED LOCAL SESSION", "受控本機驗證")}</span>
-        <h2>{t("Connect to the workbench", "開啟審查工作台")}</h2>
-        <p className="muted">
-          {t(
-            "Use a session issued by this local service. This is not a production account registration or password login.",
-            "請使用本機服務簽發的工作階段。這裡尚未提供正式帳號註冊或密碼登入。",
-          )}
-        </p>
-        <label htmlFor="token">{t("Session token", "本機工作階段憑證")}</label>
-        <input
-          id="token"
-          type="password"
-          autoComplete="off"
-          value={value}
-          onChange={(event) => setValue(event.target.value)}
-          disabled={busy}
-        />
-        {error ? (
-          <p role="alert" className="notice" data-tone="danger">
-            {error}
-          </p>
-        ) : null}
-        {ORIGINAL_PREVIEW_URL ? (
-          <>
-            <label htmlFor="original-pairing">
-              {t("Local original pairing code (optional)", "本機原件配對碼（選填）")}
-            </label>
-            <input
-              id="original-pairing"
-              type="password"
-              autoComplete="off"
-              value={pairing}
-              onChange={(event) => setPairing(event.target.value)}
-              disabled={busy}
-            />
-            <p className="small muted">
-              {t(
-                "Original pages require this separate local pairing and current case permission.",
-                "檢視原件須同時通過獨立本機配對與目前案件授權。未配對仍可查看審查狀態。",
-              )}
-            </p>
-          </>
-        ) : null}
-        <button type="submit" data-variant="primary" disabled={busy || !value.trim()}>
-          {busy ? t("Checking session…", "正在向本機服務驗證…") : t("Continue", "驗證並繼續")}
-          <Icon name="arrow" />
-        </button>
-        <p className="small muted">
-          {t(
-            "The service checks identity before opening any protected page. Your session stays in this tab only.",
-            "服務驗證成功後才開啟受保護頁面，憑證僅保留於此分頁。",
-          )}
-        </p>
-      </form>
-    </section>
-  );
-}
 
 function TaskRoute({ client }: { client: ReviewClient }) {
   const { taskId } = useParams();
@@ -181,7 +79,7 @@ function Shell({
         <nav aria-label={t("Workbench", "工作台導覽")}>
           <NavLink to="/" end>
             <Icon name="file" />
-            {t("Cases", "案件入口")}
+            {t("Cases", "案件清單")}
           </NavLink>
           {sections.map(([path, icon, label]) =>
             jobId && connection ? (
@@ -216,10 +114,6 @@ function Shell({
             </svg>
           </div>
         </div>
-        <div className="sidebar-foot">
-          <Icon name="shield" />
-          <span>{t("Local verification", "本機驗證")}</span>
-        </div>
       </aside>
       <div className="workspace">
         <header className="topbar">
@@ -229,7 +123,7 @@ function Shell({
             <span>/</span>
             <span>
               {pathname === "/"
-                ? t("Case entry", "案件入口")
+                ? t("Case list", "案件清單")
                 : pathname.startsWith("/privacy")
                   ? t("Local privacy", "本機隱私")
                   : /^\/jobs\/[^/]+\/forms/.test(pathname)
@@ -249,13 +143,13 @@ function Shell({
                 <span className="avatar">
                   <Icon name="person" />
                 </span>
-                <span className="account-label">
-                  {t("Verified local session", "已驗證本機工作階段")}
+                <span className="account-label" title={connection.session.actor.actor_id}>
+                  {truncateMiddle(connection.session.actor.actor_id, 26)}
                 </span>
                 <button onClick={logout}>{t("Sign out", "登出")}</button>
               </>
             ) : (
-              <span className="muted">{t("Not connected", "尚未連線")}</span>
+              <span className="muted">{t("Not signed in", "尚未登入")}</span>
             )}
           </div>
         </header>
@@ -269,7 +163,6 @@ function Shell({
                 "確認、更正與核准，各自保留權限與紀錄。",
               )}
             </span>
-            <span>KPI1 · LOCAL</span>
           </footer>
         </main>
       </div>
@@ -296,6 +189,10 @@ export function App() {
   const verifying = useRef<ReviewClient | null>(null);
   const recent = useRef(new Map<string, string>());
   const logout = useCallback(() => {
+    // Best-effort server-side revocation (DELETE /v1/session): the request is detached
+    // from dispose() so tearing the client down does not abort it, and a refusal is
+    // swallowed because the local session is cleared either way.
+    if (current.current) void current.current.revokeSession().catch(() => {});
     current.current?.dispose();
     current.current = null;
     currentActor.current = null;
@@ -427,13 +324,15 @@ export function App() {
                 <Route
                   path="/"
                   element={
-                    <CaseEntry
+                    <CaseList
                       client={connection.client}
                       session={connection.session}
                       recent={recent.current}
+                      logout={logout}
                     />
                   }
                 />
+                <Route path="/cases/:caseId" element={<CaseDetail client={connection.client} />} />
                 <Route
                   path="/jobs/:jobId/*"
                   element={<WorkbenchJob client={connection.client} recent={recent.current} />}
@@ -443,7 +342,7 @@ export function App() {
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             ) : (
-              <SignIn connect={connect} busy={busy} error={error} />
+              <CaseEntry connect={connect} busy={busy} error={error} />
             )}
           </RouteTransition>
         </Shell>

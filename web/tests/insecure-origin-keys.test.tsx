@@ -35,10 +35,16 @@ afterEach(() => {
 
 function exportsApi(overrides: Partial<ExportsApi> = {}): ExportsApi {
   return {
+    submitApproval: vi.fn(() => Promise.reject(new Error("not scripted"))),
+    readApproval: vi.fn(() => Promise.reject(new Error("not scripted"))),
+    decideApproval: vi.fn(() => Promise.reject(new Error("not scripted"))),
     readBasis: vi.fn(() => Promise.reject(new Error("readBasis not scripted"))),
     createExport: vi.fn(() => Promise.reject(new Error("createExport not scripted"))),
     readExport: vi.fn(() => Promise.reject(new Error("readExport not scripted"))),
     downloadArtifact: vi.fn(() => Promise.reject(new Error("downloadArtifact not scripted"))),
+    submitBundle: vi.fn(() => Promise.reject(new Error("submitBundle not scripted"))),
+    readBundle: vi.fn(() => Promise.reject(new Error("readBundle not scripted"))),
+    downloadBundle: vi.fn(() => Promise.reject(new Error("downloadBundle not scripted"))),
     ...overrides,
   };
 }

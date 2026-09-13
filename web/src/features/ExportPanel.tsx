@@ -2,16 +2,21 @@ import { useEffect, useState } from "react";
 import { newIdempotencyKey } from "@/api/client";
 import {
   ExportServiceError,
+  type CreateBundleCommand,
   type CreateExportCommand,
   type ExportArtifact,
+  type ExportBundleView,
   type ExportFormat,
   type ExportMode,
   type ExportOperation,
+  type ExportReadiness,
   type ExportRunReference,
   type ExportsApi,
   type ExportTableDelivery,
+  type ReportApproval,
   type TemplateBundleReference,
 } from "@/api/exports";
+import { basisIssueText, formalRefusalText, type BasisIssue } from "./ApprovalPanel";
 import { useText } from "@/ui/Language";
 import { Icon } from "@/ui/Icon";
 
@@ -59,15 +64,32 @@ function DraftBadge() {
   );
 }
 
+function FormalBadge() {
+  const t = useText();
+  return (
+    <span className="status-pill" data-status="formal">
+      {t("Formal (approved)", "正式（已核准）")}
+    </span>
+  );
+}
+
 export function ExportPanel({
   api,
   jobId,
   basis,
+  approval = null,
+  readiness = null,
+  basisIssue = null,
   pollIntervalMs = 2000,
 }: {
   api: ExportsApi;
   jobId: string;
   basis: ExportBasis | null;
+  /** Latest approval for the current content binding, from the exports basis. */
+  approval?: ReportApproval | null;
+  readiness?: ExportReadiness | null;
+  /** Why the basis read failed, when it did; shown instead of a silent null. */
+  basisIssue?: BasisIssue | null;
   pollIntervalMs?: number;
 }) {
   const t = useText();
@@ -233,27 +255,57 @@ export function ExportPanel({
 
   const inProgress = operation !== null && !terminal;
   const draft = operation !== null && operation.effective_mode === "draft";
+  const formal = operation !== null && operation.effective_mode === "formal";
   const artifactById = new Map((operation?.artifacts ?? []).map((a) => [a.artifact_id, a]));
   const missing = (operation?.tables ?? []).filter((row) => !row.delivered);
   const blockers = operation ? [...new Set(operation.blockers)] : [];
+  const formalRefusal = formalRefusalText(readiness, approval, t);
+  const formalConflict =
+    attempt?.command.requested_mode === "formal"
+      ? approval?.status === "superseded"
+        ? t(
+            "The formal export was refused: the approval is superseded (content changed). Submit for approval again.",
+            "正式匯出遭拒：核准已失效（版本已變更），請重新送核。",
+          )
+        : approval?.status === "approved"
+          ? t(
+              "The formal export was refused: the content has changed since approval. Read the current state and submit for approval again.",
+              "正式匯出遭拒：內容已變更，請重新讀取狀態並重新送核。",
+            )
+          : t(
+              "The formal export was refused: no current approval exists. Complete the approval under 報表與核准 first.",
+              "正式匯出遭拒：尚未核准，請先於「報表與核准」完成核准。",
+            )
+      : null;
 
   return (
     <section className="panel" aria-label={t("Report export", "報表匯出")}>
       <h2>
         {t("Report export", "報表匯出")} {draft ? <DraftBadge /> : null}
+        {formal ? <FormalBadge /> : null}
       </h2>
       <p className="small muted">
         {t(
-          "The service produces the official tables from the committed calculation snapshot. Nothing here recomputes a value.",
-          "由服務依已提交的計算快照產出官方表格；此面板不重新計算任何數值。",
+          "Pick a file format and a version, then generate and download the official tables.",
+          "選擇檔案格式與申請版本後，即可產生並下載官方表格。",
         )}
       </p>
+      <details className="small">
+        <summary>{t("Technical notes", "技術說明")}</summary>
+        <p className="small muted">
+          {t(
+            "The service produces the official tables from the committed calculation snapshot. Nothing here recomputes a value. Switching format starts a new export operation under a new key; an existing operation keeps its format.",
+            "由服務依已提交的計算快照產出官方表格；此面板不重新計算任何數值。切換格式會以新的識別碼建立新的匯出作業；既有作業的格式不會改變。",
+          )}
+        </p>
+      </details>
       {!basis ? (
         <p className="notice" data-tone="warn" role="status">
           {t(
             "The current job state does not yet carry the run and bundle identity an export request requires.",
             "目前狀態尚未提供匯出所需的執行輪次與範本版本資訊，暫時無法建立匯出。",
           )}
+          {basisIssue ? <> {basisIssueText(basisIssue, t)}</> : null}
         </p>
       ) : (
         <>
@@ -279,12 +331,6 @@ export function ExportPanel({
               />{" "}
               PDF (.pdf)
             </label>
-            <p className="small muted">
-              {t(
-                "Switching format starts a new export operation under a new key; an existing operation keeps its format.",
-                "切換格式會以新的識別碼建立新的匯出作業；既有作業的格式不會改變。",
-              )}
-            </p>
           </fieldset>
           <fieldset disabled={busy}>
             <legend>{t("Requested mode", "申請版本")}</legend>
@@ -308,6 +354,11 @@ export function ExportPanel({
               />{" "}
               {t("Formal (only if unblocked)", "正式（僅於無阻擋時）")}
             </label>
+            {formalRefusal ? (
+              <p className="small muted" role="status">
+                {formalRefusal}
+              </p>
+            ) : null}
           </fieldset>
           <button
             type="button"
@@ -320,7 +371,14 @@ export function ExportPanel({
             {t("Generate and download", "產生並下載")}
             <Icon name="arrow" />
           </button>
-          {notice ? <NoticeView notice={notice} pending={pending} retry={generate} /> : null}
+          {notice ? (
+            <NoticeView
+              notice={notice}
+              pending={pending}
+              retry={generate}
+              formalConflict={formalConflict}
+            />
+          ) : null}
           {operation ? (
             <div aria-label={t("Export operation status", "匯出作業狀態")}>
               <p role="status" aria-live="polite">
@@ -328,10 +386,7 @@ export function ExportPanel({
                   {statusWords(operation.status, t)}
                 </span>{" "}
                 {inProgress
-                  ? t(
-                      "Reading the actual state from the service every 2 seconds.",
-                      "每 2 秒向服務讀取實際狀態。",
-                    )
+                  ? t("Generating; this status updates automatically.", "產生中，狀態將自動更新。")
                   : null}
               </p>
               {operation.status === "failed" ? (
@@ -367,7 +422,8 @@ export function ExportPanel({
                         </span>
                         {row.delivered && artifact ? (
                           <span>
-                            {draft ? <DraftBadge /> : null}{" "}
+                            {draft ? <DraftBadge /> : null}
+                            {formal ? <FormalBadge /> : null}{" "}
                             <button
                               type="button"
                               disabled={busy}
@@ -459,9 +515,273 @@ export function ExportPanel({
               </details>
             </div>
           ) : null}
+          <BundleDownload
+            api={api}
+            jobId={jobId}
+            basis={basis}
+            mode={mode}
+            pollIntervalMs={pollIntervalMs}
+          />
         </>
       )}
     </section>
+  );
+}
+
+interface BundleChoice {
+  id: "pdf" | "xlsx" | "both";
+  formats: ExportFormat[];
+  words: [string, string];
+}
+
+const BUNDLE_CHOICES: readonly BundleChoice[] = [
+  { id: "pdf", formats: ["pdf"], words: ["PDF ZIP (3 PDF files)", "PDF（3 個 PDF 打包）"] },
+  { id: "xlsx", formats: ["xlsx"], words: ["Excel ZIP (3 workbooks)", "Excel（3 個 XLSX 打包）"] },
+  {
+    id: "both",
+    formats: ["pdf", "xlsx"],
+    words: ["PDF + Excel ZIP (6 files)", "PDF＋Excel（6 個檔案打包）"],
+  },
+];
+
+/**
+ * The three-choice bundled download. One parent request per click; the parent's
+ * children are ordinary single-format exports, so every approval and revision
+ * fence still runs per file. The requested mode follows the panel's 申請版本.
+ */
+export function BundleDownload({
+  api,
+  jobId,
+  basis,
+  mode,
+  pollIntervalMs = 2000,
+}: {
+  api: ExportsApi;
+  jobId: string;
+  basis: ExportBasis;
+  mode: ExportMode;
+  pollIntervalMs?: number;
+}) {
+  const t = useText();
+  const [busy, setBusy] = useState(false);
+  const [bundle, setBundle] = useState<ExportBundleView | null>(null);
+  const [choice, setChoice] = useState<BundleChoice | null>(null);
+  const [pending, setPending] = useState<{ key: string; command: CreateBundleCommand } | null>(
+    null,
+  );
+  const [notice, setNotice] = useState<Notice | null>(null);
+  const [note, setNote] = useState<{ tone: "ok" | "danger"; text: string } | null>(null);
+
+  const bundleId = bundle?.bundle_id ?? null;
+  const settled = bundle !== null && bundle.status !== "pending";
+  const halted = notice !== null;
+
+  useEffect(() => {
+    if (!bundleId || settled || halted) return;
+    let active = true;
+    let inFlight = false;
+    const timer = setInterval(() => {
+      if (inFlight || !active) return;
+      inFlight = true;
+      api
+        .readBundle(jobId, bundleId)
+        .then((next) => {
+          if (active) setBundle(next);
+        })
+        .catch((cause: unknown) => {
+          if (!active) return;
+          setNotice(
+            cause instanceof ExportServiceError
+              ? { kind: "service", error: cause }
+              : { kind: "poll-failed" },
+          );
+        })
+        .finally(() => {
+          inFlight = false;
+        });
+    }, pollIntervalMs);
+    return () => {
+      active = false;
+      clearInterval(timer);
+    };
+  }, [api, jobId, bundleId, settled, halted, pollIntervalMs]);
+
+  function buildCommand(key: string, formats: ExportFormat[]): CreateBundleCommand {
+    return {
+      schema_version: "service-v1",
+      idempotency_key: key,
+      run: basis.run,
+      calculation_snapshot_digest: basis.calculationSnapshotDigest,
+      template_bundle: basis.templateBundle,
+      requested_mode: mode,
+      formats,
+    };
+  }
+
+  async function request(next: BundleChoice) {
+    if (busy) return;
+    const draft = buildCommand("", next.formats);
+    // Same replay rule as the single-format flow: an unknown outcome retries the exact
+    // key and payload; any change (choice or mode) is a new request under a new key.
+    const reuse =
+      pending !== null &&
+      JSON.stringify({ ...pending.command, idempotency_key: "" }) === JSON.stringify(draft);
+    let key: string;
+    try {
+      key = reuse && pending ? pending.key : newIdempotencyKey();
+    } catch {
+      setNotice({ kind: "key-unavailable" });
+      return;
+    }
+    const command: CreateBundleCommand = { ...draft, idempotency_key: key };
+    setBusy(true);
+    setNotice(null);
+    setNote(null);
+    setChoice(next);
+    try {
+      const accepted = await api.submitBundle(jobId, command);
+      setPending(null);
+      setBundle(accepted);
+    } catch (cause) {
+      setBundle(null);
+      if (cause instanceof ExportServiceError) {
+        setPending(null);
+        setNotice({ kind: "service", error: cause });
+      } else {
+        setPending({ key, command });
+        setNotice({ kind: "unknown" });
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function download() {
+    if (!bundleId || busy) return;
+    setBusy(true);
+    setNote(null);
+    try {
+      const file = await api.downloadBundle(jobId, bundleId);
+      const url = URL.createObjectURL(new Blob([file.bytes], { type: file.contentType }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = file.filename;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setNote({
+        tone: "ok",
+        text: t(`Downloaded ${file.filename}.`, `已下載 ${file.filename}。`),
+      });
+    } catch (cause) {
+      setNote({
+        tone: "danger",
+        text:
+          cause instanceof ExportServiceError && cause.code === "version_conflict"
+            ? t(
+                "The bundle is no longer complete or no longer matches the current content. Request the bundle again.",
+                "打包內容已與目前版本不一致或尚未全部完成，請重新申請打包。",
+              )
+            : cause instanceof ExportServiceError && cause.code === "unauthorized"
+              ? t(
+                  "The download authorization has lapsed. Re-authorize, then try again.",
+                  "下載授權已過期，請重新授權後再試。",
+                )
+              : t(
+                  "The file could not be downloaded or verified. No file was saved.",
+                  "檔案未能完成下載或驗證，未儲存任何檔案。",
+                ),
+      });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const failedChildren = (bundle?.children ?? []).filter(
+    (child) => child.status === "failed" || child.status === "partial",
+  );
+
+  return (
+    <div aria-label={t("Bundled download (ZIP)", "打包下載（ZIP）")}>
+      <h3>{t("Bundled download (ZIP)", "打包下載（ZIP）")}</h3>
+      <p className="small muted">
+        {t(
+          "One request produces all three tables in the chosen formats and downloads them as a single ZIP with a manifest. Per-table downloads above remain available. The bundle follows the requested-mode selection above.",
+          "一鍵產出三張表並打包為單一 ZIP（內含清單檔）；上方的逐表下載仍然可用。申請版本沿用上方「申請版本」的選擇。",
+        )}
+      </p>
+      <p>
+        {BUNDLE_CHOICES.map((entry) => (
+          <button
+            key={entry.id}
+            type="button"
+            disabled={busy || (bundle !== null && bundle.status === "pending")}
+            onClick={() => {
+              void request(entry);
+            }}
+            style={{ marginRight: "0.5rem" }}
+          >
+            {t(...entry.words)}
+          </button>
+        ))}
+      </p>
+      {notice ? (
+        <NoticeView
+          notice={notice}
+          pending={pending}
+          retry={() => (choice ? request(choice) : Promise.resolve())}
+        />
+      ) : null}
+      {bundle ? (
+        <p role="status" aria-live="polite">
+          <span
+            className="status-pill"
+            data-status={bundle.status === "pending" ? "running" : bundle.status}
+          >
+            {bundle.status === "pending"
+              ? t("Producing", "產生中")
+              : bundle.status === "succeeded"
+                ? t("Completed", "已完成")
+                : t("Failed", "失敗")}
+          </span>{" "}
+          {bundle.status === "pending"
+            ? t("Producing; this status updates automatically.", "產生中，狀態將自動更新。")
+            : null}
+          {bundle.status === "succeeded" ? (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                void download();
+              }}
+            >
+              {t("Download ZIP", "下載 ZIP")}
+            </button>
+          ) : null}
+        </p>
+      ) : null}
+      {bundle && bundle.status === "failed" ? (
+        <p className="notice" data-tone="danger" role="alert">
+          {t("The bundle could not be completed:", "打包未能完成：")}{" "}
+          {failedChildren.length
+            ? failedChildren
+                .map(
+                  (child) =>
+                    `${child.export_format === "pdf" ? "PDF" : "Excel"}：${
+                      child.problem?.message ??
+                      child.problem?.code ??
+                      t("The service supplied no reason.", "服務未提供原因")
+                    }`,
+                )
+                .join("；")
+            : t("The service supplied no reason.", "服務未提供原因。")}
+        </p>
+      ) : null}
+      {note ? (
+        <p className="notice" data-tone={note.tone === "ok" ? "ok" : "danger"} role="status">
+          {note.text}
+        </p>
+      ) : null}
+    </div>
   );
 }
 
@@ -482,10 +802,14 @@ function NoticeView({
   notice,
   pending,
   retry,
+  formalConflict = null,
 }: {
   notice: Notice;
-  pending: Attempt | null;
+  /** Only presence matters here: it gates the retry-with-same-key button. */
+  pending: { key: string } | null;
   retry: () => Promise<void>;
+  /** The real meaning of a 409 when the refused request asked for a formal export. */
+  formalConflict?: string | null;
 }) {
   const t = useText();
   if (notice.kind === "unknown") {
@@ -558,13 +882,22 @@ function NoticeView({
     ],
   };
   const pair = words[error.code] ?? words.execution_failed;
+  const sentence =
+    error.code === "version_conflict" && formalConflict !== null
+      ? formalConflict
+      : pair
+        ? t(...pair)
+        : error.code;
   return (
     <div className="notice" data-tone="danger" role="alert">
-      <p style={{ margin: 0 }}>{pair ? t(...pair) : error.code}</p>
+      <p style={{ margin: 0 }}>{sentence}</p>
       {error.serviceMessage ? (
-        <p className="small muted" style={{ margin: "0.25rem 0 0" }}>
-          {t("Service message", "服務回覆")}：{error.serviceMessage}
-        </p>
+        <details>
+          <summary>{t("Diagnostics", "診斷資訊")}</summary>
+          <p className="small muted" style={{ margin: "0.25rem 0 0" }}>
+            {t("Service message", "服務回覆")}：{error.serviceMessage}
+          </p>
+        </details>
       ) : null}
     </div>
   );

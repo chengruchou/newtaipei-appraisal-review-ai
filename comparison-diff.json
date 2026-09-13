@@ -1,0 +1,22 @@
+{
+  "generated_at": "2026-09-13T08:02:00+08:00",
+  "scope": "P0 round: what the order demanded vs what the deployed site does (cand-6d759eb)",
+  "district_rule": "single case, single district 樹林; Jinshan remained reference-only and never entered Shulin candidates or facts",
+  "diff": [
+    {"required": "named-human login on deployed site", "delivered": "yes (password + code flows; approver PUBLISH via deploy config)", "gap": "none"},
+    {"required": "real case + real material upload", "delivered": "yes (case 4800d788, official PDF, server-verified sha)", "gap": "intake case not yet bridged to a review revision"},
+    {"required": "pinned multi-source S3 snapshots", "delivered": "yes (parks + bus-stops; full bus sweep 33,109 rows, 668 樹林, per-page sha)", "gap": "none"},
+    {"required": "real Bedrock via controlled tools", "delivered": "real Converse traces via dispatcher+admission on demo jobs", "gap": "proposal preflight (invalid_proposal) still refuses completion"},
+    {"required": "map-based human verification", "delivered": "deployed UI + two real coordinate-bearing candidates", "gap": "user visual pass pending (asleep); data and receipts in place"},
+    {"required": "adoption with exact receipts, new revision, recompute", "delivered": "code+route deployed, 101 tests, receipts ready", "gap": "email-actor uuid5 vs document-plane UUID4 blocks job ownership; groundwork 235ad3b landed, 3 model fields remain"},
+    {"required": "tables 3/4/5 per actual subjects", "delivered": "export pipeline with per-row outcomes/blockers", "gap": "87 missing inputs / 29 missing factors: honest partial only"},
+    {"required": "named human approval", "delivered": "plane deployed, PUBLISH granted", "gap": "blocked behind job ownership wall"},
+    {"required": "pdf/excel/both ZIP downloads", "delivered": "bundle service + 3-choice UI deployed, unit-proven ZIP semantics", "gap": "not live-run by named human (same wall)"},
+    {"required": "invalidation + withdrawal blocking", "delivered": "per-file content-plane fences incl. inside bundles (unit-proven)", "gap": "not live-demonstrated this round"}
+  ],
+  "teammate_reference_findings_unresolved": [
+    "12 nonzero regional rates sign-flipped vs rank direction (teammate package, reference-only)",
+    "rank1=優 vs grade5=優 scale mapping contradiction (reference-only)",
+    "v4 proxies not official values (kept out of adopted facts)"
+  ]
+}

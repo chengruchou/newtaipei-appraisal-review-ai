@@ -202,6 +202,9 @@ class ExportOperation(ServiceModel):
     payload_digest: Digest
     calculation_snapshot_digest: Digest
     template_bundle: TemplateBundleReference
+    #: The approval that authorizes a formal delivery; None for drafts. Publication
+    #: and the content route re-check its live status - the id is a reference, not proof.
+    approval_id: UUID | None = None
     tables: tuple[TableOutcome, ...] = ()
     artifacts: tuple[ExportArtifact, ...] = ()
     blockers: tuple[str, ...] = ()
@@ -213,6 +216,8 @@ class ExportOperation(ServiceModel):
             raise ValueError("Formal output requires a formal request")
         if self.effective_mode == "formal" and self.blockers:
             raise ValueError("Formal output cannot carry unresolved blockers")
+        if self.effective_mode == "formal" and self.approval_id is None:
+            raise ValueError("Formal output names the approval that authorizes it")
 
         for artifact in self.artifacts:
             if artifact.export_format != self.export_format:

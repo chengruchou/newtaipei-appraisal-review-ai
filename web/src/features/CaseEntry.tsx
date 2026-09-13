@@ -1,232 +1,443 @@
-import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import type { ReviewClient, ReviewSessionView, CaseContextView, JobStatusView } from "@/api/client";
+import { useMemo, useState } from "react";
+import { useLocation } from "react-router-dom";
+import { LoginRefusedError } from "@/api/client";
+import { ORIGINAL_PREVIEW_URL } from "../config";
 import { useText } from "@/ui/Language";
 import { Icon } from "@/ui/Icon";
-import { statusText } from "./workbench-state";
+import { buildAuthApi, looksLikeEmail, passwordSetupIssue } from "./intake";
+
+/**
+ * The signed-out entrance: a registration-and-login card plus one advanced fold.
+ *
+ * 1. Password sign-in (primary): email + password against POST /v1/auth/login. The
+ *    refusal is one deliberately generic sentence — identical for an unknown email
+ *    and a wrong password — so the entrance is never an account-existence oracle.
+ * 2. Registration (「註冊新帳號」) and password reset (「忘記密碼」): the same staged
+ *    flow on the same card — request a verification mail (neutral sentence for every
+ *    address), then verification code + set/confirm password in one step against
+ *    POST /v1/auth/verify with new_password. Only the wording differs between the
+ *    two. Passwords are validated locally (8-128 characters, both entries equal)
+ *    before any request; the code and both password fields are cleared on failure
+ *    and never echoed into any message.
+ * 3. An existing session credential (advanced, collapsed): the token-paste flow kept
+ *    for demo fixtures and controlled deployments. It opens expanded when the visitor
+ *    arrived on a deep link (an operator-supplied reference), collapsed on the plain
+ *    front door.
+ */
+type EntryMode = "login" | "register" | "reset";
 
 export function CaseEntry({
-  client,
-  session,
-  recent,
+  connect,
+  busy,
+  error,
 }: {
-  client: ReviewClient;
-  session: ReviewSessionView;
-  recent: Map<string, string>;
+  connect: (token: string, pairing?: string | null) => Promise<void>;
+  busy: boolean;
+  error: string;
 }) {
   const t = useText();
-  const navigate = useNavigate();
-  const [value, setValue] = useState("");
-  const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState("all");
-  const [rows, setRows] = useState<
-    Array<{ id: string; context: CaseContextView; status: JobStatusView }>
-  >([]);
-  const [failed, setFailed] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const ids = JSON.stringify([
-    ...new Set([...session.configured_jobs.map((job) => job.job_id), ...recent.keys()]),
-  ]);
-  const [reload, setReload] = useState(0);
-  useEffect(() => {
-    let active = true;
-    setLoading(true);
-    setRows([]);
-    setFailed(false);
-    const known = JSON.parse(ids) as string[];
-    void Promise.all(
-      known.map(async (id) => ({
-        id,
-        context: await client.readCaseContext(id),
-        status: await client.readJob(id),
-      })),
-    )
-      .then((values) => {
-        if (active) setRows(values);
-      })
-      .catch(() => {
-        if (active) {
-          setRows([]);
-          setFailed(true);
-        }
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, [client, ids, reload]);
-  const shown = rows.filter((row) => {
-    const matchesSearch = JSON.stringify([row.context.identity, row.id])
-      .toLocaleLowerCase()
-      .includes(search.toLocaleLowerCase());
-    const status = row.status.job_status;
-    return (
-      matchesSearch &&
-      (filter === "all" ||
-        (filter === "waiting" && status === "waiting_for_human") ||
-        (filter === "running" && ["queued", "dispatched", "running"].includes(status)) ||
-        (filter === "finished" && status === "succeeded"))
+  const { pathname } = useLocation();
+  const auth = useMemo(() => buildAuthApi(), []);
+  const [mode, setMode] = useState<EntryMode>("login");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [code, setCode] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [codeSent, setCodeSent] = useState(false);
+  const [notice, setNotice] = useState("");
+  const [localError, setLocalError] = useState("");
+  const [localBusy, setLocalBusy] = useState(false);
+  const [tokenValue, setTokenValue] = useState("");
+  const [pairing, setPairing] = useState("");
+  const [advancedOpen, setAdvancedOpen] = useState(pathname !== "/");
+  const working = busy || localBusy;
+
+  const neutralSentence = t(
+    "A verification mail has been sent (if this mailbox is available); complete the verification within 10 minutes.",
+    "驗證信已寄出（若信箱可用），請於 10 分鐘內完成驗證。",
+  );
+
+  function refusalText(cause: unknown): string {
+    if (cause instanceof LoginRefusedError) {
+      if (cause.kind === "rate_limited") return t("Please try again later.", "請稍後再試。");
+      if (cause.kind === "credentials_rejected")
+        return t(
+          "The email or password is incorrect, or the account is not registered.",
+          "帳號或密碼錯誤，或帳號尚未註冊。",
+        );
+      if (cause.kind === "code_rejected")
+        return t("The verification code is invalid or expired.", "驗證碼無效或已過期。");
+      return t(
+        "The sign-in service is currently unavailable. Please try again later.",
+        "登入服務目前無法使用，請稍後再試。",
+      );
+    }
+    return t(
+      "The sign-in service could not be reached. Check the connection and try again.",
+      "目前無法連線登入服務，請確認網路後再試。",
     );
-  });
+  }
+
+  /** Mode switches always land on a clean first stage; only the email survives. */
+  function switchMode(next: EntryMode) {
+    setMode(next);
+    setCodeSent(false);
+    setPassword("");
+    setCode("");
+    setNewPassword("");
+    setConfirmPassword("");
+    setNotice("");
+    setLocalError("");
+  }
+
+  async function signInWithPassword() {
+    const address = email.trim();
+    if (!looksLikeEmail(address)) {
+      setLocalError(t("Enter a complete email address.", "請輸入完整的電子郵件地址。"));
+      return;
+    }
+    if (!password) {
+      setLocalError(t("Enter the password.", "請輸入密碼。"));
+      return;
+    }
+    setLocalBusy(true);
+    setLocalError("");
+    try {
+      const grant = await auth.login(address, password);
+      setPassword("");
+      await connect(grant.token);
+    } catch (cause) {
+      setLocalError(refusalText(cause));
+    } finally {
+      setLocalBusy(false);
+    }
+  }
+
+  async function sendVerificationMail() {
+    const address = email.trim();
+    if (!looksLikeEmail(address)) {
+      setLocalError(t("Enter a complete email address.", "請輸入完整的電子郵件地址。"));
+      return;
+    }
+    setLocalBusy(true);
+    setLocalError("");
+    setNotice("");
+    try {
+      await auth.requestCode(address);
+      setCodeSent(true);
+      setNotice(neutralSentence);
+    } catch (cause) {
+      setLocalError(refusalText(cause));
+    } finally {
+      setLocalBusy(false);
+    }
+  }
+
+  async function completeVerification() {
+    const address = email.trim();
+    const oneTimeCode = code.trim();
+    if (!oneTimeCode) {
+      setLocalError(t("Enter the verification code.", "請輸入驗證碼。"));
+      return;
+    }
+    // Local password gate first: an unacceptable pair never reaches the service.
+    const issue = passwordSetupIssue(newPassword, confirmPassword);
+    if (issue) {
+      setLocalError(t(issue.en, issue.zh));
+      return;
+    }
+    setLocalBusy(true);
+    setLocalError("");
+    try {
+      const grant = await auth.verify(address, oneTimeCode, newPassword);
+      setCode("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setNotice("");
+      await connect(grant.token);
+    } catch (cause) {
+      // The one-time code and both password entries are cleared on every failure.
+      setCode("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setLocalError(refusalText(cause));
+    } finally {
+      setLocalBusy(false);
+    }
+  }
+
+  const staged = mode !== "login";
+  const heading =
+    mode === "login"
+      ? t("Sign in to the workbench", "登入審查工作台")
+      : mode === "register"
+        ? t("Create a new account", "註冊新帳號")
+        : t("Reset the password", "重設密碼");
+
   return (
-    <article>
-      <div className="page-heading">
-        <div>
-          <span className="eyebrow">{t("REVIEW WORKSPACE", "案件審查工作台")}</span>
-          <h1>{t("Your configured cases", "接續你的審查工作")}</h1>
-          <p className="lead">
+    <section className="sign-in-layout">
+      <div className="intro">
+        <span className="eyebrow">{t("APPRAISAL REVIEW WORKBENCH", "查估審查工作台")}</span>
+        <h1>{t("Every conclusion starts with evidence.", "讓每個審查結論，\n都有依據。")}</h1>
+        <p>
+          {t(
+            "Read the source. Review the rule. Record an explicit decision.",
+            "從文件與規則出發，核對差異，留下可追溯的決定。",
+          )}
+        </p>
+        <div className="intro-notes">
+          <Icon name="shield" />
+          <span>
             {t(
-              "Open an authorized case and find the next decision.",
-              "開啟已授權案件，找到現在需要你處理的事項。",
+              "The service checks identity before opening any protected page.",
+              "服務驗證身分後才開啟受保護頁面；憑證僅保留於此分頁。",
             )}
-          </p>
+          </span>
         </div>
       </div>
-      <div className="notice" data-tone="neutral">
-        <Icon name="file" />
-        {t(
-          "Configured and recently opened jobs only. This is not a complete case registry; access is checked again when opened.",
-          "這裡僅列已配置／本次工作階段最近開啟的案件工作，不是完整案件庫；開啟時會再次驗權。",
-        )}
-      </div>
-      <section className="panel" aria-label={t("Configured cases", "已配置案件")}>
-        <div className="panel-heading">
-          <h2>{t("Configured / recently opened", "已配置／最近開啟")}</h2>
-          <button onClick={() => setReload((n) => n + 1)}>{t("Refresh list", "更新清單")}</button>
-        </div>
-        <div className="toolbar">
-          <label className="search-box">
-            <Icon name="search" />
-            <span className="sr-only">{t("Search configured cases", "搜尋已配置案件")}</span>
-            <input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder={t("District, use or case identifier", "搜尋行政區、用途或案件識別碼")}
-            />
-          </label>
-          <div className="filters" aria-label={t("Filter configured cases", "篩選已配置案件")}>
-            {[
-              ["all", t("All", "全部")],
-              ["waiting", t("Needs attention", "等待人工")],
-              ["running", t("Running", "執行中")],
-              ["finished", t("Execution finished", "執行成功")],
-            ].map(([key, label]) => (
-              <button key={key} aria-pressed={filter === key} onClick={() => setFilter(key!)}>
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-        {loading ? (
-          <p role="status">{t("Checking current case access…", "正在核對目前案件存取權…")}</p>
-        ) : failed ? (
-          <p role="alert" className="notice" data-tone="warn">
-            {t(
-              "This list could not be authorized or loaded. It is not an empty-case result. Refresh after checking access.",
-              "清單目前無法載入或授權，不能視為零案件。請確認服務與權限後重新更新。",
-            )}
+      <div>
+        {error ? (
+          <p role="alert" className="notice" data-tone="danger">
+            {error}
           </p>
-        ) : shown.length === 0 ? (
-          <div className="empty-state">
-            <Icon name="file" />
-            <h3>{t("No visible entry in this view", "目前檢視沒有可列出的案件")}</h3>
-            <p>
-              {t(
-                "Change the filter or use a job reference provided by the local operator.",
-                "可調整篩選條件，或使用本機管理者提供的案件工作參照。",
-              )}
-            </p>
-          </div>
-        ) : (
-          <div className="case-list">
-            {shown.map((row, index) => (
-              <div className="case-row" key={row.id}>
-                <span className="round-icon">
-                  <Icon name="file" />
-                </span>
-                <div className="case-name">
-                  <h3>
-                    {row.context.identity?.district ||
-                      t("District not available", "行政區尚未提供")}{" "}
-                    ·{" "}
-                    {row.context.identity?.land_use_category ||
-                      t("Use not available", "用途尚未提供")}
-                  </h3>
-                  <span className="muted">
-                    {t("Configured entry", "配置項目")} {index + 1} ·{" "}
-                    {row.context.identity?.effective_date ??
-                      t("Date not available", "日期尚未提供")}
-                  </span>
-                  <details className="technical">
-                    <summary>{t("Case reference", "案件參照")}</summary>
-                    <code>{row.context.job.case_id}</code>
-                  </details>
-                </div>
-                <span className="status-pill" data-status={row.status.job_status}>
-                  {statusText(row.status.job_status, t)}
-                </span>
-                <Link className="button primary" to={`/jobs/${row.id}/progress`}>
-                  {t("Open case", "開啟案件")}
-                  <Icon name="arrow" />
-                </Link>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-      <div className="two-columns">
-        <section className="panel">
-          <h2>
-            <Icon name="file" />
-            {t("Open a supplied reference", "開啟指定案件工作")}
-          </h2>
+        ) : null}
+        <form
+          className="panel sign-in-panel"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (working) return;
+            if (mode === "login") void signInWithPassword();
+            else if (codeSent) void completeVerification();
+            else void sendVerificationMail();
+          }}
+        >
+          <span className="eyebrow">
+            {mode === "login"
+              ? t("EMAIL SIGN-IN", "電子郵件登入")
+              : t("EMAIL VERIFICATION", "電子郵件驗證")}
+          </span>
+          <h2>{heading}</h2>
           <p className="muted">
+            {mode === "login"
+              ? t("Sign in with your email and password.", "輸入電子郵件與密碼登入工作台。")
+              : mode === "register"
+                ? t(
+                    "Enter your email; the service sends a verification mail to create the account.",
+                    "輸入電子郵件，服務會寄送驗證信以建立帳號。",
+                  )
+                : t(
+                    "Enter your email; the service sends a verification mail to reset the password.",
+                    "輸入電子郵件，服務會寄送驗證信以重設密碼。",
+                  )}
+          </p>
+          <label htmlFor="login-email">{t("Email address", "電子郵件")}</label>
+          <input
+            id="login-email"
+            type="email"
+            autoComplete="email"
+            inputMode="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            disabled={working || (staged && codeSent)}
+          />
+          {mode === "login" ? (
+            <>
+              <label htmlFor="login-password">{t("Password", "密碼")}</label>
+              <input
+                id="login-password"
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                disabled={working}
+              />
+            </>
+          ) : null}
+          {staged && codeSent ? (
+            <>
+              {notice ? (
+                <p role="status" className="notice" data-tone="neutral">
+                  <Icon name="check" />
+                  {notice}
+                </p>
+              ) : null}
+              <label htmlFor="login-code">{t("Verification code", "驗證碼")}</label>
+              <input
+                id="login-code"
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                value={code}
+                onChange={(event) => setCode(event.target.value)}
+                disabled={working}
+              />
+              <label htmlFor="new-password">{t("Set a password", "設定密碼")}</label>
+              <input
+                id="new-password"
+                type="password"
+                autoComplete="new-password"
+                value={newPassword}
+                onChange={(event) => setNewPassword(event.target.value)}
+                disabled={working}
+              />
+              <label htmlFor="confirm-password">{t("Confirm the password", "確認密碼")}</label>
+              <input
+                id="confirm-password"
+                type="password"
+                autoComplete="new-password"
+                value={confirmPassword}
+                onChange={(event) => setConfirmPassword(event.target.value)}
+                disabled={working}
+              />
+              <p className="small muted">
+                {t("Passwords are 8 to 128 characters.", "密碼長度須為 8 至 128 個字元。")}
+              </p>
+            </>
+          ) : null}
+          {localError ? (
+            <p role="alert" className="notice" data-tone="danger">
+              {localError}
+            </p>
+          ) : null}
+          {mode === "login" ? (
+            <>
+              <button
+                type="submit"
+                data-variant="primary"
+                disabled={working || !email.trim() || !password}
+              >
+                {working ? t("Signing in…", "登入中…") : t("Sign in", "登入")}
+                <Icon name="arrow" />
+              </button>
+              <div className="input-action" style={{ flexWrap: "wrap" }}>
+                <button type="button" disabled={working} onClick={() => switchMode("register")}>
+                  {t("Create a new account", "註冊新帳號")}
+                </button>
+                <button type="button" disabled={working} onClick={() => switchMode("reset")}>
+                  {t("Forgot the password", "忘記密碼")}
+                </button>
+              </div>
+            </>
+          ) : codeSent ? (
+            <>
+              <button type="submit" data-variant="primary" disabled={working || !code.trim()}>
+                {working
+                  ? t("Verifying…", "驗證中…")
+                  : mode === "register"
+                    ? t("Complete registration and sign in", "完成註冊並登入")
+                    : t("Reset the password and sign in", "重設密碼並登入")}
+                <Icon name="arrow" />
+              </button>
+              <div className="input-action" style={{ flexWrap: "wrap" }}>
+                <button
+                  type="button"
+                  disabled={working}
+                  onClick={() => void sendVerificationMail()}
+                >
+                  {t("Resend the verification mail", "重新寄送驗證信")}
+                </button>
+                <button
+                  type="button"
+                  disabled={working}
+                  onClick={() => {
+                    setCodeSent(false);
+                    setCode("");
+                    setNewPassword("");
+                    setConfirmPassword("");
+                    setNotice("");
+                    setLocalError("");
+                  }}
+                >
+                  {t("Use a different email", "使用其他信箱")}
+                </button>
+                <button type="button" disabled={working} onClick={() => switchMode("login")}>
+                  {t("Back to sign-in", "返回登入")}
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <button type="submit" data-variant="primary" disabled={working || !email.trim()}>
+                {working ? t("Sending…", "寄送中…") : t("Send verification mail", "寄送驗證信")}
+                <Icon name="arrow" />
+              </button>
+              <div className="input-action" style={{ flexWrap: "wrap" }}>
+                <button type="button" disabled={working} onClick={() => switchMode("login")}>
+                  {t("Back to sign-in", "返回登入")}
+                </button>
+              </div>
+            </>
+          )}
+          <p className="small muted">
             {t(
-              "For a configured job outside this limited view. The API checks access before returning case data.",
-              "若案件不在這份有限清單，可使用管理者提供的工作參照；服務會先檢查權限。",
+              "First sign-in starts with no cases; create one after signing in.",
+              "首次登入不會看到任何案件，登入後即可建立新案件並上傳資料。",
             )}
           </p>
-          <form
-            onSubmit={(event) => {
+        </form>
+        <details className="technical" open={advancedOpen} style={{ marginTop: 16, maxWidth: 450 }}>
+          <summary
+            onClick={(event) => {
               event.preventDefault();
-              if (value.trim()) void navigate(`/jobs/${encodeURIComponent(value.trim())}/progress`);
+              setAdvancedOpen((open) => !open);
             }}
           >
-            <label htmlFor="job">{t("Job identifier", "案件工作識別碼")}</label>
+            {t("Use a session credential (advanced)", "使用工作階段憑證（進階）")}
+          </summary>
+          <form
+            className="panel"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (!working && tokenValue.trim())
+                void connect(tokenValue.trim(), pairing.trim() || null);
+            }}
+          >
+            <p className="small muted">
+              {t(
+                "For an existing session credential issued for demo or controlled deployments.",
+                "供示範或受控部署使用之既有工作階段憑證。",
+              )}
+            </p>
+            <label htmlFor="token">{t("Session token", "本機工作階段憑證")}</label>
+            <input
+              id="token"
+              type="password"
+              autoComplete="off"
+              value={tokenValue}
+              onChange={(event) => setTokenValue(event.target.value)}
+              disabled={working}
+            />
+            {ORIGINAL_PREVIEW_URL ? (
+              <>
+                <label htmlFor="original-pairing">
+                  {t("Local original pairing code (optional)", "本機原件配對碼（選填）")}
+                </label>
+                <input
+                  id="original-pairing"
+                  type="password"
+                  autoComplete="off"
+                  value={pairing}
+                  onChange={(event) => setPairing(event.target.value)}
+                  disabled={working}
+                />
+                <p className="small muted">
+                  {t(
+                    "Original pages require this separate local pairing and current case permission.",
+                    "檢視原件須同時通過獨立本機配對與目前案件授權；未配對仍可查看審查狀態。",
+                  )}
+                </p>
+              </>
+            ) : null}
             <div className="input-action">
-              <input
-                id="job"
-                value={value}
-                onChange={(event) => setValue(event.target.value)}
-                autoComplete="off"
-              />
-              <button data-variant="primary" disabled={!value.trim()}>
-                {t("Open", "開啟")}
+              <button type="submit" data-variant="primary" disabled={working || !tokenValue.trim()}>
+                {working ? t("Checking session…", "正在驗證…") : t("Continue", "驗證並繼續")}
+                <Icon name="arrow" />
               </button>
             </div>
           </form>
-        </section>
-        <section className="panel soft">
-          <h2>
-            <Icon name="shield" />
-            {t("What is available now", "本階段可以做什麼")}
-          </h2>
-          <p>
-            {t(
-              "Read progress and evidence, then confirm or correct only the exact actions offered by the service.",
-              "查看進度與證據，再依服務允許的動作，確認觀察或提出更正。",
-            )}
-          </p>
-          <p className="muted">
-            {t(
-              "This interface does not offer general upload, case creation, account registration or rule publishing. Ask the local operator about configured imports.",
-              "此介面未提供一般上傳、新建案件、正式帳號註冊或規則發布。受控匯入請洽本機管理者。",
-            )}
-          </p>
-        </section>
+        </details>
       </div>
-    </article>
+    </section>
   );
 }

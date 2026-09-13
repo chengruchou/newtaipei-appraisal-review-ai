@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import os
 from pathlib import Path
 
 import uvicorn
@@ -39,6 +40,8 @@ def main() -> None:
         _private_json(target, workbench.manifest())
         return workbench
 
+    # Composition refuses to launch on invalid live configuration; no silent fallback.
+    print(f"Model client: {os.environ.get('REVIEW_MODEL_CLIENT') or 'synthetic'}", flush=True)
     workbench = asyncio.run(prepare())
     print(f"Synthetic local API ready: http://127.0.0.1:{args.port}", flush=True)
     if args.serve or not args.prepare:
