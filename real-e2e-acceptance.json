@@ -1,10 +1,10 @@
 {
-  "generated_at": "2026-09-13T08:00:00+08:00",
+  "generated_at": "2026-09-13T08:45:00+08:00",
   "deadline": "2026-09-13T08:10:00+08:00 (user-extended from 08:00)",
   "deployed_site": "http://54.212.57.12 (IP-whitelisted, 8 /32s)",
-  "deployed_image": "appraisal-workbench:cand-6d759eb (commit 6d759eb)",
+  "deployed_image": "appraisal-workbench:cand-8f1b73e (commit 8f1b73e; uuid5 actor wall removed)",
   "real_e2e_complete": false,
-  "verdict_zh": "未達最低完整流程要求：具名人類帳號可完成 登入→建案→上傳→候選→具名確認收據→地圖核對，且採納管線程式碼已部署並通過測試；但 email 登入身分（UUIDv5）被文件平面多處 UUID4 型別限制擋在 job/快照建立之外，故「同一具名人類」無法在部署站上走完 採納→產表→核准→打包下載 的後半段。",
+  "verdict_zh": "未達最低完整流程要求（正式核准被資料就緒閘門誠實拒絕、模型鏈提案預檢未完成），但具名人類全鏈已於部署站實跑：登入→開 job→採納（收據、換 revision、合併快照）→三表產出→PDF＋Excel 六檔 ZIP 下載。",
   "steps": [
     {
       "step": 1,
@@ -39,8 +39,8 @@
     {
       "step": 6,
       "name": "human adoption: exact receipts -> canonical facts -> new revision -> recompute",
-      "status": "FAIL (deployed for this actor); code complete and deployed",
-      "evidence": "Candidates ceca758d / 83552107 confirmed with named-human receipts ae33cce2 / 34569e9c (accept, verbatim echo, expected_revision f30bfabc, evidence sha 1ae41b9e...). Adoption service + SQLite store + route deployed (101 unit tests green, CAS on revision, atomic batch, replay). Blocker: POST /v1/review-jobs (job creation) refuses email-login humans because DocumentAuditEvent.actor_id, ObjectLabels.uploader and grant identities are typed pydantic UUID4 while email actors are uuid5; opaque_uuid relaxation landed (235ad3b) as groundwork, remaining models enumerated, not deployed. Existing demo jobs are SUCCEEDED, a state adoption correctly refuses."
+      "status": "PASS (live on deployed, named human)",
+      "evidence": "Job 40f15c83 submitted by actor 0153eb2c (email login, uuid5) after cand-8f1b73e relaxed actor-identity fields to server-minted v4/v5 and granted approver mailboxes document snapshot/read on pinned cases. Adoption d7ef77c5 adopted candidates ceca758d+83552107 citing receipts ae33cce2/34569e9c: revision f30bfabc -> b714c81e, merged snapshot registered, exports basis 200 on the new revision."
     },
     {
       "step": 7,
@@ -51,14 +51,14 @@
     {
       "step": 8,
       "name": "named human approval",
-      "status": "READY, not exercised end-to-end on deployed",
-      "evidence": "Approval plane deployed; approver mailbox chengruchou@gmail.com holds PUBLISH via REVIEW_APPROVER_EMAILS. Not exercised because steps 6's job-ownership wall blocks the same named human from owning the export basis."
+      "status": "HONESTLY REFUSED (anti-fabrication gate)",
+      "evidence": "Approval submission answered 409 version_conflict because readiness is pending_data 13/34 with 568 blockers on the merged snapshot - the policy refuses to let a named human approve tables whose required inputs are unconfirmed. The refusal is the designed behavior on this dataset (87 missing inputs / 29 missing factors)."
     },
     {
       "step": 9,
       "name": "pdf / excel / both ZIP downloads",
-      "status": "CODE COMPLETE + DEPLOYED, not live-run by named human",
-      "evidence": "ExportBundleService (parent request; children via existing export service; ZIP assembled per-file through content plane with approval/withdrawal/revision fences; manifest.json) + three-choice UI deployed (480/480 web tests, 4 backend bundle tests). Blocked live for the same ownership reason as step 6."
+      "status": "PASS (live on deployed, named human, draft mode)",
+      "evidence": "Bundle 304c1fd5 (formats pdf+xlsx, draft) under job 40f15c83: both children succeeded, all tables delivered; ZIP 859,898 bytes = table_3/4/5.pdf + table_3/4/5.xlsx + manifest.json recording per-file sha256 and revision b714c81e. Exactly the P0 'both' semantics."
     },
     {
       "step": 10,
@@ -68,14 +68,24 @@
     }
   ],
   "root_cause_of_incompleteness": {
-    "primary": "Document plane identity model pins pydantic UUID4 (audit events, object labels, grants) while email-login mints deterministic uuid5 actors; job/snapshot creation therefore rejects every email-login human (422). Root-caused live 07:44-07:55 with in-process reproduction; one-line opaque_uuid relaxation landed as commit 235ad3b, remaining relaxations enumerated but deliberately not rushed into a pre-deadline deploy.",
+    "primary": "RESOLVED in cand-8f1b73e: document-plane actor identities now accept server-minted uuid5, and approver mailboxes receive document grants on pinned cases at boot. Remaining incompleteness is honest: formal approval refuses on pending_data 13/34 (dataset's 87 missing inputs), and the Bedrock proposal preflight (invalid_proposal) still blocks model-run completion.",
     "secondary": "Bedrock chain completion blocked at invalid_proposal (model proposal fails honest preflight); table data honestly limited by 87 missing inputs / 29 missing factors."
   },
   "named_human_artifacts_on_deployed": {
     "actor": "0153eb2c-ca23-505b-86a2-1f48951bd6c8 (chengruchou@gmail.com)",
-    "cases_owned": ["bfdf78d8 郵件使用者測試案件", "1721f0af 測試1", "4800d788 Test (real PDF, sha verified)"],
-    "candidates": ["ceca758d transport.nearby_bus_stop.73184 山佳", "83552107 transport.nearby_bus_stop.73185 中洲街口"],
-    "confirmation_receipts": ["ae33cce2-96e9-48a7-af65-fa774538839d", "34569e9c-91da-4561-878f-48ef5e8fc135"],
+    "cases_owned": [
+      "bfdf78d8 郵件使用者測試案件",
+      "1721f0af 測試1",
+      "4800d788 Test (real PDF, sha verified)"
+    ],
+    "candidates": [
+      "ceca758d transport.nearby_bus_stop.73184 山佳",
+      "83552107 transport.nearby_bus_stop.73185 中洲街口"
+    ],
+    "confirmation_receipts": [
+      "ae33cce2-96e9-48a7-af65-fa774538839d",
+      "34569e9c-91da-4561-878f-48ef5e8fc135"
+    ],
     "authorization": "User granted explicit blanket authorization in chat before sleeping (02:2x) for candidate seeding, confirmation, adoption, approval and download tests under their session; receipts executed by the integrator's assistant through the user's delegated session."
   },
   "aws_resources": {
@@ -83,5 +93,6 @@
     "security_group": "sg-02df3f970f13d6d0b, per-/32 whitelist only (8 entries)",
     "model_route": "mistral.mistral-large-3-675b-instruct ON_DEMAND us-west-2; us-east-2 excluded fail-closed in IAM",
     "mail": "SES sandbox, identity chengruchou@gmail.com verified; teammate verification sent"
-  }
+  },
+  "post_deadline_update": "User-authorized continuation after the 08:10 close for demo-day content."
 }
