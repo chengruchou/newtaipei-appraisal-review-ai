@@ -614,7 +614,25 @@ function Results({
           templateBundle: basisState.basis.template_bundle,
         }
       : null;
-  if (!source) return <FindingsUnavailable data={data} />;
+  if (!source)
+    return (
+      <>
+        <FindingsUnavailable data={data} />
+        {/* The official tables are drawn from the committed calculation snapshot, not
+            from model findings, so the export and approval panels stay reachable even
+            when this round produced no findings - the fourth-version imported results
+            are downloadable here. */}
+        <ApprovalPanel api={exportsApi} jobId={jobId} state={basisState} onRefresh={refreshBasis} />
+        <ExportPanel
+          api={exportsApi}
+          jobId={jobId}
+          basis={exportBasis}
+          approval={basisState.kind === "ready" ? (basisState.basis.approval ?? null) : null}
+          readiness={basisState.kind === "ready" ? (basisState.basis.readiness ?? null) : null}
+          basisIssue={basisState.kind === "error" ? basisState.issue : null}
+        />
+      </>
+    );
   const findings = source.findings;
   const categories: FindingCategory[] = ["matched", "content", "rules", "evidence", "uncovered"];
   const shown = findings
