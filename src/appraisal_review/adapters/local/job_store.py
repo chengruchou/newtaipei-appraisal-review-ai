@@ -218,18 +218,22 @@ class InMemoryJobStore:
         """
         async with self._lock:
             found = [
-                (self._record(job), job.principal_id)
+                (self._record(job), job.principal_id, job.created_at)
                 for job in self._jobs.values()
                 if job.case_id == case_id
             ]
+        # Newest before ownership: reseeded demo state leaves earlier boots' completed
+        # jobs in the durable store, and only the newest of those still has readable
+        # runtime artifacts - an older sibling with the same result rank is a dead end.
         return tuple(
             record
-            for record, _ in sorted(
+            for record, owner, created in sorted(
                 found,
-                key=lambda pair: (
-                    pair[0].problem is not None,
-                    -pair[0].result_version,
-                    pair[1] != principal_id,
+                key=lambda row: (
+                    row[0].problem is not None,
+                    -row[0].result_version,
+                    -row[2],
+                    row[1] != principal_id,
                 ),
             )
         )
