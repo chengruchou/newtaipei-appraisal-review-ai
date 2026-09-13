@@ -258,6 +258,67 @@ export class ReviewClient {
     return parseCaseRecord(await this.intakeJson("GET", `/v1/cases/${encode(caseId)}`));
   }
 
+  /**
+   * GET /v1/cases/{id}/review-basis — the exact revision and documents a review
+   * submission must pin, or the service's own reason why none exists yet. The page
+   * never invents either; a "no_material" answer is shown as words, not a dead button.
+   */
+  async readCaseReviewBasis(caseId: string): Promise<CaseReviewBasis> {
+    const payload = await this.intakeJson("GET", `/v1/cases/${encode(caseId)}/review-basis`);
+    if (!isRecord(payload) || typeof payload.state !== "string")
+      throw new TransportError(INTAKE_MALFORMED);
+    if (payload.state !== "ready" && payload.state !== "no_material")
+      throw new TransportError(INTAKE_MALFORMED);
+    return {
+      case_id: typeof payload.case_id === "string" ? payload.case_id : caseId,
+      state: payload.state,
+      reason: typeof payload.reason === "string" ? payload.reason : null,
+      revision: isRecord(payload.revision) ? payload.revision : null,
+      documents: Array.isArray(payload.documents) ? payload.documents.filter(isRecord) : [],
+    };
+  }
+
+  /** GET /v1/review-cases — member cases that have admitted material to review. */
+  async listReviewableCases(): Promise<CaseReviewBasis[]> {
+    const payload = await this.intakeJson("GET", "/v1/review-cases");
+    if (!isRecord(payload) || !Array.isArray(payload.cases)) return [];
+    return payload.cases.filter(isRecord).map((entry) => ({
+      case_id: typeof entry.case_id === "string" ? entry.case_id : "",
+      state: entry.state === "no_material" ? ("no_material" as const) : ("ready" as const),
+      reason: typeof entry.reason === "string" ? entry.reason : null,
+      revision: isRecord(entry.revision) ? entry.revision : null,
+      documents: Array.isArray(entry.documents) ? entry.documents.filter(isRecord) : [],
+    }));
+  }
+
+  /**
+   * POST /v1/review-jobs — start a review on an admitted revision.
+   *
+   * The key is derived from the case, so pressing the button twice (or on a second
+   * device) replays the same job instead of opening a duplicate: the service answers
+   * 202 for a new job and 200 with the live status for a replay.
+   */
+  async startReview(basis: CaseReviewBasis): Promise<StartedReview> {
+    if (basis.state !== "ready" || basis.revision === null)
+      throw new TransportError("This case has no admitted material to review.");
+    const payload = await this.intakeJson("POST", "/v1/review-jobs", {
+      json: {
+        schema_version: "service-v1",
+        idempotency_key: `case-review-${basis.case_id}`,
+        revision: basis.revision,
+        documents: basis.documents,
+      },
+    });
+    if (!isRecord(payload)) throw new TransportError(INTAKE_MALFORMED);
+    const job = isRecord(payload.job) ? payload.job : payload;
+    const jobId = job.job_id;
+    if (typeof jobId !== "string") throw new TransportError(INTAKE_MALFORMED);
+    return {
+      job_id: jobId,
+      job_status: typeof payload.job_status === "string" ? payload.job_status : "queued",
+    };
+  }
+
   /** GET /v1/cases/{id}/materials — what the service actually holds for this case. */
   async listCaseMaterials(caseId: string): Promise<MaterialListView> {
     const payload = await this.intakeJson("GET", `/v1/cases/${encode(caseId)}/materials`);
@@ -538,6 +599,21 @@ export interface MaterialRecord {
   filename: string | null;
   content_type: string | null;
   created_at: string | number | null;
+}
+
+/** What the service says a review submission for one case must pin. */
+export interface CaseReviewBasis {
+  case_id: string;
+  state: "ready" | "no_material";
+  reason: string | null;
+  revision: Record<string, unknown> | null;
+  documents: Record<string, unknown>[];
+}
+
+/** A started (or replayed) review job, as the case page needs it. */
+export interface StartedReview {
+  job_id: string;
+  job_status: string;
 }
 
 export interface MaterialListView {

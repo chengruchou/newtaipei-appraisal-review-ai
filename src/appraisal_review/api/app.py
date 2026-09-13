@@ -7,6 +7,8 @@ from pydantic import BaseModel, ConfigDict
 
 from appraisal_review.api.routes.case_intake import CASE_INTAKE_ENDPOINTS
 from appraisal_review.api.routes.case_intake import router as case_intake_router
+from appraisal_review.api.routes.case_review import CASE_REVIEW_ENDPOINTS
+from appraisal_review.api.routes.case_review import router as case_review_router
 from appraisal_review.api.routes.content import CONTENT_ENDPOINTS
 from appraisal_review.api.routes.content import router as content_router
 from appraisal_review.api.routes.email_login import EMAIL_LOGIN_ENDPOINTS
@@ -132,6 +134,7 @@ def create_app(
     app.include_router(case_intake_router)
     app.include_router(fact_candidate_router)
     app.include_router(fact_adoption_router)
+    app.include_router(case_review_router)
     app.include_router(email_login_router)
     app.include_router(bundle_router)
 
@@ -166,6 +169,7 @@ def create_app(
             or endpoint in CASE_INTAKE_ENDPOINTS
             or endpoint in FACT_CANDIDATE_ENDPOINTS
             or endpoint in ADOPTION_ENDPOINTS
+            or endpoint in CASE_REVIEW_ENDPOINTS
             or endpoint in EMAIL_LOGIN_ENDPOINTS
             or endpoint in BUNDLE_ENDPOINTS
         ):

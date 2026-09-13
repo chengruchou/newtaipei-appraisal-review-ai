@@ -36,6 +36,7 @@ from appraisal_review.adapters.local.snapshot_registry import RegisteredSnapshot
 from appraisal_review.adapters.local.sqlite_review_store import SQLiteReviewStore
 from appraisal_review.api.app import create_app
 from appraisal_review.application.case_intake import CaseIntakeService
+from appraisal_review.application.case_review import CaseReviewService
 from appraisal_review.application.export_bundles import ExportBundleService
 from appraisal_review.application.exports import (
     ExportAssets,
@@ -266,6 +267,22 @@ class LocalMaterialCatalog:
             except BaseException:
                 connection.rollback()
                 raise
+
+    def latest_for_case(self, case_id: str) -> MaterialRevision | None:
+        """The admitted material a review of this case would pin, if any.
+
+        Authorization is the caller's job: this is a durable-state lookup, and the
+        only caller gates on case membership before asking. Rows are written by
+        register() from an already-authorized preparation, so the stored revision
+        is replayed as-is and never rebuilt from caller input.
+        """
+        with closing(self.store._connect()) as connection:
+            row = connection.execute(
+                "SELECT revision FROM prepared_materials WHERE case_id=? "
+                "ORDER BY revision_id LIMIT 1",
+                (case_id,),
+            ).fetchone()
+        return None if row is None else MaterialRevision.model_validate_json(row[0])
 
     async def snapshot(
         self, principal: Principal, reference: RevisionReference
@@ -812,6 +829,10 @@ def create_integrated_service(
                 jobs=service,
                 store=SQLiteAdoptionStore(store, snapshots=snapshot_provider),
             )
+
+    # What a case member may submit to start a review. Read-only: it describes the
+    # admitted material, and the job route re-validates every part of the submission.
+    app.state.case_review = CaseReviewService(materials=catalog)
 
     mail_from = os.environ.get("REVIEW_MAIL_FROM", "").strip()
     if os.environ.get("REVIEW_EMAIL_LOGIN") == "ses":

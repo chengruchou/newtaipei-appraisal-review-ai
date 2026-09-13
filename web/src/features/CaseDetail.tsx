@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 
-import type { CaseRecord, MaterialRecord, ReviewClient } from "@/api/client";
+import type { CaseRecord, CaseReviewBasis, MaterialRecord, ReviewClient } from "@/api/client";
 import { MATERIAL_SIZE_LIMIT_BYTES } from "@/api/client";
 import { ServiceError } from "@/api/problems";
 import { sha256Hex } from "@/api/exports";
@@ -28,16 +28,48 @@ export function CaseDetail({ client }: { client: ReviewClient }) {
   const [uploading, setUploading] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
   const candidateApi = useMemo(() => buildCandidateClient(), []);
+  const navigate = useNavigate();
+  const [basis, setBasis] = useState<CaseReviewBasis | null>(null);
+  const [starting, setStarting] = useState(false);
+  const [startNote, setStartNote] = useState<string | null>(null);
+
+  async function startReview() {
+    if (!basis || basis.state !== "ready" || starting) return;
+    setStarting(true);
+    setStartNote(null);
+    try {
+      const started = await client.startReview(basis);
+      await navigate(`/jobs/${started.job_id}/progress`);
+    } catch (error) {
+      setStartNote(
+        error instanceof ServiceError && error.code === "unauthorized"
+          ? t(
+              "You do not have permission to start a review on this case, or the session lapsed.",
+              "沒有發起審查的權限，或工作階段已失效，請重新登入。",
+            )
+          : t(
+              "The review could not be started. Nothing was created; try again.",
+              "審查未能發起，未建立任何資料，請再試一次。",
+            ),
+      );
+    } finally {
+      setStarting(false);
+    }
+  }
 
   const refresh = useCallback(async () => {
     if (!caseId) return;
     try {
-      const [one, list] = await Promise.all([
+      const [one, list, reviewBasis] = await Promise.all([
         client.readCase(caseId),
         client.listCaseMaterials(caseId),
+        // A basis read that fails must not fail the page: the case itself still loads
+        // and the review section then simply offers no button.
+        client.readCaseReviewBasis(caseId).catch(() => null),
       ]);
       setRecord(one);
       setMaterials([...list.materials]);
+      setBasis(reviewBasis);
       setFailed(null);
     } catch (error) {
       if (error instanceof ServiceError && error.code === "not_found") {
@@ -147,12 +179,40 @@ export function CaseDetail({ client }: { client: ReviewClient }) {
           <Icon name="clock" />
           {t("Review status", "審查狀態")}
         </h2>
-        <p>
-          {t(
-            "Materials are saved durably. A review run for this case starts once the form-filling and parsing integration is connected; nothing is computed or approved yet.",
-            "材料已妥善保存。本案的審查工作將在填表／解析對接完成後才會發起；目前尚無任何計算或核准。",
-          )}
-        </p>
+        {basis?.state === "ready" ? (
+          <>
+            <p>
+              {t(
+                "This case has an admitted material revision, so a review can start. Starting twice reopens the same review rather than creating a second one.",
+                "本案已有受控的材料版本，可以發起審查。重複發起會回到同一份審查，不會另建第二份。",
+              )}
+            </p>
+            <button
+              type="button"
+              data-variant="primary"
+              disabled={starting}
+              onClick={() => {
+                void startReview();
+              }}
+            >
+              {starting ? t("Starting…", "發起中…") : t("Start review", "發起審查")}
+              <Icon name="arrow" />
+            </button>
+          </>
+        ) : (
+          <p>
+            {t(
+              "Materials are saved durably, but this case has no admitted material revision yet, so no review can start.",
+              "材料已妥善保存，但本案尚無受控的材料版本，因此還不能發起審查。",
+            )}{" "}
+            {basis?.reason ?? null}
+          </p>
+        )}
+        {startNote ? (
+          <p className="notice" data-tone="danger" role="alert">
+            {startNote}
+          </p>
+        ) : null}
       </section>
       <section className="panel" aria-label={t("Case materials", "案件材料")}>
         <h2>

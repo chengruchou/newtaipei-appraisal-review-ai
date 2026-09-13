@@ -7,6 +7,7 @@ import {
   type AuthSessionView,
   type CaseContextView,
   type CaseRecord,
+  type CaseReviewBasis,
   type JobStatusView,
   type MaterialRecord,
   type ReviewClient,
@@ -302,6 +303,9 @@ function CaseIntake({ client }: { client: ReviewClient }) {
   const [createError, setCreateError] = useState("");
   const [createdCases, setCreatedCases] = useState<CaseRecord[]>([]);
   const [activeCase, setActiveCase] = useState<CaseRecord | null>(null);
+  const [reviewable, setReviewable] = useState<CaseReviewBasis[]>([]);
+  const [startingCase, setStartingCase] = useState<string | null>(null);
+  const [startNote, setStartNote] = useState<string | null>(null);
 
   // Durable listing: a fresh sign-in finds the caller's own intake cases again.
   // A load failure keeps whatever was created in this session; it never claims
@@ -323,6 +327,44 @@ function CaseIntake({ client }: { client: ReviewClient }) {
       active = false;
     };
   }, [client]);
+  // Cases with admitted material this member may review. Separate from the intake
+  // list above because these are not cases this account created; a load failure
+  // leaves the section absent rather than claiming there are none.
+  useEffect(() => {
+    let active = true;
+    void client
+      .listReviewableCases()
+      .then((cases) => {
+        if (active) setReviewable(cases);
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, [client]);
+  async function openReview(entry: CaseReviewBasis) {
+    if (startingCase !== null) return;
+    setStartingCase(entry.case_id);
+    setStartNote(null);
+    try {
+      const started = await client.startReview(entry);
+      await navigate(`/jobs/${started.job_id}/progress`);
+    } catch (error) {
+      setStartNote(
+        error instanceof ServiceError && error.code === "unauthorized"
+          ? t(
+              "You do not have permission to review this case, or the session lapsed.",
+              "沒有審查此案件的權限，或工作階段已失效，請重新登入。",
+            )
+          : t(
+              "The review could not be opened. Nothing was created; try again.",
+              "審查未能開啟，未建立任何資料，請再試一次。",
+            ),
+      );
+    } finally {
+      setStartingCase(null);
+    }
+  }
   const [materials, setMaterials] = useState<MaterialRecord[]>([]);
   const [materialsNote, setMaterialsNote] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -475,6 +517,53 @@ function CaseIntake({ client }: { client: ReviewClient }) {
             </button>
           </div>
         </form>
+        {reviewable.length > 0 ? (
+          <div className="case-list" style={{ marginTop: 16 }}>
+            <h3>{t("Cases you can review", "可審查的案件")}</h3>
+            <p className="small muted">
+              {t(
+                "These cases carry an admitted material revision. Opening one starts the review, or reopens it if it already exists.",
+                "這些案件已有受控的材料版本。開啟即發起審查；若已存在則直接回到同一份審查。",
+              )}
+            </p>
+            {reviewable.map((entry) => (
+              <div className="case-row" key={entry.case_id}>
+                <span className="round-icon">
+                  <Icon name="check" />
+                </span>
+                <div className="case-name">
+                  <h3 style={ellipsis}>
+                    {t("Reviewable case", "可審查案件")} {shortDisplayId(entry.case_id)}
+                  </h3>
+                  <span className="muted">
+                    {entry.documents.length} {t("admitted documents", "份受控文件")}
+                  </span>
+                  <details className="technical">
+                    <summary>{t("Case reference", "案件參照")}</summary>
+                    <code>{entry.case_id}</code>
+                  </details>
+                </div>
+                <button
+                  data-variant="primary"
+                  disabled={startingCase !== null}
+                  onClick={() => {
+                    void openReview(entry);
+                  }}
+                >
+                  {startingCase === entry.case_id
+                    ? t("Opening…", "開啟中…")
+                    : t("Open review", "開啟審查")}
+                  <Icon name="arrow" />
+                </button>
+              </div>
+            ))}
+            {startNote ? (
+              <p className="notice" data-tone="danger" role="alert">
+                {startNote}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
         {createdCases.length > 0 ? (
           <div className="case-list" style={{ marginTop: 16 }}>
             {createdCases.map((record) => (
