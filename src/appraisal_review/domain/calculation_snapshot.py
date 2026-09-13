@@ -34,7 +34,11 @@ from appraisal_review.domain.service_contracts import (
 )
 
 ValueState = Literal["present", "missing", "not_applicable", "confirmed_zero"]
-ValueOrigin = Literal["computed", "given_input", "human_confirmed"]
+ValueOrigin = Literal["computed", "given_input", "human_confirmed", "imported_result"]
+#: ``imported_result`` is a result produced outside this service and read in whole:
+#: traceable to a pinned commit, file digest, sheet and cell, but asserting no human
+#: decision. It stays subject to the formal approval gate exactly like any draft, and
+#: must never be written where ``human_confirmed`` is meant.
 
 #: Subject identifiers for this round's single real case: one comparison-base parcel and
 #: three comparables. Four subjects, one case - never four cases.
