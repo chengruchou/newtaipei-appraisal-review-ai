@@ -30,6 +30,7 @@ const STATUS_WORDS: Record<FactCandidate["status"], [string, string]> = {
   confirmed: ["Confirmed", "已確認"],
   rejected: ["Rejected", "已拒絕"],
   superseded: ["Superseded", "已被取代"],
+  adopted: ["Adopted into the revision", "已採納入版本"],
 };
 
 interface DecisionPick {

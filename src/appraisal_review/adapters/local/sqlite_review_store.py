@@ -565,6 +565,11 @@ class SQLiteReviewStore:
     async def read_job(self, *, job_id: UUID) -> JobRecord | None:
         return await self._read(lambda j, t: j.read_job(job_id=job_id))
 
+    async def jobs_for_case(self, *, case_id: str, principal_id: str) -> tuple[JobRecord, ...]:
+        return await self._read(
+            lambda j, t: j.jobs_for_case(case_id=case_id, principal_id=principal_id)
+        )
+
     async def read_result_reference(
         self, *, run_id: UUID, result_version: int
     ) -> ResultReference | None:

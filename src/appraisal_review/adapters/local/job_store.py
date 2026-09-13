@@ -204,6 +204,21 @@ class InMemoryJobStore:
             job = self._jobs.get(job_id)
             return None if job is None else self._record(job)
 
+    async def jobs_for_case(self, *, case_id: str, principal_id: str) -> tuple[JobRecord, ...]:
+        """This principal's own jobs on one case, so a second review is never opened blindly.
+
+        Ordered healthiest first: a job still carrying no problem outranks one that
+        already failed, so a caller offering "open the existing review" lands on the
+        live one rather than a stranded attempt.
+        """
+        async with self._lock:
+            found = [
+                self._record(job)
+                for job in self._jobs.values()
+                if job.case_id == case_id and job.principal_id == principal_id
+            ]
+        return tuple(sorted(found, key=lambda record: record.problem is not None))
+
     async def read_result_reference(
         self, *, run_id: UUID, result_version: int
     ) -> ResultReference | None:

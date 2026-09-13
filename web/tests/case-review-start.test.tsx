@@ -18,6 +18,7 @@ function readyBasis(): CaseReviewBasis {
     reason: null,
     revision: { schema_version: "service-v1", case_id: CASE_ID, revision_id: "rev-1" },
     documents: [{ document_id: "doc-1" }, { document_id: "doc-2" }],
+    existing_job_id: null,
   };
 }
 
@@ -79,6 +80,7 @@ describe("starting a review from the case page", () => {
           reason: "尚未有受控文件批次。",
           revision: null,
           documents: [],
+          existing_job_id: null,
         }),
       ),
       startReview,

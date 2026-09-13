@@ -57,6 +57,19 @@ def material(case_id: str = CASE) -> MaterialRevision:
     )
 
 
+class Jobs:
+    def __init__(self, records: tuple[object, ...] = ()) -> None:
+        self.records = records
+
+    async def jobs_for_case(self, *, case_id: str, principal_id: str) -> tuple[object, ...]:
+        return self.records
+
+
+class Record:
+    def __init__(self, job_id: str) -> None:
+        self.job_id = job_id
+
+
 class Materials:
     def __init__(self, by_case: dict[str, MaterialRevision]) -> None:
         self.by_case = by_case
@@ -122,3 +135,25 @@ def test_reviewable_omits_member_cases_that_have_no_material() -> None:
     listed = asyncio.run(service.reviewable(human(CASE, OTHER)))
     assert [entry.case_id for entry in listed.cases] == [CASE]
     assert all(entry.state == "ready" for entry in listed.cases)
+
+
+def test_an_existing_review_is_named_so_a_second_is_never_opened() -> None:
+    service = CaseReviewService(
+        materials=Materials({CASE: material()}),
+        jobs=Jobs((Record("99999999-9999-4999-8999-999999999999"),)),
+    )
+    basis = asyncio.run(service.basis(human(CASE), CASE))
+    assert basis.state == "ready"
+    assert str(basis.existing_job_id) == "99999999-9999-4999-8999-999999999999"
+
+
+def test_a_case_with_no_review_yet_reports_no_existing_job() -> None:
+    service = CaseReviewService(materials=Materials({CASE: material()}), jobs=Jobs(()))
+    basis = asyncio.run(service.basis(human(CASE), CASE))
+    assert basis.existing_job_id is None
+
+
+def test_without_a_job_reader_the_basis_still_describes_the_material() -> None:
+    service = CaseReviewService(materials=Materials({CASE: material()}))
+    basis = asyncio.run(service.basis(human(CASE), CASE))
+    assert basis.state == "ready" and basis.existing_job_id is None

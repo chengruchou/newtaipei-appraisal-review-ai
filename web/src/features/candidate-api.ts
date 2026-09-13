@@ -12,7 +12,15 @@ import { readToken } from "@/config";
  * date and evidence sha256), and the service refuses anything else with a 409.
  */
 
-export type CandidateStatus = "candidate" | "confirmed" | "rejected" | "superseded";
+export type CandidateStatus =
+  | "candidate"
+  | "confirmed"
+  | "rejected"
+  | "superseded"
+  /** Confirmed AND written into a snapshot revision; the service reports this
+   * once an adoption lands, so the panel must render it rather than treat the
+   * whole listing as unreadable. */
+  | "adopted";
 export type CandidateDecision = "accept" | "reject";
 
 export interface CandidateEvidence {
@@ -121,7 +129,7 @@ function canonicalCandidateProblem(status: number, body: unknown): CandidateServ
 
 const MALFORMED = "The service response could not be read or validated.";
 
-const STATUSES: readonly string[] = ["candidate", "confirmed", "rejected", "superseded"];
+const STATUSES: readonly string[] = ["candidate", "confirmed", "rejected", "superseded", "adopted"];
 
 function parseEvidence(value: unknown): CandidateEvidence {
   if (

@@ -14,6 +14,7 @@ resolution and snapshot creation all run again there.
 from __future__ import annotations
 
 from typing import Literal, Protocol
+from uuid import UUID
 
 from appraisal_review.application.service_guards import Principal
 from appraisal_review.domain.service_contracts import (
@@ -24,6 +25,7 @@ from appraisal_review.domain.service_contracts import (
     RevisionReference,
     ServiceModel,
 )
+from appraisal_review.ports.jobs import JobRecord
 
 #: Why a case cannot start a review yet. Stable codes; the sentence is for people.
 BasisState = Literal["ready", "no_material"]
@@ -44,6 +46,12 @@ class CaseReviewBasis(ServiceModel):
     reason: str | None = None
     revision: RevisionReference | None = None
     documents: tuple[DocumentReference, ...] = ()
+    #: A review this principal already has on the case. Present means "open that one":
+    #: one case carries one review, so a second is never opened alongside the first.
+    #: Two concurrent reviews on one case strand each other - the older one's revision
+    #: is superseded the moment the newer one adopts a fact - so the caller opens this
+    #: instead of submitting again.
+    existing_job_id: UUID | None = None
 
 
 class ReviewableCaseList(ServiceModel):
@@ -58,15 +66,24 @@ class PreparedMaterialReader(Protocol):
     def latest_for_case(self, case_id: str) -> MaterialRevision | None: ...
 
 
+class CaseJobReader(Protocol):
+    """This principal's jobs on one case, healthiest first."""
+
+    async def jobs_for_case(self, *, case_id: str, principal_id: str) -> tuple[JobRecord, ...]: ...
+
+
 class CaseReviewService:
-    def __init__(self, *, materials: PreparedMaterialReader) -> None:
+    def __init__(
+        self, *, materials: PreparedMaterialReader, jobs: CaseJobReader | None = None
+    ) -> None:
         self.materials = materials
+        self.jobs = jobs
 
     async def basis(self, principal: Principal, case_id: str) -> CaseReviewBasis:
         # Membership plus REVIEW is the same gate every other case read uses; a
         # non-member cannot learn whether the case exists, let alone its material.
         principal.require(case_id, Permission.REVIEW)
-        return self._basis(case_id)
+        return await self._with_existing(principal, self._basis(case_id))
 
     async def reviewable(self, principal: Principal) -> ReviewableCaseList:
         """Only the principal's own memberships are considered, never a global scan."""
@@ -76,8 +93,19 @@ class CaseReviewService:
                 break
             basis = self._basis(case_id)
             if basis.state == "ready":
-                found.append(basis)
+                found.append(await self._with_existing(principal, basis))
         return ReviewableCaseList(cases=tuple(found))
+
+    async def _with_existing(self, principal: Principal, basis: CaseReviewBasis) -> CaseReviewBasis:
+        """Name the review this case already has, if any; a lookup failure just omits it."""
+        if self.jobs is None or basis.state != "ready":
+            return basis
+        records = await self.jobs.jobs_for_case(
+            case_id=basis.case_id, principal_id=principal.actor.actor_id
+        )
+        if not records:
+            return basis
+        return basis.model_copy(update={"existing_job_id": records[0].job_id})
 
     def _basis(self, case_id: str) -> CaseReviewBasis:
         material = self.materials.latest_for_case(case_id)

@@ -275,6 +275,7 @@ export class ReviewClient {
       reason: typeof payload.reason === "string" ? payload.reason : null,
       revision: isRecord(payload.revision) ? payload.revision : null,
       documents: Array.isArray(payload.documents) ? payload.documents.filter(isRecord) : [],
+      existing_job_id: typeof payload.existing_job_id === "string" ? payload.existing_job_id : null,
     };
   }
 
@@ -288,6 +289,7 @@ export class ReviewClient {
       reason: typeof entry.reason === "string" ? entry.reason : null,
       revision: isRecord(entry.revision) ? entry.revision : null,
       documents: Array.isArray(entry.documents) ? entry.documents.filter(isRecord) : [],
+      existing_job_id: typeof entry.existing_job_id === "string" ? entry.existing_job_id : null,
     }));
   }
 
@@ -301,6 +303,11 @@ export class ReviewClient {
   async startReview(basis: CaseReviewBasis): Promise<StartedReview> {
     if (basis.state !== "ready" || basis.revision === null)
       throw new TransportError("This case has no admitted material to review.");
+    // One case carries one review. Opening a second alongside the first strands it:
+    // the moment either adopts a fact the other's revision is superseded, and it
+    // fails with a version conflict. So an existing review is opened, never re-sent.
+    if (basis.existing_job_id !== null)
+      return { job_id: basis.existing_job_id, job_status: "existing" };
     const payload = await this.intakeJson("POST", "/v1/review-jobs", {
       json: {
         schema_version: "service-v1",
@@ -608,6 +615,8 @@ export interface CaseReviewBasis {
   reason: string | null;
   revision: Record<string, unknown> | null;
   documents: Record<string, unknown>[];
+  /** A review this case already has; open it instead of starting a second one. */
+  existing_job_id: string | null;
 }
 
 /** A started (or replayed) review job, as the case page needs it. */
