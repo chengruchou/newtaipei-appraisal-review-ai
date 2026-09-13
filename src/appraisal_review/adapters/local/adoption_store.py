@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import asyncio
 import sqlite3
+from dataclasses import replace
 from uuid import UUID
 
 from appraisal_review.adapters.local import human_task_store as task_memory
@@ -37,6 +38,7 @@ from appraisal_review.adapters.local.sqlite_publication import _transaction
 from appraisal_review.adapters.local.sqlite_review_store import SQLiteReviewStore
 from appraisal_review.application.fact_adoption import AdoptionResult, AdoptionSnapshots
 from appraisal_review.application.fact_candidates import CandidateConfirmation, FactCandidate
+from appraisal_review.application.revisions import RevisionSnapshot
 from appraisal_review.application.service_guards import ServiceFault, submission_digest
 from appraisal_review.domain.calculation_snapshot import CalculationSnapshot
 from appraisal_review.domain.job_contracts import TERMINAL_STATUSES, JobStatus
@@ -125,7 +127,6 @@ class SQLiteAdoptionStore:
             t: task_memory.LocalHumanTaskStore,
             connection: sqlite3.Connection,
         ) -> tuple[AdoptionResult, bool]:
-            del t  # The task plane is untouched: adoption requires no open task.
             row = connection.execute(
                 "SELECT payload_digest, record FROM fact_adoptions "
                 "WHERE job_id=? AND actor_id=? AND idempotency_key=?",
@@ -182,6 +183,34 @@ class SQLiteAdoptionStore:
                     )
                 ),
             )
+            # Adoption does not change the review MATERIAL, only the calculation
+            # snapshot - but the new revision still needs its own registered
+            # RevisionSnapshot, exactly as resume_after_human registers one. Without
+            # it every read that resolves a revision to its material (the case
+            # context, and so the whole job page) answers not_found for a job whose
+            # facts were just adopted.
+            previous = t._snapshots.get((record.case_id, record.from_revision))
+            if previous is not None:
+                # No parent on purpose: the domain refuses a child revision whose
+                # material is byte-identical, and adoption changes the CALCULATION
+                # snapshot, never the review material. Lineage lives in the
+                # fact_adoptions row (from_revision) and the run chain; folding the
+                # adopted values into material `changes` is the follow-up that would
+                # let this carry a parent honestly.
+                advanced = RevisionSnapshot.capture(
+                    previous.material,
+                    result.new_revision.revision_id,
+                )
+                # The captured revision must be the exact one the record advanced
+                # to; anything else would register material under a revision no
+                # run references.
+                if advanced.revision.reference != result.new_revision:
+                    raise ServiceFault(ServiceErrorCode.CONFLICT)
+                t._snapshots[(record.case_id, result.new_revision.revision_id)] = advanced
+                meta = t._job_meta.get(record.job_id)
+                if meta is not None:
+                    t._job_meta[record.job_id] = replace(meta, head=result.new_revision)
+                    t._chain[record.job_id].append(advanced.revision.model_dump_json())
             job.current_run_id = new_run_id
             job.updated_at = record.adopted_at
             try:

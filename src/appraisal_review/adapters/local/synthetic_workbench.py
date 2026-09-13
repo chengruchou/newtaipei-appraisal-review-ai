@@ -373,7 +373,17 @@ class SyntheticWorkbench:
             snapshot_provider=self.snapshots,
             intake_root=self.root / "intake",
         )
-        self.app.state.workbench_data_mode = "synthetic"
+        # The launcher is synthetic, but the data mode describes the DOCUMENTS. A
+        # deployment that pins official-batch cases is running on staged official
+        # material with local rules and human review, and saying "synthetic" there
+        # would mislabel real receipts; a deployment without them stays synthetic.
+        # Neither label claims model execution, formal approval or real-case
+        # acceptance - the banner text carries that caveat in both modes.
+        self.app.state.workbench_data_mode = (
+            "local_original"
+            if (os.environ.get("REVIEW_OFFICIAL_BATCH_CASE_IDS") or "").strip()
+            else "synthetic"
+        )
         self.app.state.configured_workbench_jobs = lambda: tuple(
             self.state.get("job_ids", {}).values()
         )
