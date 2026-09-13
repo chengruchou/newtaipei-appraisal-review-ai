@@ -832,7 +832,7 @@ def create_integrated_service(
 
     # What a case member may submit to start a review. Read-only: it describes the
     # admitted material, and the job route re-validates every part of the submission.
-    app.state.case_review = CaseReviewService(materials=catalog, jobs=store)
+    app.state.case_review = CaseReviewService(materials=catalog, jobs=store, status=service)
 
     mail_from = os.environ.get("REVIEW_MAIL_FROM", "").strip()
     if os.environ.get("REVIEW_EMAIL_LOGIN") == "ses":

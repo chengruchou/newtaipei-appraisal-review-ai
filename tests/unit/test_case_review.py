@@ -169,3 +169,50 @@ def test_reviews_are_case_records_a_member_may_open_not_private_drafts() -> None
     )
     basis = asyncio.run(service.basis(human(CASE), CASE))
     assert str(basis.existing_job_id) == "11111111-2222-4333-8444-555555555555"
+
+
+def test_unreadable_stale_jobs_are_skipped_for_the_first_that_answers() -> None:
+    """A reseeded demo leaves completed jobs the current boot cannot serve; the
+    entry point probes with the page's own read and names the first that answers."""
+    from appraisal_review.domain.service_contracts import ServiceErrorCode as Code
+
+    class Status:
+        def __init__(self) -> None:
+            self.asked: list[str] = []
+
+        async def status(self, principal: Principal, job_id: object) -> object:
+            self.asked.append(str(job_id))
+            if str(job_id) == "aaaaaaaa-1111-4111-8111-111111111111":
+                raise ServiceFault(Code.NOT_FOUND)
+            return object()
+
+    status = Status()
+    service = CaseReviewService(
+        materials=Materials({CASE: material()}),
+        jobs=Jobs(
+            (
+                Record("aaaaaaaa-1111-4111-8111-111111111111"),
+                Record("bbbbbbbb-2222-4222-8222-222222222222"),
+            )
+        ),
+        status=status,
+    )
+    basis = asyncio.run(service.basis(human(CASE), CASE))
+    assert str(basis.existing_job_id) == "bbbbbbbb-2222-4222-8222-222222222222"
+    assert len(status.asked) == 2
+
+
+def test_every_candidate_unreadable_means_no_existing_job_named() -> None:
+    class Refusing:
+        async def status(self, principal: Principal, job_id: object) -> object:
+            from appraisal_review.domain.service_contracts import ServiceErrorCode as Code
+
+            raise ServiceFault(Code.NOT_FOUND)
+
+    service = CaseReviewService(
+        materials=Materials({CASE: material()}),
+        jobs=Jobs((Record("aaaaaaaa-1111-4111-8111-111111111111"),)),
+        status=Refusing(),
+    )
+    basis = asyncio.run(service.basis(human(CASE), CASE))
+    assert basis.existing_job_id is None and basis.state == "ready"

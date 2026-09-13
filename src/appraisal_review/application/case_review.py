@@ -16,7 +16,7 @@ from __future__ import annotations
 from typing import Literal, Protocol
 from uuid import UUID
 
-from appraisal_review.application.service_guards import Principal
+from appraisal_review.application.service_guards import Principal, ServiceFault
 from appraisal_review.domain.service_contracts import (
     DocumentReference,
     MaterialRevision,
@@ -67,17 +67,33 @@ class PreparedMaterialReader(Protocol):
 
 
 class CaseJobReader(Protocol):
-    """This principal's jobs on one case, healthiest first."""
+    """This case's jobs from durable state, most presentable first."""
 
     async def jobs_for_case(self, *, case_id: str, principal_id: str) -> tuple[JobRecord, ...]: ...
 
 
+class JobStatusReader(Protocol):
+    """The live service read a job page will actually perform."""
+
+    async def status(self, principal: Principal, job_id: UUID) -> object: ...
+
+
 class CaseReviewService:
     def __init__(
-        self, *, materials: PreparedMaterialReader, jobs: CaseJobReader | None = None
+        self,
+        *,
+        materials: PreparedMaterialReader,
+        jobs: CaseJobReader | None = None,
+        status: JobStatusReader | None = None,
     ) -> None:
         self.materials = materials
         self.jobs = jobs
+        # The durable store outlives what a given boot can serve: a reseeded demo
+        # leaves completed jobs whose materials are no longer registered this boot,
+        # and those answer not-found despite being listed. With a status reader
+        # wired, every candidate is probed with the same read the job page performs,
+        # and the first that actually answers is the one named.
+        self.status = status
 
     async def basis(self, principal: Principal, case_id: str) -> CaseReviewBasis:
         # Membership plus REVIEW is the same gate every other case read uses; a
@@ -103,9 +119,14 @@ class CaseReviewService:
         records = await self.jobs.jobs_for_case(
             case_id=basis.case_id, principal_id=principal.actor.actor_id
         )
-        if not records:
-            return basis
-        return basis.model_copy(update={"existing_job_id": records[0].job_id})
+        for record in records:
+            if self.status is not None:
+                try:
+                    await self.status.status(principal, record.job_id)
+                except ServiceFault:
+                    continue
+            return basis.model_copy(update={"existing_job_id": record.job_id})
+        return basis
 
     def _basis(self, case_id: str) -> CaseReviewBasis:
         material = self.materials.latest_for_case(case_id)
