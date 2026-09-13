@@ -157,3 +157,15 @@ def test_without_a_job_reader_the_basis_still_describes_the_material() -> None:
     service = CaseReviewService(materials=Materials({CASE: material()}))
     basis = asyncio.run(service.basis(human(CASE), CASE))
     assert basis.state == "ready" and basis.existing_job_id is None
+
+
+def test_reviews_are_case_records_a_member_may_open_not_private_drafts() -> None:
+    """The reader returns the case's reviews whoever submitted them; membership is
+    the gate (checked by the service before the lookup), so the fixture-seeded
+    demo review is reachable by the member who did not submit it."""
+    service = CaseReviewService(
+        materials=Materials({CASE: material()}),
+        jobs=Jobs((Record("11111111-2222-4333-8444-555555555555"),)),
+    )
+    basis = asyncio.run(service.basis(human(CASE), CASE))
+    assert str(basis.existing_job_id) == "11111111-2222-4333-8444-555555555555"

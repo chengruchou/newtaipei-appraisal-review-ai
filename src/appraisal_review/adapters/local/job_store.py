@@ -205,19 +205,34 @@ class InMemoryJobStore:
             return None if job is None else self._record(job)
 
     async def jobs_for_case(self, *, case_id: str, principal_id: str) -> tuple[JobRecord, ...]:
-        """This principal's own jobs on one case, so a second review is never opened blindly.
+        """The case's reviews, most presentable first, so none is opened blindly.
 
-        Ordered healthiest first: a job still carrying no problem outranks one that
-        already failed, so a caller offering "open the existing review" lands on the
-        live one rather than a stranded attempt.
+        Visibility is the CALLER's decision: every caller gates on case membership
+        before asking, and a case member may see the case's reviews whoever submitted
+        them - reviews are case records, not private drafts. ``principal_id`` only
+        breaks ties, preferring the caller's own job between equals.
+
+        Ordering puts first the job a reviewer can actually read: no recorded problem
+        beats a stranded attempt, and a delivered result (result_version above zero)
+        beats a run that never finished.
         """
         async with self._lock:
             found = [
-                self._record(job)
+                (self._record(job), job.principal_id)
                 for job in self._jobs.values()
-                if job.case_id == case_id and job.principal_id == principal_id
+                if job.case_id == case_id
             ]
-        return tuple(sorted(found, key=lambda record: record.problem is not None))
+        return tuple(
+            record
+            for record, _ in sorted(
+                found,
+                key=lambda pair: (
+                    pair[0].problem is not None,
+                    -pair[0].result_version,
+                    pair[1] != principal_id,
+                ),
+            )
+        )
 
     async def read_result_reference(
         self, *, run_id: UUID, result_version: int

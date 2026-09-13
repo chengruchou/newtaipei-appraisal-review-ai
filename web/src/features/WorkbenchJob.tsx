@@ -814,6 +814,20 @@ export function EvidenceComparison({
   const t = useText();
   const [params, setParams] = useSearchParams();
   const source = data.result ?? data.assessment;
+  // The teammates' filled-table evidence page ships as a static file: every colored
+  // cell shows its filling basis on hover. A static link, so nothing here can
+  // mistake that reference material for this job's own citations.
+  const importedEvidence = (
+    <p className="small muted">
+      {t(
+        "Fourth-version imported results, cell-by-cell filling basis: ",
+        "第四版匯入結果之逐格填表依據：",
+      )}
+      <a href="/v4-evidence.html" target="_blank" rel="noreferrer">
+        {t("open the evidence preview", "開啟實作證據預覽")}
+      </a>
+    </p>
+  );
   const loadSource = useCallback(
     (citation: SourceCitation) => client.readSource(citation),
     [client],
@@ -835,6 +849,7 @@ export function EvidenceComparison({
           )}
         </p>
         <Link to={`/jobs/${jobId}/results`}>{t("Back to overview", "返回摘要")}</Link>
+        {importedEvidence}
       </div>
     );
   const observations = data.context.observations.filter(
@@ -847,6 +862,7 @@ export function EvidenceComparison({
   );
   return (
     <>
+      {importedEvidence}
       <div className="toolbar">
         <label>
           {t("Current finding", "目前檢核紀錄")}
