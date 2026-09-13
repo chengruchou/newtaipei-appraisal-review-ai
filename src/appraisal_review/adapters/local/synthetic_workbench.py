@@ -16,7 +16,7 @@ from contextlib import closing
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, cast
-from uuid import UUID, uuid4
+from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
 
 from pydantic import BaseModel, ConfigDict
 
@@ -791,6 +791,33 @@ class SyntheticWorkbench:
         )
 
 
+def operator_document_grants(case_id: UUID) -> tuple[DocumentGrant, ...]:
+    """Deploy-time trusted configuration, mirroring the session-issue anchor: approver
+    mailboxes named in REVIEW_APPROVER_EMAILS may snapshot and read the documents of
+    the cases pinned in REVIEW_APPROVER_CASE_IDS. Actor ids are the email-login
+    directory's deterministic uuid5 per mailbox; least privilege - no ingest."""
+    pinned = {
+        entry.strip()
+        for entry in os.environ.get("REVIEW_APPROVER_CASE_IDS", "").split(",")
+        if entry.strip()
+    }
+    if str(case_id) not in pinned:
+        return ()
+    return tuple(
+        DocumentGrant(
+            uuid5(NAMESPACE_URL, "email-login/" + email),
+            case_id,
+            frozenset({"criteria", "forms"}),
+            frozenset({DocumentOperation.SNAPSHOT, DocumentOperation.READ}),
+        )
+        for email in sorted(
+            entry.strip().lower()
+            for entry in os.environ.get("REVIEW_APPROVER_EMAILS", "").split(",")
+            if entry.strip()
+        )
+    )
+
+
 async def prepare_workbench(directory: Path, *, port: int = 8765) -> SyntheticWorkbench:
     if not 1 <= port <= 65535:
         raise ValueError("A valid local port is required")
@@ -833,6 +860,7 @@ async def prepare_workbench(directory: Path, *, port: int = 8765) -> SyntheticWo
                         frozenset({"criteria", "forms"}),
                         frozenset(DocumentOperation),
                     ),
+                    *operator_document_grants(UUID(revision.reference.case_id)),
                 )
             )
             documents = DocumentTransferService(
